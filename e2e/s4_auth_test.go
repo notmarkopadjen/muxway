@@ -94,6 +94,9 @@ func (e *env) oidcSignIn(idp *authtest.IdP, mutate func(string) string) (int, st
 		cb = mutate(cb)
 	}
 	r := e.noFollow("GET", strings.TrimPrefix(cb, e.url()), []string{"Cookie", "muxway_signin=" + state})
+	if r.status == http.StatusOK && !strings.Contains(r.body, `url=/`) {
+		e.t.Fatalf("signed-in page does not continue to /: %s", r.body)
+	}
 	return r.status, cookieValue(r, sessionCookie)
 }
 
@@ -169,7 +172,7 @@ func TestSec31_RevocationEndsLiveSessions(t *testing.T) {
 
 	e.mustCLI("hub", "user", "create", "--dir", e.hubDir, "--email", idp.Account.Email, "--read", host+"/*")
 	status, userCookie := e.oidcSignIn(idp, nil)
-	if status != http.StatusSeeOther || userCookie == "" {
+	if status != http.StatusOK || userCookie == "" {
 		t.Fatalf("oidc sign-in: %d", status)
 	}
 	expect(t, e.withSession(userCookie, "GET", "/v1/me", "", true), http.StatusOK, "user before removal")
@@ -232,7 +235,7 @@ func TestSec33_SignInCannotBeReplayed(t *testing.T) {
 	e.mustCLI("hub", "user", "create", "--dir", e.hubDir, "--email", idp.Account.Email, "--read", host+"/*")
 	var callback, state string
 	status, cookie := e.oidcSignIn(idp, func(cb string) string { callback = cb; return cb })
-	if status != http.StatusSeeOther || cookie == "" {
+	if status != http.StatusOK || cookie == "" {
 		t.Fatalf("first sign-in: %d", status)
 	}
 	// The same callback again, with a fresh state cookie from a new start.
@@ -312,7 +315,7 @@ func TestFlow36_OIDCSignIn(t *testing.T) {
 		t.Fatal("user not listed")
 	}
 	status, cookie := e.oidcSignIn(idp, nil)
-	if status != http.StatusSeeOther || cookie == "" {
+	if status != http.StatusOK || cookie == "" {
 		t.Fatalf("sign-in: %d", status)
 	}
 	me := e.withSession(cookie, "GET", "/v1/me", "", true)

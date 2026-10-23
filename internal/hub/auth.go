@@ -118,6 +118,18 @@ func (h *Hub) handleSignInFinish(prov auth.Provider) http.HandlerFunc {
 		sess := h.sessions.create("user", u.ID, prov.Name())
 		setSessionCookie(w, sess)
 		h.log.Info("signed in", "method", prov.Name(), "user", u.ID, "addr", addr)
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		// Not a redirect: the browser is still on a cross-site navigation
+		// from the provider, on which it withholds a SameSite=Strict cookie.
+		// A hop the page itself makes is same-site and carries it.
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'")
+		io.WriteString(w, signedInPage)
 	}
 }
+
+const signedInPage = `<!doctype html>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="0;url=/">
+<title>muxway</title>
+<p style="font-family:monospace">Signed in. <a href="/">Continue</a></p>
+`

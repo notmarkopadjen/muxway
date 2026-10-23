@@ -23,7 +23,7 @@ sequenceDiagram
         H->>I: exchange the code, fetch the keys
         H->>H: verify the ID token, find the user by e-mail
     end
-    H-->>B: Set-Cookie: muxway_session (HttpOnly, Secure, SameSite=Strict)
+    H-->>B: Set-Cookie: muxway_session (HttpOnly, Secure, SameSite=Strict), page continuing to /
     B->>H: GET /v1/panes  (cookie + X-Muxway-Client)
 ```
 
