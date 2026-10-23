@@ -77,17 +77,43 @@ func TestFlow16_ListTreeAndReadInJSONAndTextMode(t *testing.T) {
 	if !strings.Contains(narrow.body, "ABCDEFGHIJKLMNO\nPQRSTUVWXYZ0123\n456789") {
 		t.Fatalf("not wrapped at 15:\n%s", narrow.body)
 	}
-	js := e.get(tok, "/v1/panes/"+host+"/work/1.0?ansi=1")
+	// Latin-1 and ASCII clients get lines, bullets and letters they can show.
+	ts.must("send-keys", "-t", "work:1.0", "-l", "echo '─── ❯ čćž 日本 ä …'")
+	ts.must("send-keys", "-t", "work:1.0", "Enter")
+	waitFor(t, "symbols echoed", func() bool {
+		return strings.Count(e.getText(tok, "/v1/panes/"+host+"/work/1.0").body, "─── ❯ čćž 日本 ä …") == 2
+	})
+	utf := e.getText(tok, "/v1/panes/"+host+"/work/1.0?charset=utf-8")
+	lat := e.getText(tok, "/v1/panes/"+host+"/work/1.0?charset=latin1")
+	asc := e.getText(tok, "/v1/panes/"+host+"/work/1.0?charset=ascii")
+	for _, c := range []struct {
+		r          resp
+		mime, want string
+	}{
+		{utf, "text/plain; charset=utf-8", "─── ❯ čćž 日本 ä …"},
+		{lat, "text/plain; charset=iso-8859-1", "--- > ccz ?? \xe4 ..."},
+		{asc, "text/plain; charset=us-ascii", "--- > ccz ?? a ..."},
+	} {
+		expect(t, c.r, http.StatusOK, c.mime)
+		if c.r.header.Get("Content-Type") != c.mime || !strings.Contains(c.r.body, c.want) {
+			t.Fatalf("%s: got %q\n%q", c.mime, c.r.header.Get("Content-Type"), c.r.body)
+		}
+	}
+	if utf.header.Get("ETag") == lat.header.Get("ETag") || lat.header.Get("ETag") == asc.header.Get("ETag") {
+		t.Fatal("etags do not tell the charsets apart")
+	}
+	expect(t, e.do("GET", tok, "/v1/panes/"+host+"/work/1.0?charset=latin1", "text/plain", "", "If-None-Match", lat.header.Get("ETag")), http.StatusNotModified, "latin1 etag")
+	js := e.get(tok, "/v1/panes/"+host+"/work/1.0?ansi=1&charset=ascii")
 	expect(t, js, http.StatusOK, "json read")
 	var pane struct {
 		Content string `json:"content"`
 	}
 	json.Unmarshal([]byte(js.body), &pane)
-	if !strings.Contains(pane.Content, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") {
+	if !strings.Contains(pane.Content, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") || !strings.Contains(pane.Content, "❯ čćž") {
 		t.Fatalf("json content: %s", js.body)
 	}
 	etag := js.header.Get("ETag")
-	again := e.do("GET", tok, "/v1/panes/"+host+"/work/1.0?ansi=1", "", "", "If-None-Match", etag)
+	again := e.do("GET", tok, "/v1/panes/"+host+"/work/1.0?ansi=1&charset=ascii", "", "", "If-None-Match", etag)
 	expect(t, again, http.StatusNotModified, "etag")
 	// A token granted one pane by its alias sees and writes that pane only.
 	one := e.token("one", []string{host + "/@logs"}, []string{host + "/@logs"})

@@ -433,11 +433,15 @@ func statusFor(code string) (int, string) {
 }
 
 func intParam(r *http.Request, name string, def, lo, hi int) (int, bool) {
-	s := r.URL.Query().Get(name)
-	if s == "" {
+	v := r.URL.Query()[name]
+	if len(v) == 0 {
 		return def, true
 	}
-	n, err := strconv.Atoi(s)
+	// A parameter given twice is a mistake or a trick; neither gets a guess.
+	if len(v) > 1 {
+		return 0, false
+	}
+	n, err := strconv.Atoi(v[0])
 	return n, err == nil && n >= lo && n <= hi
 }
 
@@ -445,7 +449,13 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 	lines, ok1 := intParam(r, "lines", 100, 1, wire.MaxLines)
 	width, ok2 := intParam(r, "width", 80, 8, 400)
 	ansi := r.URL.Query().Get("ansi") == "1"
-	if !ok1 || !ok2 {
+	charset := text.UTF8
+	if v := r.URL.Query()["charset"]; len(v) == 1 {
+		charset = v[0]
+	} else if len(v) > 1 {
+		charset = ""
+	}
+	if !ok1 || !ok2 || !text.Charset(charset) {
 		fail(w, http.StatusBadRequest, "bad_parameter")
 		return
 	}
@@ -472,8 +482,9 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 	var body []byte
 	contentType := "application/json"
 	if wantsText(r) {
-		contentType = "text/plain; charset=utf-8"
-		body = []byte(strings.Join(text.Wrap(resp.Content, width, lines), "\n") + "\n")
+		contentType = text.ContentType(charset)
+		rows := text.Wrap(text.Fold(resp.Content, charset), width, lines)
+		body = text.Encode(strings.Join(rows, "\n")+"\n", charset)
 	} else {
 		v := view(r.PathValue("host"), t, p)
 		body, _ = json.Marshal(map[string]any{"pane": v, "content": resp.Content})

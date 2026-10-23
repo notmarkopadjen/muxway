@@ -1,6 +1,6 @@
 # Feature: text mode in Latin-1 and ASCII
 
-> Status: approved 2026-10-24, in progress.
+> Status: implemented 2026-10-24.
 
 ## 1. Goal
 
@@ -117,10 +117,16 @@ the table; `docs/ARCHITECTURE.md` mentions the charset in the read flow.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan. Two deviations: `▶` and `»` map to `>` as
+      the table says, but in `latin1` every character Latin-1 has stays,
+      `»` and `·` included, since the phone shows them; and a query
+      parameter given twice (`charset`, `lines`, `width`) is now refused
+      with `400` instead of the first value being taken.
+- [x] Security rules (AGENTS.md section 2) hold: fixed values, same grants,
+      bounded growth, nothing logged
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Docs and diagrams updated: protocol page, `features/text-mode.md`,
+      architecture
 
 ## Test run
 

@@ -37,7 +37,8 @@ flowchart LR
   requests to the right agent.
 - **Clients**: anything that speaks [the protocol](protocol/v1.md). Rich
   clients use JSON; small ones use **text mode**, which returns plain lines
-  rewrapped to the width the client asks for.
+  rewrapped to the width the client asks for, in UTF-8, Latin-1 or ASCII
+  (see [text mode](features/text-mode.md)).
 - **Notifications**: a process in a pane, such as a Claude Code hook, runs
   `muxway notify`; the agent marks the pane and the hub tells clients, see
   [features/notifications.md](features/notifications.md).
@@ -157,7 +158,7 @@ sequenceDiagram
     A->>A: still exposed, same process?
     A->>T: capture-pane
     A-->>H: content
-    H-->>C: JSON, or text rewrapped to width
+    H-->>C: JSON, or text folded to charset and rewrapped to width
     C->>H: POST .../input {"text": "make test"}
     H->>H: text has no control characters, write grant, pane mode write
     H->>A: input pane %3
