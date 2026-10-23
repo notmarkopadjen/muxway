@@ -89,4 +89,7 @@ lens for Claude Code left Shift-Tab open.
 
 ## Test run
 
-(filled in below)
+Run `20261023-224907-28d7fd1` at commit `28d7fd1`: passed, 43 tests
+(unit and end-to-end), recorded as
+[issue #9](https://github.com/notmarkopadjen/muxway/issues/9). Logs in
+the run directory on the machine that ran it.
