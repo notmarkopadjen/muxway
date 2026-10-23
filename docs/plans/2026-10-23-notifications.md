@@ -1,6 +1,6 @@
 # Feature: notifications
 
-> Status: approved 2026-10-23.
+> Status: implemented 2026-10-23.
 
 ## 1. Goal
 
@@ -285,13 +285,32 @@ No UI in this feature, so no screenshots.
 
 ---
 
-## Review (after implementation)
+## Review
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+Done against the plan, the security rules and the privacy rules.
+
+- [x] Diff matches the plan, deviations explained here
+- [x] Security rules (AGENTS.md section 2) hold
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Docs and diagrams updated
+
+Deviations:
+
+- Test 20 is folded into security test 1, which sweeps every endpoint
+  with missing, wrong, expired and revoked tokens; `GET /v1/events` joined
+  that list.
+- `muxway notify` without `--from claude-code` exits non-zero on a refused
+  notification, so scripts can tell. Only the hook mode always exits 0.
+- The hub also drops events whose pane snapshot is not exposed, has a
+  negative index, an alias outside `[a-z0-9-]`, or names with control
+  characters, beyond the checks the plan listed.
+
+Found and fixed in review: a long poll kept looping until its deadline
+after the client had gone; it now stops with the request. The agent's
+notification socket reads at most 64 KiB per request.
 
 ## Test run
 
-To be linked.
+43 tests (33 end-to-end, 10 unit), all passing locally; the new ones are
+security tests 21 to 25, 15 extended with the hook text, and flows 26 to
+29. The long poll answered 1 s after the notification in flow 27.

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -55,7 +56,7 @@ func (a *Agent) serveNotify(ctx context.Context, ln net.Listener) {
 			defer c.Close()
 			c.SetDeadline(time.Now().Add(10 * time.Second))
 			var req NotifyRequest
-			if err := json.NewDecoder(bufio.NewReader(c)).Decode(&req); err != nil {
+			if err := json.NewDecoder(bufio.NewReader(io.LimitReader(c, 64<<10))).Decode(&req); err != nil {
 				json.NewEncoder(c).Encode(notifyResponse{Error: "bad_json"})
 				return
 			}

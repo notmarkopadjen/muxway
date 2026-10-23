@@ -4,7 +4,7 @@
 
 Your tmux, from anywhere. A hub, a small agent per machine, and clients from the browser to smart glasses to a 2002 feature phone. Security first: a tmux pane is a shell.
 
-> Early development. The hub, the agent and the protocol work; clients are next.
+> Early development. The hub, the agent, the protocol and notifications from AI CLIs work; clients are next.
 
 ## Quick start
 
@@ -19,6 +19,7 @@ muxway hub pair-code --host alice-laptop
 muxway agent pair <code>
 muxway agent run &
 muxway expose -t work:1.0 --write --name build
+muxway hooks claude-code   # hooks so Claude Code in a pane can call for you
 
 # back on the hub: a token for a client
 muxway hub token create --name phone --read 'alice-laptop/*' --write 'alice-laptop/@build'

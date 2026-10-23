@@ -122,7 +122,6 @@ func TestSec21_EventsFollowReadGrants(t *testing.T) {
 	if strings.Contains(e.get(onePane, "/v1/panes").body, "second pane") {
 		t.Fatal("attention text of a hidden pane leaked")
 	}
-	remember(hookText)
 }
 
 // 22
@@ -313,6 +312,7 @@ func TestFlow26_ClaudeCodeHooksTypedInThePane(t *testing.T) {
 	tok := e.token("phone", []string{host + "/*"}, []string{host + "/*"})
 	start := e.events(tok, "").Next
 	addr := host + "/work/1.0"
+	remember(hookText) // the log search at the end must not find it
 	hook := func(payload string) {
 		ts.must("send-keys", "-t", "work:1.0", "-l", "printf '%s' '"+payload+"' | "+bin+" notify --from claude-code --dir "+a.dir)
 		ts.must("send-keys", "-t", "work:1.0", "Enter")

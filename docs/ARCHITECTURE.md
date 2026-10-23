@@ -37,6 +37,9 @@ flowchart LR
 - **Clients**: anything that speaks [the protocol](protocol/v1.md). Rich
   clients use JSON; small ones use **text mode**, which returns plain lines
   rewrapped to the width the client asks for.
+- **Notifications**: a process in a pane, such as a Claude Code hook, runs
+  `muxway notify`; the agent marks the pane and the hub tells clients, see
+  [features/notifications.md](features/notifications.md).
 
 One binary, `muxway`, plays every role.
 
@@ -158,4 +161,28 @@ sequenceDiagram
     A->>A: exposed for write? audit
     A->>T: send-keys -l
     H-->>C: 204
+```
+
+### Notifications
+
+```mermaid
+sequenceDiagram
+    participant CC as Claude Code
+    participant N as muxway notify
+    participant A as Agent
+    participant H as Hub
+    participant C as Client
+    C->>H: GET /v1/events?after=11&wait=30
+    CC->>N: Notification hook, JSON on stdin, $TMUX_PANE=%3
+    N->>A: {"pane":"%3","kind":"permission","text":"..."} over notify.sock
+    A->>A: %3 exposed? same process? record attention
+    A-->>N: ok
+    A->>H: event (encrypted, unasked)
+    H->>H: validate, rate limit, seq 12, wake waiters
+    H-->>C: {"events":[{"seq":12,"address":"alice-laptop/work/1.0",...}],"next":12}
+    C->>H: GET /v1/panes
+    H-->>C: work/1.0 carries attention {kind: permission}
+    C->>H: POST /v1/panes/.../input {"text":"y"}
+    H->>A: input %3
+    A->>A: typed, attention cleared
 ```

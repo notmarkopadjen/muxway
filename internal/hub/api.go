@@ -264,7 +264,7 @@ func (h *Hub) handleEvents(w http.ResponseWriter, r *http.Request, t Token) {
 	visible := func(e event) bool { return t.canSeeHost(e.Host) && t.canRead(e.Host, e.Pane) }
 	deadline := time.Now().Add(time.Duration(wait) * time.Second)
 	events, next := h.events.after(cursor, limit, visible)
-	for len(events) == 0 && time.Now().Before(deadline) {
+	for len(events) == 0 && time.Now().Before(deadline) && r.Context().Err() == nil {
 		ctx, cancel := context.WithDeadline(r.Context(), deadline)
 		h.events.wait(ctx, next)
 		cancel()
