@@ -43,13 +43,17 @@ func (h *Hub) routes() http.Handler {
 	mux.HandleFunc("GET /v1/events", h.withPrincipal(h.handleEvents))
 	mux.HandleFunc("GET /v1/panes/{host}/{path...}", h.withPrincipal(h.handleRead))
 	mux.HandleFunc("POST /v1/panes/{host}/{path...}", h.withPrincipal(h.handleInput))
-	mux.HandleFunc("/", h.handleRoot)
+	if h.cfg.NoWeb {
+		mux.HandleFunc("/", h.handleRoot)
+	} else {
+		mux.Handle("/", h.webHandler())
+	}
 	return securityHeaders(mux)
 }
 
-// handleRoot stands in for the web client until it exists: with a sign-in
-// provider configured, a browser is sent to sign in, and a signed-in one
-// is told so. The cookie alone suffices here because the page only names
+// handleRoot stands in for the web client on a hub that does not serve
+// it: with a sign-in provider configured, a browser is sent to sign in, and
+// a signed-in one is told so. The cookie alone suffices here because the page only names
 // the principal and a cross-site navigation does not carry it anyway.
 func (h *Hub) handleRoot(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" || r.Method != http.MethodGet || len(h.cfg.Providers) == 0 {
@@ -142,17 +146,23 @@ func (h *Hub) withPrincipal(next principalHandler) http.HandlerFunc {
 			return
 		}
 		var p Principal
-		ok := false
+		ok, tried := false, false
 		if secret, has := presentedToken(r); has {
+			tried = true
 			if t, found := h.store.lookupToken(secret); found {
 				p, ok = t.principal(), true
 			}
 		} else if c, err := r.Cookie(sessionCookie); err == nil && r.Header.Get(clientHeader) != "" {
+			tried = true
 			p, ok = h.sessionPrincipal(c.Value)
 		}
 		if !ok {
-			h.limits.fail(addr)
-			h.log.Warn("authentication failed", "addr", addr, "path", r.URL.Path)
+			// Only a presented credential counts toward the lockout: a browser
+			// asking who it is before signing in is not an attack.
+			if tried {
+				h.limits.fail(addr)
+				h.log.Warn("authentication failed", "addr", addr, "path", r.URL.Path)
+			}
 			fail(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}

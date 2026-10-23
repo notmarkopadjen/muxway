@@ -116,11 +116,12 @@ func runHub(cmd string, args []string) error {
 		secretFile := fs.String("oidc-client-secret-file", "", "file (mode 600) holding the client secret")
 		label := fs.String("oidc-label", "Sign in", "what the sign-in button says")
 		claim := fs.String("oidc-claim", "email", "ID token claim that carries the e-mail")
+		noWeb := fs.Bool("no-web", false, "do not serve the web client")
 		if err := fs.Parse(args); err != nil {
 			return err
 		}
 		cfg := hub.Config{Dir: *dir, Listen: *listen, PublicURL: strings.TrimRight(*public, "/"),
-			TLSCert: *cert, TLSKey: *key, TrustProxy: *proxy, SessionTTL: *sessionTTL}
+			TLSCert: *cert, TLSKey: *key, TrustProxy: *proxy, SessionTTL: *sessionTTL, NoWeb: *noWeb}
 		if *issuer != "" {
 			if cfg.PublicURL == "" {
 				return fmt.Errorf("--oidc-issuer needs --public-url for the redirect address")

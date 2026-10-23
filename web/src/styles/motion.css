@@ -1,0 +1,223 @@
+/* Motion. Every effect is tokenised and collapses to plain fades under
+   prefers-reduced-motion or data-motion="off". */
+
+@keyframes mx-power-on {
+  0% {
+    transform: scale(1, 0.004);
+    filter: brightness(4);
+    opacity: 0.6;
+  }
+  35% {
+    transform: scale(1, 0.004);
+    filter: brightness(6);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1, 1.02);
+    filter: brightness(1.8);
+  }
+  100% {
+    transform: scale(1, 1);
+    filter: brightness(1);
+  }
+}
+@keyframes mx-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  7% {
+    opacity: 0.985;
+  }
+  11% {
+    opacity: 1;
+  }
+  48% {
+    opacity: 0.99;
+  }
+  52% {
+    opacity: 1;
+  }
+}
+@keyframes mx-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes mx-type {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+@keyframes mx-open {
+  0% {
+    transform: scaleY(0.01);
+    filter: brightness(3);
+    opacity: 0;
+  }
+  60% {
+    transform: scaleY(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1);
+    filter: brightness(1);
+  }
+}
+@keyframes mx-burn {
+  0% {
+    color: #fff;
+    text-shadow: var(--mx-glow-text-strong);
+  }
+  100% {
+    color: inherit;
+    text-shadow: var(--mx-text-glow);
+  }
+}
+@keyframes mx-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--mx-glow);
+  }
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+@keyframes mx-slide-in {
+  0% {
+    transform: translateX(40px);
+    opacity: 0;
+    filter: brightness(3);
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+@keyframes mx-noise {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
+@keyframes mx-resync {
+  0% {
+    filter: brightness(1);
+  }
+  10% {
+    filter: brightness(3) contrast(0.5);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+@keyframes mx-press {
+  0% {
+    box-shadow: var(--mx-glow-box-strong);
+    filter: brightness(2);
+  }
+  100% {
+    box-shadow: none;
+    filter: brightness(1);
+  }
+}
+
+.mx-crt.mx-power-on {
+  animation: mx-power-on 900ms var(--mx-ease-crt) both;
+  transform-origin: center;
+}
+.mx-crt .mx-flicker {
+  animation: mx-flicker 4s linear infinite;
+}
+.mx-cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.1em;
+  vertical-align: text-bottom;
+  background: var(--mx-ink);
+  box-shadow: var(--mx-glow-text);
+  animation: mx-blink 1s steps(1) infinite;
+}
+.mx-typed {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 100%;
+  animation: mx-type var(--mx-type-duration, 600ms) steps(var(--mx-type-steps, 30)) both;
+  animation-delay: var(--mx-type-delay, 0ms);
+  width: 0;
+}
+.mx-panel-enter {
+  animation: mx-open var(--mx-motion-medium) var(--mx-ease-crt) both;
+  transform-origin: top;
+}
+.mx-burn {
+  animation: mx-burn var(--mx-motion-slow) var(--mx-ease-out) both;
+}
+.mx-pulse {
+  animation: mx-pulse 1.4s var(--mx-ease-out) infinite;
+}
+.mx-toast {
+  animation: mx-slide-in var(--mx-motion-medium) var(--mx-ease-crt) both;
+}
+.mx-noise {
+  animation: mx-noise 1.2s ease-in-out infinite;
+}
+.mx-resync {
+  animation: mx-resync var(--mx-motion-slow) var(--mx-ease-out) both;
+}
+.mx-press {
+  animation: mx-press var(--mx-motion-medium) var(--mx-ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mx-crt.mx-power-on,
+  .mx-crt .mx-flicker,
+  .mx-cursor,
+  .mx-typed,
+  .mx-panel-enter,
+  .mx-burn,
+  .mx-pulse,
+  .mx-toast,
+  .mx-noise,
+  .mx-resync,
+  .mx-press {
+    animation: none;
+  }
+  .mx-typed {
+    width: auto;
+  }
+}
+:root[data-motion='off'] .mx-crt.mx-power-on,
+:root[data-motion='off'] .mx-crt .mx-flicker,
+:root[data-motion='off'] .mx-cursor,
+:root[data-motion='off'] .mx-typed,
+:root[data-motion='off'] .mx-panel-enter,
+:root[data-motion='off'] .mx-burn,
+:root[data-motion='off'] .mx-pulse,
+:root[data-motion='off'] .mx-toast,
+:root[data-motion='off'] .mx-noise,
+:root[data-motion='off'] .mx-resync,
+:root[data-motion='off'] .mx-press {
+  animation: none;
+}
+:root[data-motion='off'] .mx-typed {
+  width: auto;
+}
+:root[data-motion='off'] .mx-scanlines,
+:root[data-motion='off'] .mx-vignette {
+  display: none;
+}

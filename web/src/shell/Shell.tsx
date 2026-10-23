@@ -1,0 +1,156 @@
+import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { isOnline, onReachability } from '../api/client';
+import { useEventStream } from '../api/events';
+import type { Event } from '../api/types';
+import { useSession } from '../auth/session';
+import { GLYPH } from '../components/Badge';
+import { useToast } from '../components/Toast';
+import { cycleTheme, getNotify, toggleMotion, useSettings } from '../settings';
+import { Help } from './Help';
+
+const ATTENTION = new Set(['question', 'permission', 'idle', 'done']);
+
+function useOnline(): boolean {
+  const [online, setOnline] = useState(isOnline());
+  useEffect(() => onReachability(setOnline), []);
+  return online;
+}
+
+// Flashes the title until the window has focus again.
+function useTitleFlash() {
+  const timer = useRef<number | null>(null);
+  const stop = useCallback(() => {
+    if (timer.current) window.clearInterval(timer.current);
+    timer.current = null;
+    document.title = 'muxway';
+  }, []);
+  useEffect(() => {
+    window.addEventListener('focus', stop);
+    return () => window.removeEventListener('focus', stop);
+  }, [stop]);
+  return useCallback(() => {
+    if (document.hasFocus() || timer.current) return;
+    let on = false;
+    timer.current = window.setInterval(() => {
+      on = !on;
+      document.title = on ? '[!] muxway' : 'muxway';
+    }, 800);
+  }, []);
+}
+
+export function Shell() {
+  const { me, signedIn, logout } = useSession();
+  const online = useOnline();
+  const toast = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [help, setHelp] = useState(false);
+  const [resync, setResync] = useState(false);
+  const flash = useTitleFlash();
+  useSettings();
+
+  const onEvent = useCallback(
+    (e: Event) => {
+      if (!ATTENTION.has(e.kind)) return;
+      const kind = e.kind as keyof typeof GLYPH;
+      toast.push({
+        kind: `${GLYPH[kind]} ${e.kind}`,
+        title: e.address,
+        text: e.text,
+        onClick: () => navigate({ to: '/p/$', params: { _splat: e.address } }),
+      });
+      flash();
+      if (getNotify() && document.visibilityState === 'hidden') {
+        try {
+          new Notification(`muxway: ${e.kind}`, { body: e.address, tag: e.address });
+        } catch {
+          /* denied */
+        }
+      }
+    },
+    [toast, navigate, flash],
+  );
+  useEventStream(onEvent, signedIn);
+
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const target = ev.target as HTMLElement | null;
+      const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+      if (ev.key === 'Escape') {
+        if (help) setHelp(false);
+        else if (typing) (target as HTMLElement).blur();
+        else if (location.pathname !== '/') navigate({ to: '/' });
+        return;
+      }
+      if (typing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (ev.key === '?') {
+        setHelp((h) => !h);
+        ev.preventDefault();
+      } else if (ev.key === 't') {
+        const theme = cycleTheme();
+        setResync(true);
+        toast.push({ kind: 'theme', title: theme });
+      } else if (ev.key === 'm') {
+        toast.push({ kind: 'effects', title: toggleMotion() ? 'on' : 'off' });
+      } else if (ev.key === 'i') {
+        const input = document.querySelector<HTMLInputElement>('[data-testid="input"]');
+        if (input && !input.disabled) {
+          ev.preventDefault();
+          input.focus();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [help, location.pathname, navigate, toast]);
+
+  return (
+    <>
+      <header className="mx-header">
+        <span className="mx-brand">
+          <Link to="/">┌─ muxway ─┐</Link>
+        </span>
+        <span className="mx-crumb" data-testid="crumb">
+          {location.pathname.startsWith('/p/')
+            ? decodeURIComponent(location.pathname.slice(3))
+            : ''}
+        </span>
+        <span className="mx-spacer" />
+        {signedIn && (
+          <>
+            <span className="mx-who" data-testid="who">
+              {me?.name}
+            </span>
+            <button type="button" onClick={() => setHelp(true)} title="help (?)">
+              ?
+            </button>
+            <button
+              type="button"
+              onClick={() => logout().then(() => navigate({ to: '/signin' }))}
+              data-testid="logout"
+            >
+              logout
+            </button>
+          </>
+        )}
+      </header>
+      <main
+        className={`mx-main${resync ? ' mx-resync' : ''}`}
+        onAnimationEnd={() => setResync(false)}
+      >
+        <Outlet />
+      </main>
+      <footer className="mx-status" data-testid="status">
+        <span className={online ? '' : 'mx-offline mx-noise'} data-testid="online">
+          {online ? '● hub' : '○ hub unreachable, retrying'}
+        </span>
+        <span className="mx-spacer" />
+        <span>
+          <kbd>?</kbd> help · <kbd>t</kbd> theme · <kbd>/</kbd> filter
+        </span>
+      </footer>
+      {help && <Help onClose={() => setHelp(false)} />}
+    </>
+  );
+}

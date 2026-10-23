@@ -32,6 +32,7 @@ type Config struct {
 	TrustProxy bool // take the client address from X-Forwarded-For when the peer is loopback
 	SessionTTL time.Duration
 	Providers  []auth.Provider // ways to sign in besides pasting a token
+	NoWeb      bool            // do not serve the web client
 }
 
 // Hub is a running hub.

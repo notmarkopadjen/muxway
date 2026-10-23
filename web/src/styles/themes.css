@@ -1,0 +1,33 @@
+:root[data-theme='amber'] {
+  --mx-bg: #0a0603;
+  --mx-bg-raised: #140b05;
+  --mx-ink: #ffb000;
+  --mx-ink-dim: #a06c00;
+  --mx-ink-faint: #4a3200;
+  --mx-glow: rgba(255, 176, 0, 0.85);
+  --mx-glow-soft: rgba(255, 176, 0, 0.35);
+  --mx-accent: #ffd36b;
+  --mx-ok: #ffb000;
+}
+
+/* paper: dark ink on a pale canvas; glow becomes a soft shadow */
+:root[data-theme='paper'] {
+  color-scheme: light;
+  --mx-bg: #f1ead8;
+  --mx-bg-raised: #e8dfc8;
+  --mx-ink: #1f2a1f;
+  --mx-ink-dim: #5a6a5a;
+  --mx-ink-faint: #b9b39f;
+  --mx-glow: rgba(31, 42, 31, 0.25);
+  --mx-glow-soft: rgba(31, 42, 31, 0.12);
+  --mx-accent: #0b5d1e;
+  --mx-warn: #9a5b00;
+  --mx-bad: #a3161b;
+  --mx-ok: #0b5d1e;
+  --mx-scanline: rgba(0, 0, 0, 0.04);
+  --mx-vignette: rgba(0, 0, 0, 0.08);
+  --mx-glow-text: none;
+  --mx-glow-text-strong: 0 0 1px var(--mx-glow);
+  --mx-glow-box: 2px 2px 0 var(--mx-ink-faint);
+  --mx-glow-box-strong: 0 0 0 2px var(--mx-accent);
+}

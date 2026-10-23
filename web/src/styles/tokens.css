@@ -1,0 +1,43 @@
+/* muxway web client design tokens. Components use var(--mx-*) only. */
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url(/fonts/PressStart2P-Regular.ttf) format('truetype');
+  font-display: swap;
+}
+
+:root {
+  /* phosphor green, the default */
+  --mx-bg: #050806;
+  --mx-bg-raised: #0a120c;
+  --mx-ink: #39ff14;
+  --mx-ink-dim: #1f8f14;
+  --mx-ink-faint: #0f4a0c;
+  --mx-glow: rgba(57, 255, 20, 0.85);
+  --mx-glow-soft: rgba(57, 255, 20, 0.35);
+  --mx-accent: #b6ff9e;
+  --mx-warn: #ffb000;
+  --mx-bad: #ff3b3b;
+  --mx-ok: #39ff14;
+  --mx-scanline: rgba(0, 0, 0, 0.22);
+  --mx-vignette: rgba(0, 0, 0, 0.55);
+
+  --mx-glow-text: 0 0 2px var(--mx-glow), 0 0 8px var(--mx-glow-soft);
+  --mx-glow-text-strong:
+    0 0 2px var(--mx-glow), 0 0 10px var(--mx-glow), 0 0 24px var(--mx-glow-soft);
+  --mx-glow-box: 0 0 4px var(--mx-glow-soft), inset 0 0 8px rgba(0, 0, 0, 0.6);
+  --mx-glow-box-strong: 0 0 6px var(--mx-glow), 0 0 22px var(--mx-glow-soft);
+  --mx-text-glow: var(--mx-glow-text);
+
+  --mx-motion-fast: 120ms;
+  --mx-motion-medium: 260ms;
+  --mx-motion-slow: 600ms;
+  --mx-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --mx-ease-crt: cubic-bezier(0.1, 1.4, 0.3, 1);
+
+  --mx-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+  --mx-pixel: 'Press Start 2P', var(--mx-mono);
+  --mx-size: 14px;
+  --mx-line: 1.35;
+  --mx-gap: 8px;
+  --mx-gap-2: 16px;
+}
