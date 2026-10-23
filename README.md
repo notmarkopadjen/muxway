@@ -4,7 +4,7 @@
 
 Your tmux, from anywhere. A hub, a small agent per machine, and clients from the browser to smart glasses to a 2002 feature phone. Security first: a tmux pane is a shell.
 
-> Early development. The hub, the agent, the protocol, notifications from AI CLIs and sign-in with OpenID Connect work; the web client is next.
+> Early development. The hub, the agent, the protocol, notifications from AI CLIs, sign-in with OpenID Connect and the web client work; native clients are next.
 
 ## Quick start
 
@@ -24,6 +24,10 @@ muxway hooks claude-code   # hooks so Claude Code in a pane can call for you
 # back on the hub: a token for a client
 muxway hub token create --name phone --read 'alice-laptop/*' --write 'alice-laptop/@build'
 ```
+
+Then open `https://hub.example.com/` in a browser and paste the token, or
+sign in with your identity provider if the hub has one. For scripts and
+small clients:
 
 ```sh
 curl -H "Authorization: Bearer $TOKEN" -H "Accept: text/plain" \

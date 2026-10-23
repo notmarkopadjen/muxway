@@ -271,9 +271,11 @@ func (ts *tmuxServer) must(args ...string) string {
 // title gives a pane a synthetic title, so no real host name shows up.
 func (ts *tmuxServer) title(target string) { ts.must("select-pane", "-t", target, "-T", "test-pane") }
 
+// split makes a new pane next to target and titles it, so the machine's
+// own hostname never shows up as a pane title.
 func (ts *tmuxServer) split(target string) {
-	ts.must("split-window", "-t", target, shell())
-	ts.title(target)
+	id := ts.must("split-window", "-t", target, "-P", "-F", "#{pane_id}", shell())
+	ts.title(id)
 }
 
 func (ts *tmuxServer) capture(target string) string {

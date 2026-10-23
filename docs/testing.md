@@ -33,9 +33,20 @@ Every run writes `test-runs/<timestamp>-<commit>/` (ignored by git):
 | `traces/<test>.zip` | UI tests: Playwright trace, opened with `npx playwright show-trace` |
 | `report/index.html` | HTML report of the run |
 
-UI tests drive the clients with Playwright. Where a test needs a page of its
-own, it is a plain `.html` file under `tests/e2e/pages/` that can be opened
-and replayed by hand.
+UI tests drive the web client with Playwright. The specs live in
+`web/e2e/`; a Go test (`e2e/s5_ui_test.go`) builds the environment, runs
+`npx playwright test` against the production build the hub embeds, and
+reports each spec as a subtest, so one `results.xml` covers everything.
+Specs reach tmux, notifications and the hub through a small control
+endpoint the Go test serves on loopback, and a second loopback origin
+serves the cross-site attack page. Screenshots land in
+`screens/<spec>/`, traces in `traces/`.
+
+Locally the suite needs Node 22 and Chromium (`cd web && npm ci && npx
+playwright install chromium`); without Node, `scripts/e2e.sh` skips the
+web checks and the UI test. With Node it also lints, unit-tests and
+rebuilds the client, and fails if `web/dist` differs from the committed
+build. `MX_GREP=<pattern>` limits a run to matching specs.
 
 ## Recording runs
 

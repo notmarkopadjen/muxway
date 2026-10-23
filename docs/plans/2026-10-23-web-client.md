@@ -1,6 +1,6 @@
 # Feature: web client
 
-> Status: approved 2026-10-23. Builds on
+> Status: implemented 2026-10-23. Builds on
 > [browser sessions and pluggable sign-in](2026-10-23-sessions-and-sso.md).
 
 ## 1. Goal
@@ -265,13 +265,36 @@ checks run in CI and locally through `scripts/e2e.sh`.
 
 ---
 
-## Review (after implementation)
+## Review
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+Done against the plan, the security rules and the privacy rules.
+
+- [x] Diff matches the plan, deviations explained here
+- [x] Security rules (AGENTS.md section 2) hold
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Docs and diagrams updated
+
+Deviations:
+
+- Found by the suite and fixed in the hub: an unauthenticated request with
+  no credential at all (the first `/v1/me` a fresh browser makes) counted
+  toward the address lockout, so ten visits to the sign-in page locked a
+  person out. Only presented credentials count now; security tests 1, 12
+  and 30 still pass.
+- The title flash runs only while the window lacks focus, so a person
+  looking at the page is not distracted; the suite checks the toast and
+  the badge rather than the title.
+- After a hub restart the app's polling resumes, but the session is gone
+  by design, so the next navigation asks to sign in again; flow 50 asserts
+  that instead of a silent resume.
+- Specs are filtered with `MX_GREP` for local work; the harness grew that
+  flag during debugging.
 
 ## Test run
 
-To be linked.
+All passing locally through `scripts/e2e.sh`: 58 Go tests in the run
+directory, where the UI harness is one test carrying the 12 Playwright
+specs as subtests (security specs 40 to 42 first, then 43 to 51), plus 6
+Vitest units for the SGR parser, lint, format and type checks, and the
+`web/dist` freshness gate. Screenshots from the run are in
+`docs/features/images/`.
