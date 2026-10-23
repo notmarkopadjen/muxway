@@ -8,6 +8,7 @@ command -v tmux >/dev/null || { echo "e2e tests need tmux" >&2; exit 1; }
 id="$(date -u +%Y%m%d-%H%M%S)-$(git rev-parse --short HEAD)"
 run="$PWD/test-runs/$id"
 mkdir -p "$run/logs"
+{ tmux -V; go version; uname -sm; } > "$run/environment.txt"
 go build -o "$run/gojunit" ./tools/gojunit
 
 set +e

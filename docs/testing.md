@@ -25,7 +25,8 @@ Every run writes `test-runs/<timestamp>-<commit>/` (ignored by git):
 
 | File | Content |
 |---|---|
-| `summary.md` | date, commit, environment, totals, result per test |
+| `summary.md` | date, commit, totals, result per test |
+| `environment.txt` | tmux, Go and OS versions |
 | `results.xml` | JUnit XML, for tools |
 | `logs/<component>.log` | full log of hub, agent, tmux and test runner |
 | `screens/<test>/<step>.png` | UI tests: a screenshot per step and on failure |

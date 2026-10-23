@@ -232,7 +232,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 	resp := wire.Response{ID: req.ID}
 	switch req.Op {
 	case wire.OpList:
-		panes, err := a.tmux.List(ctx)
+		panes, err := a.list(ctx)
 		if err != nil {
 			resp.Error = wire.ErrTmux
 			return resp
@@ -292,7 +292,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 
 // find returns an exposed pane by id, re-read from tmux for every request.
 func (a *Agent) find(ctx context.Context, paneID string) (tmux.Pane, string) {
-	panes, err := a.tmux.List(ctx)
+	panes, err := a.list(ctx)
 	if err != nil {
 		return tmux.Pane{}, wire.ErrTmux
 	}
@@ -302,6 +302,17 @@ func (a *Agent) find(ctx context.Context, paneID string) (tmux.Pane, string) {
 		}
 	}
 	return tmux.Pane{}, wire.ErrNotExposed
+}
+
+func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
+	panes, skipped, err := a.tmux.List(ctx)
+	if err != nil {
+		a.log.Warn("tmux list failed", "err", err)
+	}
+	if skipped > 0 {
+		a.log.Warn("tmux panes skipped", "count", skipped, "err", tmux.ErrUnparsed)
+	}
+	return panes, err
 }
 
 // sameProcess refuses a pane whose process changed under the same id.

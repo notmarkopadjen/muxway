@@ -259,9 +259,12 @@ func runExpose(cmd string, args []string) error {
 	ctx := context.Background()
 	switch cmd {
 	case "exposed":
-		panes, err := srv.List(ctx)
+		panes, skipped, err := srv.List(ctx)
 		if err != nil {
 			return err
+		}
+		if skipped > 0 {
+			fmt.Fprintf(os.Stderr, "warning: %d panes could not be read (a name containing %q?)\n", skipped, "|mxw|")
 		}
 		tw := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 		fmt.Fprintln(tw, "ADDRESS\tMODE\tALIAS\tCOMMAND")

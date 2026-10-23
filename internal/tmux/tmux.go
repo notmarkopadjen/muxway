@@ -25,8 +25,13 @@ const (
 const (
 	optMode  = "@muxway-mode"
 	optAlias = "@muxway-alias"
-	sep      = "\x1f"
+	// Printable on purpose: some tmux versions escape control characters in
+	// format output. A name that contains it makes its pane unlistable.
+	sep = "|mxw|"
 )
+
+// ErrUnparsed counts list lines that could not be split into fields.
+var ErrUnparsed = errors.New("tmux list line with an unexpected number of fields")
 
 // Server is one tmux server, chosen by socket path or socket name. Both
 // empty means tmux's default, which inside tmux is the current server.
@@ -87,24 +92,25 @@ var fields = []string{
 	"#{window_activity}", "#{" + optMode + "}", "#{" + optAlias + "}", "#{pane_pid}",
 }
 
-// List returns every pane of the server, marked or not.
-func (s Server) List(ctx context.Context) ([]Pane, error) {
+// List returns every pane of the server, marked or not. Lines it cannot
+// parse are skipped and counted in skipped.
+func (s Server) List(ctx context.Context) (panes []Pane, skipped int, err error) {
 	out, err := s.run(ctx, "list-panes", "-a", "-F", strings.Join(fields, sep))
 	if err != nil {
 		if strings.Contains(err.Error(), "no server running") || strings.Contains(err.Error(), "No such file") ||
 			strings.Contains(err.Error(), "error connecting") {
-			return nil, nil
+			return nil, 0, nil
 		}
-		return nil, err
+		return nil, 0, err
 	}
-	var panes []Pane
 	for _, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
 		if line == "" {
 			continue
 		}
 		f := strings.Split(line, sep)
 		if len(f) != len(fields) {
-			continue // a name with our separator in it; such a pane is never listed
+			skipped++
+			continue
 		}
 		atoi := func(s string) int { n, _ := strconv.Atoi(s); return n }
 		act, _ := strconv.ParseInt(f[14], 10, 64)
@@ -115,7 +121,7 @@ func (s Server) List(ctx context.Context) ([]Pane, error) {
 			Activity: act, Mode: f[15], Alias: f[16], PID: atoi(f[17]),
 		})
 	}
-	return panes, nil
+	return panes, skipped, nil
 }
 
 // Exposed reports whether a resolved mark grants any access.
