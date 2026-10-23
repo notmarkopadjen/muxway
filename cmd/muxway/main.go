@@ -264,7 +264,7 @@ func runNotify(args []string) error {
 	}
 	hook := *from == "claude-code"
 	quiet := func(err error) error {
-		if hook {
+		if hook && err != nil {
 			fmt.Fprintln(os.Stderr, "muxway notify:", err)
 			return nil
 		}
@@ -295,22 +295,21 @@ func runNotify(args []string) error {
 }
 
 func runHooks(args []string) error {
-	fs := flag.NewFlagSet("hooks", flag.ContinueOnError)
-	dir := fs.String("dir", "", "agent directory to pass to notify, if not the default")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 || fs.Arg(0) != "claude-code" {
+	if len(args) == 0 || args[0] != "claude-code" {
 		return fmt.Errorf("hooks what? claude-code")
+	}
+	fs := flag.NewFlagSet("hooks claude-code", flag.ContinueOnError)
+	dir := fs.String("dir", defaultDir("agent"), "agent directory to pass to notify")
+	if err := fs.Parse(args[1:]); err != nil {
+		return err
 	}
 	exe, err := os.Executable()
 	if err != nil {
 		exe = "muxway"
 	}
-	cmd := exe + " notify --from claude-code"
-	if *dir != "" {
-		cmd += " --dir " + *dir
-	}
+	// The directory is spelled out: hooks run in Claude Code's environment,
+	// which may resolve the default differently from this shell.
+	cmd := exe + " notify --from claude-code --dir " + *dir
 	fmt.Fprintln(os.Stderr, "Add to ~/.claude/settings.json (merge the \"hooks\" key if it exists):")
 	os.Stdout.Write(agent.ClaudeHooks(cmd))
 	return nil

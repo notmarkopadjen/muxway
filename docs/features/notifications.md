@@ -38,9 +38,9 @@ Other notification types are ignored. The hook finds its pane through the
 `TMUX_PANE` variable tmux gives every pane, so Claude Code must run inside
 tmux and the pane must be exposed; otherwise the agent refuses the
 notification and nothing leaves the host. If the agent is not running the
-hook says so on stderr and exits 0. An agent with a directory other than
-the default needs `muxway hooks claude-code --dir <dir>`, which puts the
-flag into the command.
+hook says so on stderr and exits 0. The printed command names the agent
+directory explicitly, so the hook does not depend on the environment Claude
+Code runs in; pass `--dir` to `hooks` if the agent uses another one.
 
 ## From any script
 

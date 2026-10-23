@@ -351,8 +351,15 @@ func TestFlow26_ClaudeCodeHooksTypedInThePane(t *testing.T) {
 	if out, err := cmd.CombinedOutput(); err != nil || !strings.Contains(string(out), "no agent running") {
 		t.Fatalf("hook without agent: %v %s", err, out)
 	}
-	snippet := e.mustCLI("hooks", "claude-code")
-	if !strings.Contains(snippet, `"Notification"`) || !strings.Contains(snippet, "notify --from claude-code") {
+	// A delivered hook is silent.
+	cmd = exec.Command(bin, "notify", "--from", "claude-code", "--dir", a.dir)
+	cmd.Stdin = strings.NewReader(`{"hook_event_name":"Stop"}`)
+	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "TMUX_PANE=" + paneIDOf(ts, "work:1.0")}
+	if out, err := cmd.CombinedOutput(); err != nil || len(out) != 0 {
+		t.Fatalf("delivered hook not silent: %v %q", err, out)
+	}
+	snippet := e.mustCLI("hooks", "claude-code", "--dir", a.dir)
+	if !strings.Contains(snippet, `"Notification"`) || !strings.Contains(snippet, "notify --from claude-code --dir "+a.dir) {
 		t.Fatalf("hooks snippet: %s", snippet)
 	}
 }
