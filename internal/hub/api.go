@@ -32,6 +32,7 @@ func (h *Hub) routes() http.Handler {
 	mux.HandleFunc("GET /v1/hosts", h.withToken(h.handleHosts))
 	mux.HandleFunc("GET /v1/hosts/{host}/tree", h.withToken(h.handleTree))
 	mux.HandleFunc("GET /v1/panes", h.withToken(h.handlePanes))
+	mux.HandleFunc("GET /v1/events", h.withToken(h.handleEvents))
 	mux.HandleFunc("GET /v1/panes/{host}/{path...}", h.withToken(h.handleRead))
 	mux.HandleFunc("POST /v1/panes/{host}/{path...}", h.withToken(h.handleInput))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fail(w, http.StatusNotFound, "not_found") })
@@ -222,11 +223,78 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Token) {
 	if wantsText(r) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		for _, v := range out {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", v.Address, v.Mode, v.Command, v.Title)
+			kind := ""
+			if v.Attention != nil {
+				kind = v.Attention.Kind
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", v.Address, v.Mode, v.Command, v.Title, kind)
 		}
 		return
 	}
 	reply(w, map[string]any{"panes": out})
+}
+
+// EventView is an event as a client sees it.
+type EventView struct {
+	Seq     uint64 `json:"seq"`
+	At      int64  `json:"at"`
+	Host    string `json:"host"`
+	Address string `json:"address"`
+	PaneID  string `json:"pane_id"`
+	Alias   string `json:"alias,omitempty"`
+	Kind    string `json:"kind"`
+	Text    string `json:"text,omitempty"`
+}
+
+// handleEvents returns the events after the client's cursor for panes the
+// token may read, waiting up to `wait` seconds for one to arrive.
+func (h *Hub) handleEvents(w http.ResponseWriter, r *http.Request, t Token) {
+	limit, ok1 := intParam(r, "limit", 50, 1, 100)
+	wait, ok2 := intParam(r, "wait", 0, 0, int(maxWait/time.Second))
+	cursor, ok3 := uint64(0), true
+	if s := r.URL.Query().Get("after"); s != "" {
+		cursor, ok3 = parseCursor(s)
+	} else {
+		cursor = ^uint64(0)
+	}
+	if !ok1 || !ok2 || !ok3 {
+		fail(w, http.StatusBadRequest, "bad_parameter")
+		return
+	}
+	visible := func(e event) bool { return t.canSeeHost(e.Host) && t.canRead(e.Host, e.Pane) }
+	deadline := time.Now().Add(time.Duration(wait) * time.Second)
+	events, next := h.events.after(cursor, limit, visible)
+	for len(events) == 0 && time.Now().Before(deadline) {
+		ctx, cancel := context.WithDeadline(r.Context(), deadline)
+		h.events.wait(ctx, next)
+		cancel()
+		events, next = h.events.after(next, limit, visible)
+	}
+	var out []EventView
+	for _, e := range events {
+		out = append(out, EventView{Seq: e.Seq, At: e.At, Host: e.Host, Address: e.Host + "/" + e.Pane.Address(),
+			PaneID: e.Pane.PaneID, Alias: e.Pane.Alias, Kind: e.Kind, Text: e.Text})
+	}
+	if wantsText(r) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		for _, v := range out {
+			fmt.Fprintf(w, "%d\t%d\t%s\t%s\t%s\n", v.Seq, v.At, v.Address, v.Kind, v.Text)
+		}
+		fmt.Fprintf(w, "next\t%d\n", next)
+		return
+	}
+	if out == nil {
+		out = []EventView{}
+	}
+	reply(w, map[string]any{"events": out, "next": next})
+}
+
+func parseCursor(s string) (uint64, bool) {
+	if len(s) > 18 {
+		return 0, false
+	}
+	n, err := strconv.ParseUint(s, 10, 64)
+	return n, err == nil
 }
 
 func (h *Hub) handleTree(w http.ResponseWriter, r *http.Request, t Token) {
@@ -268,6 +336,7 @@ func (h *Hub) handleTree(w http.ResponseWriter, r *http.Request, t Token) {
 }
 
 var (
+	paneID   = regexp.MustCompile(`^%[0-9]{1,9}$`)
 	nameSeg  = regexp.MustCompile(`^[A-Za-z0-9._-]{1,64}$`)
 	indexSeg = regexp.MustCompile(`^[0-9]{1,4}$`)
 	aliasSeg = regexp.MustCompile(`^@[a-z0-9-]{1,32}$`)

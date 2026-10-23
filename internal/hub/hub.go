@@ -38,6 +38,7 @@ type Hub struct {
 	store  *Store
 	log    *slog.Logger
 	limits *limiter
+	events *eventLog
 
 	mu     sync.Mutex
 	agents map[string]*agentConn
@@ -67,7 +68,7 @@ func New(cfg Config, log *slog.Logger) (*Hub, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Hub{cfg: cfg, key: key, store: store, log: log, limits: newLimiter(),
+	return &Hub{cfg: cfg, key: key, store: store, log: log, limits: newLimiter(), events: newEventLog(),
 		agents: map[string]*agentConn{}, codes: map[string]*pairCode{}}, nil
 }
 
@@ -145,6 +146,8 @@ type agentConn struct {
 	pending map[uint64]chan wire.Response
 	list    []tmux.Pane
 	listAt  time.Time
+	evts    bucket
+	warned  time.Time
 }
 
 var errOffline = errors.New("host offline")
@@ -218,18 +221,54 @@ func (h *Hub) readLoop(ctx context.Context, a *agentConn) error {
 		if err != nil {
 			return err
 		}
-		var r wire.Response
-		if err := json.Unmarshal(raw, &r); err != nil {
-			return errors.New("malformed response")
+		var n wire.Notice
+		if err := json.Unmarshal(raw, &n); err != nil {
+			return errors.New("malformed message")
+		}
+		if n.Event != nil && n.ID == 0 {
+			h.acceptEvent(a, *n.Event)
+			continue
 		}
 		a.mu.Lock()
-		ch := a.pending[r.ID]
+		ch := a.pending[n.ID]
 		a.mu.Unlock()
 		if ch != nil {
-			ch <- r
+			ch <- n.Response
 		}
 	}
 }
+
+// acceptEvent validates an agent's event, binds it to the connection's
+// host and keeps it for clients. Nothing in it is trusted as sent.
+func (h *Hub) acceptEvent(a *agentConn, ev wire.Event) {
+	p := ev.Pane
+	valid := wire.KnownKind(ev.Kind) && wire.ValidEventText(ev.Text) && paneID.MatchString(p.PaneID) &&
+		p.Exposed() && p.WindowIndex >= 0 && p.PaneIndex >= 0 &&
+		cleanName(p.SessionName) && cleanName(p.WindowName) && cleanName(p.Title) && cleanName(p.Command) &&
+		(p.Alias == "" || hostName.MatchString(p.Alias))
+	if !valid {
+		h.log.Warn("event refused", "host", a.host, "pane", p.PaneID, "kind", ev.Kind)
+		return
+	}
+	a.mu.Lock()
+	ok := a.evts.take(eventRate, eventBurst)
+	warn := !ok && time.Since(a.warned) > time.Minute
+	if warn {
+		a.warned = time.Now()
+	}
+	a.listAt = time.Time{}
+	a.mu.Unlock()
+	if !ok {
+		if warn {
+			h.log.Warn("events dropped, agent over the rate limit", "host", a.host)
+		}
+		return
+	}
+	e := h.events.add(a.host, ev)
+	h.log.Info("event", "seq", e.Seq, "host", a.host, "pane", p.PaneID, "kind", ev.Kind)
+}
+
+func cleanName(s string) bool { return wire.CleanText(s) == s && len(s) <= 256 }
 
 func (h *Hub) attach(a *agentConn) {
 	h.mu.Lock()

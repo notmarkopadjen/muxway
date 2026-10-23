@@ -27,6 +27,21 @@ type bucket struct {
 	at     time.Time
 }
 
+// take refills the bucket at rate per second up to burst and takes one.
+func (b *bucket) take(rate, burst float64) bool {
+	now := time.Now()
+	if b.at.IsZero() {
+		b.tokens = burst
+	}
+	b.tokens = min(burst, b.tokens+now.Sub(b.at).Seconds()*rate)
+	b.at = now
+	if b.tokens < 1 {
+		return false
+	}
+	b.tokens--
+	return true
+}
+
 func newLimiter() *limiter {
 	return &limiter{fails: map[string][]time.Time{}, locked: map[string]time.Time{}, buckets: map[string]*bucket{}}
 }
@@ -66,17 +81,10 @@ func (l *limiter) fail(addr string) {
 func (l *limiter) allow(tokenID string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	now := time.Now()
 	b, ok := l.buckets[tokenID]
 	if !ok {
-		b = &bucket{tokens: tokenBurst, at: now}
+		b = &bucket{}
 		l.buckets[tokenID] = b
 	}
-	b.tokens = min(tokenBurst, b.tokens+now.Sub(b.at).Seconds()*tokenRate)
-	b.at = now
-	if b.tokens < 1 {
-		return false
-	}
-	b.tokens--
-	return true
+	return b.take(tokenRate, tokenBurst)
 }
