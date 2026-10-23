@@ -73,6 +73,7 @@ func New() *IdP {
 	p.Secrets = append(p.Secrets, p.ClientSecret)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/.well-known/openid-configuration", p.discovery)
+	mux.HandleFunc("/authorize", p.authorize)
 	mux.HandleFunc("/token", p.token)
 	mux.HandleFunc("/jwks", p.jwks)
 	p.Server = httptest.NewServer(mux)
@@ -140,6 +141,17 @@ func (p *IdP) Login(authorizeURL string) (string, error) {
 	cq.Set("state", q.Get("state"))
 	cb.RawQuery = cq.Encode()
 	return cb.String(), nil
+}
+
+// authorize is the browser-facing half of Login: no account picker, the
+// configured account signs in at once.
+func (p *IdP) authorize(w http.ResponseWriter, r *http.Request) {
+	cb, err := p.Login(r.URL.String())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	http.Redirect(w, r, cb, http.StatusFound)
 }
 
 func (p *IdP) token(w http.ResponseWriter, r *http.Request) {

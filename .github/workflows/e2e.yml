@@ -30,6 +30,18 @@ jobs:
       - name: Install tmux
         run: command -v tmux || (sudo apt-get update && sudo apt-get install -y tmux)
 
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install the web client's packages and Chromium
+        run: |
+          cd web
+          npm ci --no-fund --no-audit
+          npx playwright install --with-deps chromium
+
       - name: Run end-to-end tests
         id: run
         run: |

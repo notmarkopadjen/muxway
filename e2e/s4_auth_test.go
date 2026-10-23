@@ -352,21 +352,34 @@ func TestFlow37_AuthMethodsFollowConfiguration(t *testing.T) {
 	if !strings.Contains(r.body, `"methods":["token","oidc"]`) || !strings.Contains(r.body, `"label":"Sign in with Test"`) {
 		t.Fatalf("methods with provider: %s", r.body)
 	}
-	// Until the web client exists, / sends a browser to sign in and tells a
-	// signed-in one who it is; without a provider it stays a 404.
-	expect(t, plain.noFollow("GET", "/", nil), http.StatusNotFound, "root without provider")
-	root := e.noFollow("GET", "/", nil)
+	// With the web client, / is the app; with --no-web, a hub with a
+	// provider sends a browser to sign in and tells a signed-in one who it
+	// is, and a hub without one stays a 404.
+	page := plain.noFollow("GET", "/", nil)
+	if page.status != http.StatusOK || !strings.Contains(page.header.Get("Content-Type"), "text/html") ||
+		!strings.Contains(page.header.Get("Content-Security-Policy"), "default-src 'none'") {
+		t.Fatalf("web client at /: %d %v", page.status, page.header)
+	}
+	expect(t, plain.noFollow("GET", "/etc/passwd", nil), http.StatusNotFound, "unknown path with the web client")
+	expect(t, plain.noFollow("GET", "/hub.json", nil), http.StatusNotFound, "file name with the web client")
+	bare, _, _ := basic(t, "--no-web")
+	expect(t, bare.noFollow("GET", "/", nil), http.StatusNotFound, "root without web and provider")
+	e2, idp2 := oidcEnv(t, "--no-web")
+	root := e2.noFollow("GET", "/", nil)
 	if root.status != http.StatusFound || root.header.Get("Location") != "/v1/auth/oidc/start" {
 		t.Fatalf("root: %d %s", root.status, root.header.Get("Location"))
 	}
-	e.mustCLI("hub", "user", "create", "--dir", e.hubDir, "--email", idp.Account.Email, "--read", host+"/*")
-	_, cookie := e.oidcSignIn(idp, nil)
-	signed := e.noFollow("GET", "/", []string{"Cookie", sessionCookie + "=" + cookie})
+	e2.mustCLI("hub", "user", "create", "--dir", e2.hubDir, "--email", idp2.Account.Email, "--read", host+"/*")
+	_, cookie := e2.oidcSignIn(idp2, nil)
+	signed := e2.noFollow("GET", "/", []string{"Cookie", sessionCookie + "=" + cookie})
 	if signed.status != http.StatusOK || !strings.Contains(signed.body, "signed in as alice@example.com") || !strings.Contains(signed.body, "oidc") {
 		t.Fatalf("root signed in: %d %s", signed.status, signed.body)
 	}
-	expect(t, e.noFollow("GET", "/other", []string{"Cookie", sessionCookie + "=" + cookie}), http.StatusNotFound, "other path")
+	expect(t, e2.noFollow("GET", "/other", []string{"Cookie", sessionCookie + "=" + cookie}), http.StatusNotFound, "other path")
+	void(idp)
 }
+
+func void(any) {}
 
 // 38
 func TestFlow38_SessionsExpire(t *testing.T) {
