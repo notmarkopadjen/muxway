@@ -4,7 +4,7 @@
 
 Your tmux, from anywhere. A hub, a small agent per machine, and clients from the browser to smart glasses to a 2002 feature phone. Security first: a tmux pane is a shell.
 
-> Early development. The hub, the agent, the protocol and notifications from AI CLIs work; clients are next.
+> Early development. The hub, the agent, the protocol, notifications from AI CLIs and sign-in with OpenID Connect work; the web client is next.
 
 ## Quick start
 

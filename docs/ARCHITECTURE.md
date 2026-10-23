@@ -22,7 +22,8 @@ flowchart LR
     subgraph Host_2[Host]
         A2[Agent] --- T2[tmux server]
     end
-    W & AN & G & J & X -- "HTTPS, bearer token" --> H
+    W -- "HTTPS, session cookie" --> H
+    AN & G & J & X -- "HTTPS, bearer token" --> H
     A1 -- "WSS, outbound, signed + encrypted" --> H
     A2 -- "WSS, outbound, signed + encrypted" --> H
 ```
@@ -74,8 +75,10 @@ flowchart LR
 
 Three independent checks stand between a client and a shell:
 
-1. **The token's grants** at the hub: which host, session, window and pane
-   patterns it may read, and which it may write.
+1. **The principal's grants** at the hub: which host, session, window and
+   pane patterns it may read, and which it may write. A principal is a
+   token, or a user who signed in through an identity provider and holds
+   a session cookie; see [features/sign-in.md](features/sign-in.md).
 2. **The marks** on the host, set by its owner with `muxway expose`. A pane
    with no mark, or marked `deny`, does not exist for muxway.
 3. **The agent's own enforcement.** The agent re-reads the marks for every

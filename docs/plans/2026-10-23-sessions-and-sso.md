@@ -1,6 +1,6 @@
 # Feature: browser sessions and pluggable sign-in
 
-> Status: approved 2026-10-23.
+> Status: implemented 2026-10-23.
 
 ## 1. Goal
 
@@ -219,13 +219,33 @@ No UI in this feature; the web client's suite covers the browser side.
 
 ---
 
-## Review (after implementation)
+## Review
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+Done against the plan, the security rules and the privacy rules.
+
+- [x] Diff matches the plan, deviations explained here
+- [x] Security rules (AGENTS.md section 2) hold
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Docs and diagrams updated
+
+Deviations:
+
+- `Provider.Start` returns an error, so the hub can answer
+  `502 provider_unavailable` when discovery fails instead of the provider
+  writing its own error page. Discovery and the key set are fetched on
+  first use and cached, so a hub starts even while the provider is down.
+- A provider's own failure (unreachable, bad JSON) is a `ProviderError`
+  and answers 502 without counting toward the lockout; every refused
+  sign-in still counts.
+- The `email_verified` check applies when the e-mail claim is `email`;
+  with another claim such as `preferred_username` the provider's claim is
+  taken as is, which the feature page says.
+- The test identity provider lives in `internal/auth/authtest` so the
+  unit tests and the end-to-end suite share one implementation.
 
 ## Test run
 
-To be linked.
+55 tests (37 end-to-end, 18 unit), all passing locally. New: security
+tests 30 to 34, the token sweep extended with `/v1/me`, the log search
+extended with session ids, codes, ID tokens and the client secret, flows
+35 to 38, and unit tests for the OpenID Connect client.
