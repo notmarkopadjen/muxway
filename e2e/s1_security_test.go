@@ -465,7 +465,11 @@ func TestSec13_NewTmuxServerDoesNotInheritAccess(t *testing.T) {
 	tok := e.token("full", []string{"*"}, []string{"*"})
 	expect(t, e.get(tok, "/v1/panes/"+shell0), http.StatusOK, "exposed")
 	ts.must("kill-server")
-	ts.must("-f", "/dev/null", "new-session", "-d", "-s", "work", "-n", "shell", shell())
+	// The old server may still hold the socket for a moment.
+	waitFor(t, "new tmux server", func() bool {
+		_, err := ts.run("-f", "/dev/null", "new-session", "-d", "-s", "work", "-n", "shell", shell())
+		return err == nil
+	})
 	ts.title("work:0.0")
 	if id := ts.must("display-message", "-p", "-t", "work:0.0", "#{pane_id}"); id != "%0" {
 		t.Logf("new pane id %s", id)
