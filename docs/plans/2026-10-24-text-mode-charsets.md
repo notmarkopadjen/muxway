@@ -130,7 +130,9 @@ the table; `docs/ARCHITECTURE.md` mentions the charset in the read flow.
 
 ## Test run
 
-(after the run)
+Run `20261023-231843-65a6c4e` at commit `65a6c4e`: passed, 57 tests (unit
+and end-to-end), recorded as [issue #14](https://github.com/notmarkopadjen/muxway/issues/14). Logs in the run
+directory on the machine that ran it.
 
 ## Decisions
 
