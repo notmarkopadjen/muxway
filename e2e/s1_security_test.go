@@ -43,7 +43,7 @@ func basic(t *testing.T, hubArgs ...string) (*env, *tmuxServer, *agentProc) {
 func endpoints() [][2]string {
 	return [][2]string{
 		{"GET", "/v1/hosts"}, {"GET", "/v1/panes"}, {"GET", "/v1/hosts/" + host + "/tree"},
-		{"GET", "/v1/panes/" + shell0}, {"POST", "/v1/panes/" + shell0 + "/input"},
+		{"GET", "/v1/panes/" + shell0}, {"POST", "/v1/panes/" + shell0 + "/input"}, {"GET", "/v1/events"},
 	}
 }
 

@@ -290,7 +290,7 @@ func (h *Hub) handleEvents(w http.ResponseWriter, r *http.Request, t Token) {
 }
 
 func parseCursor(s string) (uint64, bool) {
-	if len(s) > 18 {
+	if len(s) > 20 {
 		return 0, false
 	}
 	n, err := strconv.ParseUint(s, 10, 64)
