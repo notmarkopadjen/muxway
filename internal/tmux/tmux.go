@@ -162,7 +162,7 @@ func (s Server) SendText(ctx context.Context, paneID, text string) error {
 
 // Keys a client may send by name. Anything else is refused.
 var Keys = map[string]string{
-	"Enter": "Enter", "Tab": "Tab", "BSpace": "BSpace", "Escape": "Escape",
+	"Enter": "Enter", "Tab": "Tab", "BTab": "BTab", "BSpace": "BSpace", "Escape": "Escape",
 	"Up": "Up", "Down": "Down", "Left": "Left", "Right": "Right",
 	"PageUp": "PageUp", "PageDown": "PageDown", "Home": "Home", "End": "End",
 	"C-c": "C-c", "C-d": "C-d", "C-z": "C-z", "C-l": "C-l",

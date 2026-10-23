@@ -116,6 +116,16 @@ func TestFlow17_TypeTextKeysAndInterrupt(t *testing.T) {
 	})
 	expect(t, e.input(tok, shell0, map[string]string{"text": "čćž 日本"}), http.StatusNoContent, "unicode")
 	waitFor(t, "unicode typed", func() bool { return strings.Contains(ts.capture("work:0.0"), "čćž 日本") })
+	// Shift-Tab reaches the pane as ESC [ Z, which the terminal echoes as ^[[Z.
+	expect(t, e.input(tok, shell0, map[string]string{"key": "C-c"}), http.StatusNoContent, "clear line")
+	expect(t, e.input(tok, shell0, map[string]string{"text": "cat"}), http.StatusNoContent, "cat")
+	expect(t, e.input(tok, shell0, map[string]string{"key": "Enter"}), http.StatusNoContent, "enter")
+	waitFor(t, "cat running", func() bool {
+		return ts.must("display-message", "-p", "-t", "work:0.0", "#{pane_current_command}") == "cat"
+	})
+	expect(t, e.input(tok, shell0, map[string]string{"key": "BTab"}), http.StatusNoContent, "BTab")
+	waitFor(t, "shift-tab typed", func() bool { return strings.Contains(ts.capture("work:0.0"), "^[[Z") })
+	expect(t, e.input(tok, shell0, map[string]string{"key": "C-c"}), http.StatusNoContent, "C-c")
 }
 
 // 18
