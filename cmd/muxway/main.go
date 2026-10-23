@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -28,6 +29,8 @@ hub token       create, list or revoke client tokens
 hub agents      list or remove paired agents
 agent pair      pair this machine with a hub
 agent run       run the agent
+notify          tell the agent that this pane needs attention
+hooks           print the Claude Code hooks that call notify
 expose          make a session, window or pane reachable
 unexpose        remove a mark
 exposed         list what is reachable
@@ -84,6 +87,10 @@ func run(args []string) error {
 		return runAgent(args[1], args[2:])
 	case "expose", "unexpose", "exposed":
 		return runExpose(args[0], args[1:])
+	case "notify":
+		return runNotify(args[1:])
+	case "hooks":
+		return runHooks(args[1:])
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 		return nil
@@ -241,6 +248,72 @@ func runAgent(cmd string, args []string) error {
 		return a.Run(ctx)
 	}
 	return fmt.Errorf("unknown agent command %q", cmd)
+}
+
+// runNotify hands one notification to the agent. As a Claude Code hook it
+// exits 0 whatever happens, so a stopped agent never disturbs the session.
+func runNotify(args []string) error {
+	fs := flag.NewFlagSet("notify", flag.ContinueOnError)
+	dir := fs.String("dir", defaultDir("agent"), "agent directory")
+	pane := fs.String("pane", os.Getenv("TMUX_PANE"), "pane id, default $TMUX_PANE")
+	kind := fs.String("kind", "", "question, permission, idle, done or working")
+	text := fs.String("text", "", "a short line about it")
+	from := fs.String("from", "", "claude-code: read a Claude Code hook payload from stdin")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	hook := *from == "claude-code"
+	quiet := func(err error) error {
+		if hook {
+			fmt.Fprintln(os.Stderr, "muxway notify:", err)
+			return nil
+		}
+		return err
+	}
+	switch *from {
+	case "claude-code":
+		raw, err := io.ReadAll(io.LimitReader(os.Stdin, 1<<20))
+		if err != nil {
+			return quiet(err)
+		}
+		k, t, ok := agent.ClaudeHook(raw)
+		if !ok {
+			return nil
+		}
+		*kind, *text = k, t
+	case "":
+	default:
+		return fmt.Errorf("unknown source %q; the only one is claude-code", *from)
+	}
+	if *pane == "" {
+		return quiet(fmt.Errorf("not inside tmux and no --pane given"))
+	}
+	if *kind == "" {
+		return fmt.Errorf("--kind is required: question, permission, idle, done or working")
+	}
+	return quiet(agent.SendNotify(*dir, agent.NotifyRequest{Pane: *pane, Kind: *kind, Text: *text}))
+}
+
+func runHooks(args []string) error {
+	fs := flag.NewFlagSet("hooks", flag.ContinueOnError)
+	dir := fs.String("dir", "", "agent directory to pass to notify, if not the default")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 || fs.Arg(0) != "claude-code" {
+		return fmt.Errorf("hooks what? claude-code")
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		exe = "muxway"
+	}
+	cmd := exe + " notify --from claude-code"
+	if *dir != "" {
+		cmd += " --dir " + *dir
+	}
+	fmt.Fprintln(os.Stderr, "Add to ~/.claude/settings.json (merge the \"hooks\" key if it exists):")
+	os.Stdout.Write(agent.ClaudeHooks(cmd))
+	return nil
 }
 
 var aliasName = regexp.MustCompile(`^[a-z0-9-]{1,32}$`)

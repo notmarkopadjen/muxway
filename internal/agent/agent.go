@@ -1,6 +1,8 @@
 // Package agent runs next to tmux. It connects out to its hub, proves who
 // it is, and answers the hub's three requests for the panes its owner
 // exposed. It enforces exposure and modes itself, whatever the hub asks.
+// Processes in a pane can hand it a notification, which it forwards to the
+// hub as an event for the exposed panes only.
 package agent
 
 import (
@@ -19,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/coder/websocket"
@@ -33,6 +36,7 @@ type Config struct {
 	HubKey string `json:"hub_key"`
 	Host   string `json:"host"`
 	CAFile string `json:"ca_file,omitempty"`
+	Dir    string `json:"-"`
 }
 
 func configPath(dir string) string { return filepath.Join(dir, "agent.json") }
@@ -49,6 +53,7 @@ func LoadConfig(dir string) (Config, ed25519.PrivateKey, error) {
 		return c, nil, err
 	}
 	key, err := secure.LoadOrCreateKey(keyPath(dir))
+	c.Dir = dir
 	return c, key, err
 }
 
@@ -147,7 +152,11 @@ type Agent struct {
 	hubPub ed25519.PublicKey
 	tmux   tmux.Server
 	log    *slog.Logger
-	seen   map[string]int // pane id -> process id when first seen exposed
+
+	mu        sync.Mutex
+	seen      map[string]int // pane id -> process id when first seen exposed
+	attention map[string]tmux.Attention
+	sess      *secure.Session // current connection to the hub, nil while away
 }
 
 // New prepares an agent; Run connects it.
@@ -159,11 +168,21 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 	if _, err := checkURL(cfg.HubURL); err != nil {
 		return nil, err
 	}
-	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log, seen: map[string]int{}}, nil
+	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
+		seen: map[string]int{}, attention: map[string]tmux.Attention{}}, nil
 }
 
-// Run keeps a connection to the hub until ctx ends.
+// Run keeps a connection to the hub until ctx ends, and listens for
+// notifications from processes in the panes meanwhile.
 func (a *Agent) Run(ctx context.Context) error {
+	if a.cfg.Dir != "" {
+		ln, err := a.listenNotify()
+		if err != nil {
+			return err
+		}
+		go a.serveNotify(ctx, ln)
+		go func() { <-ctx.Done(); ln.Close() }()
+	}
 	delay := time.Second
 	for {
 		start := time.Now()
@@ -211,6 +230,14 @@ func (a *Agent) connect(ctx context.Context) error {
 		return err
 	}
 	a.log.Info("connected to hub", "host", a.cfg.Host)
+	a.mu.Lock()
+	a.sess = sess
+	a.mu.Unlock()
+	defer func() {
+		a.mu.Lock()
+		a.sess = nil
+		a.mu.Unlock()
+	}()
 	for {
 		raw, err := sess.Read(ctx)
 		if err != nil {
@@ -220,7 +247,7 @@ func (a *Agent) connect(ctx context.Context) error {
 		if err := json.Unmarshal(raw, &req); err != nil {
 			return errors.New("malformed request from hub")
 		}
-		out, _ := json.Marshal(a.Handle(ctx, req))
+		out, _ := json.Marshal(wire.Notice{Response: a.Handle(ctx, req)})
 		if err := sess.Write(ctx, out); err != nil {
 			return err
 		}
@@ -281,6 +308,9 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 				code = wire.ErrBadInput
 			}
 		}
+		if code == "" {
+			a.clearAttention(p.PaneID)
+		}
 		resp.Error = code
 		a.audit(req, code)
 	default:
@@ -304,25 +334,50 @@ func (a *Agent) find(ctx context.Context, paneID string) (tmux.Pane, string) {
 	return tmux.Pane{}, wire.ErrNotExposed
 }
 
+// list reads tmux, attaches pending attention to the panes that still
+// exist and forgets it for the panes that are gone.
 func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 	panes, skipped, err := a.tmux.List(ctx)
 	if err != nil {
 		a.log.Warn("tmux list failed", "err", err)
+		return nil, err
 	}
 	if skipped > 0 {
 		a.log.Warn("tmux panes skipped", "count", skipped, "err", tmux.ErrUnparsed)
 	}
-	return panes, err
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	alive := map[string]bool{}
+	for i := range panes {
+		alive[panes[i].PaneID] = true
+		if att, ok := a.attention[panes[i].PaneID]; ok {
+			panes[i].Attention = &att
+		}
+	}
+	for id := range a.attention {
+		if !alive[id] {
+			delete(a.attention, id)
+		}
+	}
+	return panes, nil
 }
 
 // sameProcess refuses a pane whose process changed under the same id.
 func (a *Agent) sameProcess(p tmux.Pane) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	pid, ok := a.seen[p.PaneID]
 	if !ok {
 		a.seen[p.PaneID] = p.PID
 		return true
 	}
 	return pid == p.PID
+}
+
+func (a *Agent) clearAttention(paneID string) {
+	a.mu.Lock()
+	delete(a.attention, paneID)
+	a.mu.Unlock()
 }
 
 // audit records requests that touch a pane's input or are refused. The

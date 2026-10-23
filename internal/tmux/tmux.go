@@ -65,24 +65,33 @@ func (s Server) run(ctx context.Context, args ...string) ([]byte, error) {
 
 // Pane is one pane with its place in the tree and its resolved mark.
 type Pane struct {
-	SessionID    string `json:"session_id"`
-	SessionName  string `json:"session"`
-	WindowID     string `json:"window_id"`
-	WindowIndex  int    `json:"window_index"`
-	WindowName   string `json:"window"`
-	WindowLayout string `json:"window_layout"`
-	WindowActive bool   `json:"window_active"`
-	PaneID       string `json:"pane_id"`
-	PaneIndex    int    `json:"pane_index"`
-	PaneActive   bool   `json:"pane_active"`
-	Width        int    `json:"width"`
-	Height       int    `json:"height"`
-	Title        string `json:"title"`
-	Command      string `json:"command"`
-	Activity     int64  `json:"activity"`
-	Mode         string `json:"mode"`
-	Alias        string `json:"alias,omitempty"`
-	PID          int    `json:"-"`
+	SessionID    string     `json:"session_id"`
+	SessionName  string     `json:"session"`
+	WindowID     string     `json:"window_id"`
+	WindowIndex  int        `json:"window_index"`
+	WindowName   string     `json:"window"`
+	WindowLayout string     `json:"window_layout"`
+	WindowActive bool       `json:"window_active"`
+	PaneID       string     `json:"pane_id"`
+	PaneIndex    int        `json:"pane_index"`
+	PaneActive   bool       `json:"pane_active"`
+	Width        int        `json:"width"`
+	Height       int        `json:"height"`
+	Title        string     `json:"title"`
+	Command      string     `json:"command"`
+	Activity     int64      `json:"activity"`
+	Mode         string     `json:"mode"`
+	Alias        string     `json:"alias,omitempty"`
+	Attention    *Attention `json:"attention,omitempty"`
+	PID          int        `json:"-"`
+}
+
+// Attention is what a pane is waiting for: set by a notification from a
+// process in the pane, cleared by input or by a "working" notification.
+type Attention struct {
+	Kind string `json:"kind"`
+	At   int64  `json:"at"`
+	Text string `json:"text,omitempty"`
 }
 
 var fields = []string{
