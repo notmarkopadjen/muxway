@@ -344,11 +344,25 @@ func TestFlow37_AuthMethodsFollowConfiguration(t *testing.T) {
 		t.Fatalf("methods: %s", r.body)
 	}
 	expect(t, plain.get("", "/v1/auth/oidc/start"), http.StatusNotFound, "no provider route")
-	e, _ := oidcEnv(t)
+	e, idp := oidcEnv(t)
 	r = e.get("", "/v1/auth")
 	if !strings.Contains(r.body, `"methods":["token","oidc"]`) || !strings.Contains(r.body, `"label":"Sign in with Test"`) {
 		t.Fatalf("methods with provider: %s", r.body)
 	}
+	// Until the web client exists, / sends a browser to sign in and tells a
+	// signed-in one who it is; without a provider it stays a 404.
+	expect(t, plain.noFollow("GET", "/", nil), http.StatusNotFound, "root without provider")
+	root := e.noFollow("GET", "/", nil)
+	if root.status != http.StatusFound || root.header.Get("Location") != "/v1/auth/oidc/start" {
+		t.Fatalf("root: %d %s", root.status, root.header.Get("Location"))
+	}
+	e.mustCLI("hub", "user", "create", "--dir", e.hubDir, "--email", idp.Account.Email, "--read", host+"/*")
+	_, cookie := e.oidcSignIn(idp, nil)
+	signed := e.noFollow("GET", "/", []string{"Cookie", sessionCookie + "=" + cookie})
+	if signed.status != http.StatusOK || !strings.Contains(signed.body, "signed in as alice@example.com") || !strings.Contains(signed.body, "oidc") {
+		t.Fatalf("root signed in: %d %s", signed.status, signed.body)
+	}
+	expect(t, e.noFollow("GET", "/other", []string{"Cookie", sessionCookie + "=" + cookie}), http.StatusNotFound, "other path")
 }
 
 // 38

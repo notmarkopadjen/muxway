@@ -39,6 +39,9 @@ sequenceDiagram
   only when the request also carries the `X-Muxway-Client` header. Native
   clients keep using `Authorization: Bearer`.
 - `POST /v1/auth/logout` ends a session; `GET /v1/me` says who you are.
+- Until the web client ships, `GET /` on a hub with a provider sends the
+  browser to that provider's sign-in and, once signed in, shows a one-line
+  notice. Without a provider `/` stays a 404.
 
 ## Signing in with a token
 
