@@ -1,6 +1,6 @@
 # Feature: hub and host agent
 
-> Status: approved 2026-10-23.
+> Status: implemented 2026-10-23.
 
 ## 1. Goal
 
@@ -268,3 +268,32 @@ repository from `go test -json`, with no extra dependency.
 - 2026-10-23: `Escape` is in the key list.
 - 2026-10-23: windows and sessions are part of the model; the pane stays
   the unit of access.
+
+## Review
+
+Done against the plan, the security rules and the privacy rules.
+
+Deviations from the plan, all in the direction of stricter:
+
+- **The hub-agent channel is encrypted, not only authenticated.** A signed
+  handshake alone would leave the channel open to a hostile TLS terminator.
+  The handshake now also agrees ephemeral X25519 keys, and every message
+  after it is AES-256-GCM with per-direction counters, so messages cannot be
+  read, altered, dropped, repeated or reordered. Standard library only.
+- **The hub resolves addresses from the agent's list**, then sends the
+  agent the pane id; the agent re-validates the id's marks and process for
+  every request. The plan had the agent resolve addresses; the result is
+  the same check in two places.
+- **The state directory must be mode 700**, and key files 600, or the
+  binary refuses to start.
+
+Found and fixed in review: an alias with characters outside the allowed set
+could be stored by `expose`; it is now refused. Known limits, documented:
+an agent reconnecting with a stale key counts toward its address's
+lockout; no read or write timeout on HTTP bodies beyond the size cap,
+because WebSocket connections share the server.
+
+## Test run
+
+29 tests (22 end-to-end, 7 unit), all passing locally in four consecutive runs. Security tests 1 to
+15 including 14a to 14c as planned. Recorded in CI on push.
