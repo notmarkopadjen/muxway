@@ -296,4 +296,6 @@ because WebSocket connections share the server.
 ## Test run
 
 29 tests (22 end-to-end, 7 unit), all passing locally in four consecutive runs. Security tests 1 to
-15 including 14a to 14c as planned. Recorded in CI on push.
+15 including 14a to 14c as planned. In CI the first run failed on tmux 3.4
+(control characters escaped in format output, see test run #1); fixed, and
+run #2 is green on tmux 3.4 and 3.6 alike.
