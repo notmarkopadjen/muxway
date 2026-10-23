@@ -25,6 +25,7 @@ type AdminRequest struct {
 	Write []string      `json:"write,omitempty"`
 	TTL   time.Duration `json:"ttl,omitempty"`
 	ID    string        `json:"id,omitempty"`
+	Email string        `json:"email,omitempty"`
 }
 
 // AdminResponse answers it.
@@ -35,6 +36,8 @@ type AdminResponse struct {
 	Token  *Token        `json:"token,omitempty"`
 	Tokens []Token       `json:"tokens,omitempty"`
 	Agents []AgentStatus `json:"agents,omitempty"`
+	User   *User         `json:"user,omitempty"`
+	Users  []User        `json:"users,omitempty"`
 }
 
 // AgentStatus is a paired agent and whether it is connected.
@@ -126,7 +129,38 @@ func (h *Hub) admin(req AdminRequest) AdminResponse {
 		if !ok {
 			return AdminResponse{Error: "no such token"}
 		}
+		h.sessions.dropRef("token", req.ID)
 		h.log.Info("token revoked", "token", req.ID)
+		return AdminResponse{}
+	case "user-create":
+		if len(req.Read) == 0 {
+			return AdminResponse{Error: "a user needs at least one read grant"}
+		}
+		if err := validPatterns(append(append([]string{}, req.Read...), req.Write...)); err != nil {
+			return AdminResponse{Error: err.Error()}
+		}
+		ttl := req.TTL
+		if ttl <= 0 {
+			ttl = 365 * 24 * time.Hour
+		}
+		u, err := h.store.createUser(req.Email, req.Name, req.Read, req.Write, ttl)
+		if err != nil {
+			return AdminResponse{Error: err.Error()}
+		}
+		h.log.Info("user created", "user", u.ID)
+		return AdminResponse{User: &u}
+	case "user-list":
+		return AdminResponse{Users: h.store.users()}
+	case "user-remove":
+		u, ok, err := h.store.removeUser(req.ID)
+		if err != nil {
+			return AdminResponse{Error: err.Error()}
+		}
+		if !ok {
+			return AdminResponse{Error: "no such user"}
+		}
+		h.sessions.dropRef("user", u.ID)
+		h.log.Info("user removed", "user", u.ID)
 		return AdminResponse{}
 	case "agent-list":
 		var out []AgentStatus

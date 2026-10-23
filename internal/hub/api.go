@@ -29,12 +29,20 @@ func (h *Hub) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/pair", h.handlePair)
 	mux.HandleFunc("GET /v1/agent", h.handleAgent)
-	mux.HandleFunc("GET /v1/hosts", h.withToken(h.handleHosts))
-	mux.HandleFunc("GET /v1/hosts/{host}/tree", h.withToken(h.handleTree))
-	mux.HandleFunc("GET /v1/panes", h.withToken(h.handlePanes))
-	mux.HandleFunc("GET /v1/events", h.withToken(h.handleEvents))
-	mux.HandleFunc("GET /v1/panes/{host}/{path...}", h.withToken(h.handleRead))
-	mux.HandleFunc("POST /v1/panes/{host}/{path...}", h.withToken(h.handleInput))
+	mux.HandleFunc("GET /v1/auth", h.handleAuthMethods)
+	mux.HandleFunc("POST /v1/auth/token", h.handleAuthToken)
+	mux.HandleFunc("POST /v1/auth/logout", h.handleLogout)
+	mux.HandleFunc("GET /v1/me", h.withPrincipal(h.handleMe))
+	for _, prov := range h.cfg.Providers {
+		mux.HandleFunc("GET /v1/auth/"+prov.Name()+"/start", h.handleSignInStart(prov))
+		mux.HandleFunc("GET /v1/auth/"+prov.Name()+"/callback", h.handleSignInFinish(prov))
+	}
+	mux.HandleFunc("GET /v1/hosts", h.withPrincipal(h.handleHosts))
+	mux.HandleFunc("GET /v1/hosts/{host}/tree", h.withPrincipal(h.handleTree))
+	mux.HandleFunc("GET /v1/panes", h.withPrincipal(h.handlePanes))
+	mux.HandleFunc("GET /v1/events", h.withPrincipal(h.handleEvents))
+	mux.HandleFunc("GET /v1/panes/{host}/{path...}", h.withPrincipal(h.handleRead))
+	mux.HandleFunc("POST /v1/panes/{host}/{path...}", h.withPrincipal(h.handleInput))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fail(w, http.StatusNotFound, "not_found") })
 	return securityHeaders(mux)
 }
@@ -84,7 +92,7 @@ func (h *Hub) clientAddr(r *http.Request) string {
 	return host
 }
 
-type tokenHandler func(w http.ResponseWriter, r *http.Request, t Token)
+type principalHandler func(w http.ResponseWriter, r *http.Request, t Principal)
 
 // presentedToken reads the token from Authorization: Bearer, or from
 // X-Muxway-Token for clients whose stack rewrites Authorization (WAP 1.x
@@ -103,19 +111,24 @@ func presentedToken(r *http.Request) (string, bool) {
 	return "", false
 }
 
-// withToken authenticates the client's token. Failures count toward the
-// address's lockout; the answer never says why a token was refused.
-func (h *Hub) withToken(next tokenHandler) http.HandlerFunc {
+// withPrincipal authenticates the request: a bearer token, or a session
+// cookie together with the client header. Failures count toward the
+// address's lockout; the answer never says why.
+func (h *Hub) withPrincipal(next principalHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		addr := h.clientAddr(r)
 		if h.limits.isLocked(addr) {
 			fail(w, http.StatusTooManyRequests, "locked_out")
 			return
 		}
-		secret, ok := presentedToken(r)
-		var t Token
-		if ok {
-			t, ok = h.store.lookupToken(secret)
+		var p Principal
+		ok := false
+		if secret, has := presentedToken(r); has {
+			if t, found := h.store.lookupToken(secret); found {
+				p, ok = t.principal(), true
+			}
+		} else if c, err := r.Cookie(sessionCookie); err == nil && r.Header.Get(clientHeader) != "" {
+			p, ok = h.sessionPrincipal(c.Value)
 		}
 		if !ok {
 			h.limits.fail(addr)
@@ -123,11 +136,11 @@ func (h *Hub) withToken(next tokenHandler) http.HandlerFunc {
 			fail(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
-		if !h.limits.allow(t.ID) {
+		if !h.limits.allow(p.ID) {
 			fail(w, http.StatusTooManyRequests, "rate_limited")
 			return
 		}
-		next(w, r, t)
+		next(w, r, p)
 	}
 }
 
@@ -140,14 +153,14 @@ type PaneView struct {
 	tmux.Pane
 }
 
-func view(host string, t Token, p tmux.Pane) PaneView {
+func view(host string, t Principal, p tmux.Pane) PaneView {
 	if p.Mode == tmux.ModeWrite && !t.canWrite(host, p) {
 		p.Mode = tmux.ModeRead
 	}
 	return PaneView{Host: host, Address: host + "/" + p.Address(), Pane: p}
 }
 
-func (h *Hub) visibleHosts(t Token) []string {
+func (h *Hub) visibleHosts(t Principal) []string {
 	var out []string
 	for _, host := range h.store.agents() {
 		if t.canSeeHost(host) {
@@ -157,7 +170,7 @@ func (h *Hub) visibleHosts(t Token) []string {
 	return out
 }
 
-func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Token) {
+func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 	type hostView struct {
 		Name   string `json:"name"`
 		Online bool   `json:"online"`
@@ -181,7 +194,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Token) {
 }
 
 // readable lists the panes of one host that the token may read.
-func (h *Hub) readable(ctx context.Context, t Token, host string) ([]tmux.Pane, *agentConn, error) {
+func (h *Hub) readable(ctx context.Context, t Principal, host string) ([]tmux.Pane, *agentConn, error) {
 	a := h.agent(host)
 	if a == nil {
 		return nil, nil, errOffline
@@ -209,7 +222,7 @@ func (h *Hub) readable(ctx context.Context, t Token, host string) ([]tmux.Pane, 
 	return out, a, nil
 }
 
-func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Token) {
+func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 	var out []PaneView
 	for _, host := range h.visibleHosts(t) {
 		panes, _, err := h.readable(r.Context(), t, host)
@@ -248,7 +261,7 @@ type EventView struct {
 
 // handleEvents returns the events after the client's cursor for panes the
 // token may read, waiting up to `wait` seconds for one to arrive.
-func (h *Hub) handleEvents(w http.ResponseWriter, r *http.Request, t Token) {
+func (h *Hub) handleEvents(w http.ResponseWriter, r *http.Request, t Principal) {
 	limit, ok1 := intParam(r, "limit", 50, 1, 100)
 	wait, ok2 := intParam(r, "wait", 0, 0, int(maxWait/time.Second))
 	cursor, ok3 := uint64(0), true
@@ -297,7 +310,7 @@ func parseCursor(s string) (uint64, bool) {
 	return n, err == nil
 }
 
-func (h *Hub) handleTree(w http.ResponseWriter, r *http.Request, t Token) {
+func (h *Hub) handleTree(w http.ResponseWriter, r *http.Request, t Principal) {
 	host := r.PathValue("host")
 	if !hostName.MatchString(host) || !t.canSeeHost(host) {
 		fail(w, http.StatusNotFound, "not_found")
@@ -344,7 +357,7 @@ var (
 
 // locate resolves a client's address to one of the token's readable panes.
 // Anything the token may not see is reported exactly like a missing pane.
-func (h *Hub) locate(ctx context.Context, t Token, host, path string) (*agentConn, tmux.Pane, int) {
+func (h *Hub) locate(ctx context.Context, t Principal, host, path string) (*agentConn, tmux.Pane, int) {
 	if !hostName.MatchString(host) || !t.canSeeHost(host) {
 		return nil, tmux.Pane{}, http.StatusNotFound
 	}
@@ -408,7 +421,7 @@ func intParam(r *http.Request, name string, def, lo, hi int) (int, bool) {
 	return n, err == nil && n >= lo && n <= hi
 }
 
-func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Token) {
+func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 	lines, ok1 := intParam(r, "lines", 100, 1, wire.MaxLines)
 	width, ok2 := intParam(r, "width", 80, 8, 400)
 	ansi := r.URL.Query().Get("ansi") == "1"
@@ -456,7 +469,7 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Token) {
 	w.Write(body)
 }
 
-func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Token) {
+func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 	path, ok := strings.CutSuffix(r.PathValue("path"), "/input")
 	if !ok {
 		fail(w, http.StatusNotFound, "not_found")
@@ -515,7 +528,7 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Token) {
 		fail(w, http.StatusServiceUnavailable, "host_offline")
 		return
 	}
-	attrs := []any{"token", t.ID, "host", host, "pane", p.PaneID}
+	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID}
 	if in.Text != nil {
 		attrs = append(attrs, "text_bytes", len(*in.Text))
 	} else {

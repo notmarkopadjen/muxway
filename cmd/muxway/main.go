@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/notmarkopadjen/muxway/internal/agent"
+	"github.com/notmarkopadjen/muxway/internal/auth"
 	"github.com/notmarkopadjen/muxway/internal/hub"
 	"github.com/notmarkopadjen/muxway/internal/tmux"
 )
@@ -26,6 +27,7 @@ const usage = `muxway: your tmux, from anywhere
 hub serve       run a hub
 hub pair-code   print a one-time code to pair an agent
 hub token       create, list or revoke client tokens
+hub user        create, list or remove people who sign in through a provider
 hub agents      list or remove paired agents
 agent pair      pair this machine with a hub
 agent run       run the agent
@@ -77,7 +79,7 @@ func run(args []string) error {
 	switch args[0] {
 	case "hub":
 		if len(args) < 2 {
-			return fmt.Errorf("hub what? serve, pair-code, token, agents")
+			return fmt.Errorf("hub what? serve, pair-code, token, user, agents")
 		}
 		return runHub(args[1], args[2:])
 	case "agent":
@@ -108,11 +110,33 @@ func runHub(cmd string, args []string) error {
 		cert := fs.String("tls-cert", "", "TLS certificate file (without it, loopback only)")
 		key := fs.String("tls-key", "", "TLS key file")
 		proxy := fs.Bool("trust-proxy", false, "take client addresses from X-Forwarded-For set by a loopback proxy")
+		sessionTTL := fs.Duration("session-ttl", 12*time.Hour, "how long a browser stays signed in")
+		issuer := fs.String("oidc-issuer", "", "OpenID Connect issuer URL, to let people sign in with it")
+		clientID := fs.String("oidc-client-id", "", "client id registered at the issuer")
+		secretFile := fs.String("oidc-client-secret-file", "", "file (mode 600) holding the client secret")
+		label := fs.String("oidc-label", "Sign in", "what the sign-in button says")
+		claim := fs.String("oidc-claim", "email", "ID token claim that carries the e-mail")
 		if err := fs.Parse(args); err != nil {
 			return err
 		}
-		h, err := hub.New(hub.Config{Dir: *dir, Listen: *listen, PublicURL: strings.TrimRight(*public, "/"),
-			TLSCert: *cert, TLSKey: *key, TrustProxy: *proxy}, logger())
+		cfg := hub.Config{Dir: *dir, Listen: *listen, PublicURL: strings.TrimRight(*public, "/"),
+			TLSCert: *cert, TLSKey: *key, TrustProxy: *proxy, SessionTTL: *sessionTTL}
+		if *issuer != "" {
+			if cfg.PublicURL == "" {
+				return fmt.Errorf("--oidc-issuer needs --public-url for the redirect address")
+			}
+			secret, err := readSecretFile(*secretFile)
+			if err != nil {
+				return err
+			}
+			prov, err := auth.NewOIDC(auth.OIDCConfig{Issuer: *issuer, ClientID: *clientID, ClientSecret: secret,
+				RedirectURL: cfg.PublicURL + "/v1/auth/oidc/callback", Label: *label, Claim: *claim})
+			if err != nil {
+				return fmt.Errorf("oidc: %w", err)
+			}
+			cfg.Providers = append(cfg.Providers, prov)
+		}
+		h, err := hub.New(cfg, logger())
 		if err != nil {
 			return err
 		}
@@ -182,6 +206,56 @@ func runHub(cmd string, args []string) error {
 			return err
 		}
 		return fmt.Errorf("token what? create, list, revoke")
+	case "user":
+		if len(args) == 0 {
+			return fmt.Errorf("user what? create, list, remove")
+		}
+		sub := args[0]
+		fs = flag.NewFlagSet("hub user "+sub, flag.ContinueOnError)
+		dir = fs.String("dir", defaultDir("hub"), "state directory")
+		switch sub {
+		case "create":
+			email := fs.String("email", "", "the address the identity provider verifies")
+			name := fs.String("name", "", "display name")
+			var read, write list
+			fs.Var(&read, "read", "pattern the user may read (repeatable)")
+			fs.Var(&write, "write", "pattern the user may type into (repeatable)")
+			ttl := fs.Duration("ttl", 365*24*time.Hour, "how long the account lasts")
+			if err := fs.Parse(args[1:]); err != nil {
+				return err
+			}
+			resp, err := hub.Admin(*dir, hub.AdminRequest{Cmd: "user-create", Email: *email, Name: *name, Read: read, Write: write, TTL: *ttl})
+			if err != nil {
+				return err
+			}
+			fmt.Printf("user %s (%s), valid until %s\n", resp.User.ID, resp.User.Email, resp.User.Expires.Format(time.RFC3339))
+			return nil
+		case "list":
+			if err := fs.Parse(args[1:]); err != nil {
+				return err
+			}
+			resp, err := hub.Admin(*dir, hub.AdminRequest{Cmd: "user-list"})
+			if err != nil {
+				return err
+			}
+			tw := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+			fmt.Fprintln(tw, "ID\tEMAIL\tREAD\tWRITE\tEXPIRES")
+			for _, u := range resp.Users {
+				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", u.ID, u.Email, strings.Join(u.Read, ","),
+					strings.Join(u.Write, ","), u.Expires.Format("2006-01-02"))
+			}
+			return tw.Flush()
+		case "remove":
+			if err := fs.Parse(args[1:]); err != nil {
+				return err
+			}
+			if fs.NArg() != 1 {
+				return fmt.Errorf("remove takes a user id or e-mail")
+			}
+			_, err := hub.Admin(*dir, hub.AdminRequest{Cmd: "user-remove", ID: fs.Arg(0)})
+			return err
+		}
+		return fmt.Errorf("user what? create, list, remove")
 	case "agents":
 		if err := fs.Parse(args); err != nil {
 			return err
@@ -204,6 +278,29 @@ func runHub(cmd string, args []string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown hub command %q", cmd)
+}
+
+// readSecretFile reads a secret kept in a file only its owner can read.
+func readSecretFile(path string) (string, error) {
+	if path == "" {
+		return "", fmt.Errorf("--oidc-client-secret-file is required with --oidc-issuer")
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+	if info.Mode().Perm()&0o077 != 0 {
+		return "", fmt.Errorf("%s must be readable by its owner only (chmod 600)", path)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	secret := strings.TrimSpace(string(raw))
+	if secret == "" {
+		return "", fmt.Errorf("%s is empty", path)
+	}
+	return secret, nil
 }
 
 func tmuxFlags(fs *flag.FlagSet) (*string, *string) {

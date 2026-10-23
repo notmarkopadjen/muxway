@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,9 +33,22 @@ type Token struct {
 	Expires time.Time `json:"expires"`
 }
 
+// User is a person who signs in through an identity provider. Grants are
+// the same shape as a token's; the e-mail is what the provider vouches for.
+type User struct {
+	ID      string    `json:"id"`
+	Email   string    `json:"email"`
+	Name    string    `json:"name,omitempty"`
+	Read    []string  `json:"read"`
+	Write   []string  `json:"write,omitempty"`
+	Created time.Time `json:"created"`
+	Expires time.Time `json:"expires"`
+}
+
 type stateFile struct {
 	Agents map[string]AgentRecord `json:"agents"`
 	Tokens []Token                `json:"tokens"`
+	Users  []User                 `json:"users,omitempty"`
 }
 
 // Store is the hub's state on disk: one JSON file, replaced atomically.
@@ -156,4 +170,91 @@ func (st *Store) revokeToken(id string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// tokenByID finds a live token by its id.
+func (st *Store) tokenByID(id string) (Token, bool) {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
+	for _, t := range st.s.Tokens {
+		if t.ID == id {
+			return t, time.Now().Before(t.Expires)
+		}
+	}
+	return Token{}, false
+}
+
+// userID names a user in logs without spelling the address.
+func userID(email string) string {
+	sum := sha256.Sum256([]byte("muxway-user\x00" + normalEmail(email)))
+	return hex.EncodeToString(sum[:])[:8]
+}
+
+func normalEmail(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
+
+func validEmail(s string) bool {
+	at := strings.IndexByte(s, '@')
+	return len(s) >= 3 && len(s) <= 254 && at > 0 && at < len(s)-1 &&
+		!strings.ContainsAny(s, " \t\r\n\"<>,;") && strings.Count(s, "@") == 1
+}
+
+func (st *Store) createUser(email, name string, read, write []string, ttl time.Duration) (User, error) {
+	email = normalEmail(email)
+	if !validEmail(email) {
+		return User{}, errors.New("that is not an e-mail address")
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	for _, u := range st.s.Users {
+		if u.Email == email {
+			return User{}, errors.New("a user with that e-mail exists: remove it first")
+		}
+	}
+	now := time.Now().UTC()
+	u := User{ID: userID(email), Email: email, Name: name, Read: read, Write: write, Created: now, Expires: now.Add(ttl)}
+	st.s.Users = append(st.s.Users, u)
+	return u, st.save()
+}
+
+// userByEmail finds a live user by the address an identity provider verified.
+func (st *Store) userByEmail(email string) (User, bool) {
+	email = normalEmail(email)
+	st.mu.RLock()
+	defer st.mu.RUnlock()
+	for _, u := range st.s.Users {
+		if u.Email == email {
+			return u, time.Now().Before(u.Expires)
+		}
+	}
+	return User{}, false
+}
+
+func (st *Store) userByID(id string) (User, bool) {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
+	for _, u := range st.s.Users {
+		if u.ID == id {
+			return u, time.Now().Before(u.Expires)
+		}
+	}
+	return User{}, false
+}
+
+func (st *Store) users() []User {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
+	return append([]User{}, st.s.Users...)
+}
+
+// removeUser takes an id or an e-mail.
+func (st *Store) removeUser(key string) (User, bool, error) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	for i, u := range st.s.Users {
+		if u.ID == key || u.Email == normalEmail(key) {
+			st.s.Users = append(st.s.Users[:i], st.s.Users[i+1:]...)
+			return u, true, st.save()
+		}
+	}
+	return User{}, false, nil
 }

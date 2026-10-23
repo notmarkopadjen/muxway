@@ -5,9 +5,29 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/notmarkopadjen/muxway/internal/tmux"
 )
+
+// Principal is whoever a request acts for: a token, or a user who signed
+// in through a session. Grant checks know nothing else.
+type Principal struct {
+	ID      string
+	Name    string
+	Method  string // "token", or the sign-in provider's name
+	Read    []string
+	Write   []string
+	Expires time.Time
+}
+
+func (t Token) principal() Principal {
+	return Principal{ID: t.ID, Name: t.Name, Method: "token", Read: t.Read, Write: t.Write, Expires: t.Expires}
+}
+
+func (u User) principal(method string) Principal {
+	return Principal{ID: u.ID, Name: u.Email, Method: method, Read: u.Read, Write: u.Write, Expires: u.Expires}
+}
 
 // A grant pattern is host/session/window.pane with * matching any run of
 // characters within a segment. Missing trailing segments mean "all":
@@ -93,16 +113,16 @@ func anyMatch(patterns []string, f func(pattern) bool) bool {
 	return false
 }
 
-func (t Token) canSeeHost(host string) bool {
+func (t Principal) canSeeHost(host string) bool {
 	return anyMatch(t.Read, func(p pattern) bool { return p.matchesHost(host) })
 }
 
-func (t Token) canRead(host string, pane tmux.Pane) bool {
+func (t Principal) canRead(host string, pane tmux.Pane) bool {
 	return anyMatch(t.Read, func(p pattern) bool { return p.matches(host, pane) })
 }
 
 // canWrite needs a write grant as well as a read grant.
-func (t Token) canWrite(host string, pane tmux.Pane) bool {
+func (t Principal) canWrite(host string, pane tmux.Pane) bool {
 	return t.canRead(host, pane) && anyMatch(t.Write, func(p pattern) bool { return p.matches(host, pane) })
 }
 

@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/notmarkopadjen/muxway/internal/auth"
 	"github.com/notmarkopadjen/muxway/internal/secure"
 	"github.com/notmarkopadjen/muxway/internal/tmux"
 	"github.com/notmarkopadjen/muxway/internal/wire"
@@ -29,16 +30,19 @@ type Config struct {
 	TLSCert    string // serve TLS with these, or listen on loopback only
 	TLSKey     string
 	TrustProxy bool // take the client address from X-Forwarded-For when the peer is loopback
+	SessionTTL time.Duration
+	Providers  []auth.Provider // ways to sign in besides pasting a token
 }
 
 // Hub is a running hub.
 type Hub struct {
-	cfg    Config
-	key    ed25519.PrivateKey
-	store  *Store
-	log    *slog.Logger
-	limits *limiter
-	events *eventLog
+	cfg      Config
+	key      ed25519.PrivateKey
+	store    *Store
+	log      *slog.Logger
+	limits   *limiter
+	events   *eventLog
+	sessions *sessions
 
 	mu     sync.Mutex
 	agents map[string]*agentConn
@@ -68,8 +72,11 @@ func New(cfg Config, log *slog.Logger) (*Hub, error) {
 	if err != nil {
 		return nil, err
 	}
+	if cfg.SessionTTL <= 0 {
+		cfg.SessionTTL = 12 * time.Hour
+	}
 	return &Hub{cfg: cfg, key: key, store: store, log: log, limits: newLimiter(), events: newEventLog(),
-		agents: map[string]*agentConn{}, codes: map[string]*pairCode{}}, nil
+		sessions: newSessions(cfg.SessionTTL), agents: map[string]*agentConn{}, codes: map[string]*pairCode{}}, nil
 }
 
 // PublicKey is the key agents pin.
