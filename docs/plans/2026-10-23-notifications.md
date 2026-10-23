@@ -313,4 +313,6 @@ notification socket reads at most 64 KiB per request.
 
 43 tests (33 end-to-end, 10 unit), all passing locally; the new ones are
 security tests 21 to 25, 15 extended with the hook text, and flows 26 to
-29. The long poll answered 1 s after the notification in flow 27.
+29. The long poll answered 1 s after the notification in flow 27. In CI
+the first run (test run #5) failed in the older test 13 on a tmux
+shutdown race, fixed in the test; run #6 is green.
