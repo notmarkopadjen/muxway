@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -75,6 +76,31 @@ func TestSec01_EveryEndpointNeedsAValidToken(t *testing.T) {
 		}
 	}
 	expect(t, e.get(full, "/v1/panes"), http.StatusOK, "valid token")
+
+	// The alternative header: valid alone, refused when it disagrees with
+	// Authorization or carries a wrong token, and never unlocked by a
+	// Basic header a WAP gateway made out of a Bearer one.
+	alt := func(headers ...string) int {
+		n++
+		return e.do("GET", "", "/v1/panes", "", "", append(headers, "X-Forwarded-For", fmt.Sprintf("198.51.100.%d", n))...).status
+	}
+	if s := alt("X-Muxway-Token", full); s != http.StatusOK {
+		t.Fatalf("X-Muxway-Token alone: %d", s)
+	}
+	if s := alt("X-Muxway-Token", full, "Authorization", "Bearer "+full); s != http.StatusOK {
+		t.Fatalf("both headers, same token: %d", s)
+	}
+	for name, headers := range map[string][]string{
+		"wrong alt":        {"X-Muxway-Token", "mxt_" + secure.Random(32)},
+		"alt disagrees":    {"X-Muxway-Token", full, "Authorization", "Bearer " + revoked},
+		"bearer disagrees": {"X-Muxway-Token", revoked, "Authorization", "Bearer " + full},
+		"wap basic":        {"Authorization", "Basic " + base64.StdEncoding.EncodeToString([]byte("Bearer "+full+":ap"))},
+		"empty bearer":     {"Authorization", "Bearer ", "X-Muxway-Token", ""},
+	} {
+		if s := alt(headers...); s != http.StatusUnauthorized {
+			t.Fatalf("%s: %d", name, s)
+		}
+	}
 }
 
 // 2

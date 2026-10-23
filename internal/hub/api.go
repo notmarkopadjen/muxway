@@ -85,7 +85,24 @@ func (h *Hub) clientAddr(r *http.Request) string {
 
 type tokenHandler func(w http.ResponseWriter, r *http.Request, t Token)
 
-// withToken authenticates the bearer token. Failures count toward the
+// presentedToken reads the token from Authorization: Bearer, or from
+// X-Muxway-Token for clients whose stack rewrites Authorization (WAP 1.x
+// gateways turn it into Basic). Both present and different is refused.
+func presentedToken(r *http.Request) (string, bool) {
+	bearer, hasBearer := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	alt := r.Header.Get("X-Muxway-Token")
+	switch {
+	case hasBearer && alt != "":
+		return bearer, bearer != "" && bearer == alt
+	case hasBearer:
+		return bearer, bearer != ""
+	case alt != "":
+		return alt, true
+	}
+	return "", false
+}
+
+// withToken authenticates the client's token. Failures count toward the
 // address's lockout; the answer never says why a token was refused.
 func (h *Hub) withToken(next tokenHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -94,9 +111,9 @@ func (h *Hub) withToken(next tokenHandler) http.HandlerFunc {
 			fail(w, http.StatusTooManyRequests, "locked_out")
 			return
 		}
-		secret, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+		secret, ok := presentedToken(r)
 		var t Token
-		if ok && secret != "" {
+		if ok {
 			t, ok = h.store.lookupToken(secret)
 		}
 		if !ok {
