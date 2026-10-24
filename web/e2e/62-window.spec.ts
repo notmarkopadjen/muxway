@@ -31,6 +31,9 @@ test('62 the window view mirrors the host layout', async ({ page, request }, inf
   for (const screen of await page.getByTestId('cell-screen').all()) {
     expect(Number(await screen.getAttribute('data-font'))).toBeGreaterThan(9);
   }
-  await expect(page.getByTestId('focus')).toContainText(`${HOST}/work/0.0`);
+  await expect(page.locator('[data-testid="tab"][data-focused]')).toHaveAttribute(
+    'data-address',
+    `${HOST}/work/0.0`,
+  );
   await shot(page, info, '62-window');
 });

@@ -40,8 +40,9 @@ nothing but the hub to talk to.
    what is typed, never the pick. From an empty line the console keys
    (`↑` `↓` `←` `→`, `PageUp` `PageDown` `Home` `End`, `Tab`) go to the
    pane, so a menu in it is driven without leaving the line; with text
-   they move the caret. `i` focuses the line, `Esc` leaves it, and
-   `Shift+Esc` sends `Escape` to the pane while typing goes on. The key
+   they move the caret. `i` focuses the line, `Esc` is the pane's
+   Escape, as the key bar's button is (an open completion list closes
+   first), and `Shift+Esc` leaves the line. The key
    bar sends the named keys the protocol allows. A click on the screen of
    a pane whose program asked for the mouse, Claude Code among them, is a
    click at that cell on the host, so an option shown can be chosen by
@@ -55,9 +56,9 @@ nothing but the hub to talk to.
    travel, and the program moves its own view. Any shell history above it
    is still there, reachable by the box's scrollbar. The tab strip keeps
    its tabs at their width and scrolls sideways: the wheel over it moves
-   it, `‹ ›` at its ends appear when there is more than fits, and `}` `{`
-   show the next and previous pane in the focused tile. Read-only panes
-   say so.
+   it, `‹ ›` at its ends appear when there is more than fits, and
+   `Ctrl+→` `Ctrl+←` show the next and previous pane in the focused tile.
+   Read-only panes say so.
 
 ![panes](images/web-panes.png)
 
@@ -165,8 +166,9 @@ by side. The page is the Android client's pane view:
   with fit on, one or several. `f` toggles the focused tile, `F` every
   tile, `r` sends the size once more.
 - `]` and `[` focus the next or previous tile, `1` to `4` a tile by
-  number; `}` and `{` show the next or previous pane of the strip in the
-  focused tile (the phone's swipe); `w` opens the focused pane's window
+  number; `Ctrl+→` and `Ctrl+←`, from the input line too, show the next
+  or previous pane of the strip in the focused tile (the phone's swipe);
+  `w` opens the focused pane's window
   view, `b` puts it on the board, `Enter` opens it alone.
 - The **command row** under the key bar is for the program in the
   focused pane, one row that scrolls sideways. When the pane is Claude
@@ -223,23 +225,40 @@ itself look like Claude Code or look busy.
 
 A window's `▦ … mirror layout ▸` button in the list, the `▦` entries in
 the selector, or `window ▸` above the tiles open the **window view**: every pane of the window you
-may read, in tmux's own layout, each scaled to its box. One pane is
-focused (click, or `]` and `[`); the input line and key bar go to it,
-`Enter` opens it alone. Double-click a pane, or press `z`, to show it
-alone in the view, and again to bring the others back; `]` and `[` move
-the zoom with the focus; with fit on the host zooms the pane too. Then,
-in the browser only (with fit on, a dragged divider reaches the host,
-see above):
+may read, in tmux's own layout, each scaled to its box. The row above
+is the pane view's: `‹` back to the list, then a **tab per pane of the
+window** in layout order, painted with its state, the focused one with
+the thick border and its name in bold; a click focuses that pane. The
+controls sit at the right as icons, the tooltip naming each with its
+key:
+
+```
+[‹] [✳ Claude · fixing the build][bash][! review][ logs ]      [⤢][⟳][⊡][⊞][↺]
+┌ ✳ Claude · fixing the build · work/0.0 · 98×40 · ⟳ working              × ┐
+```
+
+| Icon | Does | Key |
+|---|---|---|
+| `⤢` | fit: the host window follows the box (selected when on) | `f` |
+| `⟳` | fit again, after another client sized the window | `r` |
+| `⊡` | the focused pane alone, and the whole window again (selected while zoomed) | `z`, double-click |
+| `⊞` | equal shares in every split (with fit on, the host follows: the way to put a squeezed window right) | `=` |
+| `↺` | the host's own layout again | `0` |
+
+One pane is focused (its tab, a click on its header, or `]` and `[`);
+the input line and key bar go to it, `Enter` opens it alone. `]` and `[`
+move the zoom with the focus; with fit on the host zooms the pane too.
+Then, in the browser only (with fit on, a dragged divider reaches the
+host, see above):
 
 - drag a divider to change the split,
-- `=` to give every split equal shares (with fit on, the host follows:
-  the way to put a squeezed window right),
 - `+` and `-` to make the focused pane's text bigger or smaller,
-- `x` to hide the focused pane (the bar above brings it back),
-- `0` to return to the host's layout.
+- `x`, or the header's `×`, to hide the focused pane: its tab stays,
+  dimmed with a dashed border, and a click on it brings the pane back.
 
-Each cell's header is painted with the pane's state as a tab is, and a
-pane that waits for you glows in the attention colour, a shadow around
+Each cell's header is painted with the pane's state as a tab is, with
+the lens word after the size (`⟳ working`, `! permission: run it?`), and
+a pane that waits for you glows in the attention colour, a shadow around
 its cell that moves nothing else. Boards do the same.
 
 The arrangement is remembered per window in your browser, and dropped
@@ -291,13 +310,13 @@ because several host windows changing at once is a decision for you.
 | `j` / `k` | move the selection down / up |
 | `space` | pick the selected pane, up to four |
 | `Enter` | open the selected pane, or the picked ones side by side |
-| `Esc` | back to the panes; or leave the input line (first closing its completion list) |
+| `Esc` | back to the panes; in the input line it is the pane's Escape, as the key bar's button is (an open completion list closes first) |
 | `/` | filter panes |
 | `i` | focus the input line |
 | `Enter` / `Shift+Enter` | input line: send / a new line |
 | `Tab` | input line: take the highlighted completion; from an empty line, `Tab` goes to the pane |
 | `↑` `↓` | input line: pick a completion; from an empty line, the key goes to the pane, as do `←` `→` `PageUp` `PageDown` `Home` `End` |
-| `Shift+Esc` | input line: send `Escape` to the pane and keep typing |
+| `Shift+Esc` | input line: leave the line |
 | `p` | selector: go to a pane or window |
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |
@@ -305,7 +324,7 @@ because several host windows changing at once is a decision for you.
 | `a` / `A` | board: add a pane beside / below the focused one |
 | `x` / `s` / `z` / `=` / `F` / `w` | board: remove, swap, zoom, equal shares, fit all, the pane's window |
 | `]` / `[` | next / previous tile (window view: pane) |
-| `}` / `{` | the focused tile shows the next / previous pane of the strip |
+| `Ctrl+→` / `Ctrl+←` | the next / previous pane, from the input line too: tiles show the strip's neighbour in the focused tile; the window view and a board move the focus, and the zoom with it |
 | `1`–`4`, `l`, `x`, `F`, `w` | tiles: focus one, next arrangement, close, fit all, the pane's window |
 | `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, zoom (or double-click), host layout, equal shares, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |

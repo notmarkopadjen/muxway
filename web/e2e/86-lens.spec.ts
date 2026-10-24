@@ -64,6 +64,12 @@ test('86 the lens paints a working Claude pane dim and a waiting one in the atte
   await expect(cell).toHaveAttribute('data-state', 'waiting', { timeout: 10_000 });
   expect(await cell.evaluate((e) => getComputedStyle(e).boxShadow)).not.toBe('none');
   await expect(cell.locator('.mx-cell-head')).toHaveAttribute('data-state', 'waiting');
+  // The header says why it is painted, and the pane's tab in the strip is painted too.
+  await expect(cell.locator('.mx-cell-head')).toContainText('permission: run it?');
+  await expect(page.locator(`[data-testid="tab"][data-address="${SHELL0}"]`)).toHaveAttribute(
+    'data-state',
+    'waiting',
+  );
   await shot(page, info, '86-window-glow');
   expect(
     await cells.evaluateAll((els) => els.map((e) => JSON.stringify(e.getBoundingClientRect()))),

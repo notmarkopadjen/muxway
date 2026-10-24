@@ -40,6 +40,20 @@ test('74 a pane running Claude is named Claude with its status; tmux names step 
   await expect(page.getByTestId('cell').first().getByTestId('pane-title')).toHaveText(
     'Claude · fixing the build',
   );
+  // The window's strip names it as a tab does: the spark, then the status.
+  const claudeTab = page.locator(`[data-testid="tab"][data-address="${SHELL0}"]`);
+  await expect(claudeTab).toHaveText('fixing the build');
+  await expect(claudeTab.locator('.mx-mark-claude')).toBeVisible();
+  // A title that looks like markup is text in the strip and the header alike.
+  await control(request, '/rename', {
+    what: 'title',
+    target: 'work:0.0',
+    name: '<b onmouseover=alert(1)>bold</b>',
+  });
+  const tab = page.locator(`[data-testid="tab"][data-address="${SHELL0}"]`);
+  await expect(tab).toContainText('<b onmouseover=alert(1)>bold</b>', { timeout: 10_000 });
+  expect(await tab.locator('b').count()).toBe(0);
+  expect(await page.getByTestId('cell').first().locator('b').count()).toBe(0);
   await control(request, '/rename', { what: 'title', target: 'work:0.0', name: 'test-pane' });
   await expect(page.getByTestId('cell').first().getByTestId('pane-title')).toHaveText(
     'bash · test-pane',

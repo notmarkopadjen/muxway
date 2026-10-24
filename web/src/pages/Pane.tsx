@@ -2,14 +2,14 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useAllPanes, useInput, usePane, usePaneCached } from '../api/queries';
-import type { Key, Mouse, Pane } from '../api/types';
+import type { Key, Mouse } from '../api/types';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
 import { LensMark } from '../components/Lens';
-import { ClaudeMark, PaneTitle } from '../components/PaneTitle';
+import { PaneTitle } from '../components/PaneTitle';
+import { Tabs } from '../components/Tabs';
 import { useToast } from '../components/Toast';
-import { describe } from '../term/describe';
-import { noteChange, noteOwn, tabName, useLens } from '../term/lens';
+import { noteChange, noteOwn, useLens } from '../term/lens';
 import { Screen } from '../term/Screen';
 import {
   close,
@@ -46,114 +46,6 @@ async function click(address: string, mouse: Mouse, refused: (why: string) => vo
   } catch (err) {
     refused(err instanceof ApiError ? err.code : 'hub unreachable');
   }
-}
-
-function Tabs({
-  panes,
-  open,
-  focused,
-  onTab,
-}: {
-  panes: Pane[];
-  open: string[];
-  focused: string;
-  onTab: (address: string) => void;
-}) {
-  const lens = useLens();
-  const strip = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    strip.current
-      ?.querySelector('[data-focused]')
-      ?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
-  }, [focused, panes.length]);
-  // The strip hides its scrollbar: the wheel moves it sideways, and ‹ ›
-  // appear at its ends while there is more than fits. Keys: } and {.
-  const [more, setMore] = useState(false);
-  useEffect(() => {
-    const el = strip.current;
-    if (!el) return;
-    const check = () => setMore(el.scrollWidth > el.clientWidth + 1);
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(el);
-    for (const c of el.children) ro.observe(c);
-    return () => ro.disconnect();
-  }, [panes, open]);
-  useEffect(() => {
-    const el = strip.current;
-    if (!el) return;
-    const onWheel = (ev: WheelEvent) => {
-      if (el.scrollWidth <= el.clientWidth) return;
-      ev.preventDefault();
-      el.scrollLeft += ev.deltaX + ev.deltaY;
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, []);
-  const page = (dir: number) => {
-    const el = strip.current;
-    if (el) el.scrollBy({ left: (dir * el.clientWidth) / 2, behavior: 'smooth' });
-  };
-  const rows: { address: string; pane?: Pane }[] = panes.map((p) => ({
-    address: p.address,
-    pane: p,
-  }));
-  for (const a of open) if (!rows.some((r) => r.address === a)) rows.push({ address: a });
-  return (
-    <div className="mx-strip">
-      {more && (
-        <button
-          type="button"
-          className="mx-strip-end"
-          onClick={() => page(-1)}
-          title="earlier tabs ({ shows the previous pane)"
-          data-testid="tabs-prev"
-        >
-          ‹
-        </button>
-      )}
-      <div className="mx-tabs" ref={strip} data-testid="tabs">
-        {rows.map(({ address, pane }) => {
-          const st = pane ? lens.status(pane) : 'quiet';
-          const isOpen = open.includes(address);
-          return (
-            <button
-              key={address}
-              type="button"
-              className="mx-tab mx-painted"
-              data-testid="tab"
-              data-address={address}
-              data-open={isOpen ? '' : undefined}
-              data-focused={address === focused ? '' : undefined}
-              data-state={st === 'quiet' ? undefined : st}
-              onClick={() => onTab(address)}
-              title={address}
-            >
-              {st !== 'quiet' ? (
-                <LensMark status={st} attention={pane?.attention} />
-              ) : pane && describe(pane).agent === 'claude' ? (
-                <ClaudeMark />
-              ) : null}
-              <span className="mx-tab-name">
-                {pane ? tabName(pane) : address.split('/').slice(1).join('/')}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      {more && (
-        <button
-          type="button"
-          className="mx-strip-end"
-          onClick={() => page(1)}
-          title="later tabs (} shows the next pane)"
-          data-testid="tabs-next"
-        >
-          ›
-        </button>
-      )}
-    </div>
-  );
 }
 
 interface TileProps {
@@ -459,28 +351,29 @@ function Tiles({ addresses }: { addresses: string[] }) {
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       const target = ev.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
-      const k = ev.key;
-      if (k === ']') setFocusedIndex((index + 1) % n);
-      else if (k === '[') setFocusedIndex((index - 1 + n) % n);
-      else if (k === '}') neighbour(1);
-      else if (k === '{') neighbour(-1);
-      else if (/^[1-4]$/.test(k) && Number(k) <= n) setFocusedIndex(Number(k) - 1);
-      else if (k === 'l' && several) setLayout((l) => next(l, n));
-      else if (k === 'x' && several) go(close(addresses, focused));
-      else if (k === 'f' && writable) toggleFit(focused);
-      else if (k === 'F') {
+      // Ctrl with an arrow switches the pane from anywhere, the input line too.
+      const arrow = ev.ctrlKey && !ev.metaKey && !ev.altKey && /^Arrow(Left|Right)$/.test(ev.key);
+      const step = ev.key === 'ArrowRight' ? 1 : -1;
+      if (arrow) neighbour(step);
+      else if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      else if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      else if (ev.key === ']') setFocusedIndex((index + 1) % n);
+      else if (ev.key === '[') setFocusedIndex((index - 1 + n) % n);
+      else if (/^[1-4]$/.test(ev.key) && Number(ev.key) <= n) setFocusedIndex(Number(ev.key) - 1);
+      else if (ev.key === 'l' && several) setLayout((l) => next(l, n));
+      else if (ev.key === 'x' && several) go(close(addresses, focused));
+      else if (ev.key === 'f' && writable) toggleFit(focused);
+      else if (ev.key === 'F') {
         const on = !addresses.some((a) => fit[a] ?? true);
         const f: Record<string, boolean> = {};
         for (const a of addresses) f[a] = on;
         setFit(f);
-      } else if (k === 'r' && writable) setRefitTick((t) => t + 1);
-      else if (k === 'w' && focusedPane)
+      } else if (ev.key === 'r' && writable) setRefitTick((t) => t + 1);
+      else if (ev.key === 'w' && focusedPane)
         navigate({
           to: `/w/${focusedPane.host}/${focusedPane.session}/${focusedPane.window_index}`,
         });
-      else if (k === 'Enter' && several) go([focused]);
+      else if (ev.key === 'Enter' && several) go([focused]);
       else return;
       ev.preventDefault();
       ev.stopImmediatePropagation();
@@ -572,7 +465,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
             ? writable
               ? several
                 ? `type into ${focused}`
-                : 'type · Enter sends · Shift+Enter new line · Esc leaves'
+                : 'type · Enter sends · Shift+Enter new line · Shift+Esc leaves'
               : 'read-only pane'
             : 'no pane'
         }

@@ -36,13 +36,32 @@ test('63 drag, hide and reset change only the browser', async ({ page, request }
   await page.getByTestId('equalise').click();
   await expect(slots.nth(0)).toHaveAttribute('data-fraction', '0.500');
   await page.keyboard.press(']');
-  await expect(page.getByTestId('focus')).toContainText(`${HOST}/work/0.1`);
+  await expect(page.locator('[data-testid="tab"][data-focused]')).toHaveAttribute(
+    'data-address',
+    `${HOST}/work/0.1`,
+  );
   await page.keyboard.press('x');
   await expect(page.getByTestId('cell')).toHaveCount(1);
-  await expect(page.getByTestId('hidden')).toContainText('work/0.1');
+  // The hidden pane keeps its tab, dimmed; a click brings it back and focuses it.
+  const hiddenTab = page.locator(
+    `[data-testid="tab"][data-hidden][data-address="${HOST}/work/0.1"]`,
+  );
+  await expect(hiddenTab).toBeVisible();
   await page.reload();
   await expect(page.getByTestId('cell')).toHaveCount(1);
-  await page.keyboard.press('0');
+  // A reload turns fit on again; off, so that bringing the pane back stays here.
+  await page.keyboard.press('f');
+  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '0');
+  await hiddenTab.click();
+  await expect(page.getByTestId('cell')).toHaveCount(2);
+  await expect(page.locator('[data-testid="tab"][data-hidden]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="tab"][data-focused]')).toHaveAttribute(
+    'data-address',
+    `${HOST}/work/0.1`,
+  );
+  await page.keyboard.press('x');
+  await expect(page.getByTestId('cell')).toHaveCount(1);
+  await page.getByTestId('reset').click();
   await expect(page.getByTestId('cell')).toHaveCount(2);
   expect(Math.abs(Number(await slots.nth(0).getAttribute('data-fraction')) - before)).toBeLessThan(
     0.001,

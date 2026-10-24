@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useInput, useWindow } from '../api/queries';
@@ -7,6 +7,7 @@ import { LensMark } from '../components/Lens';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
 import { PaneTitle } from '../components/PaneTitle';
+import { Tabs } from '../components/Tabs';
 import { useToast } from '../components/Toast';
 import { addPane, loadBoard, saveBoard } from '../term/board';
 import {
@@ -110,11 +111,16 @@ function Tree(props: TreeProps) {
           data-state={state}
           onClick={() => onFocus(node.id)}
         >
-          <LensMark status={st} attention={p.attention} />
           <PaneTitle pane={p} />
           <span className="mx-dim">
             {p.address.split('/').slice(1).join('/')} · {p.width}×{p.height}
           </span>
+          {st !== 'quiet' && (
+            <span className={st === 'waiting' ? 'mx-attention' : 'mx-dim'}>
+              <LensMark status={st} attention={p.attention} withWord />
+              {p.attention?.text ? `: ${p.attention.text}` : ''}
+            </span>
+          )}
           <span className="mx-spacer" />
           <button
             type="button"
@@ -229,6 +235,21 @@ export function WindowPage() {
     if (zoom) setZoomed(id);
   };
   const focusedPane = focus ? panes.get(focus)?.pane : undefined;
+  // The strip: this window's panes in layout order, hidden ones dimmed.
+  const stripPanes = useMemo(
+    () => (tree ? leaves(tree).map((l) => panes.get(l.id)?.pane) : []).filter((p) => !!p),
+    [tree, panes],
+  );
+  const hiddenAddresses = stripPanes
+    .filter((p) => arr.hidden.includes(p.pane_id))
+    .map((p) => p.address);
+  const onTab = (address: string) => {
+    const id = stripPanes.find((p) => p.address === address)?.pane_id;
+    if (!id) return;
+    if (arr.hidden.includes(id))
+      setArr((a) => ({ ...a, hidden: a.hidden.filter((h) => h !== id) }));
+    move(id);
+  };
   const writable = focusedPane?.mode === 'write';
   const input = useInput(focusedPane?.address ?? '');
   const area = useRef<HTMLDivElement>(null);
@@ -277,11 +298,16 @@ export function WindowPage() {
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       const target = ev.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      // Ctrl with an arrow switches the pane from anywhere, the input line too.
+      const arrow = ev.ctrlKey && !ev.metaKey && !ev.altKey && /^Arrow(Left|Right)$/.test(ev.key);
+      const step = ev.key === 'ArrowRight' ? 1 : -1;
       const i = focus ? visible.indexOf(focus) : -1;
-      if (ev.key === ']') move(visible[(i + 1) % visible.length] ?? null);
-      else if (ev.key === '[') move(visible[(i - 1 + visible.length) % visible.length] ?? null);
+      const by = (d: number) => move(visible[(i + d + visible.length) % visible.length] ?? null);
+      if (arrow) by(step);
+      else if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      else if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      else if (ev.key === ']') by(1);
+      else if (ev.key === '[') by(-1);
       else if (ev.key === 'z' && focus) toggleZoom(focus);
       else if (ev.key === 'x' && focus) setArr((a) => ({ ...a, hidden: [...a.hidden, focus] }));
       else if (ev.key === '0') setArr(() => fresh(layout));
@@ -360,79 +386,75 @@ export function WindowPage() {
       </div>
     );
   }
-  const hiddenPanes = arr.hidden.filter((id) => panes.has(id));
   return (
     <div className="mx-winview" data-testid="window" data-layout={layout}>
-      <div className="mx-pane-head">
-        <span>
-          {host}/{session}/{data.data?.window.index ?? win}
-          {data.data ? ` · ${data.data.window.name}` : ''}
+      <div className="mx-top">
+        <Link to="/" className="mx-back" title="back to the panes (Esc)" data-testid="back">
+          ‹
+        </Link>
+        <Tabs
+          panes={stripPanes}
+          open={stripPanes.filter((p) => !arr.hidden.includes(p.pane_id)).map((p) => p.address)}
+          focused={focusedPane?.address ?? null}
+          hidden={hiddenAddresses}
+          onTab={onTab}
+        />
+        <span className="mx-tools">
+          {writable && (
+            <button
+              type="button"
+              className={`mx-toggle${fit ? ' on' : ''}`}
+              onClick={() => setFit(!fit)}
+              title={`fit: the host window follows this box (f), ${fit ? 'on' : 'off'}`}
+              data-testid="fit"
+              data-on={fit ? '1' : '0'}
+            >
+              ⤢
+            </button>
+          )}
+          {writable && fit && (
+            <button
+              type="button"
+              onClick={refit}
+              title="fit again: this client's size (r)"
+              data-testid="refit"
+            >
+              ⟳
+            </button>
+          )}
+          {focus && (
+            <button
+              type="button"
+              className={`mx-toggle${zoom ? ' on' : ''}`}
+              onClick={() => toggleZoom(focus)}
+              title={
+                zoom
+                  ? 'the whole window again (z, or double-click)'
+                  : 'the focused pane alone (z, or double-click)'
+              }
+              data-testid="zoom"
+              data-on={zoom ? '1' : '0'}
+            >
+              ⊡
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => tree && setArr((a) => equalised(a, tree))}
+            title="equal shares (=)"
+            data-testid="equalise"
+          >
+            ⊞
+          </button>
+          <button
+            type="button"
+            onClick={() => setArr(() => fresh(layout))}
+            title="the host's layout (0)"
+            data-testid="reset"
+          >
+            ↺
+          </button>
         </span>
-        <span className="mx-dim" data-testid="focus">
-          focus: {focusedPane ? focusedPane.address : 'none'}
-        </span>
-        {writable && (
-          <button
-            type="button"
-            className={`mx-toggle${fit ? ' on' : ''}`}
-            onClick={() => setFit(!fit)}
-            data-testid="fit"
-            data-on={fit ? '1' : '0'}
-          >
-            fit {fit ? 'on' : 'off'}
-          </button>
-        )}
-        {writable && fit && (
-          <button
-            type="button"
-            onClick={refit}
-            title="fit again: this client's size (r)"
-            data-testid="refit"
-          >
-            ⟳
-          </button>
-        )}
-        {zoom && (
-          <button
-            type="button"
-            className="mx-toggle on"
-            onClick={() => setZoomed(null)}
-            title="the whole window again (z, or double-click)"
-            data-testid="unzoom"
-          >
-            zoomed
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => tree && setArr((a) => equalised(a, tree))}
-          title="equal shares (=)"
-          data-testid="equalise"
-        >
-          equalise
-        </button>
-        <button
-          type="button"
-          onClick={() => setArr(() => fresh(layout))}
-          title="host layout (0)"
-          data-testid="reset"
-        >
-          reset
-        </button>
-        {hiddenPanes.length > 0 && (
-          <span className="mx-hidden-bar" data-testid="hidden">
-            hidden:
-            {hiddenPanes.map((id) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setArr((a) => ({ ...a, hidden: a.hidden.filter((h) => h !== id) }))}
-              >
-                {panes.get(id)?.pane.address.split('/').slice(1).join('/')}
-              </button>
-            ))}
-          </span>
-        )}
       </div>
       <div className="mx-area" ref={area}>
         {tree && (

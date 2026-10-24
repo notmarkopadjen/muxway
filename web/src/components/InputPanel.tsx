@@ -124,13 +124,19 @@ export function InputPanel({
       e.preventDefault();
       void submit();
     } else if (k === 'Escape' && e.shiftKey) {
+      // Shift+Esc leaves the line; Esc alone is the pane's Escape, as the
+      // key bar's button is, once an open completion list has closed.
       e.preventDefault();
       e.stopPropagation();
-      void send({ key: 'Escape' });
+      field.current?.blur();
     } else if (k === 'Escape' && list.length) {
       e.preventDefault();
       e.stopPropagation();
       setClosed(true);
+    } else if (k === 'Escape' && writable) {
+      e.preventDefault();
+      e.stopPropagation();
+      void send({ key: 'Escape' });
     } else if (list.length && plain && (k === 'ArrowDown' || k === 'ArrowUp')) {
       e.preventDefault();
       const step = k === 'ArrowDown' ? 1 : list.length - 1;

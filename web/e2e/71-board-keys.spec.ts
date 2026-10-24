@@ -11,6 +11,12 @@ test('71 board keys: focus, typing to the focused pane, zoom, open', async ({ pa
   await expect(page.getByTestId('focus')).toContainText(A);
   await page.keyboard.press(']');
   await expect(page.getByTestId('focus')).toContainText(B);
+  // Ctrl with an arrow moves the focus too, from the input line.
+  await page.getByTestId('input').focus();
+  await page.keyboard.press('Control+ArrowLeft');
+  await expect(page.getByTestId('focus')).toContainText(A);
+  await page.keyboard.press('Control+ArrowRight');
+  await expect(page.getByTestId('focus')).toContainText(B);
   await page.getByTestId('input').fill('echo only-board-$((70+1))');
   await page.getByTestId('input').press('Enter');
   await expect

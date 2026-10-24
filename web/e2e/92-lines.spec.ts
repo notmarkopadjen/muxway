@@ -139,7 +139,7 @@ test('92 completion: Claude slash commands, a shell recent line; Enter never com
   await page.evaluate(() => localStorage.removeItem('mx-recent'));
 });
 
-test('92 keys: i focuses the line, Esc leaves it, console keys from an empty line, Shift+Esc', async ({
+test('92 keys: i focuses the line, Shift+Esc leaves it, console keys from an empty line, Esc', async ({
   page,
   request,
 }) => {
@@ -151,8 +151,8 @@ test('92 keys: i focuses the line, Esc leaves it, console keys from an empty lin
   await expect(page.getByTestId('cmdbar')).toHaveCount(0, { timeout: 10_000 });
   await page.keyboard.press('i');
   await expect(input).toBeFocused();
-  // Esc leaves the line: the view's keys work again, a second Esc goes to the list.
-  await page.keyboard.press('Escape');
+  // Shift+Esc leaves the line: the view's keys work again, Esc then goes to the list.
+  await page.keyboard.press('Shift+Escape');
   await expect(input).not.toBeFocused();
   await expect(page.getByTestId('pane')).toBeVisible();
   await page.keyboard.press('Escape');
@@ -176,8 +176,8 @@ test('92 keys: i focuses the line, Esc leaves it, console keys from an empty lin
   await page.keyboard.press('End');
   expect(await input.evaluate((el: HTMLTextAreaElement) => el.selectionStart)).toBe(3);
   expect(inputs).toHaveLength(4);
-  // Shift+Esc sends Escape to the pane and keeps the line and its text.
-  await page.keyboard.press('Shift+Escape');
+  // Esc sends Escape to the pane and keeps the line and its text.
+  await page.keyboard.press('Escape');
   await expect.poll(() => inputs.at(-1)).toBe(JSON.stringify({ key: 'Escape' }));
   await expect(input).toBeFocused();
   await expect(input).toHaveValue('abc');

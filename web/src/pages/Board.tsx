@@ -323,11 +323,15 @@ export function BoardPage() {
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       const target = ev.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-      if (ev.ctrlKey || ev.metaKey || ev.altKey || adding) return;
+      // Ctrl with an arrow switches the pane from anywhere, the input line too.
+      const arrow = ev.ctrlKey && !ev.metaKey && !ev.altKey && /^Arrow(Left|Right)$/.test(ev.key);
+      const step = ev.key === 'ArrowRight' ? 1 : -1;
       const i = focus ? order.indexOf(focus) : -1;
       const k = ev.key;
-      if (k === 'a') setAdding('h');
+      if (arrow && order.length) move(order[(i + step + order.length) % order.length]);
+      else if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      else if (ev.ctrlKey || ev.metaKey || ev.altKey || adding) return;
+      else if (k === 'a') setAdding('h');
       else if (k === 'A') setAdding('v');
       else if (k === ']' && order.length) move(order[(i + 1) % order.length]);
       else if (k === '[' && order.length) move(order[(i - 1 + order.length) % order.length]);

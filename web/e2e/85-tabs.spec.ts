@@ -40,14 +40,15 @@ test('85 the tab strip: every pane, a tab swaps into the focused tile, keys move
     .poll(() => control(request, '/capture', { target: 'work:1.0' }), { timeout: 5000 })
     .toContain('typed-in-85');
   expect(await control(request, '/capture', { target: 'work:0.1' })).toBe(before);
-  // Esc leaves the input line; } and { then show the neighbouring pane of
-  // the strip in the focused tile:
+  // Ctrl with an arrow, from the input line too, shows the neighbouring pane
+  // of the strip in the focused tile:
   // whichever side of the strip the other closed pane is on.
   const order = await tabs.evaluateAll((els) => els.map((e) => e.getAttribute('data-address')));
   const other = order.find((a) => a !== RO && a !== LOGS && a !== SHELL0)!;
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('input')).not.toBeFocused();
-  await page.keyboard.press(order.indexOf(other) > order.indexOf(LOGS) ? '}' : '{');
+  await page.getByTestId('input').focus();
+  await page.keyboard.press(
+    order.indexOf(other) > order.indexOf(LOGS) ? 'Control+ArrowRight' : 'Control+ArrowLeft',
+  );
   await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', `${RO} ${other}`);
   await shot(page, info, '85-tabs');
   // The header names the focused pane, and the way back leads to the list.

@@ -419,6 +419,13 @@
   border-color: transparent;
   padding: 0 4px;
 }
+.mx-cell-head .mx-attention {
+  color: var(--mx-warn);
+  text-shadow: 0 0 8px var(--mx-warn);
+}
+.mx-cell-head .mx-spacer {
+  flex: 1;
+}
 .mx-cell .mx-screen {
   padding: 4px;
 }
@@ -453,12 +460,6 @@
   border-color: var(--mx-warn);
   color: var(--mx-warn);
   text-shadow: 0 0 6px var(--mx-warn);
-}
-.mx-hidden-bar {
-  color: var(--mx-ink-dim);
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
 }
 
 /* A cell whose pane waits for you glows; a shadow never moves a neighbour. */
@@ -659,6 +660,10 @@ button.mx-window:focus-visible {
 .mx-strip-end:hover {
   color: var(--mx-ink);
 }
+.mx-top .mx-tools button {
+  padding: 2px 6px;
+  line-height: 1.2;
+}
 .mx-tabs {
   display: flex;
   gap: 4px;
@@ -693,6 +698,13 @@ button.mx-window:focus-visible {
   padding: 1px 7px;
   font-weight: bold;
 }
+/* A pane hidden from the window view: its tab stays, dimmed, and brings it back. */
+.mx-tab[data-hidden] {
+  border-style: dashed;
+  border-color: var(--mx-ink-faint);
+  color: var(--mx-ink-dim);
+  text-shadow: none;
+}
 .mx-tab[data-state='waiting'],
 .mx-tile-head[data-state='waiting'],
 .mx-cell-head[data-state='waiting'] {
@@ -718,6 +730,8 @@ button.mx-window:focus-visible {
 .mx-painted[data-state='working'] .mx-dim,
 .mx-painted[data-state='waiting'] .mx-mode,
 .mx-painted[data-state='working'] .mx-mode,
+.mx-painted[data-state='waiting'] .mx-attention,
+.mx-painted[data-state='working'] .mx-attention,
 .mx-painted[data-state='waiting'] .mx-mark-claude,
 .mx-painted[data-state='working'] .mx-mark-claude {
   color: var(--mx-bg);
