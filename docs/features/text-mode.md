@@ -41,7 +41,7 @@ parameter, or with `charset=utf-8`, nothing changes.
 | diagonals `╱ ╲ ╳` | `/ \ X` |
 | block elements `▀ ▄ █ ░ ▒ ▓` | `#` |
 | `❯ › » ▶ ▸ ⏵ ➜ →` | `>`; `‹ « ◀ ←` `<`; `↑` `^`; `↓` `v` |
-| bullets `● • ○ ◦ ■ □ ▪ ◆ ★ ☆`, braille spinners, Claude Code's `✳` | `*` |
+| bullets `● • ○ ◦ ■ □ ▪ ◆ ★ ☆`, braille spinners, Claude Code's marks `✳ ✻ ✽ ✶ ✢ ✦ ✧` | `*`; its tool-result connector `⎿` `+` |
 | `·` | `.`; `…` `...`; `— – ‐ −` `-`; `×` `x`; `✓ ✔` `v`; `✗ ✘ ✖` `x`; `⚠` `!` |
 | curly quotes, no-break space | `'`, `"`, a space |
 | letters with marks (Latin-1 Supplement, Latin Extended-A) | the base letter; `ß` `ss`, `æ` `ae`, `œ` `oe`, `þ` `th`, `ĳ` `ij` |
