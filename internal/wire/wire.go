@@ -3,14 +3,21 @@
 // nothing else.
 package wire
 
-import "github.com/notmarkopadjen/muxway/internal/tmux"
+import (
+	"regexp"
+
+	"github.com/notmarkopadjen/muxway/internal/tmux"
+)
 
 // Ops the hub may request.
 const (
-	OpList   = "list"
-	OpRead   = "read"
-	OpInput  = "input"
-	OpResize = "resize"
+	OpList       = "list"
+	OpRead       = "read"
+	OpInput      = "input"
+	OpResize     = "resize"
+	OpSplit      = "split"       // one more pane beside or below Pane
+	OpNewSession = "new-session" // a session named Name, marked writable
+	OpKillPane   = "kill-pane"   // the hub's undo of a split it may not grant
 )
 
 // Request from hub to agent. Actor is the id of the client token the hub
@@ -34,6 +41,10 @@ type Request struct {
 	Layout string `json:"layout,omitempty"`
 	// Zoom, with scope "window", shows the pane alone in its window.
 	Zoom bool `json:"zoom,omitempty"`
+	// Direction of a split: "h" puts the new pane beside Pane, "v" below.
+	Direction string `json:"direction,omitempty"`
+	// Name of the session to start.
+	Name string `json:"name,omitempty"`
 }
 
 // Mouse is one click or wheel notch at a cell, 1-based.
@@ -61,6 +72,10 @@ type Response struct {
 	Error   string      `json:"error,omitempty"`
 	Panes   []tmux.Pane `json:"panes,omitempty"`
 	Content string      `json:"content,omitempty"`
+	// Pane is what a split or a new session made.
+	Pane *tmux.Pane `json:"pane,omitempty"`
+	// Sessions, with a list, says the agent starts sessions for clients.
+	Sessions bool `json:"sessions,omitempty"`
 }
 
 // Errors an agent returns. They are codes, never details.
@@ -71,6 +86,9 @@ const (
 	ErrUnknownOp  = "unknown_op"
 	ErrTmux       = "tmux_error"
 	ErrRateLimit  = "rate_limited"
+	ErrNotAllowed = "not_allowed" // the agent does not start sessions
+	ErrExists     = "exists"
+	ErrTooMany    = "too_many"
 )
 
 // Limits shared by hub and agent.
@@ -80,7 +98,20 @@ const (
 	MinCols, MaxCols = 20, 500
 	MinRows, MaxRows = 5, 300
 	MaxLayoutBytes   = 2048
+	// Panes a window may be split into, and sessions an agent starts for
+	// clients, over its lifetime's live ones.
+	MaxPanesPerWindow = 8
+	MaxClientSessions = 32
 )
+
+// A session a client starts has a short name of its own.
+var sessionName = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
+
+// ValidSessionName reports whether a client may name a session so.
+func ValidSessionName(s string) bool { return sessionName.MatchString(s) }
+
+// ValidDirection reports whether a split direction is one of the two.
+func ValidDirection(s string) bool { return s == "h" || s == "v" }
 
 // ValidSize reports whether a window may be resized to cols by rows.
 func ValidSize(cols, rows int) bool {

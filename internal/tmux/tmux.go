@@ -440,3 +440,68 @@ func (s Server) SetAlias(ctx context.Context, target, alias string) error {
 func (p Pane) Address() string {
 	return fmt.Sprintf("%s/%d.%d", p.SessionName, p.WindowIndex, p.PaneIndex)
 }
+
+// Split makes one more pane out of paneID's room, beside it or below,
+// in the same directory, without taking the host's focus. A mark set on
+// the pane itself goes onto the new one; one on the window or session
+// covers it already. Returns the new pane's id.
+func (s Server) Split(ctx context.Context, paneID string, beside bool) (string, error) {
+	out, err := s.run(ctx, "display-message", "-p", "-t", paneID, "#{pane_current_path}")
+	if err != nil {
+		return "", err
+	}
+	args := []string{"split-window", "-d", "-t", paneID, "-P", "-F", "#{pane_id}"}
+	if dir := strings.TrimSpace(string(out)); dir != "" {
+		args = append(args, "-c", dir)
+	}
+	if beside {
+		args = append(args, "-h")
+	} else {
+		args = append(args, "-v")
+	}
+	out, err = s.run(ctx, args...)
+	if err != nil {
+		return "", err
+	}
+	id := strings.TrimSpace(string(out))
+	if mode, _ := s.paneMark(ctx, paneID); mode != "" {
+		if _, err := s.run(ctx, "set-option", "-p", "-t", id, optMode, mode); err != nil {
+			s.run(ctx, "kill-pane", "-t", id)
+			return "", err
+		}
+	}
+	return id, nil
+}
+
+// paneMark is the mode set on the pane itself, not one it inherits.
+func (s Server) paneMark(ctx context.Context, paneID string) (string, error) {
+	out, err := s.run(ctx, "show-options", "-p", "-q", "-v", "-t", paneID, optMode)
+	return strings.TrimSpace(string(out)), err
+}
+
+// HasSession reports whether a session of exactly that name exists.
+func (s Server) HasSession(ctx context.Context, name string) bool {
+	_, err := s.run(ctx, "has-session", "-t", "="+name)
+	return err == nil
+}
+
+// NewSession starts a detached session with the server's default shell
+// and marks it writable. Returns the id of its first pane.
+func (s Server) NewSession(ctx context.Context, name string) (string, error) {
+	out, err := s.run(ctx, "new-session", "-d", "-s", name, "-P", "-F", "#{pane_id}")
+	if err != nil {
+		return "", err
+	}
+	id := strings.TrimSpace(string(out))
+	if _, err := s.run(ctx, "set-option", "-t", id, optMode, ModeWrite); err != nil {
+		s.run(ctx, "kill-pane", "-t", id)
+		return "", err
+	}
+	return id, nil
+}
+
+// KillPane closes one pane; the last pane of a session ends the session.
+func (s Server) KillPane(ctx context.Context, paneID string) error {
+	_, err := s.run(ctx, "kill-pane", "-t", paneID)
+	return err
+}

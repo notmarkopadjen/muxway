@@ -44,7 +44,7 @@ func endpoints() [][2]string {
 	return [][2]string{
 		{"GET", "/v1/hosts"}, {"GET", "/v1/panes"}, {"GET", "/v1/hosts/" + host + "/tree"},
 		{"GET", "/v1/panes/" + shell0}, {"POST", "/v1/panes/" + shell0 + "/input"}, {"GET", "/v1/events"},
-		{"GET", "/v1/me"},
+		{"GET", "/v1/me"}, {"POST", "/v1/windows/" + host + "/work/0/panes"}, {"POST", "/v1/hosts/" + host + "/sessions"},
 	}
 }
 

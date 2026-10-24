@@ -155,6 +155,7 @@ type agentConn struct {
 	pending map[uint64]chan wire.Response
 	list    []tmux.Pane
 	listAt  time.Time
+	starts  bool // the agent starts sessions for clients
 	evts    bucket
 	warned  time.Time
 }
@@ -213,9 +214,20 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 		return nil, errors.New(r.Error)
 	}
 	a.mu.Lock()
-	a.list, a.listAt = r.Panes, time.Now()
+	a.list, a.listAt, a.starts = r.Panes, time.Now(), r.Sessions
 	a.mu.Unlock()
 	return r.Panes, nil
+}
+
+// startsSessions asks the agent, through its listing, whether clients may
+// start sessions on it.
+func (a *agentConn) startsSessions(ctx context.Context) bool {
+	if _, err := a.panes(ctx); err != nil {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.starts
 }
 
 func (a *agentConn) forget() {

@@ -288,10 +288,11 @@ func (ts *tmuxServer) capture(target string) string {
 type agentProc struct {
 	host string
 	dir  string
+	args []string // extra flags for agent run
 	cmd  *exec.Cmd
 }
 
-func (e *env) pairAgent(host string, ts *tmuxServer) *agentProc {
+func (e *env) pairAgent(host string, ts *tmuxServer, agentArgs ...string) *agentProc {
 	e.t.Helper()
 	code := e.mustCLI("hub", "pair-code", "--dir", e.hubDir, "--host", host)
 	remember(code)
@@ -301,14 +302,14 @@ func (e *env) pairAgent(host string, ts *tmuxServer) *agentProc {
 	dir := filepath.Join(e.dir, "agent-"+host)
 	e.mustCLI("agent", "pair", "--dir", dir, "--ca", filepath.Join(e.dir, "ca.pem"), code)
 	rememberFile(filepath.Join(dir, "agent.key"))
-	a := &agentProc{host: host, dir: dir}
+	a := &agentProc{host: host, dir: dir, args: agentArgs}
 	e.runAgent(a, ts)
 	e.waitOnline(host, true)
 	return a
 }
 
 func (e *env) runAgent(a *agentProc, ts *tmuxServer) {
-	a.cmd = e.start("agent-"+a.host, "agent", "run", "--dir", a.dir, "--tmux-name", ts.name)
+	a.cmd = e.start("agent-"+a.host, append([]string{"agent", "run", "--dir", a.dir, "--tmux-name", ts.name}, a.args...)...)
 }
 
 func (e *env) waitOnline(host string, online bool) {

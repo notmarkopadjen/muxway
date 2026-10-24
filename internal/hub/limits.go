@@ -14,6 +14,8 @@ const (
 	tokenBurst   = 40
 	clipRate     = 0.2 // spoken clips per second: one every five seconds
 	clipBurst    = 1
+	createRate   = 0.5 // panes or sessions made per second: one every two seconds
+	createBurst  = 1
 	pairAttempts = 3
 )
 
@@ -93,12 +95,22 @@ func (l *limiter) allow(tokenID string) bool {
 
 // allowClip takes one spoken clip from the token's own, slower bucket.
 func (l *limiter) allowClip(tokenID string) bool {
+	return l.allowNamed("clip:"+tokenID, clipRate, clipBurst)
+}
+
+// allowCreate takes one pane or session creation; a refused one costs
+// the slot as much as one that went through.
+func (l *limiter) allowCreate(tokenID string) bool {
+	return l.allowNamed("create:"+tokenID, createRate, createBurst)
+}
+
+func (l *limiter) allowNamed(key string, rate, burst float64) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	b, ok := l.buckets["clip:"+tokenID]
+	b, ok := l.buckets[key]
 	if !ok {
 		b = &bucket{}
-		l.buckets["clip:"+tokenID] = b
+		l.buckets[key] = b
 	}
-	return b.take(clipRate, clipBurst)
+	return b.take(rate, burst)
 }

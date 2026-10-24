@@ -46,6 +46,8 @@ func (h *Hub) routes() http.Handler {
 	mux.HandleFunc("GET /v1/panes/{host}/{path...}", h.withPrincipal(h.handleRead))
 	mux.HandleFunc("POST /v1/panes/{host}/{path...}", h.withPrincipal(h.handlePost))
 	mux.HandleFunc("GET /v1/windows/{host}/{session}/{window}", h.withPrincipal(h.handleWindow))
+	mux.HandleFunc("POST /v1/windows/{host}/{session}/{window}/panes", h.withPrincipal(h.handleSplit))
+	mux.HandleFunc("POST /v1/hosts/{host}/sessions", h.withPrincipal(h.handleNewSession))
 	if h.cfg.NoWeb {
 		mux.HandleFunc("/", h.handleRoot)
 	} else {
@@ -91,6 +93,12 @@ func fail(w http.ResponseWriter, status int, code string) {
 
 func reply(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(v)
+}
+
+func created(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(v)
 }
 
@@ -212,12 +220,14 @@ func (h *Hub) visibleHosts(t Principal) []string {
 
 func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 	type hostView struct {
-		Name   string `json:"name"`
-		Online bool   `json:"online"`
+		Name     string `json:"name"`
+		Online   bool   `json:"online"`
+		Sessions bool   `json:"sessions,omitempty"`
 	}
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
-		out = append(out, hostView{host, h.agent(host) != nil})
+		a := h.agent(host)
+		out = append(out, hostView{host, a != nil, a != nil && a.startsSessions(r.Context())})
 	}
 	if wantsText(r) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -458,6 +468,12 @@ func statusFor(code string) (int, string) {
 		return http.StatusBadRequest, "bad_input"
 	case wire.ErrRateLimit:
 		return http.StatusTooManyRequests, "rate_limited"
+	case wire.ErrNotAllowed:
+		return http.StatusNotFound, "not_found"
+	case wire.ErrExists:
+		return http.StatusConflict, "exists"
+	case wire.ErrTooMany:
+		return http.StatusConflict, "too_many"
 	}
 	return http.StatusBadGateway, "host_error"
 }

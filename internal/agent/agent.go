@@ -39,6 +39,8 @@ type Config struct {
 	Host   string `json:"host"`
 	CAFile string `json:"ca_file,omitempty"`
 	Dir    string `json:"-"`
+	// AllowSessions lets clients start sessions; a flag, not a setting.
+	AllowSessions bool `json:"-"`
 }
 
 func configPath(dir string) string { return filepath.Join(dir, "agent.json") }
@@ -160,6 +162,8 @@ type Agent struct {
 	attention map[string]tmux.Attention
 	resized   map[string]time.Time // window id -> last resize applied
 	layouts   map[string]string    // window id -> layout before its first resize, put back on release
+	made      map[string]time.Time // pane id -> when a split made it, while the hub may still undo it
+	sessions  map[string]bool      // session ids started for clients
 	sess      *secure.Session      // current connection to the hub, nil while away
 }
 
@@ -173,7 +177,8 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 		return nil, err
 	}
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
-		seen: map[string]int{}, attention: map[string]tmux.Attention{}, resized: map[string]time.Time{}, layouts: map[string]string{}}, nil
+		seen: map[string]int{}, attention: map[string]tmux.Attention{}, resized: map[string]time.Time{}, layouts: map[string]string{},
+		made: map[string]time.Time{}, sessions: map[string]bool{}}, nil
 }
 
 // Run keeps a connection to the hub until ctx ends, and listens for
@@ -273,6 +278,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 				resp.Panes = append(resp.Panes, p)
 			}
 		}
+		resp.Sessions = a.cfg.AllowSessions
 	case wire.OpRead:
 		p, code := a.find(ctx, req.Pane)
 		if code != "" {
@@ -327,6 +333,15 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		a.audit(req, code)
 	case wire.OpResize:
 		resp.Error = a.resize(ctx, req)
+		a.audit(req, resp.Error)
+	case wire.OpSplit:
+		resp.Pane, resp.Error = a.split(ctx, req)
+		a.auditMade(req, resp)
+	case wire.OpNewSession:
+		resp.Pane, resp.Error = a.newSession(ctx, req)
+		a.auditMade(req, resp)
+	case wire.OpKillPane:
+		resp.Error = a.killMade(ctx, req.Pane)
 		a.audit(req, resp.Error)
 	default:
 		resp.Error = wire.ErrUnknownOp
@@ -421,6 +436,129 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	return ""
 }
 
+// split puts one more pane beside or below a writable one, up to eight in
+// the window. The new pane is answered as listed, exposed or not, so the
+// hub can judge it.
+func (a *Agent) split(ctx context.Context, req wire.Request) (*tmux.Pane, string) {
+	if !wire.ValidDirection(req.Direction) {
+		return nil, wire.ErrBadInput
+	}
+	p, code := a.find(ctx, req.Pane)
+	if code != "" {
+		return nil, code
+	}
+	if p.Mode != tmux.ModeWrite {
+		return nil, wire.ErrReadOnly
+	}
+	panes, err := a.list(ctx)
+	if err != nil {
+		return nil, wire.ErrTmux
+	}
+	n := 0
+	for _, q := range panes {
+		if q.WindowID == p.WindowID {
+			n++
+		}
+	}
+	if n >= wire.MaxPanesPerWindow {
+		return nil, wire.ErrTooMany
+	}
+	id, err := a.tmux.Split(ctx, p.PaneID, req.Direction == "h")
+	if err != nil {
+		return nil, wire.ErrTmux
+	}
+	a.mu.Lock()
+	a.made[id] = time.Now()
+	for k, t := range a.made {
+		if time.Since(t) > undoWindow {
+			delete(a.made, k)
+		}
+	}
+	a.mu.Unlock()
+	return a.listed(ctx, id)
+}
+
+// undoWindow is how long the hub has to kill a pane a split made.
+const undoWindow = 30 * time.Second
+
+// newSession starts a session for a client, when the owner allowed it.
+func (a *Agent) newSession(ctx context.Context, req wire.Request) (*tmux.Pane, string) {
+	if !a.cfg.AllowSessions {
+		return nil, wire.ErrNotAllowed
+	}
+	if !wire.ValidSessionName(req.Name) {
+		return nil, wire.ErrBadInput
+	}
+	if a.tmux.HasSession(ctx, req.Name) {
+		return nil, wire.ErrExists
+	}
+	panes, err := a.list(ctx)
+	if err != nil {
+		return nil, wire.ErrTmux
+	}
+	// Sessions this agent started and that still live count against the cap.
+	alive := map[string]bool{}
+	for _, q := range panes {
+		alive[q.SessionID] = true
+	}
+	a.mu.Lock()
+	n := 0
+	for id := range a.sessions {
+		if !alive[id] {
+			delete(a.sessions, id)
+			continue
+		}
+		n++
+	}
+	a.mu.Unlock()
+	if n >= wire.MaxClientSessions {
+		return nil, wire.ErrTooMany
+	}
+	id, err := a.tmux.NewSession(ctx, req.Name)
+	if err != nil {
+		return nil, wire.ErrTmux
+	}
+	p, code := a.listed(ctx, id)
+	if p != nil {
+		a.mu.Lock()
+		a.sessions[p.SessionID] = true
+		a.made[id] = time.Now()
+		a.mu.Unlock()
+	}
+	return p, code
+}
+
+// listed is a pane as tmux lists it right after it was made.
+func (a *Agent) listed(ctx context.Context, id string) (*tmux.Pane, string) {
+	panes, err := a.list(ctx)
+	if err != nil {
+		return nil, wire.ErrTmux
+	}
+	for _, q := range panes {
+		if q.PaneID == id {
+			a.sameProcess(q)
+			return &q, ""
+		}
+	}
+	return nil, wire.ErrTmux
+}
+
+// killMade closes a pane a split or a new session made moments ago; any
+// other pane is refused, so a kill reaches nothing a person was using.
+func (a *Agent) killMade(ctx context.Context, id string) string {
+	a.mu.Lock()
+	t, ok := a.made[id]
+	delete(a.made, id)
+	a.mu.Unlock()
+	if !ok || time.Since(t) > undoWindow {
+		return wire.ErrNotExposed
+	}
+	if a.tmux.KillPane(ctx, id) != nil {
+		return wire.ErrTmux
+	}
+	return ""
+}
+
 // find returns an exposed pane by id, re-read from tmux for every request.
 func (a *Agent) find(ctx context.Context, paneID string) (tmux.Pane, string) {
 	panes, err := a.list(ctx)
@@ -483,8 +621,9 @@ func (a *Agent) clearAttention(paneID string) {
 
 // audit records requests that touch a pane's input or are refused. The
 // text itself is never recorded, only its length.
-func (a *Agent) audit(req wire.Request, code string) {
+func (a *Agent) audit(req wire.Request, code string, extra ...any) {
 	attrs := []any{"op", req.Op, "actor", req.Actor, "pane", req.Pane}
+	attrs = append(attrs, extra...)
 	if req.Key != "" {
 		attrs = append(attrs, "key", req.Key)
 	}
@@ -493,6 +632,12 @@ func (a *Agent) audit(req wire.Request, code string) {
 	}
 	if req.Mouse != nil {
 		attrs = append(attrs, "mouse", req.Mouse.Button)
+	}
+	if req.Direction != "" {
+		attrs = append(attrs, "direction", req.Direction)
+	}
+	if req.Name != "" {
+		attrs = append(attrs, "name", req.Name)
 	}
 	if req.Op == wire.OpResize {
 		if req.Fit != "" {
@@ -516,4 +661,13 @@ func (a *Agent) audit(req wire.Request, code string) {
 		attrs = append(attrs, "result", code)
 	}
 	a.log.Info("audit", attrs...)
+}
+
+// auditMade is audit with the pane a creation made.
+func (a *Agent) auditMade(req wire.Request, resp wire.Response) {
+	if resp.Pane != nil {
+		a.audit(req, resp.Error, "made", resp.Pane.PaneID)
+		return
+	}
+	a.audit(req, resp.Error)
 }

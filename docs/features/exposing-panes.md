@@ -22,6 +22,9 @@ a pane. tmux resolves it from pane to window to session, so:
 
 - A mark on a session or window covers every pane in it, **including panes
   created later**. A new split in a writable window is writable at once.
+- A pane a client splits off (see [new panes and
+  sessions](new-panes.md)) gets a copy of a mark set on the pane it came
+  from; a mark on the window or session covers it anyway.
 - The most specific mark wins: `--deny` on a pane hides it inside an
   exposed window; `--write` on a pane makes it writable inside a read-only
   session.
@@ -45,6 +48,11 @@ refuses a pane whose process changed under the same pane id.
   the host, and the programs in them reflow; they go back to automatic
   sizing and their old layout when the client leaves. At most one resize
   per second per window, all audited.
+- **Write also allows splitting** a pane into two from a client, where the
+  token's write grant covers the new pane as well. With `muxway agent run
+  --allow-sessions`, a client with a write grant on the name may also
+  **start a session**, which the agent marks writable in the open; the
+  default is off. See [new panes and sessions](new-panes.md).
 - `Escape` is among the keys a client may send, because AI command-line
   tools use it to interrupt. In editors it opens command mode, so a pane
   running an editor is as powerful as a shell.
