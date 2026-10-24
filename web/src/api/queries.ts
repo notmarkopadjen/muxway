@@ -25,6 +25,7 @@ export const keys = {
     ['window', host, session, window] as const,
   panes: ['panes'] as const,
   transcriber: ['transcriber'] as const,
+  admin: ['admin'] as const,
 };
 
 function useVisible(): boolean {

@@ -220,6 +220,11 @@ export function Shell() {
             <button type="button" onClick={() => setHelp(true)} title="help (?)">
               ?
             </button>
+            {me?.admin && (
+              <Link to="/admin" className="mx-header-link" data-testid="open-admin">
+                admin
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => logout().then(() => navigate({ to: '/signin' }))}

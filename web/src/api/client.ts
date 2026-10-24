@@ -52,7 +52,7 @@ export async function api<T>(
   try {
     res = await fetch(path, { ...init, headers, credentials: 'same-origin', cache: 'no-store' });
   } catch (err) {
-    setOnline(false);
+    if ((err as Error).name !== 'AbortError') setOnline(false);
     throw err;
   }
   setOnline(res.status < 500 || res.status === 503);

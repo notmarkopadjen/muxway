@@ -95,6 +95,73 @@ export interface Me {
   read: string[];
   write: string[];
   expires: number;
+  admin?: boolean;
+}
+
+export interface AdminToken {
+  id: string;
+  name: string;
+  read: string[];
+  write: string[];
+  admin: boolean;
+  created: number;
+  expires: number;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  read: string[];
+  write: string[];
+  admin: boolean;
+  created: number;
+  expires: number;
+}
+
+export interface AdminClient {
+  kind: 'session' | 'bearer';
+  id?: string;
+  client: string;
+  principal: string;
+  method: string;
+  addr: string;
+  since: number;
+  seen: number;
+  expires?: number;
+}
+
+export interface Access {
+  allow: string[];
+  deny: string[];
+}
+
+export interface AdminOverview {
+  hub: {
+    version: string;
+    tls: boolean;
+    trust_proxy: boolean;
+    providers: string[];
+    transcriber: boolean;
+    web: boolean;
+    public_url: string;
+    session_ttl: number;
+  };
+  agents: { host: string; online: boolean; paired: number; connected?: number; addr?: string }[];
+  tokens: AdminToken[];
+  users: AdminUser[];
+  clients: AdminClient[];
+  locked: { addr: string; until: number }[];
+  access: Access;
+  you: { id: string; addr: string };
+}
+
+export interface LogRecord {
+  seq: number;
+  at: number;
+  level: string;
+  msg: string;
+  attrs?: Record<string, string>;
 }
 
 export interface AuthMethods {

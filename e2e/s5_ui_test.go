@@ -50,6 +50,7 @@ func TestUI_WebClient(t *testing.T) {
 	e.expose(ts2, "work:0.0")
 	full := e.token("browser", []string{"*"}, []string{"*"})
 	readOnly := e.token("viewer", []string{host + "/*"}, nil)
+	admin := e.adminToken()
 	e.mustCLI("hub", "user", "create", "--dir", e.hubDir, "--email", idp.Account.Email, "--read", "*", "--write", "*")
 
 	// A second hub, reached as localhost so the browser keeps its cookie
@@ -60,7 +61,7 @@ func TestUI_WebClient(t *testing.T) {
 	control := e.startControl(t, ts, a)
 	attack := startAttackPage(t, e.url())
 	runPlaywright(t, e, npx, webDir, os.Getenv("MX_GREP"),
-		"MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_CONTROL="+control, "MX_ATTACK="+attack,
+		"MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_ADMIN_TOKEN="+admin, "MX_CONTROL="+control, "MX_ATTACK="+attack,
 		"MX_HUB2="+e2.url(), "MX_HUB2_TOKEN="+hub2)
 }
 

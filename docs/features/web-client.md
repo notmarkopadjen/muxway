@@ -403,6 +403,14 @@ so neither exists. One hub per page, one sign-in each. On Android the
 app holds a token per hub in its keystore and switches between them; see
 `muxway-android/docs/features/connect.md`.
 
+## Admin
+
+For a principal with the admin grant, **admin** in the header opens
+`/admin`: the hub's log tailing live, tokens and users with *create* and
+*revoke*, connected clients with *end*, and the address lists. Anyone
+else sees no entry, and `/admin` says *not yours to see*. See
+[the admin overview](admin.md).
+
 ## Keyboard
 
 | Key | Does |

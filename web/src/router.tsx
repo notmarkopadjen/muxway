@@ -14,6 +14,7 @@ import { PanesPage } from './pages/Panes';
 import { WindowPage } from './pages/Window';
 import { BoardPage } from './pages/Board';
 import { SignInPage } from './pages/SignIn';
+import { AdminPage } from './pages/Admin';
 import { queryClient } from './query';
 import { keys } from './api/queries';
 
@@ -62,6 +63,12 @@ const board = createRoute({
   beforeLoad: requireSession,
   component: BoardPage,
 });
+const admin = createRoute({
+  getParentRoute: () => root,
+  path: '/admin',
+  beforeLoad: requireSession,
+  component: AdminPage,
+});
 const notFound = createRoute({
   getParentRoute: () => root,
   path: '$',
@@ -73,7 +80,7 @@ const notFound = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: root.addChildren([signIn, panes, pane, window, board, notFound]),
+  routeTree: root.addChildren([signIn, panes, pane, window, board, admin, notFound]),
   // Several panes travel in one splat, comma separated.
   pathParamsAllowedCharacters: [','],
 });
