@@ -161,6 +161,9 @@ The same action on every client, triggered the way the device does it.
 | speak: record a clip, stop it, drop it | `v`, `◉` / `■` / the meter; `Esc` drops | tap `◉` / `■`; back drops | the glasses' own mic |
 | answer from the watch: a key of its pane screen, or a spoken line confirmed there | — | a tap on the watch's pane screen; the phone validates and sends | — |
 | another hub | `H`, `⇄`, the help's *hubs*: a link to its own page and sign-in | the hubs list on the connect screen: *use* | — |
+| the admin page (an admin principal only) | `admin` in the header | Settings → *admin* | — |
+| deny the address of a log line | `deny` on the row | — | — |
+| end a client's session | `end` on the row | `end` on the row | — |
 | theme | `t` | setting | setting |
 | effects | `m` | setting | — |
 | help | `?` | — | — |
@@ -178,6 +181,7 @@ A new action gets a row here before it gets a key anywhere.
 | browser notifications, tab title flash | the browser's own channels |
 | font size for fit (`?` then *font*) | the cell the host is sized by; Android uses its *text* setting |
 | hubs as links (`H`, `⇄`) | a browser keeps a session per origin, so another hub is a link to its own page and sign-in; the list is kept per hub page and carried along only as names and addresses (see `docs/features/web-client.md`, *Several hubs*) |
+| the full admin page (`/admin`): access log, tokens and users with *create* and *revoke*, clients, address lists with *save* and *unlock* | minting a token means typing grant patterns, and a wrong address list shuts the owner out: both want a keyboard and a large screen; the phone has the read side (§3) |
 | keyboard shortcuts as the primary interface | keyboard first |
 
 Feature page: `docs/features/web-client.md`.
@@ -195,6 +199,7 @@ Feature page: `docs/features/web-client.md`.
 | watch and background notifications | the phone's own channels |
 | the watch's pane screen: the pane's tail and a row of answers (`Enter` `Esc` `y` `n` `^C`, speak, phone), every request through the phone | the wrist has no keyboard and holds no token; the phone checks each request against its listing and the key whitelist, and a phone-side setting, off by default, allows writes at all |
 | `FLAG_SECURE` | the platform's screenshot block |
+| the admin section is read and end only: the log tail (last 200, pull to refresh) and the clients with *end* | tokens and address lists are made on the web or with the CLI (§2) |
 
 Feature pages: `muxway-android/docs/features/`.
 

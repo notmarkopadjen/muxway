@@ -21,11 +21,15 @@ const (
 
 type session struct {
 	id      string
+	handle  string // names the session to admins; not the cookie
 	kind    string // "token" or "user"
 	ref     string // the token's or user's id
 	method  string
+	client  string
+	addr    string
 	created time.Time
 	expires time.Time
+	seen    time.Time
 }
 
 type sessions struct {
@@ -38,9 +42,10 @@ func newSessions(ttl time.Duration) *sessions {
 	return &sessions{m: map[string]*session{}, ttl: ttl}
 }
 
-func (s *sessions) create(kind, ref, method string) *session {
+func (s *sessions) create(kind, ref, method, client, addr string) *session {
 	now := time.Now()
-	sess := &session{id: secure.Random(32), kind: kind, ref: ref, method: method, created: now, expires: now.Add(s.ttl)}
+	sess := &session{id: secure.Random(32), handle: secure.Random(6), kind: kind, ref: ref, method: method,
+		client: client, addr: addr, created: now, expires: now.Add(s.ttl), seen: now}
 	s.mu.Lock()
 	for id, old := range s.m {
 		if now.After(old.expires) {
@@ -64,6 +69,41 @@ func (s *sessions) get(id string) (*session, bool) {
 		return nil, false
 	}
 	return sess, true
+}
+
+// touch notes that the session was used, and from where.
+func (s *sessions) touch(id, addr string) {
+	s.mu.Lock()
+	if sess, ok := s.m[id]; ok {
+		sess.seen, sess.addr = time.Now(), addr
+	}
+	s.mu.Unlock()
+}
+
+// dropHandle ends the session an admin named.
+func (s *sessions) dropHandle(handle string) (*session, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, sess := range s.m {
+		if sess.handle == handle {
+			delete(s.m, id)
+			return sess, true
+		}
+	}
+	return nil, false
+}
+
+func (s *sessions) list() []session {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	var out []session
+	for _, sess := range s.m {
+		if now.Before(sess.expires) {
+			out = append(out, *sess)
+		}
+	}
+	return out
 }
 
 func (s *sessions) drop(id string) {

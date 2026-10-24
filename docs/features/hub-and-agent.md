@@ -70,6 +70,25 @@ muxway hub token revoke <id>
 - Writing needs a write grant **and** a read grant **and** a pane marked
   for writing on the host.
 - Default lifetime 30 days.
+- `--admin` gives the token the admin grant (the [admin overview](admin.md)):
+  it may mint tokens, end sessions and change the address lists, so it
+  lives 24 hours unless `--ttl` says otherwise. `muxway hub user create
+  --admin` does the same for a person.
+
+## Address lists
+
+```sh
+muxway hub access list
+muxway hub access allow 198.51.100.0/24 2001:db8::/32
+muxway hub access deny 203.0.113.9
+muxway hub access clear [allow|deny]
+```
+
+The hub refuses, with `403`, every request from an address on the deny
+list, and with a non-empty allow list every address not on it, agents
+included. These commands go over the admin socket, which the lists do not
+cover, so they are the way back in. Admins change the same lists on the
+web; see [the admin overview](admin.md).
 
 ## Security considerations
 

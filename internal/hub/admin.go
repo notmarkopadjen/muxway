@@ -26,6 +26,9 @@ type AdminRequest struct {
 	TTL   time.Duration `json:"ttl,omitempty"`
 	ID    string        `json:"id,omitempty"`
 	Email string        `json:"email,omitempty"`
+	Admin bool          `json:"admin,omitempty"`
+	List  string        `json:"list,omitempty"` // "allow" or "deny"
+	Addrs []string      `json:"addrs,omitempty"`
 }
 
 // AdminResponse answers it.
@@ -38,6 +41,7 @@ type AdminResponse struct {
 	Agents []AgentStatus `json:"agents,omitempty"`
 	User   *User         `json:"user,omitempty"`
 	Users  []User        `json:"users,omitempty"`
+	Access *Access       `json:"access,omitempty"`
 }
 
 // AgentStatus is a paired agent and whether it is connected.
@@ -98,22 +102,10 @@ func (h *Hub) admin(req AdminRequest) AdminResponse {
 		h.log.Info("pairing code issued", "host", req.Host, "valid", ttl)
 		return AdminResponse{Code: code.String()}
 	case "token-create":
-		if req.Name == "" || len(req.Read) == 0 {
-			return AdminResponse{Error: "a token needs a name and at least one read grant"}
-		}
-		if err := validPatterns(append(append([]string{}, req.Read...), req.Write...)); err != nil {
-			return AdminResponse{Error: err.Error()}
-		}
-		ttl := req.TTL
-		if ttl <= 0 {
-			ttl = 30 * 24 * time.Hour
-		}
-		secret, t, err := h.store.createToken(req.Name, req.Read, req.Write, ttl)
+		secret, t, err := h.newToken(req.Name, req.Read, req.Write, req.Admin, req.TTL, "socket")
 		if err != nil {
 			return AdminResponse{Error: err.Error()}
 		}
-		h.log.Info("token created", "token", t.ID, "name", t.Name)
-		t.Hash = ""
 		return AdminResponse{Secret: secret, Token: &t}
 	case "token-list":
 		tokens := h.store.tokens()
@@ -122,46 +114,59 @@ func (h *Hub) admin(req AdminRequest) AdminResponse {
 		}
 		return AdminResponse{Tokens: tokens}
 	case "token-revoke":
-		ok, err := h.store.revokeToken(req.ID)
-		if err != nil {
+		if err := h.dropToken(req.ID, "socket"); errors.Is(err, errNotFound) {
+			return AdminResponse{Error: "no such token"}
+		} else if err != nil {
 			return AdminResponse{Error: err.Error()}
 		}
-		if !ok {
-			return AdminResponse{Error: "no such token"}
-		}
-		h.sessions.dropRef("token", req.ID)
-		h.log.Info("token revoked", "token", req.ID)
 		return AdminResponse{}
 	case "user-create":
-		if len(req.Read) == 0 {
-			return AdminResponse{Error: "a user needs at least one read grant"}
-		}
-		if err := validPatterns(append(append([]string{}, req.Read...), req.Write...)); err != nil {
-			return AdminResponse{Error: err.Error()}
-		}
-		ttl := req.TTL
-		if ttl <= 0 {
-			ttl = 365 * 24 * time.Hour
-		}
-		u, err := h.store.createUser(req.Email, req.Name, req.Read, req.Write, ttl)
+		u, err := h.newUser(req.Email, req.Name, req.Read, req.Write, req.Admin, req.TTL, "socket")
 		if err != nil {
 			return AdminResponse{Error: err.Error()}
 		}
-		h.log.Info("user created", "user", u.ID)
 		return AdminResponse{User: &u}
 	case "user-list":
 		return AdminResponse{Users: h.store.users()}
 	case "user-remove":
-		u, ok, err := h.store.removeUser(req.ID)
+		if err := h.dropUser(req.ID, "socket"); errors.Is(err, errNotFound) {
+			return AdminResponse{Error: "no such user"}
+		} else if err != nil {
+			return AdminResponse{Error: err.Error()}
+		}
+		return AdminResponse{}
+	case "access-list":
+		a := h.store.access()
+		return AdminResponse{Access: &a}
+	case "access-add", "access-clear":
+		a := h.store.access()
+		var list *[]string
+		switch req.List {
+		case "allow":
+			list = &a.Allow
+		case "deny":
+			list = &a.Deny
+		case "":
+			if req.Cmd == "access-clear" {
+				a = Access{}
+				break
+			}
+			fallthrough
+		default:
+			return AdminResponse{Error: "which list? allow or deny"}
+		}
+		if list != nil {
+			if req.Cmd == "access-clear" {
+				*list = nil
+			} else {
+				*list = append(*list, req.Addrs...)
+			}
+		}
+		a, err := h.putAccess(a, "socket")
 		if err != nil {
 			return AdminResponse{Error: err.Error()}
 		}
-		if !ok {
-			return AdminResponse{Error: "no such user"}
-		}
-		h.sessions.dropRef("user", u.ID)
-		h.log.Info("user removed", "user", u.ID)
-		return AdminResponse{}
+		return AdminResponse{Access: &a}
 	case "agent-list":
 		var out []AgentStatus
 		for _, host := range h.store.agents() {

@@ -45,6 +45,9 @@ type Hub struct {
 	limits   *limiter
 	events   *eventLog
 	sessions *sessions
+	logs     *logRingBuf
+	refused  refusals
+	bearers  bearerClients
 
 	mu     sync.Mutex
 	agents map[string]*agentConn
@@ -77,8 +80,10 @@ func New(cfg Config, log *slog.Logger) (*Hub, error) {
 	if cfg.SessionTTL <= 0 {
 		cfg.SessionTTL = 12 * time.Hour
 	}
+	logs := newLogRing()
+	log = slog.New(&ringHandler{next: log.Handler(), ring: logs})
 	return &Hub{cfg: cfg, key: key, store: store, log: log, limits: newLimiter(), events: newEventLog(),
-		sessions: newSessions(cfg.SessionTTL), agents: map[string]*agentConn{}, codes: map[string]*pairCode{}}, nil
+		sessions: newSessions(cfg.SessionTTL), logs: logs, agents: map[string]*agentConn{}, codes: map[string]*pairCode{}}, nil
 }
 
 // PublicKey is the key agents pin.
@@ -148,6 +153,8 @@ func (h *Hub) Serve(ctx context.Context) error {
 
 type agentConn struct {
 	host    string
+	addr    string
+	since   time.Time
 	sess    *secure.Session
 	cancel  context.CancelFunc
 	mu      sync.Mutex

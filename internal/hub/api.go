@@ -53,7 +53,8 @@ func (h *Hub) routes() http.Handler {
 	} else {
 		mux.Handle("/", h.webHandler())
 	}
-	return securityHeaders(cors(mux))
+	h.adminRoutes(mux)
+	return securityHeaders(h.gate(cors(mux)))
 }
 
 // handleRoot stands in for the web client on a hub that does not serve
@@ -162,10 +163,13 @@ func (h *Hub) withPrincipal(next principalHandler) http.HandlerFunc {
 			tried = true
 			if t, found := h.store.lookupToken(secret); found {
 				p, ok = t.principal(), true
+				h.bearers.touch(t.ID, clientType(r), addr)
 			}
 		} else if c, err := r.Cookie(sessionCookie); err == nil && r.Header.Get(clientHeader) != "" {
 			p, ok = h.sessionPrincipal(c.Value)
-			if !ok {
+			if ok {
+				h.sessions.touch(c.Value, addr)
+			} else {
 				// A session the hub does not know is one it ended, or one from
 				// before a restart: 256 random bits are not guessed, so it does
 				// not count, and the cookie is cleared so the browser stops.
@@ -678,7 +682,7 @@ func (h *Hub) handleAgent(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, stop := context.WithCancel(r.Context())
 	defer stop()
-	a := &agentConn{host: host, sess: sess, cancel: stop, pending: map[uint64]chan wire.Response{}}
+	a := &agentConn{host: host, addr: addr, since: time.Now(), sess: sess, cancel: stop, pending: map[uint64]chan wire.Response{}}
 	h.attach(a)
 	h.log.Info("agent connected", "host", host, "addr", addr)
 	err = h.readLoop(ctx, a)

@@ -29,6 +29,7 @@ type Token struct {
 	Hash    string    `json:"hash"`
 	Read    []string  `json:"read"`
 	Write   []string  `json:"write,omitempty"`
+	Admin   bool      `json:"admin,omitempty"`
 	Created time.Time `json:"created"`
 	Expires time.Time `json:"expires"`
 }
@@ -41,6 +42,7 @@ type User struct {
 	Name    string    `json:"name,omitempty"`
 	Read    []string  `json:"read"`
 	Write   []string  `json:"write,omitempty"`
+	Admin   bool      `json:"admin,omitempty"`
 	Created time.Time `json:"created"`
 	Expires time.Time `json:"expires"`
 }
@@ -49,13 +51,15 @@ type stateFile struct {
 	Agents map[string]AgentRecord `json:"agents"`
 	Tokens []Token                `json:"tokens"`
 	Users  []User                 `json:"users,omitempty"`
+	Access Access                 `json:"access"`
 }
 
 // Store is the hub's state on disk: one JSON file, replaced atomically.
 type Store struct {
-	path string
-	mu   sync.RWMutex
-	s    stateFile
+	path  string
+	mu    sync.RWMutex
+	s     stateFile
+	lists accessLists
 }
 
 func openStore(dir string) (*Store, error) {
@@ -72,6 +76,9 @@ func openStore(dir string) (*Store, error) {
 	}
 	if st.s.Agents == nil {
 		st.s.Agents = map[string]AgentRecord{}
+	}
+	if st.s.Access, st.lists, err = parseAccess(st.s.Access); err != nil {
+		return nil, errors.New("hub.json access: " + err.Error())
 	}
 	return st, nil
 }
@@ -130,11 +137,11 @@ func hashToken(secret string) string {
 }
 
 // createToken returns the secret, shown once, and the stored record.
-func (st *Store) createToken(name string, read, write []string, ttl time.Duration) (string, Token, error) {
+func (st *Store) createToken(name string, read, write []string, admin bool, ttl time.Duration) (string, Token, error) {
 	secret := "mxt_" + secure.Random(32)
 	h := hashToken(secret)
 	now := time.Now().UTC()
-	t := Token{ID: h[:8], Name: name, Hash: h, Read: read, Write: write, Created: now, Expires: now.Add(ttl)}
+	t := Token{ID: h[:8], Name: name, Hash: h, Read: read, Write: write, Admin: admin, Created: now, Expires: now.Add(ttl)}
 	st.mu.Lock()
 	defer st.mu.Unlock()
 	st.s.Tokens = append(st.s.Tokens, t)
@@ -198,7 +205,7 @@ func validEmail(s string) bool {
 		!strings.ContainsAny(s, " \t\r\n\"<>,;") && strings.Count(s, "@") == 1
 }
 
-func (st *Store) createUser(email, name string, read, write []string, ttl time.Duration) (User, error) {
+func (st *Store) createUser(email, name string, read, write []string, admin bool, ttl time.Duration) (User, error) {
 	email = normalEmail(email)
 	if !validEmail(email) {
 		return User{}, errors.New("that is not an e-mail address")
@@ -211,7 +218,7 @@ func (st *Store) createUser(email, name string, read, write []string, ttl time.D
 		}
 	}
 	now := time.Now().UTC()
-	u := User{ID: userID(email), Email: email, Name: name, Read: read, Write: write, Created: now, Expires: now.Add(ttl)}
+	u := User{ID: userID(email), Email: email, Name: name, Read: read, Write: write, Admin: admin, Created: now, Expires: now.Add(ttl)}
 	st.s.Users = append(st.s.Users, u)
 	return u, st.save()
 }

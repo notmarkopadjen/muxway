@@ -61,6 +61,30 @@ func (l *limiter) isLocked(addr string) bool {
 	return false
 }
 
+// lockedOut lists the addresses locked out now.
+func (l *limiter) lockedOut() map[string]time.Time {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	out := map[string]time.Time{}
+	now := time.Now()
+	for addr, until := range l.locked {
+		if now.Before(until) {
+			out[addr] = until
+		}
+	}
+	return out
+}
+
+// unlock lifts a lockout and forgets the address's failures.
+func (l *limiter) unlock(addr string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	_, was := l.locked[addr]
+	delete(l.locked, addr)
+	delete(l.fails, addr)
+	return was
+}
+
 // fail records a failed authentication and locks the address out after
 // failLimit failures within failWindow.
 func (l *limiter) fail(addr string) {

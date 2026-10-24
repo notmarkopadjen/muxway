@@ -49,7 +49,7 @@ func (h *Hub) handleAuthToken(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	sess := h.sessions.create("token", t.ID, "token")
+	sess := h.sessions.create("token", t.ID, "token", clientType(r), addr)
 	setSessionCookie(w, sess)
 	h.log.Info("signed in", "method", "token", "token", t.ID, "addr", addr)
 	w.WriteHeader(http.StatusNoContent)
@@ -68,8 +68,12 @@ func (h *Hub) handleMe(w http.ResponseWriter, r *http.Request, p Principal) {
 	if write == nil {
 		write = []string{}
 	}
-	reply(w, map[string]any{"id": p.ID, "name": p.Name, "method": p.Method, "read": p.Read, "write": write,
-		"expires": p.Expires.Unix()})
+	out := map[string]any{"id": p.ID, "name": p.Name, "method": p.Method, "read": p.Read, "write": write,
+		"expires": p.Expires.Unix()}
+	if p.Admin {
+		out["admin"] = true
+	}
+	reply(w, out)
 }
 
 func (h *Hub) handleSignInStart(prov auth.Provider) http.HandlerFunc {
@@ -115,7 +119,7 @@ func (h *Hub) handleSignInFinish(prov auth.Provider) http.HandlerFunc {
 			fail(w, http.StatusForbidden, "no_account")
 			return
 		}
-		sess := h.sessions.create("user", u.ID, prov.Name())
+		sess := h.sessions.create("user", u.ID, prov.Name(), clientType(r), addr)
 		setSessionCookie(w, sess)
 		h.log.Info("signed in", "method", prov.Name(), "user", u.ID, "addr", addr)
 		// Not a redirect: the browser is still on a cross-site navigation

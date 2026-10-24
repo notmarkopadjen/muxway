@@ -29,6 +29,7 @@ hub pair-code   print a one-time code to pair an agent
 hub token       create, list or revoke client tokens
 hub user        create, list or remove people who sign in through a provider
 hub agents      list or remove paired agents
+hub access      list or change the address lists
 agent pair      pair this machine with a hub
 agent run       run the agent
 notify          tell the agent that this pane needs attention
@@ -186,11 +187,12 @@ func runHub(cmd string, args []string) error {
 			var read, write list
 			fs.Var(&read, "read", "pattern the token may read, e.g. alice-laptop/work/* (repeatable)")
 			fs.Var(&write, "write", "pattern the token may type into (repeatable)")
-			ttl := fs.Duration("ttl", 30*24*time.Hour, "lifetime")
+			ttl := fs.Duration("ttl", 0, "lifetime (default 30 days, 24h with --admin)")
+			admin := fs.Bool("admin", false, "may administer the hub: mint tokens, end sessions, change the address lists")
 			if err := fs.Parse(args[1:]); err != nil {
 				return err
 			}
-			resp, err := hub.Admin(*dir, hub.AdminRequest{Cmd: "token-create", Name: *name, Read: read, Write: write, TTL: *ttl})
+			resp, err := hub.Admin(*dir, hub.AdminRequest{Cmd: "token-create", Name: *name, Read: read, Write: write, TTL: *ttl, Admin: *admin})
 			if err != nil {
 				return err
 			}
@@ -207,10 +209,10 @@ func runHub(cmd string, args []string) error {
 				return err
 			}
 			tw := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-			fmt.Fprintln(tw, "ID\tNAME\tREAD\tWRITE\tEXPIRES")
+			fmt.Fprintln(tw, "ID\tNAME\tREAD\tWRITE\tADMIN\tEXPIRES")
 			for _, t := range resp.Tokens {
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", t.ID, t.Name, strings.Join(t.Read, ","),
-					strings.Join(t.Write, ","), t.Expires.Format("2006-01-02"))
+				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", t.ID, t.Name, strings.Join(t.Read, ","),
+					strings.Join(t.Write, ","), yes(t.Admin), t.Expires.Format("2006-01-02"))
 			}
 			return tw.Flush()
 		case "revoke":
@@ -239,10 +241,11 @@ func runHub(cmd string, args []string) error {
 			fs.Var(&read, "read", "pattern the user may read (repeatable)")
 			fs.Var(&write, "write", "pattern the user may type into (repeatable)")
 			ttl := fs.Duration("ttl", 365*24*time.Hour, "how long the account lasts")
+			admin := fs.Bool("admin", false, "may administer the hub")
 			if err := fs.Parse(args[1:]); err != nil {
 				return err
 			}
-			resp, err := hub.Admin(*dir, hub.AdminRequest{Cmd: "user-create", Email: *email, Name: *name, Read: read, Write: write, TTL: *ttl})
+			resp, err := hub.Admin(*dir, hub.AdminRequest{Cmd: "user-create", Email: *email, Name: *name, Read: read, Write: write, TTL: *ttl, Admin: *admin})
 			if err != nil {
 				return err
 			}
@@ -257,10 +260,10 @@ func runHub(cmd string, args []string) error {
 				return err
 			}
 			tw := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-			fmt.Fprintln(tw, "ID\tEMAIL\tREAD\tWRITE\tEXPIRES")
+			fmt.Fprintln(tw, "ID\tEMAIL\tREAD\tWRITE\tADMIN\tEXPIRES")
 			for _, u := range resp.Users {
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", u.ID, u.Email, strings.Join(u.Read, ","),
-					strings.Join(u.Write, ","), u.Expires.Format("2006-01-02"))
+				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", u.ID, u.Email, strings.Join(u.Read, ","),
+					strings.Join(u.Write, ","), yes(u.Admin), u.Expires.Format("2006-01-02"))
 			}
 			return tw.Flush()
 		case "remove":
@@ -294,8 +297,49 @@ func runHub(cmd string, args []string) error {
 			fmt.Printf("%s\t%s\n", a.Host, state)
 		}
 		return nil
+	case "access":
+		// Over the socket, so this works when the lists shut out every client.
+		sub := "list"
+		if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+			sub, args = args[0], args[1:]
+		}
+		if err := fs.Parse(args); err != nil {
+			return err
+		}
+		var req hub.AdminRequest
+		switch sub {
+		case "list":
+			req = hub.AdminRequest{Cmd: "access-list"}
+		case "allow", "deny":
+			if fs.NArg() == 0 {
+				return fmt.Errorf("access %s takes one or more addresses or CIDRs", sub)
+			}
+			req = hub.AdminRequest{Cmd: "access-add", List: sub, Addrs: fs.Args()}
+		case "clear":
+			req = hub.AdminRequest{Cmd: "access-clear", List: fs.Arg(0)}
+		default:
+			return fmt.Errorf("access what? list, allow, deny, clear [allow|deny]")
+		}
+		resp, err := hub.Admin(*dir, req)
+		if err != nil {
+			return err
+		}
+		for _, a := range resp.Access.Allow {
+			fmt.Printf("allow\t%s\n", a)
+		}
+		for _, a := range resp.Access.Deny {
+			fmt.Printf("deny\t%s\n", a)
+		}
+		return nil
 	}
 	return fmt.Errorf("unknown hub command %q", cmd)
+}
+
+func yes(b bool) string {
+	if b {
+		return "yes"
+	}
+	return "-"
 }
 
 // readSecretFile reads a secret kept in a file only its owner can read.

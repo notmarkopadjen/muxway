@@ -98,6 +98,11 @@ and agree a fresh session key per connection; every message after that is
 encrypted and authenticated end to end. A TLS-terminating proxy in front of
 the hub can see client traffic but not the hub-agent channel.
 
+Ahead of all three, a hub may keep address lists that refuse a client
+before any credential is read, and a principal with the admin grant can
+read the hub's log and manage tokens, sessions and the lists; see
+[features/admin.md](features/admin.md).
+
 Details: [features/hub-and-agent.md](features/hub-and-agent.md) and
 [features/exposing-panes.md](features/exposing-panes.md).
 

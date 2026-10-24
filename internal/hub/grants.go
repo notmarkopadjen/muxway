@@ -18,15 +18,16 @@ type Principal struct {
 	Method  string // "token", or the sign-in provider's name
 	Read    []string
 	Write   []string
+	Admin   bool
 	Expires time.Time
 }
 
 func (t Token) principal() Principal {
-	return Principal{ID: t.ID, Name: t.Name, Method: "token", Read: t.Read, Write: t.Write, Expires: t.Expires}
+	return Principal{ID: t.ID, Name: t.Name, Method: "token", Read: t.Read, Write: t.Write, Admin: t.Admin, Expires: t.Expires}
 }
 
 func (u User) principal(method string) Principal {
-	return Principal{ID: u.ID, Name: u.Email, Method: method, Read: u.Read, Write: u.Write, Expires: u.Expires}
+	return Principal{ID: u.ID, Name: u.Email, Method: method, Read: u.Read, Write: u.Write, Admin: u.Admin, Expires: u.Expires}
 }
 
 // A grant pattern is host/session/window.pane with * matching any run of
