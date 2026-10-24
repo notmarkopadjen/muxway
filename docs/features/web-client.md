@@ -34,6 +34,47 @@ the tab title flashes until you come back, and, if you turned them on, a
 browser notification names the pane while the tab is hidden. Typing into
 the pane clears it.
 
+## Fit: the host window follows the browser
+
+A terminal tells tmux its size; the browser does the same when **fit** is
+on (`f`, or the button in the pane header). The pane's *window* on the
+host is resized to the columns and rows that fit the box, and tmux lays
+its panes out inside as your own layout says. Fit is on by default for a
+single pane you may write to, because a resize changes what the person at
+the host sees, and off by default in the window view. Leaving a fitted
+view gives the window back to tmux's automatic sizing. With fit off, the
+pane keeps the host's size and is scaled to the box instead.
+
+![fit](images/web-fit.png)
+
+## The window view
+
+A window row in the list, the `▦` entries in the selector, or `window ▸`
+in a pane header open the **window view**: every pane of the window you
+may read, in tmux's own layout, each scaled to its box. One pane is
+focused (click, or `]` and `[`); the input line and key bar go to it,
+`Enter` opens it alone. Then, in the browser only, never on the host:
+
+- drag a divider to change the split,
+- `+` and `-` to make the focused pane's text bigger or smaller,
+- `x` to hide the focused pane (the bar above brings it back),
+- `0` to return to the host's layout.
+
+The arrangement is remembered per window in your browser, and dropped
+whenever tmux's own layout changes, so the view never shows a stale
+picture. A pane you may not read shows as a gap.
+
+![window](images/web-window.png)
+![window, rearranged](images/web-window-local.png)
+
+## The selector
+
+`p`, or `≡` in the header, opens the selector over any view: type part
+of an address, alias, command or title; panes that need you come first;
+`Enter` jumps. Windows with more than one pane are listed too.
+
+![selector](images/web-selector.png)
+
 ## Keyboard
 
 | Key | Does |
@@ -43,6 +84,10 @@ the pane clears it.
 | `Esc` | back to the panes; or leave the input line |
 | `/` | filter panes |
 | `i` | focus the input line |
+| `p` | selector: go to a pane or window |
+| `f` | fit: the host window follows the box |
+| `]` / `[` | window view: next / previous pane |
+| `x`, `0`, `+`, `-` | window view: hide, host layout, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
 | `t` | next theme: green, amber, paper |
 | `m` | effects on / off |
@@ -87,6 +132,9 @@ and fails if the committed output differs from the sources.
 - Pane content, titles, session and window names and event text are
   rendered as text. The colour renderer turns escape sequences into class
   names and drops everything else. Lint forbids injecting markup.
+- A resize is a write on the host: it needs the write grant and the write
+  mark, is audited with its size, and is limited to one per second per
+  window. Browser arrangements never reach the host.
 - The cookie is `SameSite=Strict` and useless without the client header,
   so a page on another origin can neither read nor use the session. The
   suite proves it from a second origin.

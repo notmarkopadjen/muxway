@@ -1,6 +1,6 @@
 # Feature: windows in the browser: layout, resize and a pane selector
 
-> Status: approved 2026-10-24. Extends the
+> Status: implemented 2026-10-24. Extends the
 > [web client](2026-10-23-web-client.md).
 
 ## 1. Goal
@@ -253,13 +253,41 @@ environment, with every pane titled by the harness.
 
 ---
 
-## Review (after implementation)
+## Review
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+Done against the plan, the security rules and the privacy rules.
+
+- [x] Diff matches the plan, deviations explained here
+- [x] Security rules (AGENTS.md section 2) hold
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Docs and diagrams updated
+
+Deviations:
+
+- The agent refuses a second resize within the second instead of queuing
+  the latest size; the client retries after the second. A **release**
+  (`fit: auto`) is always accepted, so a client that leaves right after a
+  resize can still hand the window back; the suite found that a refused
+  release left the host window at the browser's size.
+- The release is sent with `keepalive` and also on `pagehide`, because a
+  full page navigation runs no React cleanup.
+- `tmux resize-window -A` must run before the manual mark is removed, not
+  after: the command sets the mark itself.
+- The hub's page fallback had to learn the new `/w/` route; flow 37
+  checks it.
+- Boxes are measured with `clientWidth` and `clientHeight`, not the
+  bounding rectangle: during the CRT power-on the page is scaled with a
+  transform, the rectangle reported one pixel of height, and a
+  ResizeObserver never fires for a transform, so every pane sat at the
+  6 px floor. Spec 62 now asserts the font.
+- The dist freshness gate in `scripts/e2e.sh` now builds into a temporary
+  directory and diffs it against `web/dist`, so it also works on an
+  uncommitted tree.
 
 ## Test run
 
-To be linked.
+All passing locally through `scripts/e2e.sh`: 64 Go tests in the run
+directory (security 52 to 55, flows 56 and 57, and the UI harness with 19
+specs, 60 to 66 new), 9 Vitest units including the layout parser, lint,
+format and type checks, and the dist gate. Screenshots from the run are
+in `docs/features/images/`.

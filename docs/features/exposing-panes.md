@@ -40,6 +40,10 @@ refuses a pane whose process changed under the same pane id.
   screen and in scrollback (up to 2000 lines).
 - **Write** is a shell. Anything typed runs as the host's user. Prefer
   exposing single panes for writing over whole sessions.
+- **Write also allows resizing** the pane's window from a client, as a
+  terminal would. The window changes size under you at the host, and the
+  programs in it reflow; it goes back to automatic sizing when the client
+  leaves. At most one resize per second per window, all audited.
 - `Escape` is among the keys a client may send, because AI command-line
   tools use it to interrupt. In editors it opens command mode, so a pane
   running an editor is as powerful as a shell.
