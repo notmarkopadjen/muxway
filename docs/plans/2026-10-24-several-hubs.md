@@ -122,3 +122,26 @@ the UI test's second hub is the harness's second loopback hub.
    test; it gains a second hub); `web/dist`; docs.
 3. Android: store, vault, list screen, switch; tests; docs; version.
 4. Run, record, push.
+
+## Test run
+
+[Run 20261024-220850-c3f8cd7](https://github.com/notmarkopadjen/muxway/issues/89): passed, 89 tests, with spec 94's five tests
+(a hub address must be an https origin, nothing else stored; a carried
+list drops what is ill shaped and leaves the address bar; going to the
+second hub carries neither cookie nor referrer, and its page has no
+session of the first; two hubs: go, sign in there, come back, a session
+each; rename and remove, and the help's *hubs* button) against the
+harness's second hub, reached as `localhost` so the browser keeps the two
+hubs' cookies apart, with the screenshot `94-hubs`; and `hubs.test.ts`
+(the shape check, this page first, the fragment round trip). The same
+tests passed before the rebase onto the one-view work as
+[Run 20261024-220028-3b532c7](https://github.com/notmarkopadjen/muxway/issues/88).
+Android:
+[Run 20261024-220721-991c24d](https://github.com/notmarkopadjen/muxway-android/issues/18):
+passed, 106 tests, at `991c24d` (0.7.7 (19)), with `HubsTest` (the list's
+round trip, what is dropped, names from the host, fresh ids, the legacy
+id); no device was attached, so the on-device flow test was not run. A
+first run of the same commit
+([#17](https://github.com/notmarkopadjen/muxway-android/issues/17)) lost
+`aDeadServerIsOffline` to the core suite running on the same loopback at
+the same time.
