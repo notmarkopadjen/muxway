@@ -93,3 +93,43 @@ export interface Arrangement {
 export function fresh(layout: string): Arrangement {
   return { layout, fractions: {}, hidden: [], scale: {} };
 }
+
+// tmux's checksum over a layout body: a rotating 16-bit sum.
+export function checksum(body: string): string {
+  let c = 0;
+  for (let i = 0; i < body.length; i++) {
+    c = ((c >> 1) + ((c & 1) << 15)) & 0xffff;
+    c = (c + body.charCodeAt(i)) & 0xffff;
+  }
+  return c.toString(16).padStart(4, '0');
+}
+
+// The host's tree with the browser's fractions, as a tmux layout string
+// the host scales to the window's size: only the proportions matter, so
+// each split hands its children a thousand units to share.
+export function layoutFor(node: Node, arr: Arrangement): string {
+  const cell = (n: Node, path: string, w: number, h: number): string => {
+    if (n.kind === 'pane') return `${w}x${h},0,0,${n.id.slice(1)}`;
+    const f = arr.fractions[path] ?? fractions(n);
+    const parts = n.children.map((c, i) => {
+      const size = Math.max(1, Math.round(f[i] * 1000));
+      return n.kind === 'h' ? cell(c, `${path}.${i}`, size, h) : cell(c, `${path}.${i}`, w, size);
+    });
+    const open = n.kind === 'h' ? '{' : '[';
+    const close = n.kind === 'h' ? '}' : ']';
+    return `${w}x${h},0,0${open}${parts.join(',')}${close}`;
+  };
+  const body = cell(node, '0', 1000, 1000);
+  return `${checksum(body)},${body}`;
+}
+
+// Whether two layouts have the same splits and panes, sizes aside.
+export function sameShape(a: Node, b: Node): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'pane' || b.kind === 'pane')
+    return a.kind === 'pane' && b.kind === 'pane' && a.id === b.id;
+  return (
+    a.children.length === b.children.length &&
+    a.children.every((c, i) => sameShape(c, b.children[i]))
+  );
+}

@@ -21,6 +21,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"sync"
 	"time"
 
@@ -342,6 +344,30 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	if req.Scope != "" && req.Scope != "pane" && req.Scope != "window" {
 		return wire.ErrBadInput
 	}
+	// A layout names exactly the window's panes, or it is refused.
+	if req.Layout != "" {
+		if req.Scope != "window" || len(req.Layout) > wire.MaxLayoutBytes {
+			return wire.ErrBadInput
+		}
+		ids, err := tmux.LayoutPanes(req.Layout)
+		if err != nil {
+			return wire.ErrBadInput
+		}
+		panes, err := a.list(ctx)
+		if err != nil {
+			return wire.ErrTmux
+		}
+		var mine []string
+		for _, q := range panes {
+			if q.WindowID == p.WindowID {
+				mine = append(mine, q.PaneID)
+			}
+		}
+		sort.Strings(mine)
+		if !slices.Equal(ids, mine) {
+			return wire.ErrBadInput
+		}
+	}
 	// One resize per second per window; a release is always taken, so a
 	// client leaving right after a resize can still hand the window back.
 	a.mu.Lock()
@@ -374,7 +400,7 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	}
 	var err error
 	if req.Scope == "window" {
-		err = a.tmux.ResizeWindow(ctx, p.PaneID, req.Cols, req.Rows)
+		err = a.tmux.ResizeWindow(ctx, p.PaneID, req.Cols, req.Rows, req.Layout)
 	} else {
 		err = a.tmux.ResizePane(ctx, p.PaneID, req.Cols, req.Rows)
 	}
@@ -461,6 +487,9 @@ func (a *Agent) audit(req wire.Request, code string) {
 			attrs = append(attrs, "cols", req.Cols, "rows", req.Rows)
 			if req.Scope == "window" {
 				attrs = append(attrs, "scope", "window")
+			}
+			if req.Layout != "" {
+				attrs = append(attrs, "layout", true)
 			}
 		}
 	}

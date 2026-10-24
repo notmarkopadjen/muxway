@@ -59,7 +59,13 @@ func TestSec53_ResizeBoundsAndBurst(t *testing.T) {
 	for _, body := range []string{`{"cols":19,"rows":40}`, `{"cols":501,"rows":40}`, `{"cols":100,"rows":4}`, `{"cols":100,"rows":301}`,
 		`{"cols":100}`, `{"rows":30}`, `{}`, `{"fit":"auto","cols":100,"rows":30}`, `{"fit":"big"}`, `{"cols":"100","rows":30}`,
 		`{"cols":100,"rows":30,"x":1}`, `nope`, `{"cols":-100,"rows":-30}`,
-		`{"cols":100,"rows":30,"scope":"session"}`, `{"fit":"auto","scope":"pane"}`} {
+		`{"cols":100,"rows":30,"scope":"session"}`, `{"fit":"auto","scope":"pane"}`,
+		// A layout goes with the window scope only, parses, and names the window's own panes.
+		`{"cols":100,"rows":30,"layout":"a87d,100x30,0,0,0"}`,
+		`{"cols":100,"rows":30,"scope":"pane","layout":"a87d,100x30,0,0,0"}`,
+		`{"cols":100,"rows":30,"scope":"window","layout":"junk"}`,
+		`{"cols":100,"rows":30,"scope":"window","layout":"a87d,100x30,0,0,999"}`,
+		`{"cols":100,"rows":30,"scope":"window","layout":"` + strings.Repeat("1", 3000) + `"}`} {
 		r := e.resize(tok, shell0, body)
 		if r.status != http.StatusBadRequest {
 			t.Fatalf("%s: %d %s", body, r.status, r.body)
@@ -265,6 +271,19 @@ func TestFlow58_PaneFitInASplitWindow(t *testing.T) {
 	}
 	if want, err := tmux.ScaleLayout(wide, 90, 25); err != nil || ts.layout("work:0") != want {
 		t.Fatalf("layout after the window resize: %s, want %s (%v)", ts.layout("work:0"), want, err)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	// With a layout, the window takes the client's proportions instead:
+	// the top pane three quarters of the rows.
+	ids, _ := tmux.LayoutPanes(ts.layout("work:0"))
+	sent := fmt.Sprintf("0000,100x40,0,0[100x30,0,0,%s,100x9,0,31,%s]", ids[0][1:], ids[1][1:])
+	r = e.resize(tok, shell0, fmt.Sprintf(`{"cols":90,"rows":25,"scope":"window","layout":"%s"}`, sent))
+	expect(t, r, http.StatusOK, "window resize with a layout")
+	if want, err := tmux.ScaleLayout(sent, 90, 25); err != nil || ts.layout("work:0") != want {
+		t.Fatalf("layout after the resize with a layout: %s, want %s (%v)", ts.layout("work:0"), want, err)
+	}
+	if got := paneSize(r); got != "90x18" {
+		t.Fatalf("pane is %s after the window took the layout", got)
 	}
 	// The release puts the window and its panes back as they were.
 	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")

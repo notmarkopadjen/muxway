@@ -5,6 +5,7 @@ import { useInput, usePane } from '../api/queries';
 import type { Key } from '../api/types';
 import { Badge } from '../components/Badge';
 import { KeyBar } from '../components/KeyBar';
+import { PaneTitle } from '../components/PaneTitle';
 import { useToast } from '../components/Toast';
 import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
@@ -76,12 +77,11 @@ export function PanePage() {
   return (
     <div className="mx-pane" data-testid="pane">
       <div className="mx-pane-head">
-        <span>{address}</span>
+        {p ? <PaneTitle pane={p} /> : <span>{address}</span>}
         {p && (
           <>
             <span className="mx-dim">
-              {p.command}
-              {p.title && p.title !== p.command ? ` · ${p.title}` : ''} ·{' '}
+              {address} ·{' '}
               <span data-testid="pane-size">
                 {p.width}×{p.height}
               </span>

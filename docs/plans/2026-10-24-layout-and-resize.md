@@ -53,7 +53,20 @@ back to tmux's automatic sizing (`set-option -w -u window-size`,
 > does not keep the panes' proportions: a three-pane window fitted to a
 > browser came out with 11 rows on top and 24 below. The agent remembers each
 > window's layout string before its first resize, and a release puts it
-> back with `select-layout` after the window returns to automatic sizing. The agent treats a resize as a **write**: the pane
+> back with `select-layout` after the window returns to automatic sizing.
+>
+> Amended again the same day: keeping the host's proportions was not
+> enough. A divider dragged in the browser with fit on left the host
+> pane at its old share, so a tall box showed a short pane with empty
+> rows below it. A window resize now carries the browser's splits as a
+> `layout`, a tmux layout string whose sizes are weights, and the agent
+> scales it to the new size; the browser keeps its arrangement when the
+> host's layout changes only in sizes (its own doing) and still resets on
+> a change of shape. The hub parses the layout, the agent checks it
+> names exactly the window's panes, and 2048 bytes is the limit. Flow 58
+> and security test 53 cover it on the API, spec 76 in the browser.
+
+The agent treats a resize as a **write**: the pane
 must be marked for writing and the same-process check holds, because a
 resize changes what the person at the host sees. Bounds: 20 to 500
 columns, 5 to 300 rows. At most one resize per second per window is
@@ -239,6 +252,9 @@ environment, with every pane titled by the harness.
 | 64 | tmux splits the window while the view is open | UI | the view resets to the new layout |
 | 65 | Selector: `p`, filter, `Enter` | UI | lands on the pane; `65-selector.png` |
 | 66 | Focus: `]`, `[`, typing goes to the focused pane | UI | text appears in the right pane only |
+| 74 | A pane titled by Claude Code | UI | named *Claude* with its status and mark in the list, header, tab title, selector and window view; the address stays, dimmed |
+| 75 | Double-click and `z` in the window view and on a board | UI | one pane shown, then all again; no navigation |
+| 76 | Fit on in the window view, drag a divider | UI | the host's split follows within a few per cent; the arrangement survives the host's new sizes; leaving restores size and layout |
 | u5 | Layout string parser: nested splits, sizes, pane ids, malformed strings | unit (Vitest) | as specified |
 
 ## 7. Documentation
@@ -266,7 +282,10 @@ environment, with every pane titled by the harness.
 - 2026-10-24: a resize is a write: write grant and write mark required.
 - 2026-10-24: fit defaults on for a single writable pane, off in the
   window view; leaving a fitted view releases the window to tmux.
-- 2026-10-24: browser arrangements never reach the host.
+- 2026-10-24: browser arrangements never reach the host. Reversed the
+  same day for fit: with fit on in the window view, the dividers reach
+  the host as the window's proportions; with fit off they stay in the
+  browser.
 - 2026-10-24: the pane view fits the pane, the window view the window;
   a release restores the layout the window had before the first resize.
 

@@ -6,7 +6,8 @@ import { cellsFor, inner } from './measure';
 // Fit: the host follows the box. Measures the box, debounces, sends a
 // resize, retries once after the host's per-second limit, and releases
 // when fit goes off or the view goes away. Scope "pane" sizes the pane
-// itself, "window" its whole window; the release puts both back.
+// itself, "window" its whole window, laid out as `layout` says when one
+// is given; the release puts both back.
 // The release must survive the page going away, hence keepalive.
 function release(address: string) {
   fetch(`/v1/panes/${address}/resize`, {
@@ -29,6 +30,7 @@ export function useFit(
   enabled: boolean,
   box: React.RefObject<HTMLElement | null>,
   scope: FitScope = 'pane',
+  layout?: string,
 ) {
   const [size, setSize] = useState<{ cols: number; rows: number } | null>(null);
   const last = useRef<string>('');
@@ -39,11 +41,11 @@ export function useFit(
     if (!enabled || !box.current) return;
     const el = box.current;
     const send = (cols: number, rows: number) => {
-      const key = `${cols}x${rows}`;
+      const key = `${cols}x${rows} ${layout ?? ''}`;
       if (key === last.current) return;
       last.current = key;
       fitted.current = true;
-      resizePane(address, { cols, rows, scope })
+      resizePane(address, { cols, rows, scope, layout })
         .then((r) => setSize({ cols: r.pane.width, rows: r.pane.height }))
         .catch((err) => {
           if (err instanceof ApiError && err.status === 429) {
@@ -70,7 +72,7 @@ export function useFit(
       if (timer.current) window.clearTimeout(timer.current);
       last.current = '';
     };
-  }, [address, enabled, box, scope]);
+  }, [address, enabled, box, scope, layout]);
 
   // Release on the way out, if we ever fitted: on unmount, and on a page
   // unload, which runs no React cleanup.

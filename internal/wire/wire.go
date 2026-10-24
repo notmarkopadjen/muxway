@@ -28,6 +28,9 @@ type Request struct {
 	Rows  int     `json:"rows,omitempty"`
 	Fit   string  `json:"fit,omitempty"`   // "auto" gives the window back to tmux
 	Scope string  `json:"scope,omitempty"` // "" or "pane": size the pane; "window": size its window
+	// Layout, with scope "window", is a tmux layout string whose
+	// proportions the window takes at the new size.
+	Layout string `json:"layout,omitempty"`
 }
 
 // Response from agent to hub.
@@ -54,6 +57,7 @@ const (
 	MaxTextBytes     = 4096
 	MinCols, MaxCols = 20, 500
 	MinRows, MaxRows = 5, 300
+	MaxLayoutBytes   = 2048
 )
 
 // ValidSize reports whether a window may be resized to cols by rows.

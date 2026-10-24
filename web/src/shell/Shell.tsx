@@ -3,6 +3,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isOnline, onReachability, onUnauthorized } from '../api/client';
 import { useEventStream } from '../api/events';
+import { usePaneCached } from '../api/queries';
+import { PaneTitle } from '../components/PaneTitle';
+import { label } from '../term/describe';
 import type { Event } from '../api/types';
 import { useSession } from '../auth/session';
 import { GLYPH } from '../components/Badge';
@@ -20,14 +23,19 @@ function useOnline(): boolean {
   return online;
 }
 
-// Flashes the title until the window has focus again.
-function useTitleFlash() {
+// Keeps the tab title, and flashes it until the window has focus again.
+function useTitleFlash(title: string) {
   const timer = useRef<number | null>(null);
+  const base = useRef(title);
   const stop = useCallback(() => {
     if (timer.current) window.clearInterval(timer.current);
     timer.current = null;
-    document.title = 'muxway';
+    document.title = base.current;
   }, []);
+  useEffect(() => {
+    base.current = title;
+    if (!timer.current) document.title = title;
+  }, [title]);
   useEffect(() => {
     window.addEventListener('focus', stop);
     return () => window.removeEventListener('focus', stop);
@@ -37,7 +45,7 @@ function useTitleFlash() {
     let on = false;
     timer.current = window.setInterval(() => {
       on = !on;
-      document.title = on ? '[!] muxway' : 'muxway';
+      document.title = on ? `[!] ${base.current}` : base.current;
     }, 800);
   }, []);
 }
@@ -51,7 +59,11 @@ export function Shell() {
   const [help, setHelp] = useState(false);
   const [palette, setPalette] = useState(false);
   const [resync, setResync] = useState(false);
-  const flash = useTitleFlash();
+  const paneAddress = location.pathname.startsWith('/p/')
+    ? decodeURIComponent(location.pathname.slice(3))
+    : '';
+  const pane = usePaneCached(paneAddress).data?.pane;
+  const flash = useTitleFlash(pane ? `${label(pane)} · muxway` : 'muxway');
   useSettings();
 
   const onEvent = useCallback(
@@ -141,13 +153,18 @@ export function Shell() {
           <Link to="/">┌─ muxway ─┐</Link>
         </span>
         <span className="mx-crumb" data-testid="crumb">
-          {location.pathname.startsWith('/p/')
-            ? decodeURIComponent(location.pathname.slice(3))
-            : location.pathname.startsWith('/w/')
-              ? 'window ' + decodeURIComponent(location.pathname.slice(3))
-              : location.pathname.startsWith('/b/')
-                ? 'board ' + decodeURIComponent(location.pathname.slice(3))
-                : ''}
+          {paneAddress ? (
+            <>
+              {pane && <PaneTitle pane={pane} />}
+              <span className="mx-dim">{pane ? ` ${paneAddress}` : paneAddress}</span>
+            </>
+          ) : location.pathname.startsWith('/w/') ? (
+            'window ' + decodeURIComponent(location.pathname.slice(3))
+          ) : location.pathname.startsWith('/b/') ? (
+            'board ' + decodeURIComponent(location.pathname.slice(3))
+          ) : (
+            ''
+          )}
         </span>
         <span className="mx-spacer" />
         {signedIn && (

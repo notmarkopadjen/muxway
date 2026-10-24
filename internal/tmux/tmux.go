@@ -179,14 +179,17 @@ func (s Server) SendKey(ctx context.Context, paneID, key string) error {
 }
 
 // ResizeWindow sets the size of the window holding paneID and lays its
-// panes out inside in the proportions they had: tmux's own resize does
-// not keep them. The window keeps that size until released.
-func (s Server) ResizeWindow(ctx context.Context, paneID string, cols, rows int) error {
-	before, _ := s.WindowLayout(ctx, paneID)
+// panes out inside in the proportions of layout, or, without one, the
+// proportions they had: tmux's own resize does not keep them. The window
+// keeps that size until released.
+func (s Server) ResizeWindow(ctx context.Context, paneID string, cols, rows int, layout string) error {
+	if layout == "" {
+		layout, _ = s.WindowLayout(ctx, paneID)
+	}
 	if _, err := s.run(ctx, "resize-window", "-t", paneID, "-x", strconv.Itoa(cols), "-y", strconv.Itoa(rows)); err != nil {
 		return err
 	}
-	if scaled, err := ScaleLayout(before, cols, rows); err == nil {
+	if scaled, err := ScaleLayout(layout, cols, rows); err == nil {
 		s.run(ctx, "select-layout", "-t", paneID, scaled)
 	}
 	return nil
@@ -217,7 +220,7 @@ func (s Server) ResizePane(ctx context.Context, paneID string, cols, rows int) e
 	}
 	nw, nh := axis(cols, pw, ww), axis(rows, ph, wh)
 	if nw != ww || nh != wh {
-		if err := s.ResizeWindow(ctx, paneID, nw, nh); err != nil {
+		if err := s.ResizeWindow(ctx, paneID, nw, nh, ""); err != nil {
 			return err
 		}
 	}

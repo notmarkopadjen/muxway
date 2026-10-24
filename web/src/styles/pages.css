@@ -464,7 +464,7 @@
   outline: 1px dashed var(--mx-warn);
   outline-offset: -2px;
 }
-.mx-board .mx-cell-head > span:first-of-type {
+.mx-cell-head .mx-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -6,9 +6,19 @@ import type { Key, PaneContent } from '../api/types';
 import { Badge } from '../components/Badge';
 import { Divider } from '../components/Divider';
 import { KeyBar } from '../components/KeyBar';
+import { PaneTitle } from '../components/PaneTitle';
 import { useToast } from '../components/Toast';
 import { addPane, loadBoard, saveBoard } from '../term/board';
-import { fractions, fresh, leaves, parseLayout, type Arrangement, type Node } from '../term/layout';
+import {
+  fractions,
+  fresh,
+  layoutFor,
+  leaves,
+  parseLayout,
+  sameShape,
+  type Arrangement,
+  type Node,
+} from '../term/layout';
 import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
 
@@ -49,11 +59,11 @@ interface TreeProps {
   burn: boolean;
   setArr: (f: (a: Arrangement) => Arrangement) => void;
   onFocus: (id: string) => void;
-  onOpen: (address: string) => void;
+  onZoom: (id: string) => void;
 }
 
 function Tree(props: TreeProps) {
-  const { node, path, arr, panes, focused, burn, setArr, onFocus, onOpen } = props;
+  const { node, path, arr, panes, focused, burn, setArr, onFocus, onZoom } = props;
   const box = useRef<HTMLDivElement>(null);
   if (node.kind === 'pane') {
     if (arr.hidden.includes(node.id)) return null;
@@ -71,12 +81,13 @@ function Tree(props: TreeProps) {
         className="mx-cell"
         data-testid="cell"
         data-pane={node.id}
-        onDoubleClick={() => onOpen(p.address)}
+        onDoubleClick={() => onZoom(node.id)}
       >
         <div className="mx-cell-head" onClick={() => onFocus(node.id)}>
           <Badge attention={p.attention} />
+          <PaneTitle pane={p} />
           <span className="mx-dim">
-            {p.address} · {p.command} · {p.width}×{p.height}
+            {p.address.split('/').slice(1).join('/')} · {p.width}×{p.height}
           </span>
           <span className="mx-spacer" />
           <button
@@ -173,18 +184,49 @@ export function WindowPage() {
   );
   const [focused, setFocused] = useState<string | null>(null);
   const focus = focused && visible.includes(focused) ? focused : (visible[0] ?? null);
+  // Zoom shows one pane alone, in the browser only; a second time brings
+  // the window back.
+  const [zoomed, setZoomed] = useState<string | null>(null);
+  const zoom = zoomed && visible.includes(zoomed) ? zoomed : null;
+  const zoomLeaf = tree && zoom ? leaves(tree).find((l) => l.id === zoom) : undefined;
+  const toggleZoom = useCallback((id: string) => {
+    setFocused(id);
+    setZoomed((z) => (z === id ? null : id));
+  }, []);
+  const move = (id: string | null) => {
+    setFocused(id);
+    if (zoom) setZoomed(id);
+  };
   const focusedPane = focus ? panes.get(focus)?.pane : undefined;
   const writable = focusedPane?.mode === 'write';
   const input = useInput(focusedPane?.address ?? '');
   const [text, setText] = useState('');
   const area = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(false);
-  useFit(focusedPane?.address ?? '', fit && !!writable, area, 'window');
+  // With fit on the host takes the browser's proportions too.
+  const sent = fit && tree ? layoutFor(tree, arr) : undefined;
+  useFit(focusedPane?.address ?? '', fit && !!writable, area, 'window', sent);
 
   // The host's layout wins: a new layout string resets the arrangement.
+  // Except with fit on, when the host's sizes are the browser's own: a
+  // change of sizes alone keeps the arrangement, a change of shape resets.
   useEffect(() => {
-    if (layout && arr.layout !== layout) setArrState(load(key, layout));
-  }, [layout, key, arr.layout]);
+    if (!layout || arr.layout === layout) return;
+    setArrState((a) => {
+      if (fit && a.layout && tree) {
+        try {
+          if (sameShape(parseLayout(a.layout), tree)) {
+            const next = { ...a, layout };
+            save(key, next);
+            return next;
+          }
+        } catch {
+          /* a layout that never parsed resets below */
+        }
+      }
+      return load(key, layout);
+    });
+  }, [layout, key, arr.layout, fit, tree]);
   const setArr = useCallback(
     (f: (a: Arrangement) => Arrangement) => {
       setArrState((a) => {
@@ -202,9 +244,9 @@ export function WindowPage() {
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
       if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
       const i = focus ? visible.indexOf(focus) : -1;
-      if (ev.key === ']') setFocused(visible[(i + 1) % visible.length] ?? null);
-      else if (ev.key === '[')
-        setFocused(visible[(i - 1 + visible.length) % visible.length] ?? null);
+      if (ev.key === ']') move(visible[(i + 1) % visible.length] ?? null);
+      else if (ev.key === '[') move(visible[(i - 1 + visible.length) % visible.length] ?? null);
+      else if (ev.key === 'z' && focus) toggleZoom(focus);
       else if (ev.key === 'x' && focus) setArr((a) => ({ ...a, hidden: [...a.hidden, focus] }));
       else if (ev.key === '0') setArr(() => fresh(layout));
       else if ((ev.key === '+' || ev.key === '=') && focus) {
@@ -229,7 +271,7 @@ export function WindowPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [visible, focus, focusedPane, layout, navigate, setArr, writable]);
+  }, [visible, focus, focusedPane, layout, navigate, setArr, writable, zoom, toggleZoom]);
 
   const send = async (body: { text: string } | { key: Key }) => {
     if (!focusedPane) return;
@@ -282,6 +324,17 @@ export function WindowPage() {
             fit {fit ? 'on' : 'off'}
           </button>
         )}
+        {zoom && (
+          <button
+            type="button"
+            className="mx-toggle on"
+            onClick={() => setZoomed(null)}
+            title="the whole window again (z, or double-click)"
+            data-testid="unzoom"
+          >
+            zoomed
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setArr(() => fresh(layout))}
@@ -308,7 +361,7 @@ export function WindowPage() {
       <div className="mx-area" ref={area}>
         {tree && (
           <Tree
-            node={tree}
+            node={zoomLeaf ?? tree}
             path="0"
             arr={arr}
             panes={panes}
@@ -316,7 +369,7 @@ export function WindowPage() {
             burn={!data.isPlaceholderData}
             setArr={setArr}
             onFocus={setFocused}
-            onOpen={(a) => navigate({ to: '/p/$', params: { _splat: a } })}
+            onZoom={toggleZoom}
           />
         )}
       </div>

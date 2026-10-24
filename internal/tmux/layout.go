@@ -241,6 +241,28 @@ func (c *layoutCell) scale(w, h, x, y int) error {
 	return nil
 }
 
+// LayoutPanes lists the pane ids a layout names, as "%<n>", sorted.
+func LayoutPanes(layout string) ([]string, error) {
+	root, err := parseLayout(layout)
+	if err != nil {
+		return nil, err
+	}
+	var ids []string
+	var walk func(c *layoutCell)
+	walk = func(c *layoutCell) {
+		if c.kind == 0 {
+			ids = append(ids, "%"+strconv.Itoa(c.id))
+			return
+		}
+		for _, child := range c.children {
+			walk(child)
+		}
+	}
+	walk(root)
+	sort.Strings(ids)
+	return ids, nil
+}
+
 // ScaleLayout is the layout at w×h with every split in its old proportions.
 func ScaleLayout(layout string, w, h int) (string, error) {
 	root, err := parseLayout(layout)

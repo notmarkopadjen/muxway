@@ -7,6 +7,7 @@ import { Badge } from '../components/Badge';
 import { Divider } from '../components/Divider';
 import { KeyBar } from '../components/KeyBar';
 import { Palette } from '../components/Palette';
+import { PaneTitle } from '../components/PaneTitle';
 import { useToast } from '../components/Toast';
 import {
   addPane,
@@ -38,7 +39,7 @@ interface CellProps {
   onFocus: () => void;
   onRemove: () => void;
   onFit: () => void;
-  onOpen: () => void;
+  onZoom: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDrop: () => void;
@@ -76,7 +77,7 @@ function Cell(props: CellProps) {
       className={`mx-cell${over ? ' mx-drop' : ''}`}
       data-testid="cell"
       data-pane={address}
-      onDoubleClick={props.onOpen}
+      onDoubleClick={props.onZoom}
       onDragOver={(e) => {
         if (dragging && dragging !== address) {
           e.preventDefault();
@@ -103,9 +104,7 @@ function Cell(props: CellProps) {
         title="drag onto another cell to swap"
       >
         <Badge attention={p?.attention} />
-        <span>
-          {p ? p.command + (p.title && p.title !== p.command ? ` · ${p.title}` : '') : '…'}
-        </span>
+        {p ? <PaneTitle pane={p} /> : <span>…</span>}
         <span className="mx-dim">
           {short}
           {p ? ` · ${p.width}×${p.height}` : ''}
@@ -161,11 +160,11 @@ interface TreeProps {
   setBoard: (f: (b: Board) => Board) => void;
   setFocused: (id: string) => void;
   setDragging: (id: string | null) => void;
-  open: (id: string) => void;
+  zoom: (id: string) => void;
 }
 
 function Tree(props: TreeProps) {
-  const { node, path, board, focus, dragging, setBoard, setFocused, setDragging, open } = props;
+  const { node, path, board, focus, dragging, setBoard, setFocused, setDragging, zoom } = props;
   const box = useRef<HTMLDivElement>(null);
   if (node.kind === 'pane') {
     const id = node.id;
@@ -180,7 +179,7 @@ function Tree(props: TreeProps) {
         onFocus={() => setFocused(id)}
         onRemove={() => setBoard((b) => removePane(b, id))}
         onFit={() => setBoard((b) => ({ ...b, fit: { ...b.fit, [id]: !b.fit[id] } }))}
-        onOpen={() => open(id)}
+        onZoom={() => zoom(id)}
         onDragStart={() => setDragging(id)}
         onDragEnd={() => setDragging(null)}
         onDrop={() => {
@@ -254,6 +253,18 @@ export function BoardPage() {
     (id: string) => navigate({ to: '/p/$', params: { _splat: id } }),
     [navigate],
   );
+  // Zoom shows one pane alone; a second time brings the board back.
+  const zoom = useCallback(
+    (id: string) => {
+      setFocused(id);
+      setBoard((b) => ({ ...b, zoom: b.zoom === id ? undefined : id }));
+    },
+    [setBoard],
+  );
+  const move = (id: string) => {
+    setFocused(id);
+    if (board.zoom) setBoard((b) => ({ ...b, zoom: id }));
+  };
 
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
@@ -264,8 +275,8 @@ export function BoardPage() {
       const k = ev.key;
       if (k === 'a') setAdding('h');
       else if (k === 'A') setAdding('v');
-      else if (k === ']' && order.length) setFocused(order[(i + 1) % order.length]);
-      else if (k === '[' && order.length) setFocused(order[(i - 1 + order.length) % order.length]);
+      else if (k === ']' && order.length) move(order[(i + 1) % order.length]);
+      else if (k === '[' && order.length) move(order[(i - 1 + order.length) % order.length]);
       else if (k === 'x' && focus) setBoard((b) => removePane(b, focus));
       else if (k === 's' && focus && order.length > 1)
         setBoard((b) => swapPanes(b, focus, order[(i + 1) % order.length]));
@@ -280,8 +291,7 @@ export function BoardPage() {
           ...b,
           scale: { ...b.scale, [focus]: Math.max(0.4, (b.scale[focus] ?? 1) / 1.15) },
         }));
-      else if (k === 'z' && focus)
-        setBoard((b) => ({ ...b, zoom: b.zoom === focus ? undefined : focus }));
+      else if (k === 'z' && focus) zoom(focus);
       else if (k === 'f' && focus && writable)
         setBoard((b) => ({ ...b, fit: { ...b.fit, [focus]: !b.fit[focus] } }));
       else if (k === 'F') {
@@ -300,7 +310,19 @@ export function BoardPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [adding, focus, order, board.fit, focusedPane, writable, navigate, open, setBoard]);
+  }, [
+    adding,
+    focus,
+    order,
+    board.fit,
+    board.zoom,
+    focusedPane,
+    writable,
+    navigate,
+    open,
+    zoom,
+    setBoard,
+  ]);
 
   const send = async (body: { text: string } | { key: Key }) => {
     if (!focus) return;
@@ -346,7 +368,7 @@ export function BoardPage() {
             type="button"
             className="mx-toggle on"
             onClick={() => setBoard((b) => ({ ...b, zoom: undefined }))}
-            title="back to the whole board (z)"
+            title="the whole board again (z, or double-click)"
             data-testid="unzoom"
           >
             zoomed
@@ -367,7 +389,7 @@ export function BoardPage() {
             setBoard={setBoard}
             setFocused={setFocused}
             setDragging={setDragging}
-            open={open}
+            zoom={zoom}
           />
         ) : (
           <div className="mx-cell mx-cell-gap mx-board-empty" data-testid="board-empty">

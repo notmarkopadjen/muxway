@@ -83,6 +83,15 @@ export function usePane(address: string, every = 1_000) {
   });
 }
 
+// The pane as the view showing it has it; fetches nothing itself.
+export function usePaneCached(address: string) {
+  return useQuery({
+    queryKey: keys.pane(address),
+    queryFn: () => api<PaneContent>(`/v1/panes/${address}?ansi=1&lines=400`),
+    enabled: false,
+  });
+}
+
 export function useInput(address: string) {
   const qc = useQueryClient();
   return useMutation({

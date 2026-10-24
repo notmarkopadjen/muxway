@@ -4,6 +4,8 @@ import { useHosts, useTree } from '../api/queries';
 import type { Host, Pane } from '../api/types';
 import { Badge } from '../components/Badge';
 import { Box } from '../components/Box';
+import { PaneTitle } from '../components/PaneTitle';
+import { label } from '../term/describe';
 
 function HostTree({
   host,
@@ -26,7 +28,7 @@ function HostTree({
     const f = filter.toLowerCase();
     return f
       ? all.filter((p) =>
-          `${p.address} ${p.command} ${p.title} ${p.alias ?? ''}`.toLowerCase().includes(f),
+          `${p.address} ${label(p)} ${p.title} ${p.alias ?? ''}`.toLowerCase().includes(f),
         )
       : all;
   }, [tree.data, filter]);
@@ -77,8 +79,7 @@ function HostTree({
                     >
                       <Badge attention={p.attention} />
                       <span className="mx-meta">
-                        {p.command}
-                        {p.title && p.title !== p.command ? ` · ${p.title}` : ''}
+                        <PaneTitle pane={p} />
                       </span>
                       <span className="mx-addr">
                         {p.alias && <span className="mx-dim">@{p.alias} </span>}

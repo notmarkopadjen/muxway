@@ -295,3 +295,33 @@ button:disabled {
     display: none;
   }
 }
+
+/* what a pane is: the program and its own status, with a mark for an AI CLI */
+.mx-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-width: 0;
+  color: var(--mx-ink);
+}
+.mx-title-name {
+  text-shadow: var(--mx-glow-text);
+}
+.mx-title-status {
+  color: var(--mx-ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mx-mark {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.mx-mark-claude {
+  color: var(--mx-claude);
+  filter: drop-shadow(0 0 3px var(--mx-claude));
+}

@@ -18,10 +18,10 @@ const KEYS: [string, string][] = [
   ['f', 'fit: the host pane (window view: the window) follows this box'],
   ['b', 'the main board; from a pane: put it on the board'],
   ['] / [', 'window view and board: next / previous pane'],
-  ['x / 0 / + / -', 'window view: hide, host layout, bigger, smaller'],
+  ['x / z / 0 / + / -', 'window view: hide, zoom (or double-click), host layout, bigger, smaller'],
   [
     'a / A / x / s / z / = / F / w',
-    'board: add beside / below, remove, swap, zoom, equalise, fit all, its window',
+    'board: add beside / below, remove, swap, zoom (or double-click), equalise, fit all, its window',
   ],
   ['i', 'focus the input line'],
   ['g then a letter', 'jump to the first host starting with it'],

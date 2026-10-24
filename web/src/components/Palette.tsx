@@ -4,6 +4,8 @@ import { useAllPanes } from '../api/queries';
 import type { Pane } from '../api/types';
 import { Badge } from './Badge';
 import { Box } from './Box';
+import { PaneTitle } from './PaneTitle';
+import { label } from '../term/describe';
 import { BOARD_NAME, boardNames } from '../term/board';
 
 // The pane selector: every pane, window and board the person may reach,
@@ -14,6 +16,7 @@ interface Row {
   kind: 'pane' | 'window' | 'board';
   label: string;
   meta: string;
+  sort: string;
   pane?: Pane;
   to: () => void;
 }
@@ -46,8 +49,9 @@ export function Palette({
       out.push({
         key: p.address,
         kind: 'pane',
-        label: p.address + (p.alias ? ` @${p.alias}` : ''),
-        meta: [p.command, p.title !== p.command ? p.title : ''].filter(Boolean).join(' · '),
+        label: label(p),
+        meta: p.address + (p.alias ? ` @${p.alias}` : ''),
+        sort: p.address,
         pane: p,
         to: () => (pick ? pick(p) : navigate({ to: '/p/$', params: { _splat: p.address } })),
       });
@@ -61,6 +65,7 @@ export function Palette({
           kind: 'board',
           label: n,
           meta: 'board',
+          sort: n,
           to: () => navigate({ to: '/b/$name', params: { name: n } }),
         });
       // "board <name>" makes a new board.
@@ -71,6 +76,7 @@ export function Palette({
           kind: 'board',
           label: `board ${wanted} (new)`,
           meta: 'board',
+          sort: wanted,
           to: () => navigate({ to: '/b/$name', params: { name: wanted } }),
         });
     }
@@ -82,13 +88,14 @@ export function Palette({
         kind: 'window',
         label: `${wk} (${ps.length} panes)`,
         meta: p.window,
+        sort: wk,
         to: () => navigate({ to: `/w/${p.host}/${p.session}/${p.window_index}` }),
       });
     }
     const rank = (r: Row) => (r.pane?.attention ? 0 : 1);
     return out
-      .filter((r) => !f || `${r.label} ${r.meta}`.toLowerCase().includes(f))
-      .sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label));
+      .filter((r) => !f || `${r.label} ${r.meta} ${r.pane?.title ?? ''}`.toLowerCase().includes(f))
+      .sort((a, b) => rank(a) - rank(b) || a.sort.localeCompare(b.sort));
   }, [panes.data, q, navigate, pick, exclude]);
 
   useEffect(() => setSel(0), [q]);
@@ -132,7 +139,7 @@ export function Palette({
                 ) : (
                   <span className="mx-badge mx-win">{r.kind === 'window' ? '▦' : '▤'}</span>
                 )}
-                <span className="mx-addr">{r.label}</span>
+                <span className="mx-addr">{r.pane ? <PaneTitle pane={r.pane} /> : r.label}</span>
                 <span className="mx-meta">{r.meta}</span>
               </li>
             ))}

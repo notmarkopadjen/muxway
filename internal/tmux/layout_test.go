@@ -1,6 +1,9 @@
 package tmux
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestLayoutRoundTrip(t *testing.T) {
 	// Both strings are tmux's own, checksums included.
@@ -20,6 +23,16 @@ func TestLayoutRoundTrip(t *testing.T) {
 		if _, err := parseLayout(bad); err == nil {
 			t.Fatalf("%q parsed", bad)
 		}
+	}
+}
+
+func TestLayoutPanes(t *testing.T) {
+	ids, err := LayoutPanes("dddb,200x50,0,0{100x50,0,0[100x25,0,0,1,100x24,0,26,3],99x50,101,0,2}")
+	if err != nil || strings.Join(ids, " ") != "%1 %2 %3" {
+		t.Fatalf("%v %v", ids, err)
+	}
+	if _, err := LayoutPanes("junk"); err == nil {
+		t.Fatal("junk parsed")
 	}
 }
 
