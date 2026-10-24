@@ -139,4 +139,8 @@ retaken.
 
 ## Test run
 
-Pending.
+[Run 20261024-174524-614d2d7](https://github.com/notmarkopadjen/muxway/issues/68):
+passed, 78 tests, on the tree committed as `4844796` (the run directory
+is named after the base commit, `614d2d7`, since it ran before the
+commit). Screenshots `62-window`, `63-local`, `76-window-fit` and
+`86-window-glow`; the first three are the feature page's images.
