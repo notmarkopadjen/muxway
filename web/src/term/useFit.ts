@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { resizePane } from '../api/queries';
 import { cellsFor, inner } from './measure';
@@ -7,7 +7,9 @@ import { cellsFor, inner } from './measure';
 // resize, retries once after the host's per-second limit, and releases
 // when fit goes off or the view goes away. Scope "pane" sizes the pane
 // itself, "window" its whole window, laid out as `layout` says when one
-// is given; the release puts both back.
+// is given; the release puts both back. A size already sent is not sent
+// again, so `refit` is there for when another client sized the window
+// since: it sends this one's size once more.
 // The release must survive the page going away, hence keepalive.
 function release(address: string) {
   fetch(`/v1/panes/${address}/resize`, {
@@ -36,6 +38,7 @@ export function useFit(
   const last = useRef<string>('');
   const timer = useRef<number | null>(null);
   const fitted = useRef(false);
+  const again = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!enabled || !box.current) return;
@@ -67,12 +70,18 @@ export function useFit(
     const ro = new ResizeObserver(schedule);
     ro.observe(el);
     schedule();
+    again.current = () => {
+      last.current = '';
+      measure();
+    };
     return () => {
       ro.disconnect();
+      again.current = null;
       if (timer.current) window.clearTimeout(timer.current);
       last.current = '';
     };
   }, [address, enabled, box, scope, layout]);
+  const refit = useCallback(() => again.current?.(), []);
 
   // Release on the way out, if we ever fitted: on unmount, and on a page
   // unload, which runs no React cleanup.
@@ -99,5 +108,5 @@ export function useFit(
     }
   }, [enabled, address]);
 
-  return size;
+  return { size, refit };
 }

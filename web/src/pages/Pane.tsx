@@ -22,18 +22,19 @@ export function PanePage() {
   // Fit is on by default for a pane the person may write to.
   const [fit, setFit] = useState<boolean | null>(null);
   const fitOn = fit ?? writable;
-  const fitted = useFit(address, fitOn && writable, box, 'pane');
+  const { size: fitted, refit } = useFit(address, fitOn && writable, box, 'pane');
 
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       const target = ev.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-      if (ev.key === 'f' && !ev.ctrlKey && !ev.metaKey && !ev.altKey && writable)
-        setFit((f) => !(f ?? writable));
+      if (ev.ctrlKey || ev.metaKey || ev.altKey || !writable) return;
+      if (ev.key === 'f') setFit((f) => !(f ?? writable));
+      else if (ev.key === 'r') refit();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [writable]);
+  }, [writable, refit]);
 
   const send = async (body: { text: string } | { key: Key }) => {
     try {
@@ -98,6 +99,16 @@ export function PanePage() {
               >
                 fit {fitOn ? 'on' : 'off'}
                 {fitOn && fitted ? ` ${fitted.cols}×${fitted.rows}` : ''}
+              </button>
+            )}
+            {writable && fitOn && (
+              <button
+                type="button"
+                onClick={refit}
+                title="fit again: this client's size (r)"
+                data-testid="refit"
+              >
+                ⟳
               </button>
             )}
             {windowPath && (

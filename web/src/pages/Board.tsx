@@ -34,6 +34,7 @@ interface CellProps {
   focused: boolean;
   scale: number;
   fit: boolean;
+  refitTick: number;
   every: number;
   dragging: string | null;
   onFocus: () => void;
@@ -46,12 +47,16 @@ interface CellProps {
 }
 
 function Cell(props: CellProps) {
-  const { address, focused, scale, fit, every, dragging } = props;
+  const { address, focused, scale, fit, refitTick, every, dragging } = props;
   const pane = usePane(address, every);
   const box = useRef<HTMLDivElement>(null);
   const p = pane.data?.pane;
   const writable = p?.mode === 'write';
-  const fitted = useFit(address, fit && writable, box, 'pane');
+  const { size: fitted, refit } = useFit(address, fit && writable, box, 'pane');
+  // The board's r key, counted for the focused cell.
+  useEffect(() => {
+    if (refitTick) refit();
+  }, [refitTick, refit]);
   const [over, setOver] = useState(false);
   const short = address.split('/').slice(1).join('/');
   if (pane.isError) {
@@ -125,6 +130,19 @@ function Cell(props: CellProps) {
             fit{fit && fitted ? ` ${fitted.cols}×${fitted.rows}` : ''}
           </button>
         )}
+        {writable && fit && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              refit();
+            }}
+            title="fit again: this client's size (r)"
+            data-testid="cell-refit"
+          >
+            ⟳
+          </button>
+        )}
         <button
           type="button"
           title="take it off the board (x)"
@@ -157,6 +175,7 @@ interface TreeProps {
   board: Board;
   focus: string | null;
   dragging: string | null;
+  refitTick: number;
   setBoard: (f: (b: Board) => Board) => void;
   setFocused: (id: string) => void;
   setDragging: (id: string | null) => void;
@@ -164,7 +183,8 @@ interface TreeProps {
 }
 
 function Tree(props: TreeProps) {
-  const { node, path, board, focus, dragging, setBoard, setFocused, setDragging, zoom } = props;
+  const { node, path, board, focus, dragging, refitTick, setBoard, setFocused, setDragging, zoom } =
+    props;
   const box = useRef<HTMLDivElement>(null);
   if (node.kind === 'pane') {
     const id = node.id;
@@ -174,6 +194,7 @@ function Tree(props: TreeProps) {
         focused={focus === id}
         scale={board.scale[id] ?? 1}
         fit={board.fit[id] ?? false}
+        refitTick={focus === id ? refitTick : 0}
         every={focus === id ? 1_000 : 2_000}
         dragging={dragging}
         onFocus={() => setFocused(id)}
@@ -241,6 +262,7 @@ export function BoardPage() {
     board.zoom && order.includes(board.zoom) ? { kind: 'pane', id: board.zoom } : board.layout;
   const [adding, setAdding] = useState<'h' | 'v' | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [refitTick, setRefitTick] = useState(0);
   const all = useAllPanes(true);
   const focusedPane = useMemo(
     () => (all.data ?? []).find((p) => p.address === focus),
@@ -294,6 +316,7 @@ export function BoardPage() {
       else if (k === 'z' && focus) zoom(focus);
       else if (k === 'f' && focus && writable)
         setBoard((b) => ({ ...b, fit: { ...b.fit, [focus]: !b.fit[focus] } }));
+      else if (k === 'r' && focus && writable && board.fit[focus]) setRefitTick((n) => n + 1);
       else if (k === 'F') {
         const on = !order.some((id) => board.fit[id]);
         const fit: Record<string, boolean> = {};
@@ -386,6 +409,7 @@ export function BoardPage() {
             board={board}
             focus={focus}
             dragging={dragging}
+            refitTick={refitTick}
             setBoard={setBoard}
             setFocused={setFocused}
             setDragging={setDragging}

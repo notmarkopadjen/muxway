@@ -254,6 +254,7 @@ environment, with every pane titled by the harness.
 | 66 | Focus: `]`, `[`, typing goes to the focused pane | UI | text appears in the right pane only |
 | 74 | A pane titled by Claude Code | UI | named *Claude* with its status and mark in the list, header, tab title, selector and window view; the address stays, dimmed |
 | 75 | Double-click and `z` in the window view and on a board | UI | one pane shown, then all again; no navigation |
+| 77 | Fit on; another client sizes the window; `⟳` and `r` | UI | the window takes this client's size again each time |
 | 76 | Fit on in the window view, drag a divider | UI | the host's split follows within a few per cent; the arrangement survives the host's new sizes; leaving restores size and layout |
 | u5 | Layout string parser: nested splits, sizes, pane ids, malformed strings | unit (Vitest) | as specified |
 

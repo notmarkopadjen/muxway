@@ -71,6 +71,11 @@ Leaving a fitted view gives the window back to tmux's automatic sizing
 and the panes back to the layout they had. With fit off, the pane keeps
 the host's size and is scaled to the box instead.
 
+Several clients can fit the same window, and the last one to send a size
+wins; a client sends its size only when it changes, so after a phone has
+sized the window the browser shows it small. The `⟳` button next to
+fit, or `r`, sends this client's size once more.
+
 ![fit](images/web-fit.png)
 ![fit in the window view, a divider dragged](images/web-window-fit.png)
 
@@ -143,6 +148,7 @@ because several host windows changing at once is a decision for you.
 | `i` | focus the input line |
 | `p` | selector: go to a pane or window |
 | `f` | fit: the host pane (window view: the window) follows the box |
+| `r` | fit again: this client's size, after another client sized the window |
 | `b` | the main board; from a pane: put it on the board first |
 | `a` / `A` | board: add a pane beside / below the focused one |
 | `x` / `s` / `z` / `=` / `F` / `w` | board: remove, swap, zoom, equal shares, fit all, the pane's window |

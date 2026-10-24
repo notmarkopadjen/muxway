@@ -205,7 +205,7 @@ export function WindowPage() {
   const [fit, setFit] = useState(false);
   // With fit on the host takes the browser's proportions too.
   const sent = fit && tree ? layoutFor(tree, arr) : undefined;
-  useFit(focusedPane?.address ?? '', fit && !!writable, area, 'window', sent);
+  const { refit } = useFit(focusedPane?.address ?? '', fit && !!writable, area, 'window', sent);
 
   // The host's layout wins: a new layout string resets the arrangement.
   // Except with fit on, when the host's sizes are the browser's own: a
@@ -262,6 +262,7 @@ export function WindowPage() {
       } else if (ev.key === 'Enter' && focusedPane)
         navigate({ to: '/p/$', params: { _splat: focusedPane.address } });
       else if (ev.key === 'f' && writable) setFit((f) => !f);
+      else if (ev.key === 'r' && fit && writable) refit();
       else if (ev.key === 'b' && focusedPane) {
         saveBoard('main', addPane(loadBoard('main'), focusedPane.address, null, 'h'));
         navigate({ to: '/b/$name', params: { name: 'main' } });
@@ -271,7 +272,19 @@ export function WindowPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [visible, focus, focusedPane, layout, navigate, setArr, writable, zoom, toggleZoom]);
+  }, [
+    visible,
+    focus,
+    focusedPane,
+    layout,
+    navigate,
+    setArr,
+    writable,
+    zoom,
+    toggleZoom,
+    fit,
+    refit,
+  ]);
 
   const send = async (body: { text: string } | { key: Key }) => {
     if (!focusedPane) return;
@@ -322,6 +335,16 @@ export function WindowPage() {
             data-on={fit ? '1' : '0'}
           >
             fit {fit ? 'on' : 'off'}
+          </button>
+        )}
+        {writable && fit && (
+          <button
+            type="button"
+            onClick={refit}
+            title="fit again: this client's size (r)"
+            data-testid="refit"
+          >
+            ⟳
           </button>
         )}
         {zoom && (

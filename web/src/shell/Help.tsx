@@ -16,6 +16,7 @@ const KEYS: [string, string][] = [
   ['p', 'go to a pane or window'],
   ['/', 'filter panes'],
   ['f', 'fit: the host pane (window view: the window) follows this box'],
+  ['r', 'fit again, after another client sized the window'],
   ['b', 'the main board; from a pane: put it on the board'],
   ['] / [', 'window view and board: next / previous pane'],
   ['x / z / 0 / + / -', 'window view: hide, zoom (or double-click), host layout, bigger, smaller'],
