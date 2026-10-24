@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { resizePane } from '../api/queries';
-import { cellsFor } from './measure';
+import { cellsFor, inner } from './measure';
 
-// Fit: the host window follows the box. Measures the box, debounces, sends
-// a resize, retries once after the host's per-second limit, and releases
-// the window when fit goes off or the view goes away.
+// Fit: the host follows the box. Measures the box, debounces, sends a
+// resize, retries once after the host's per-second limit, and releases
+// when fit goes off or the view goes away. Scope "pane" sizes the pane
+// itself, "window" its whole window; the release puts both back.
 // The release must survive the page going away, hence keepalive.
 function release(address: string) {
   fetch(`/v1/panes/${address}/resize`, {
@@ -17,10 +18,17 @@ function release(address: string) {
   }).catch(() => {});
 }
 
+export type FitScope = 'pane' | 'window';
+
+// A window's area holds cells with their own padding and border, which
+// the cells per axis lose; one cell's worth is taken off.
+const CELL_INSET = 14;
+
 export function useFit(
   address: string,
   enabled: boolean,
   box: React.RefObject<HTMLElement | null>,
+  scope: FitScope = 'pane',
 ) {
   const [size, setSize] = useState<{ cols: number; rows: number } | null>(null);
   const last = useRef<string>('');
@@ -35,7 +43,7 @@ export function useFit(
       if (key === last.current) return;
       last.current = key;
       fitted.current = true;
-      resizePane(address, { cols, rows })
+      resizePane(address, { cols, rows, scope })
         .then((r) => setSize({ cols: r.pane.width, rows: r.pane.height }))
         .catch((err) => {
           if (err instanceof ApiError && err.status === 429) {
@@ -45,7 +53,9 @@ export function useFit(
         });
     };
     const measure = () => {
-      const { cols, rows } = cellsFor(el.clientWidth - 18, el.clientHeight - 18);
+      const { w, h } = inner(el);
+      const inset = scope === 'window' ? CELL_INSET : 0;
+      const { cols, rows } = cellsFor(w - inset, h - inset);
       send(Math.min(500, Math.max(20, cols)), Math.min(300, Math.max(5, rows)));
     };
     const schedule = () => {
@@ -60,7 +70,7 @@ export function useFit(
       if (timer.current) window.clearTimeout(timer.current);
       last.current = '';
     };
-  }, [address, enabled, box]);
+  }, [address, enabled, box, scope]);
 
   // Release on the way out, if we ever fitted: on unmount, and on a page
   // unload, which runs no React cleanup.

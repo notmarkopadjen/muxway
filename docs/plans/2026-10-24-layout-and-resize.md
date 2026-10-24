@@ -40,7 +40,17 @@ panes out inside it as the host's own layout says. New agent request
 `resize {pane, cols, rows}` runs `resize-window -t <pane> -x cols -y rows`
 on the pane's window, and `resize {pane, fit: "auto"}` gives the window
 back to tmux's automatic sizing (`set-option -w -u window-size`,
-`resize-window -A`). The agent treats a resize as a **write**: the pane
+`resize-window -A`).
+
+> Amended 2026-10-24 after use: in a window of several panes this left
+> the fitted pane at its share of the browser's size. The pane view now
+> sizes the **pane** (`scope: pane`, the default): on an axis the pane
+> spans its window the window is sized as before; on an axis it shares,
+> `resize-pane -x -y` takes the difference from the neighbours, after
+> growing the window when they would have nothing left. The window view
+> keeps sizing the window (`scope: window`). The agent remembers each
+> window's layout string before its first resize, and a release puts it
+> back with `select-layout` after the window returns to automatic sizing. The agent treats a resize as a **write**: the pane
 must be marked for writing and the same-process check holds, because a
 resize changes what the person at the host sees. Bounds: 20 to 500
 columns, 5 to 300 rows. At most one resize per second per window is
@@ -152,8 +162,11 @@ Body, exactly one of:
 
 ```json
 {"cols": 140, "rows": 32}
+{"cols": 140, "rows": 32, "scope": "window"}
 {"fit": "auto"}
 ```
+
+`scope` is `pane` (default) or `window`; see the amendment above.
 
 Needs the write grant and a pane marked for writing, like input. Answers
 `200` with `{"pane": {...}}` as a listing shows the pane after the
@@ -215,7 +228,8 @@ environment, with every pane titled by the harness.
 | 55 | Hostile hub (test double) sends `resize` for an unexposed and a read-only pane | e2e-security | refused, audited |
 | 56 | Resize a window to 140×32 and back to auto; sizes read from tmux | e2e | `window_width`/`window_height` follow, then return to the terminal's size |
 | 57 | Window endpoint: layout string, two panes with content, ETag and 304 | e2e | as specified |
-| 60 | Browser: fit on, viewport 1200 then 800 px wide | UI | the host window's width changes twice, once per size, within 2 s; `60-fit.png` |
+| 58 | Split window: pane to 60×10, then 120×40, then the window scope to 90×25, then release | e2e | pane exactly as asked, window 60×30 then 120×60, then 90×25; release restores size and layout string |
+| 60 | Browser: fit on, viewport 1200 then 800 px wide, pane in a split window | UI | the pane has the browser's size each time, the window its width; leaving restores size and layout; `60-fit.png` |
 | 61 | Fit off: resize the viewport | UI | no resize request leaves the browser; the pane is scaled |
 | 62 | Window view of a two-pane window | UI | boxes match the layout string's fractions within 2 %; `62-window.png` |
 | 63 | Drag the divider, hide a pane, reset | UI | only the browser changes; the host layout string is unchanged; `63-local.png`; reset restores |
@@ -250,6 +264,8 @@ environment, with every pane titled by the harness.
 - 2026-10-24: fit defaults on for a single writable pane, off in the
   window view; leaving a fitted view releases the window to tmux.
 - 2026-10-24: browser arrangements never reach the host.
+- 2026-10-24: the pane view fits the pane, the window view the window;
+  a release restores the layout the window had before the first resize.
 
 ---
 
@@ -283,6 +299,13 @@ Deviations:
 - The dist freshness gate in `scripts/e2e.sh` now builds into a temporary
   directory and diffs it against `web/dist`, so it also works on an
   uncommitted tree.
+- After the first day of use: fit in the pane view sizes the pane, not
+  its window (`scope`), and a release restores the saved layout. Flow 58
+  covers a split window: a pane sized within the window, one grown
+  beyond it, the window scope, and the release putting the layout string
+  back. Spec 60 now asserts that the pane, not only the window, has the
+  browser's size. Boxes are measured by their computed padding instead
+  of a fixed 18 px.
 
 ## Test run
 
@@ -291,3 +314,6 @@ directory (security 52 to 55, flows 56 and 57, and the UI harness with 19
 specs, 60 to 66 new), 9 Vitest units including the layout parser, lint,
 format and type checks, and the dist gate. Screenshots from the run are
 in `docs/features/images/`.
+
+Amendment run, 2026-10-24: 65 Go tests (flow 58 new, spec 60 rewritten),
+all passing through `scripts/e2e.sh`.

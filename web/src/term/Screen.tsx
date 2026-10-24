@@ -1,5 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { fontFor } from './measure';
+import { fontFor, inner } from './measure';
 import { classes, parse, type Span } from './sgr';
 
 // Renders a pane's content. Lines that were not there a moment ago burn
@@ -65,11 +65,10 @@ export const Screen = memo(function Screen({
       setFont(null);
       return;
     }
-    // Layout sizes, not the bounding rectangle: the CRT power-on scales
-    // the page with a transform, which the rectangle reflects and a
-    // ResizeObserver never reports.
-    const apply = () =>
-      setFont(fontFor(cols, rows, el.clientWidth - 18, el.clientHeight - 18, scale));
+    const apply = () => {
+      const { w, h } = inner(el);
+      setFont(fontFor(cols, rows, w, h, scale));
+    };
     apply();
     const ro = new ResizeObserver(apply);
     ro.observe(el);

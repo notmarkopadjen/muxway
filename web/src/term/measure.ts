@@ -20,6 +20,17 @@ export function measureCell(): { w: number; h: number; px: number } {
   return cell;
 }
 
+// The box's inside, in layout pixels: clientWidth and clientHeight leave
+// the border out and the padding in. Not the bounding rectangle, which the
+// CRT power-on transform scales and a ResizeObserver never reports.
+export function inner(el: HTMLElement): { w: number; h: number } {
+  const cs = getComputedStyle(el);
+  return {
+    w: el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+    h: el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom),
+  };
+}
+
 // How many columns and rows fit in a box at the default font.
 export function cellsFor(boxW: number, boxH: number): { cols: number; rows: number } {
   const c = measureCell();

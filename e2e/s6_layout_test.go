@@ -27,6 +27,10 @@ func (ts *tmuxServer) windowSize(target string) string {
 	return ts.must("display-message", "-p", "-t", target, "#{window_width}x#{window_height}")
 }
 
+func (ts *tmuxServer) layout(target string) string {
+	return ts.must("display-message", "-p", "-t", target, "#{window_layout}")
+}
+
 // 52
 func TestSec52_ResizeNeedsWriteGrantAndWriteMark(t *testing.T) {
 	e, ts, _ := basic(t)
@@ -53,7 +57,8 @@ func TestSec53_ResizeBoundsAndBurst(t *testing.T) {
 	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
 	for _, body := range []string{`{"cols":19,"rows":40}`, `{"cols":501,"rows":40}`, `{"cols":100,"rows":4}`, `{"cols":100,"rows":301}`,
 		`{"cols":100}`, `{"rows":30}`, `{}`, `{"fit":"auto","cols":100,"rows":30}`, `{"fit":"big"}`, `{"cols":"100","rows":30}`,
-		`{"cols":100,"rows":30,"x":1}`, `nope`, `{"cols":-100,"rows":-30}`} {
+		`{"cols":100,"rows":30,"x":1}`, `nope`, `{"cols":-100,"rows":-30}`,
+		`{"cols":100,"rows":30,"scope":"session"}`, `{"fit":"auto","scope":"pane"}`} {
 		r := e.resize(tok, shell0, body)
 		if r.status != http.StatusBadRequest {
 			t.Fatalf("%s: %d %s", body, r.status, r.body)
@@ -149,6 +154,7 @@ func TestSec55_AgentRefusesResizeFromAHostileHub(t *testing.T) {
 			{Op: wire.OpResize, Pane: hidden, Cols: 120, Rows: 40},
 			{Op: wire.OpResize, Pane: readOnly, Fit: "auto"},
 			{Op: wire.OpResize, Pane: "%999", Cols: 120, Rows: 40},
+			{Op: wire.OpResize, Pane: hidden, Cols: 120, Rows: 40, Scope: "session"},
 		} {
 			req.ID = uint64(i + 1)
 			raw, _ := json.Marshal(req)
@@ -168,7 +174,7 @@ func TestSec55_AgentRefusesResizeFromAHostileHub(t *testing.T) {
 	case <-time.After(20 * time.Second):
 		t.Fatal("agent never connected to the fake hub")
 	}
-	want := []string{wire.ErrReadOnly, wire.ErrNotExposed, wire.ErrReadOnly, wire.ErrNotExposed}
+	want := []string{wire.ErrReadOnly, wire.ErrNotExposed, wire.ErrReadOnly, wire.ErrNotExposed, wire.ErrNotExposed}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("agent answered %v, want %v", got, want)
 	}
@@ -176,7 +182,7 @@ func TestSec55_AgentRefusesResizeFromAHostileHub(t *testing.T) {
 		t.Fatal("window changed")
 	}
 	logs, _ := os.ReadFile(filepath.Join(e.logs, "agent-"+host+".log"))
-	if strings.Count(string(logs), "op=resize") < 4 {
+	if strings.Count(string(logs), "op=resize") < 5 {
 		t.Fatalf("resizes not audited:\n%s", logs)
 	}
 }
@@ -205,6 +211,69 @@ func TestFlow56_ResizeAndRelease(t *testing.T) {
 	logs, _ := os.ReadFile(filepath.Join(e.logs, "hub.log"))
 	if !strings.Contains(string(logs), "audit resize") || !strings.Contains(string(logs), "cols=140 rows=32") {
 		t.Fatalf("hub audit:\n%s", logs)
+	}
+}
+
+// 58
+func TestFlow58_PaneFitInASplitWindow(t *testing.T) {
+	e, ts, _ := basic(t)
+	ts.split("work:0.0") // 0.1 below it: the window is 100x30, the panes 100x15 and 100x14
+	e.expose(ts, "work", "--write")
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	layout, size := ts.layout("work:0"), ts.windowSize("work:0")
+	paneSize := func(r resp) string {
+		var v struct {
+			Pane struct {
+				Width, Height int
+			} `json:"pane"`
+		}
+		json.Unmarshal([]byte(r.body), &v)
+		return fmt.Sprintf("%dx%d", v.Pane.Width, v.Pane.Height)
+	}
+	// Narrower and shorter than the pane: the window keeps its height,
+	// the neighbour takes the rows; the width is the window's own.
+	r := e.resize(tok, shell0, `{"cols":60,"rows":10}`)
+	expect(t, r, http.StatusOK, "pane resize")
+	if got := paneSize(r); got != "60x10" {
+		t.Fatalf("pane is %s after 60x10", got)
+	}
+	if got := ts.windowSize("work:0"); got != "60x30" {
+		t.Fatalf("window is %s after 60x10", got)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	// Taller than the window can give: the window grows by the difference.
+	r = e.resize(tok, shell0, `{"cols":120,"rows":40,"scope":"pane"}`)
+	expect(t, r, http.StatusOK, "pane resize beyond the window")
+	if got := paneSize(r); got != "120x40" {
+		t.Fatalf("pane is %s after 120x40", got)
+	}
+	if got := ts.windowSize("work:0"); got != "120x60" {
+		t.Fatalf("window is %s after 120x40", got)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	// The window scope sizes the window, the panes share it as before.
+	r = e.resize(tok, shell0, `{"cols":90,"rows":25,"scope":"window"}`)
+	expect(t, r, http.StatusOK, "window resize")
+	if got := ts.windowSize("work:0"); got != "90x25" {
+		t.Fatalf("window is %s after 90x25", got)
+	}
+	if got := paneSize(r); got == "90x25" {
+		t.Fatalf("the pane took the whole window: %s", got)
+	}
+	// The release puts the window and its panes back as they were.
+	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")
+	if got := ts.windowSize("work:0"); got != size {
+		t.Fatalf("after release the window is %s, before %s", got, size)
+	}
+	if got := ts.layout("work:0"); got != layout {
+		t.Fatalf("after release the layout is %s, before %s", got, layout)
+	}
+	if opt := ts.must("show-options", "-w", "-t", "work:0", "window-size"); opt != "" {
+		t.Fatalf("window-size still set: %s", opt)
+	}
+	logs, _ := os.ReadFile(filepath.Join(e.logs, "agent-"+host+".log"))
+	if !strings.Contains(string(logs), "cols=90 rows=25 scope=window result=ok") {
+		t.Fatalf("agent audit:\n%s", logs)
 	}
 }
 

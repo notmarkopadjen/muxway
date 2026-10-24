@@ -185,15 +185,64 @@ func (s Server) ResizeWindow(ctx context.Context, paneID string, cols, rows int)
 	return err
 }
 
+// ResizePane makes one pane cols × rows. On an axis the pane spans, its
+// window is sized, as for a window alone; on an axis it shares, the
+// neighbours give or take, and the window grows first when they would
+// have nothing left. Nothing shrinks the window below what it has.
+func (s Server) ResizePane(ctx context.Context, paneID string, cols, rows int) error {
+	out, err := s.run(ctx, "display-message", "-p", "-t", paneID,
+		"#{window_width} #{window_height} #{pane_width} #{pane_height}")
+	if err != nil {
+		return err
+	}
+	var ww, wh, pw, ph int
+	if _, err := fmt.Sscan(string(out), &ww, &wh, &pw, &ph); err != nil {
+		return fmt.Errorf("window size: %q", out)
+	}
+	axis := func(want, pane, window int) int {
+		if pane >= window {
+			return want
+		}
+		if want > pane {
+			return window + want - pane
+		}
+		return window
+	}
+	nw, nh := axis(cols, pw, ww), axis(rows, ph, wh)
+	if nw != ww || nh != wh {
+		if err := s.ResizeWindow(ctx, paneID, nw, nh); err != nil {
+			return err
+		}
+	}
+	if pw >= ww && ph >= wh {
+		return nil
+	}
+	_, err = s.run(ctx, "resize-pane", "-t", paneID, "-x", strconv.Itoa(cols), "-y", strconv.Itoa(rows))
+	return err
+}
+
+// WindowLayout is the layout string of the window holding paneID.
+func (s Server) WindowLayout(ctx context.Context, paneID string) (string, error) {
+	out, err := s.run(ctx, "display-message", "-p", "-t", paneID, "#{window_layout}")
+	return strings.TrimSpace(string(out)), err
+}
+
 // ReleaseWindow gives the window holding paneID back to automatic sizing:
 // first to the largest session's size, then the manual mark is removed.
-// The other way round, resize-window would set the mark again.
-func (s Server) ReleaseWindow(ctx context.Context, paneID string) error {
+// The other way round, resize-window would set the mark again. With a
+// layout, the panes are put back as they were; tmux refuses a layout
+// whose panes are not the window's any more, which is then left as is.
+func (s Server) ReleaseWindow(ctx context.Context, paneID, layout string) error {
 	if _, err := s.run(ctx, "resize-window", "-A", "-t", paneID); err != nil {
 		return err
 	}
-	_, err := s.run(ctx, "set-option", "-w", "-u", "-t", paneID, "window-size")
-	return err
+	if _, err := s.run(ctx, "set-option", "-w", "-u", "-t", paneID, "window-size"); err != nil {
+		return err
+	}
+	if layout != "" {
+		s.run(ctx, "select-layout", "-t", paneID, layout)
+	}
+	return nil
 }
 
 // Scope of a target: a session, a window or a pane.

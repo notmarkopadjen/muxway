@@ -65,7 +65,7 @@ export interface WindowContent {
   panes: PaneContent[];
 }
 
-export type Resize = { cols: number; rows: number } | { fit: 'auto' };
+export type Resize = { cols: number; rows: number; scope?: 'pane' | 'window' } | { fit: 'auto' };
 
 export interface Event {
   seq: number;

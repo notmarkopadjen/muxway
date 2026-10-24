@@ -204,7 +204,7 @@ export function WindowPage() {
   const [text, setText] = useState('');
   const area = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(false);
-  useFit(focusedPane?.address ?? '', fit && !!writable, area);
+  useFit(focusedPane?.address ?? '', fit && !!writable, area, 'window');
 
   // The host's layout wins: a new layout string resets the arrangement.
   useEffect(() => {

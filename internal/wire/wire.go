@@ -26,7 +26,8 @@ type Request struct {
 	Key   string  `json:"key,omitempty"`
 	Cols  int     `json:"cols,omitempty"`
 	Rows  int     `json:"rows,omitempty"`
-	Fit   string  `json:"fit,omitempty"` // "auto" gives the window back to tmux
+	Fit   string  `json:"fit,omitempty"`   // "auto" gives the window back to tmux
+	Scope string  `json:"scope,omitempty"` // "" or "pane": size the pane; "window": size its window
 }
 
 // Response from agent to hub.

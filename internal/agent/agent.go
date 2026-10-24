@@ -157,6 +157,7 @@ type Agent struct {
 	seen      map[string]int // pane id -> process id when first seen exposed
 	attention map[string]tmux.Attention
 	resized   map[string]time.Time // window id -> last resize applied
+	layouts   map[string]string    // window id -> layout before its first resize, put back on release
 	sess      *secure.Session      // current connection to the hub, nil while away
 }
 
@@ -170,7 +171,7 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 		return nil, err
 	}
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
-		seen: map[string]int{}, attention: map[string]tmux.Attention{}, resized: map[string]time.Time{}}, nil
+		seen: map[string]int{}, attention: map[string]tmux.Attention{}, resized: map[string]time.Time{}, layouts: map[string]string{}}, nil
 }
 
 // Run keeps a connection to the hub until ctx ends, and listens for
@@ -338,6 +339,9 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	if !release && (req.Fit != "" || !wire.ValidSize(req.Cols, req.Rows)) {
 		return wire.ErrBadInput
 	}
+	if req.Scope != "" && req.Scope != "pane" && req.Scope != "window" {
+		return wire.ErrBadInput
+	}
 	// One resize per second per window; a release is always taken, so a
 	// client leaving right after a resize can still hand the window back.
 	a.mu.Lock()
@@ -347,12 +351,32 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 		return wire.ErrRateLimit
 	}
 	a.resized[p.WindowID] = time.Now()
-	a.mu.Unlock()
-	var err error
+	saved, kept := a.layouts[p.WindowID]
 	if release {
-		err = a.tmux.ReleaseWindow(ctx, p.PaneID)
-	} else {
+		delete(a.layouts, p.WindowID)
+	}
+	a.mu.Unlock()
+	if release {
+		if a.tmux.ReleaseWindow(ctx, p.PaneID, saved) != nil {
+			return wire.ErrTmux
+		}
+		return ""
+	}
+	// The layout before the first resize is what a release puts back.
+	if !kept {
+		if layout, err := a.tmux.WindowLayout(ctx, p.PaneID); err == nil {
+			a.mu.Lock()
+			if _, again := a.layouts[p.WindowID]; !again {
+				a.layouts[p.WindowID] = layout
+			}
+			a.mu.Unlock()
+		}
+	}
+	var err error
+	if req.Scope == "window" {
 		err = a.tmux.ResizeWindow(ctx, p.PaneID, req.Cols, req.Rows)
+	} else {
+		err = a.tmux.ResizePane(ctx, p.PaneID, req.Cols, req.Rows)
 	}
 	if err != nil {
 		return wire.ErrTmux
@@ -435,6 +459,9 @@ func (a *Agent) audit(req wire.Request, code string) {
 			attrs = append(attrs, "fit", req.Fit)
 		} else {
 			attrs = append(attrs, "cols", req.Cols, "rows", req.Rows)
+			if req.Scope == "window" {
+				attrs = append(attrs, "scope", "window")
+			}
 		}
 	}
 	if code == "" {

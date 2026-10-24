@@ -34,16 +34,20 @@ the tab title flashes until you come back, and, if you turned them on, a
 browser notification names the pane while the tab is hidden. Typing into
 the pane clears it.
 
-## Fit: the host window follows the browser
+## Fit: the host follows the browser
 
 A terminal tells tmux its size; the browser does the same when **fit** is
-on (`f`, or the button in the pane header). The pane's *window* on the
-host is resized to the columns and rows that fit the box, and tmux lays
-its panes out inside as your own layout says. Fit is on by default for a
-single pane you may write to, because a resize changes what the person at
-the host sees, and off by default in the window view. Leaving a fitted
-view gives the window back to tmux's automatic sizing. With fit off, the
-pane keeps the host's size and is scaled to the box instead.
+on (`f`, or the button in the header). In the pane view the *pane* on the
+host becomes the columns and rows that fit the box: where it spans its
+window, the window is sized; where it shares the window with neighbours,
+they give or take the difference, and the window grows only when they
+would have nothing left. In the window view, fit sizes the whole
+*window* to the area, so every pane is shown one to one. Fit is on by
+default for a single pane you may write to, because a resize changes what
+the person at the host sees, and off by default in the window view.
+Leaving a fitted view gives the window back to tmux's automatic sizing
+and the panes back to the layout they had. With fit off, the pane keeps
+the host's size and is scaled to the box instead.
 
 ![fit](images/web-fit.png)
 
@@ -85,7 +89,7 @@ of an address, alias, command or title; panes that need you come first;
 | `/` | filter panes |
 | `i` | focus the input line |
 | `p` | selector: go to a pane or window |
-| `f` | fit: the host window follows the box |
+| `f` | fit: the host pane (window view: the window) follows the box |
 | `]` / `[` | window view: next / previous pane |
 | `x`, `0`, `+`, `-` | window view: hide, host layout, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |

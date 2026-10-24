@@ -21,7 +21,7 @@ export function PanePage() {
   // Fit is on by default for a pane the person may write to.
   const [fit, setFit] = useState<boolean | null>(null);
   const fitOn = fit ?? writable;
-  const fitted = useFit(address, fitOn && writable, box);
+  const fitted = useFit(address, fitOn && writable, box, 'pane');
 
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
@@ -92,7 +92,7 @@ export function PanePage() {
                 type="button"
                 className={`mx-toggle${fitOn ? ' on' : ''}`}
                 onClick={() => setFit(!fitOn)}
-                title="fit the host window to this box (f)"
+                title="size the host pane to this box (f)"
                 data-testid="fit"
                 data-on={fitOn ? '1' : '0'}
               >
