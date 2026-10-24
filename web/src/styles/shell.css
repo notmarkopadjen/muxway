@@ -121,6 +121,10 @@ button:disabled {
 .mx-header .mx-who {
   color: var(--mx-ink-dim);
 }
+.mx-header .mx-hub {
+  color: var(--mx-accent);
+  font-size: 12px;
+}
 .mx-header button {
   border-color: transparent;
   padding: 0 6px;
@@ -282,6 +286,62 @@ button:disabled {
   display: flex;
   gap: var(--mx-gap);
   flex-wrap: wrap;
+}
+
+/* the hubs box: one row per hub, this page's own first */
+.mx-hubs {
+  list-style: none;
+  margin: 0 0 var(--mx-gap-2);
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.mx-hubs li {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-gap);
+  min-width: 0;
+}
+.mx-hubs .mx-hub-mark {
+  color: var(--mx-accent);
+  width: 1ch;
+}
+.mx-hubs .mx-hub-name {
+  color: var(--mx-ink);
+  min-width: 8ch;
+  text-align: left;
+  border-color: transparent;
+  padding: 0 4px;
+}
+.mx-hubs input.mx-hub-name {
+  border-color: var(--mx-ink-dim);
+  width: 14ch;
+}
+.mx-hubs .mx-hub-url {
+  flex: 1;
+  color: var(--mx-ink-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mx-hubs a {
+  padding: 0 6px;
+  border: 1px solid var(--mx-ink-dim);
+}
+.mx-hub-add {
+  display: flex;
+  gap: var(--mx-gap);
+  flex-wrap: wrap;
+}
+.mx-hub-add input:first-child {
+  width: 12ch;
+}
+.mx-hub-add input:nth-child(2) {
+  flex: 1;
+  min-width: 180px;
+}
+.mx-hub-note {
+  margin: var(--mx-gap-2) 0 0;
+  font-size: 12px;
 }
 
 .mx-dim {

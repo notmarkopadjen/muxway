@@ -14,6 +14,8 @@ import { GLYPH } from '../components/Badge';
 import { useToast } from '../components/Toast';
 import { cycleTheme, getNotify, toggleMotion, useSettings } from '../settings';
 import { Help } from './Help';
+import { Hubs } from './Hubs';
+import { shownName, useHubs } from '../hubs';
 import { Palette } from '../components/Palette';
 import { addPane, loadBoard, saveBoard } from '../term/board';
 import { changedRecently, noteEvent } from '../term/lens';
@@ -61,6 +63,8 @@ export function Shell() {
   const location = useLocation();
   const [help, setHelp] = useState(false);
   const [palette, setPalette] = useState(false);
+  const [hubsOpen, setHubsOpen] = useState(false);
+  const hubs = useHubs();
   const [resync, setResync] = useState(false);
   const heading = useHeading();
   const flash = useTitleFlash(
@@ -135,6 +139,7 @@ export function Shell() {
       const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
       if (ev.key === 'Escape') {
         if (palette) setPalette(false);
+        else if (hubsOpen) setHubsOpen(false);
         else if (help) setHelp(false);
         else if (typing) (target as HTMLElement).blur();
         else if (location.pathname !== '/') navigate({ to: '/' });
@@ -146,6 +151,9 @@ export function Shell() {
         ev.preventDefault();
       } else if (ev.key === 'p' && signedIn) {
         setPalette(true);
+        ev.preventDefault();
+      } else if (ev.key === 'H') {
+        setHubsOpen((h) => !h);
         ev.preventDefault();
       } else if (ev.key === 'b' && signedIn) {
         // From a pane, b puts the focused one on the main board; from
@@ -170,7 +178,7 @@ export function Shell() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [help, palette, signedIn, location.pathname, navigate, toast, heading.pane]);
+  }, [help, palette, hubsOpen, signedIn, location.pathname, navigate, toast, heading.pane]);
 
   return (
     <>
@@ -178,11 +186,24 @@ export function Shell() {
         <span className="mx-brand">
           <Link to="/">┌─ muxway ─┐</Link>
         </span>
+        {hubs.length > 1 && (
+          <span className="mx-hub" data-testid="hub-here">
+            {shownName(hubs[0])}
+          </span>
+        )}
         <span className="mx-crumb" data-testid="crumb">
           {heading.pane && <PaneTitle pane={heading.pane} />}
           {heading.place && <span className="mx-place">{heading.place}</span>}
         </span>
         <span className="mx-spacer" />
+        <button
+          type="button"
+          onClick={() => setHubsOpen(true)}
+          title="hubs (H)"
+          data-testid="open-hubs"
+        >
+          ⇄
+        </button>
         {signedIn && (
           <>
             <span className="mx-who" data-testid="who">
@@ -224,7 +245,16 @@ export function Shell() {
           <kbd>?</kbd> help · <kbd>t</kbd> theme · <kbd>/</kbd> filter
         </span>
       </footer>
-      {help && <Help onClose={() => setHelp(false)} />}
+      {help && (
+        <Help
+          onClose={() => setHelp(false)}
+          onHubs={() => {
+            setHelp(false);
+            setHubsOpen(true);
+          }}
+        />
+      )}
+      {hubsOpen && <Hubs onClose={() => setHubsOpen(false)} />}
       {palette && <Palette onClose={() => setPalette(false)} />}
     </>
   );

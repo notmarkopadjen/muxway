@@ -76,6 +76,7 @@ type env struct {
 	cert    string
 	key     string
 	addr    string
+	host    string // the name the hub is reached by, when not its address
 	hubDir  string
 	hub     *exec.Cmd
 	hubArgs []string
@@ -84,14 +85,23 @@ type env struct {
 	stt     *stt // the transcriber stand-in, in environments that have one
 }
 
-func newEnv(t *testing.T, hubArgs ...string) *env {
+func newEnv(t *testing.T, hubArgs ...string) *env { return newEnvAs(t, "", hubArgs...) }
+
+// newEnvAs builds a second environment beside a test's first: its logs
+// carry the name, and the hub is reached by that name instead of the
+// address, so a browser keeps the two hubs' cookies apart.
+func newEnvAs(t *testing.T, name string, hubArgs ...string) *env {
 	t.Helper()
 	dir, err := os.MkdirTemp("", "mxw-")
 	if err != nil {
 		t.Fatal(err)
 	}
 	os.Chmod(dir, 0o700)
-	e := &env{t: t, dir: dir, logs: filepath.Join(runDir, "logs", t.Name()), hubDir: filepath.Join(dir, "hub")}
+	logs := t.Name()
+	if name != "" {
+		logs += "-" + name
+	}
+	e := &env{t: t, dir: dir, logs: filepath.Join(runDir, "logs", logs), hubDir: filepath.Join(dir, "hub"), host: name}
 	os.MkdirAll(e.logs, 0o755)
 	e.makeCA()
 	e.addr = freeAddr(t)
@@ -110,7 +120,13 @@ func freeAddr(t *testing.T) string {
 	return ln.Addr().String()
 }
 
-func (e *env) url() string { return "https://" + e.addr }
+func (e *env) url() string {
+	if e.host != "" {
+		_, port, _ := net.SplitHostPort(e.addr)
+		return "https://" + e.host + ":" + port
+	}
+	return "https://" + e.addr
+}
 
 func (e *env) makeCA() {
 	caKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -122,7 +138,7 @@ func (e *env) makeCA() {
 	leafKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	leaf := &x509.Certificate{SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: "127.0.0.1"},
 		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(24 * time.Hour),
-		IPAddresses: []net.IP{net.ParseIP("127.0.0.1")}, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+		IPAddresses: []net.IP{net.ParseIP("127.0.0.1")}, DNSNames: []string{"localhost"}, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
 	leafDER, _ := x509.CreateCertificate(rand.Reader, leaf, caCert, &leafKey.PublicKey, caKey)
 	leafKeyDER, _ := x509.MarshalECPrivateKey(leafKey)
 	e.caPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caDER})

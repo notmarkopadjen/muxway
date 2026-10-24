@@ -52,10 +52,16 @@ func TestUI_WebClient(t *testing.T) {
 	readOnly := e.token("viewer", []string{host + "/*"}, nil)
 	e.mustCLI("hub", "user", "create", "--dir", e.hubDir, "--email", idp.Account.Email, "--read", "*", "--write", "*")
 
+	// A second hub, reached as localhost so the browser keeps its cookie
+	// apart from the first's: the hubs list links to it.
+	e2 := newEnvAs(t, "localhost")
+	hub2 := e2.token("work-browser", []string{"*"}, nil)
+
 	control := e.startControl(t, ts, a)
 	attack := startAttackPage(t, e.url())
 	runPlaywright(t, e, npx, webDir, os.Getenv("MX_GREP"),
-		"MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_CONTROL="+control, "MX_ATTACK="+attack)
+		"MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_CONTROL="+control, "MX_ATTACK="+attack,
+		"MX_HUB2="+e2.url(), "MX_HUB2_TOKEN="+hub2)
 }
 
 // The microphone needs a hub with a transcriber: the stand-in from the

@@ -50,13 +50,14 @@ const KEYS: [string, string][] = [
     'speak: record a clip for the hub to transcribe onto the line; again stops, Esc drops it. The ◉ button: hold and release, or click and click again',
   ],
   ['g then a letter', 'jump to the first host starting with it'],
+  ['H', 'hubs: the other hubs this browser knows, as links; each signs you in on its own page'],
   ['t', 'next theme (green, amber, paper)'],
   ['m', 'effects on / off'],
   ['n', 'browser notifications on / off'],
   ['?', 'this help'],
 ];
 
-export function Help({ onClose }: { onClose: () => void }) {
+export function Help({ onClose, onHubs }: { onClose: () => void; onHubs: () => void }) {
   useSettings();
   return (
     <div className="mx-help" onClick={onClose} data-testid="help">
@@ -82,6 +83,9 @@ export function Help({ onClose }: { onClose: () => void }) {
             </button>
             <button type="button" onClick={() => void toggleNotify()}>
               notifications: {getNotify() ? 'on' : 'off'}
+            </button>
+            <button type="button" onClick={onHubs} data-testid="help-hubs">
+              hubs
             </button>
             <button type="button" onClick={onClose}>
               close

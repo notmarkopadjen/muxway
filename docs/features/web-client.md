@@ -343,6 +343,48 @@ because several host windows changing at once is a decision for you.
 ![board](images/web-board.png)
 ![board, rearranged](images/web-board-arranged.png)
 
+## Several hubs
+
+A hub gathers hosts; a person with a hub at home and one at work has two
+addresses and two sign-ins. The browser remembers the other hubs as
+**links**, nothing more. `H`, the `⇄` button in the header, or *hubs* in
+the help opens the **hubs** box:
+
+```
+┌ hubs ────────────────────────────────────┐
+│ ▸ home   https://hub.example.com   here   │
+│   work   https://work.example.com  [go] × │
+│ name: ______  url: https://______  [add]  │
+└──────────────────────────────────────────┘
+```
+
+![hubs](images/web-hubs.png)
+
+The hub serving the page is the first entry, shown by its host until you
+name it (click the name to rename; `Enter` keeps it). **add** takes a
+name (`a-z`, `0-9`, `-`, up to 32) and an address, which must be an
+`https://` origin, or `http://` to this machine, with nothing after the
+host and no credentials in it; nothing is fetched to check it. **go** is a
+plain navigation to that hub's own page, where that hub signs you in
+itself and sets its own session cookie; with more than one hub known, the
+header shows the current one's name beside the brand. **×** removes a
+link.
+
+The list lives in the browser's storage under the origin of the hub
+whose page you added it on, so each hub's page has the links added
+there. To have the same list on both, leave *carry this list along when
+going* on: **go** then puts the names and addresses in the address's
+fragment (`#hubs=…`), and the other hub's page reads it once into its own
+storage, keeps what is well shaped, and strips it from the address bar.
+That is all that ever travels: no token, no cookie, no referrer.
+
+The decision behind the design, taken on 2026-10-24: hubs stay separate.
+One page talking to two hubs would need that page to hold the other
+hub's credentials; one list mixing several hubs' panes needs the same;
+so neither exists. One hub per page, one sign-in each. On Android the
+app holds a token per hub in its keystore and switches between them; see
+`muxway-android/docs/features/connect.md`.
+
 ## Keyboard
 
 | Key | Does |
@@ -371,6 +413,7 @@ because several host windows changing at once is a decision for you.
 | `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, this pane alone (or `Enter`, double-click), host layout, equal shares, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
 | `t` | next theme: green, amber, paper |
+| `H` | hubs: the other hubs this browser knows, as links; `go` is that hub's own page and sign-in |
 | `?` then `font` | screen font: 11 to 20 px, the cell fit sizes the host by |
 | `m` | effects on / off |
 | `n` | browser notifications on / off (in the help overlay) |
@@ -411,6 +454,14 @@ and fails if the committed output differs from the sources.
   scripts, styles and fonts, no inline code and no other origin;
   `frame-ancestors 'none'`; `Referrer-Policy: no-referrer`;
   `X-Content-Type-Options: nosniff`.
+- Another hub is a link: a name and an `https://` origin (or `http://` to
+  this machine) with no path, query, fragment or credentials, checked
+  before it is stored and again when a list arrives in a fragment, so a
+  `javascript:` or `data:` entry never becomes a link. Going there is a
+  navigation the browser makes with no cookie of this hub (a cookie is per
+  origin), no referrer (`Referrer-Policy: no-referrer`) and no token (the
+  page never has one). The content security policy is unchanged: the
+  page still connects to its own origin alone.
 - A click is sent as a button and a cell, never as bytes; the hub checks
   the cell against the pane's size and the agent refuses a pane whose
   program did not ask for the mouse, so nothing is typed by accident.

@@ -159,6 +159,7 @@ The same action on every client, triggered the way the device does it.
 | a console key from an empty input line | `↑` `↓` `←` `→` `PageUp` `PageDown` `Home` `End` `Tab` | the key row | D-pad |
 | Escape to the pane while typing | `Shift+Esc` | `Esc` in the key row | — |
 | speak: record a clip, stop it, drop it | `v`, `◉` / `■` / the meter; `Esc` drops | tap `◉` / `■`; back drops | the glasses' own mic |
+| another hub | `H`, `⇄`, the help's *hubs*: a link to its own page and sign-in | the hubs list on the connect screen: *use* | — |
 | theme | `t` | setting | setting |
 | effects | `m` | setting | — |
 | help | `?` | — | — |
@@ -175,6 +176,7 @@ A new action gets a row here before it gets a key anywhere.
 | sign-in with an identity provider | a browser has the flow |
 | browser notifications, tab title flash | the browser's own channels |
 | font size for fit (`?` then *font*) | the cell the host is sized by; Android uses its *text* setting |
+| hubs as links (`H`, `⇄`) | a browser keeps a session per origin, so another hub is a link to its own page and sign-in; the list is kept per hub page and carried along only as names and addresses (see `docs/features/web-client.md`, *Several hubs*) |
 | keyboard shortcuts as the primary interface | keyboard first |
 
 Feature page: `docs/features/web-client.md`.
@@ -184,6 +186,7 @@ Feature page: `docs/features/web-client.md`.
 | Feature | Why only here |
 |---|---|
 | connect screen, connect code (QR) | a phone has a camera and no keyboard worth typing a token on |
+| hubs list with a token per hub, one in use | the app holds the tokens itself, in the keystore, so switching needs no second sign-in; a connect code adds a hub |
 | settings screen (*every*, *lines*, *text*, *reflow*, *block screenshots*, *hardware keyboard*, *effects*) | the device's own constraints |
 | swipe between panes, pinch zoom, drag to page a full-screen program | touch |
 | reflow with fit off | small screens |
