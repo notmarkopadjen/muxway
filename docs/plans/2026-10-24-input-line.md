@@ -165,3 +165,33 @@ cat -v` on the throwaway host.
 4. Android: multi-line field, hardware Shift+Enter; an issue for
    completion; docs; version bump.
 5. Run both suites, record, push.
+
+---
+
+## Review (after implementation)
+
+- [x] Diff matches the plan. Deviations: a text with several lines is not
+  kept as a recent shell line (the command row and the completion list
+  show one-line commands); the completion list orders the row's commands
+  first and then the full list, so `/co` lists `/compact`, `/context`,
+  `/config`, `/cost`; Android gives the input line its own `typed`
+  filter and keeps the general `printable` strict for titles, event text
+  and connect codes.
+- [x] Security rules (AGENTS.md section 2) hold: the newline is the one
+  new byte, admitted by the hub and the agent alike, delivered through a
+  tmux buffer; `\r`, `\t`, `ESC` and the C1 range stay refused and the
+  Go suite proves it; the paste marks come from tmux; audit unchanged.
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and the diff
+  read; fixtures synthetic.
+- [x] Docs updated: protocol, guideline §1.4 and §1.6, web-client,
+  Android pane-view; muxway-android#12 opened for completion on the phone.
+
+## Test run
+
+[Run 20261024-175903-1861266](https://github.com/notmarkopadjen/muxway/issues/69): passed, 81 tests, at
+`1861266`, with `TestSec92`, `TestFlow92` and spec 92's four tests and
+its screenshots `92-two-rows` and `92-complete`. Android:
+[Run 20261024-180436-658bca5](https://github.com/notmarkopadjen/muxway-android/issues/13): passed, 87 tests,
+commit `658bca5` (0.7.3 (15)) against core `1861266`, with the JVM
+two-line paste; no device attached, so the flow test's two lines wait
+for the next device run.
