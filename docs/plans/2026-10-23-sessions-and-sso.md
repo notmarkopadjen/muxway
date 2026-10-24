@@ -242,6 +242,12 @@ Deviations:
   taken as is, which the feature page says.
 - The test identity provider lives in `internal/auth/authtest` so the
   unit tests and the end-to-end suite share one implementation.
+- 2026-10-24, after a day of use: an unknown session cookie no longer
+  counts toward the lockout and is cleared. A browser left open across a
+  hub restart kept polling with its old cookie and locked its own address
+  out within seconds, which then refused the sign-in too. Test 30 now
+  presents a stale cookie twelve times and signs in afterwards; spec 50
+  checks that the web client goes to the sign-in page by itself.
 
 ## Test run
 

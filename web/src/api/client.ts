@@ -27,6 +27,15 @@ function setOnline(v: boolean) {
   listeners.forEach((fn) => fn(v));
 }
 
+// Told once per 401 the hub answers, so the app can go to sign-in instead
+// of polling on with a session the hub has forgotten.
+type Unauthorized = () => void;
+const unauthorized = new Set<Unauthorized>();
+export function onUnauthorized(fn: Unauthorized): () => void {
+  unauthorized.add(fn);
+  return () => unauthorized.delete(fn);
+}
+
 const etags = new Map<string, { etag: string; body: string }>();
 
 export async function api<T>(
@@ -56,6 +65,8 @@ export async function api<T>(
     } catch {
       /* not json */
     }
+    if (res.status === 401 && !path.startsWith('/v1/auth/') && path !== '/v1/me')
+      unauthorized.forEach((fn) => fn());
     throw new ApiError(res.status, code);
   }
   if (init.conditional) {

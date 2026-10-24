@@ -134,9 +134,19 @@ func TestSec30_SessionsNeedCookieAndHeaderAndCountFailures(t *testing.T) {
 	expect(t, e.withSession(cookie, "GET", "/v1/me", "", true), http.StatusOK, "cookie and header")
 	expect(t, e.withSession(cookie, "GET", "/v1/me", "", false), http.StatusUnauthorized, "cookie without header")
 	expect(t, e.do("GET", "", "/v1/me", "", "", clientHeader, "e2e"), http.StatusUnauthorized, "header without cookie")
-	expect(t, e.withSession("unknown-session-id", "GET", "/v1/me", "", true), http.StatusUnauthorized, "unknown session")
+	stale := e.withSession("unknown-session-id", "GET", "/v1/me", "", true)
+	expect(t, stale, http.StatusUnauthorized, "unknown session")
+	if !strings.Contains(stale.header.Get("Set-Cookie"), sessionCookie+"=;") || !strings.Contains(stale.header.Get("Set-Cookie"), "Max-Age=0") {
+		t.Fatalf("a stale cookie is not cleared: %q", stale.header.Get("Set-Cookie"))
+	}
 	expect(t, e.withSession(cookie, "POST", "/v1/auth/logout", "", true), http.StatusNoContent, "logout")
 	expect(t, e.withSession(cookie, "GET", "/v1/me", "", true), http.StatusUnauthorized, "after logout")
+	// A forgotten session is not a guess: a browser polling with a cookie
+	// from before a hub restart must not lock its address out.
+	for i := 0; i < 12; i++ {
+		e.withSession(cookie, "GET", "/v1/me", "", true)
+	}
+	expect(t, e.post("", "/v1/auth/token", fmt.Sprintf(`{"token":%q}`, tok)), http.StatusNoContent, "sign in after stale cookies")
 	for _, body := range []string{`{"token":"mxt_wrong"}`, `{"token":""}`, `{}`, `{"token":"x","extra":1}`, `not json`} {
 		r := e.post("", "/v1/auth/token", body)
 		if r.status != http.StatusUnauthorized && r.status != http.StatusBadRequest {
@@ -146,7 +156,7 @@ func TestSec30_SessionsNeedCookieAndHeaderAndCountFailures(t *testing.T) {
 			t.Fatalf("%s: got a session", body)
 		}
 	}
-	// Every refused attempt above counted; a few more lock the address.
+	// Every wrong token above counted; a few more lock the address.
 	for i := 0; i < 10; i++ {
 		e.post("", "/v1/auth/token", `{"token":"mxt_wrong"}`)
 	}

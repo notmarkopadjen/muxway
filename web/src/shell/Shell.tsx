@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { isOnline, onReachability } from '../api/client';
+import { isOnline, onReachability, onUnauthorized } from '../api/client';
 import { useEventStream } from '../api/events';
 import type { Event } from '../api/types';
 import { useSession } from '../auth/session';
@@ -74,6 +75,18 @@ export function Shell() {
     [toast, navigate, flash],
   );
   useEventStream(onEvent, signedIn);
+
+  // The hub forgot the session, after a restart or an expiry: sign in again.
+  const qc = useQueryClient();
+  useEffect(
+    () =>
+      onUnauthorized(() => {
+        if (location.pathname === '/signin') return;
+        qc.clear();
+        navigate({ to: '/signin' });
+      }),
+    [location.pathname, navigate, qc],
+  );
 
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {

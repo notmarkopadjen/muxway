@@ -154,12 +154,19 @@ func (h *Hub) withPrincipal(next principalHandler) http.HandlerFunc {
 				p, ok = t.principal(), true
 			}
 		} else if c, err := r.Cookie(sessionCookie); err == nil && r.Header.Get(clientHeader) != "" {
-			tried = true
 			p, ok = h.sessionPrincipal(c.Value)
+			if !ok {
+				// A session the hub does not know is one it ended, or one from
+				// before a restart: 256 random bits are not guessed, so it does
+				// not count, and the cookie is cleared so the browser stops.
+				clearSessionCookie(w)
+				h.log.Info("stale session", "addr", addr, "path", r.URL.Path)
+			}
 		}
 		if !ok {
 			// Only a presented credential counts toward the lockout: a browser
-			// asking who it is before signing in is not an attack.
+			// asking who it is before signing in, or holding a cookie the hub
+			// has forgotten, is not an attack.
 			if tried {
 				h.limits.fail(addr)
 				h.log.Warn("authentication failed", "addr", addr, "path", r.URL.Path)

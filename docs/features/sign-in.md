@@ -125,7 +125,11 @@ proxy such as Authelia, trusted only from loopback with `--trust-proxy`.
   cross-origin page cannot add.
 - Failed token sign-ins and failed or unknown identities count toward the
   address lockout (ten in ten minutes), so neither tokens nor the
-  provider's directory can be probed through the hub.
+  provider's directory can be probed through the hub. A session cookie the
+  hub no longer knows, after a logout, an expiry or a restart, does not
+  count: its 256 random bits are not guessed, and counting it would lock
+  out every browser that was open across a hub restart. The hub clears
+  such a cookie, and the web client goes to the sign-in page.
 - The client secret is read from a file that must be mode 600 and never
   appears in flags, logs or responses. Session ids, codes and ID tokens
   are never logged; the suite searches the logs for them.
