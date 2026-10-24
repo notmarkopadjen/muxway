@@ -33,6 +33,7 @@ type Config struct {
 	SessionTTL time.Duration
 	Providers  []auth.Provider // ways to sign in besides pasting a token
 	NoWeb      bool            // do not serve the web client
+	STT        STT             // the transcriber spoken clips go to, if any
 }
 
 // Hub is a running hub.

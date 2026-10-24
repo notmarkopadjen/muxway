@@ -28,7 +28,7 @@ func cors(next http.Handler) http.Handler {
 }
 
 func corsPath(p string) bool {
-	for _, base := range []string{"/v1/hosts", "/v1/panes", "/v1/events", "/v1/windows", "/v1/me"} {
+	for _, base := range []string{"/v1/hosts", "/v1/panes", "/v1/events", "/v1/windows", "/v1/me", "/v1/transcribe"} {
 		if p == base || strings.HasPrefix(p, base+"/") {
 			return true
 		}

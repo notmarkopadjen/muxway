@@ -27,6 +27,8 @@ muxway hub serve --listen 127.0.0.1:7600 --public-url https://hub.example.com --
   peer is loopback, so lockouts hit the real client and not the proxy. Use
   it only behind a proxy that sets that header itself.
 - The proxy must pass WebSocket upgrades on `/v1/agent`.
+- `--stt-url` gives the hub a transcriber for spoken clips; see
+  [transcription](transcription.md).
 
 ## Pairing an agent
 

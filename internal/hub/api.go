@@ -41,6 +41,8 @@ func (h *Hub) routes() http.Handler {
 	mux.HandleFunc("GET /v1/hosts/{host}/tree", h.withPrincipal(h.handleTree))
 	mux.HandleFunc("GET /v1/panes", h.withPrincipal(h.handlePanes))
 	mux.HandleFunc("GET /v1/events", h.withPrincipal(h.handleEvents))
+	mux.HandleFunc("GET /v1/transcribe", h.withPrincipal(h.handleTranscribeProbe))
+	mux.HandleFunc("POST /v1/transcribe", h.withPrincipal(h.handleTranscribe))
 	mux.HandleFunc("GET /v1/panes/{host}/{path...}", h.withPrincipal(h.handleRead))
 	mux.HandleFunc("POST /v1/panes/{host}/{path...}", h.withPrincipal(h.handlePost))
 	mux.HandleFunc("GET /v1/windows/{host}/{session}/{window}", h.withPrincipal(h.handleWindow))

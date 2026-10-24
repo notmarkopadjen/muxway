@@ -117,16 +117,33 @@ func runHub(cmd string, args []string) error {
 		label := fs.String("oidc-label", "Sign in", "what the sign-in button says")
 		claim := fs.String("oidc-claim", "email", "ID token claim that carries the e-mail")
 		noWeb := fs.Bool("no-web", false, "do not serve the web client")
+		sttURL := fs.String("stt-url", "", "transcriber for spoken clips: an OpenAI-compatible /v1/audio/transcriptions, e.g. whisper.cpp's server")
+		sttKeyFile := fs.String("stt-key-file", "", "file (mode 600) holding the transcriber's key, if it needs one")
+		sttModel := fs.String("stt-model", "whisper-1", "model name sent to the transcriber")
+		sttPrompt := fs.String("stt-prompt", "", "vocabulary hint sent with every clip: host and project names")
 		if err := fs.Parse(args); err != nil {
 			return err
 		}
 		cfg := hub.Config{Dir: *dir, Listen: *listen, PublicURL: strings.TrimRight(*public, "/"),
 			TLSCert: *cert, TLSKey: *key, TrustProxy: *proxy, SessionTTL: *sessionTTL, NoWeb: *noWeb}
+		if *sttURL != "" {
+			if !strings.HasPrefix(*sttURL, "https://") && !strings.HasPrefix(*sttURL, "http://") {
+				return fmt.Errorf("--stt-url must be an http(s) URL")
+			}
+			cfg.STT = hub.STT{URL: *sttURL, Model: *sttModel, Prompt: *sttPrompt}
+			if *sttKeyFile != "" {
+				key, err := readSecretFile(*sttKeyFile, "--stt-key-file")
+				if err != nil {
+					return err
+				}
+				cfg.STT.Key = key
+			}
+		}
 		if *issuer != "" {
 			if cfg.PublicURL == "" {
 				return fmt.Errorf("--oidc-issuer needs --public-url for the redirect address")
 			}
-			secret, err := readSecretFile(*secretFile)
+			secret, err := readSecretFile(*secretFile, "--oidc-client-secret-file")
 			if err != nil {
 				return err
 			}
@@ -282,9 +299,9 @@ func runHub(cmd string, args []string) error {
 }
 
 // readSecretFile reads a secret kept in a file only its owner can read.
-func readSecretFile(path string) (string, error) {
+func readSecretFile(path, flag string) (string, error) {
 	if path == "" {
-		return "", fmt.Errorf("--oidc-client-secret-file is required with --oidc-issuer")
+		return "", fmt.Errorf("%s is required here", flag)
 	}
 	info, err := os.Stat(path)
 	if err != nil {

@@ -12,6 +12,8 @@ const (
 	lockout      = 10 * time.Minute
 	tokenRate    = 20 // requests per second
 	tokenBurst   = 40
+	clipRate     = 0.2 // spoken clips per second: one every five seconds
+	clipBurst    = 1
 	pairAttempts = 3
 )
 
@@ -87,4 +89,16 @@ func (l *limiter) allow(tokenID string) bool {
 		l.buckets[tokenID] = b
 	}
 	return b.take(tokenRate, tokenBurst)
+}
+
+// allowClip takes one spoken clip from the token's own, slower bucket.
+func (l *limiter) allowClip(tokenID string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	b, ok := l.buckets["clip:"+tokenID]
+	if !ok {
+		b = &bucket{}
+		l.buckets["clip:"+tokenID] = b
+	}
+	return b.take(clipRate, clipBurst)
 }
