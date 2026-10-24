@@ -136,10 +136,9 @@ by side. The page is the Android client's pane view:
   address, its size, its mode and the lens's word; the focused tile has
   the thick border and the bold name, and carries the `fit` button.
 - **Fit** is per tile, with the pane's own scope (see
-  [fit](#fit-the-host-follows-the-browser)). One writable pane opens
-  with fit on; several open with fit off, so no host changes until you
-  say so. `f` toggles the focused tile, `F` every writable tile, `r`
-  sends the size once more.
+  [fit](#fit-the-host-follows-the-browser)). Every writable tile opens
+  with fit on, one or several. `f` toggles the focused tile, `F` every
+  tile, `r` sends the size once more.
 - `]` and `[` focus the next or previous tile, `1` to `4` a tile by
   number; `}` and `{` show the next or previous pane of the strip in the
   focused tile (the phone's swipe); `w` opens the focused pane's window
@@ -155,10 +154,14 @@ is up to. The first is for Claude Code, recognised as [above](#what-a-
 pane-is-called). A pane is **waiting for you** when the listing carries a
 notification; **working** when the last event the hub sent for it was
 `working` (the hook on a submitted prompt) or, while a tile reads it, its
-screen changed in the last ten seconds; **quiet** otherwise. Panes that
-are not Claude's show notifications the same way and never show
-"working". tmux's own activity flag is not used: it is the window's,
-shared by every pane in it.
+screen changed in the last ten seconds; **quiet** otherwise. A change
+this client caused does not count: the first read of a tile, the reflow
+after its own resize, the echo of its own input. On load the client
+reads the hub's recent events, so a pane that was working before the
+page opened shows so at once. Panes that are not Claude's show
+notifications the same way and never show "working". tmux's own
+activity flag is not used: it is the window's, shared by every pane in
+it.
 
 ```mermaid
 stateDiagram-v2

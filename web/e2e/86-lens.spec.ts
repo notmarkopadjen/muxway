@@ -13,6 +13,14 @@ test('86 the lens paints a working Claude pane dim and a waiting one in the atte
     timeout: 10_000,
   });
   await expect(row).not.toHaveAttribute('data-state', /./);
+  // Opening the pane sizes it, and the reflow is this client's doing, not Claude's.
+  await row.click();
+  const tab = page.locator(`[data-testid="tab"][data-address="${SHELL0}"]`);
+  await expect(page.getByTestId('fit')).toHaveText(/fit on \d+×\d+/, { timeout: 5000 });
+  await page.waitForTimeout(1500);
+  await expect(tab).not.toHaveAttribute('data-state', /./);
+  await page.getByTestId('back').click();
+  await expect(page.getByTestId('panes')).toBeVisible();
   // Claude's hook on a submitted prompt: the pane is working.
   await control(request, '/notify', { pane, kind: 'working', text: '' });
   await expect(row).toHaveAttribute('data-state', 'working', { timeout: 10_000 });
@@ -23,9 +31,11 @@ test('86 the lens paints a working Claude pane dim and a waiting one in the atte
     bg,
   );
   await row.click();
-  const tab = page.locator(`[data-testid="tab"][data-address="${SHELL0}"]`);
   await expect(tab).toHaveAttribute('data-state', 'working');
   await expect(tab).toHaveText(/building/);
+  // A reload learns the state again from the hub's recent events.
+  await page.reload();
+  await expect(tab).toHaveAttribute('data-state', 'working', { timeout: 10_000 });
   await expect(page.locator('.mx-tile-head').first()).toHaveAttribute('data-state', 'working');
   // A question: waiting, in the attention colour, with the text.
   await control(request, '/notify', { pane, kind: 'question', text: 'ship it?' });

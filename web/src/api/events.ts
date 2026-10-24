@@ -4,9 +4,10 @@ import { api } from './client';
 import type { Event, Events } from './types';
 
 // One long poll at a time: GET /v1/events?after=<cursor>&wait=30, restarted
-// on completion, backed off on error. Every event invalidates the trees;
-// the caller hears about the ones that need a person.
-export function useEventStream(onEvent: (e: Event) => void, enabled: boolean) {
+// on completion, backed off on error. The first call fetches the recent
+// history, so the caller knows what each pane was last up to; those come
+// with live=false. Every live event invalidates the lists.
+export function useEventStream(onEvent: (e: Event, live: boolean) => void, enabled: boolean) {
   const qc = useQueryClient();
   useEffect(() => {
     if (!enabled) return;
@@ -17,14 +18,16 @@ export function useEventStream(onEvent: (e: Event) => void, enabled: boolean) {
     const loop = async () => {
       while (!stopped) {
         try {
-          const q = cursor === undefined ? '?limit=1' : `?after=${cursor}&wait=30`;
+          const q = cursor === undefined ? '?limit=100' : `?after=${cursor}&wait=30`;
           const res = await api<Events>('/v1/events' + q, { signal: ctl.signal });
           delay = 1000;
-          if (cursor !== undefined) {
-            for (const e of res.events) {
+          const live = cursor !== undefined;
+          for (const e of res.events) {
+            if (live) {
               qc.invalidateQueries({ queryKey: ['tree', e.host] });
-              onEvent(e);
+              qc.invalidateQueries({ queryKey: ['panes'] });
             }
+            onEvent(e, live);
           }
           cursor = res.next;
         } catch (err) {

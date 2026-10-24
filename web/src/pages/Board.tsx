@@ -22,6 +22,7 @@ import {
   type Board,
   type BoardNode,
 } from '../term/board';
+import { noteOwn } from '../term/lens';
 import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
@@ -50,6 +51,7 @@ interface CellProps {
 // A click lands in the pane clicked, focused or not.
 async function click(address: string, mouse: Mouse) {
   try {
+    noteOwn(address);
     await api<void>(`/v1/panes/${address}/input`, {
       method: 'POST',
       body: JSON.stringify({ mouse }),

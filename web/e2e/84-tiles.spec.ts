@@ -30,8 +30,10 @@ test('84 pick two panes, open them side by side, arrange, drag, swap, close', as
   await expect(tiles.nth(1).getByTestId('cell-screen')).toContainText('in-tile-84', {
     timeout: 5000,
   });
-  // Several panes open with fit off, so the host is untouched.
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '0');
+  // Every writable tile opens with fit on: both host panes take their tile's size.
+  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '1');
+  await expect(page.getByTestId('fit')).toHaveText(/fit on \d+×\d+/, { timeout: 5000 });
+  await expect(page.getByTestId('tile-fit')).toHaveAttribute('data-on', '1');
   // The arrangement cycles: two panes have a row and a column.
   await page.keyboard.press('l');
   await expect(page.getByTestId('pane')).toHaveAttribute('data-layout', 'column');
@@ -54,7 +56,7 @@ test('84 pick two panes, open them side by side, arrange, drag, swap, close', as
   await tiles.nth(0).locator('.mx-tile-head').dragTo(tiles.nth(1).locator('.mx-tile-head'));
   await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', `${LOGS} ${SHELL0}`);
   await expect(page).toHaveURL(new RegExp(`/p/${LOGS},${SHELL0}$`.replace(/\//g, '\\/')));
-  // x closes the focused tile; one remains, with fit on by default for a writable pane.
+  // x closes the focused tile; one remains, fit still on.
   await page.keyboard.press(']');
   await expect(tiles.nth(1)).toHaveAttribute('data-focused', '');
   await page.keyboard.press('x');

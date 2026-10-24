@@ -41,7 +41,7 @@ paints with the same three states and the same marks.
 | State | When | Glyph | Word | Paint |
 |---|---|---|---|---|
 | waiting | the listing carries a notification | `!` permission, `?` question, `z` idle, `✓` done | the kind | attention colour, pulsing |
-| working | Claude Code: last event `working`, or the open pane's screen changed in the last 10 s | `⟳` | `working` | dim |
+| working | Claude Code: last event `working`, or the open pane's screen changed in the last 10 s; a change the client caused (first read, its own resize or input) does not count; on start the client reads the hub's recent events | `⟳` | `working` | dim |
 | quiet | otherwise | none | none | plain |
 
 Selection is never a colour: an open or focused element has a border
@@ -88,7 +88,7 @@ opens the window view; see §2.
 | strip | every readable pane in listing order, named as §1.1 says, painted as §1.2 says; open tabs bordered, the focused one thick and bold; a closed tab tapped swaps into the focused tile; the strip scrolls and keeps the focused tab in view |
 | tiles | one to four panes; arrangements by count: 2 → row, column; 3 → + main-left, main-top; 4 → + grid; `▦` cycles; wide screens start with row, tall with column; splits drag with a 15 % floor; a header dragged onto another tile swaps the two; the arrangement never reaches the host |
 | header | painted like its tab: glyph, name, command, mode, the word, the size with fit on; the focused tile has the thick border and bold name |
-| fit | per tile, the pane's own scope; one writable pane opens with fit on, several with fit off; `⤢` or `f` toggles; a second press sends the size again; leaving releases |
+| fit | per tile, the pane's own scope; every writable tile opens with fit on, one or several; `⤢` or `f` toggles; a second press sends the size again; leaving releases |
 | input | one line and one key row for the focused tile; `Esc` pinned left and `Enter` right on a phone; *type* sends text, *send* sends text then Enter; read-only panes show `read-only` and no way to type |
 | mouse | a tap or click on a pane whose program asked for the mouse is a left click at that cell; otherwise it only focuses |
 | reading | the focused pane every second, the others every two |

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { glyph, status, tabName, word } from './lens';
+import { changedAt, glyph, noteChange, noteOwn, resetLens, status, tabName, word } from './lens';
 
 const claude = { command: 'claude', title: '✳ fixing the build' };
 const shell = { command: 'bash', title: 'bash' };
@@ -37,5 +37,15 @@ describe('lens', () => {
     expect(tabName({ command: 'claude', title: '✳' })).toBe('Claude');
     expect(tabName(shell)).toBe('bash');
     expect(tabName({ command: 'vim', title: 'notes.md' })).toBe('vim · notes.md');
+  });
+
+  it('does not count a change right after this client typed or resized', () => {
+    resetLens();
+    const a = 'alice-laptop/work/0.0';
+    noteOwn(a, now);
+    noteChange(a, now + 1_000);
+    expect(changedAt(a)).toBeUndefined();
+    noteChange(a, now + 4_000);
+    expect(changedAt(a)).toBe(now + 4_000);
   });
 });

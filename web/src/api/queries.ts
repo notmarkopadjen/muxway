@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { api, ApiError } from './client';
+import { noteOwn } from '../term/lens';
 import type {
   AuthMethods,
   Host,
@@ -96,10 +97,19 @@ export function usePaneCached(address: string) {
 export function useInput(address: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { text: string } | { key: Key } | { mouse: Mouse }) =>
-      api<void>(`/v1/panes/${address}/input`, { method: 'POST', body: JSON.stringify(body) }),
+    mutationFn: (body: { text: string } | { key: Key } | { mouse: Mouse }) => {
+      noteOwn(address);
+      return api<void>(`/v1/panes/${address}/input`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+    },
     onSuccess: () => {
+      noteOwn(address);
       qc.invalidateQueries({ queryKey: keys.pane(address) });
+      // Input clears the pane's attention: the lists say so at once.
+      qc.invalidateQueries({ queryKey: keys.panes });
+      qc.invalidateQueries({ queryKey: keys.tree(address.split('/')[0]) });
     },
   });
 }
@@ -131,8 +141,12 @@ export function useAllPanes(enabled: boolean) {
 // resize asks the host to size the pane's window; the answer is the pane
 // as tmux has it now. 429 means another resize landed within the second.
 export function resizePane(address: string, body: Resize): Promise<{ pane: Pane }> {
+  noteOwn(address);
   return api<{ pane: Pane }>(`/v1/panes/${address}/resize`, {
     method: 'POST',
     body: JSON.stringify(body),
+  }).then((r) => {
+    noteOwn(address);
+    return r;
   });
 }

@@ -19,6 +19,7 @@ import {
   type Arrangement,
   type Node,
 } from '../term/layout';
+import { noteOwn } from '../term/lens';
 import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
@@ -318,6 +319,7 @@ export function WindowPage() {
   // A click lands in the pane clicked, focused or not.
   const click = async (address: string, mouse: Mouse) => {
     try {
+      noteOwn(address);
       await api<void>(`/v1/panes/${address}/input`, {
         method: 'POST',
         body: JSON.stringify({ mouse }),

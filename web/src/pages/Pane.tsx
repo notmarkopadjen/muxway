@@ -9,7 +9,7 @@ import { LensMark } from '../components/Lens';
 import { ClaudeMark, PaneTitle } from '../components/PaneTitle';
 import { useToast } from '../components/Toast';
 import { describe } from '../term/describe';
-import { noteChange, tabName, useLens } from '../term/lens';
+import { noteChange, noteOwn, tabName, useLens } from '../term/lens';
 import { Screen } from '../term/Screen';
 import {
   close,
@@ -38,6 +38,7 @@ import { setHeading } from '../shell/heading';
 // A click lands in the pane clicked, focused or not.
 async function click(address: string, mouse: Mouse, refused: (why: string) => void) {
   try {
+    noteOwn(address);
     await api<void>(`/v1/panes/${address}/input`, {
       method: 'POST',
       body: JSON.stringify({ mouse }),
@@ -126,20 +127,24 @@ function Tile(props: TileProps) {
   const box = useRef<HTMLDivElement>(null);
   const p = pane.data?.pane;
   const writable = p?.mode === 'write';
-  // One writable pane opens with fit on; several open with it off.
-  const fit = props.fit ?? (!several && writable);
+  // Every writable tile opens with fit on, as a single pane does.
+  const fit = props.fit ?? writable;
   const { size: fitted, refit } = useFit(address, fit && writable, box, 'pane');
   useEffect(() => {
     if (refitTick) refit();
   }, [refitTick, refit]);
-  // A change of content while the tile reads the pane counts as working.
+  // A change of content while the tile reads the pane counts as working,
+  // unless it is the first read or the pane was just resized: that is the
+  // reflow, not the program.
   const content = pane.data?.content;
-  const seen = useRef<string | undefined>(undefined);
+  const size = p ? `${p.width}x${p.height}` : '';
+  const seen = useRef<{ content: string; size: string } | null>(null);
   useEffect(() => {
-    if (seen.current !== undefined && content !== undefined && content !== seen.current)
-      noteChange(address);
-    seen.current = content;
-  }, [content, address]);
+    if (content === undefined) return;
+    const prev = seen.current;
+    if (prev && content !== prev.content && size === prev.size) noteChange(address);
+    seen.current = { content, size };
+  }, [content, size, address]);
   const lens = useLens();
   const st = p ? lens.status(p) : 'quiet';
   const [over, setOver] = useState(false);
@@ -392,7 +397,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
     if (k >= 0 && k < strip.length) go(replace(addresses, index, strip[k]));
   };
   const toggleFit = (address: string, on?: boolean) =>
-    setFit((f) => ({ ...f, [address]: on ?? !(f[address] ?? (!several && writable)) }));
+    setFit((f) => ({ ...f, [address]: on ?? !(f[address] ?? writable) }));
 
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
@@ -409,7 +414,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
       else if (k === 'x' && several) go(close(addresses, focused));
       else if (k === 'f' && writable) toggleFit(focused);
       else if (k === 'F') {
-        const on = !addresses.some((a) => fit[a] ?? (!several && a === focused && writable));
+        const on = !addresses.some((a) => fit[a] ?? true);
         const f: Record<string, boolean> = {};
         for (const a of addresses) f[a] = on;
         setFit(f);

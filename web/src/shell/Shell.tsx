@@ -86,9 +86,9 @@ export function Shell() {
     [qc],
   );
   const onEvent = useCallback(
-    (e: Event) => {
+    (e: Event, live: boolean) => {
       noteEvent(e.address, e.kind);
-      if (!ATTENTION.has(e.kind)) return;
+      if (!live || !ATTENTION.has(e.kind)) return;
       const kind = e.kind as keyof typeof GLYPH;
       const pane = known(e.address);
       toast.push({

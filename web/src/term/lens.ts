@@ -57,6 +57,11 @@ export function tabName(p: Pick<Pane, 'command' | 'title'>): string {
 
 const kinds = new Map<string, string>();
 const changes = new Map<string, number>();
+const own = new Map<string, number>();
+
+// How long after this client's own input or resize a change of content
+// is the client's doing, not the program's.
+export const OWN_MS = 3_000;
 const listeners = new Set<() => void>();
 let version = 0;
 
@@ -72,8 +77,19 @@ export function noteEvent(address: string, kind: string) {
 }
 
 export function noteChange(address: string, at = Date.now()) {
+  const mine = own.get(address);
+  if (mine !== undefined && at - mine < OWN_MS) return;
   changes.set(address, at);
   bump();
+}
+
+// This client typed into or resized the pane: what changes next is its doing.
+export function noteOwn(address: string, at = Date.now()) {
+  own.set(address, at);
+}
+
+export function changedAt(address: string): number | undefined {
+  return changes.get(address);
 }
 
 export function lastKind(address: string): string | undefined {
@@ -83,6 +99,7 @@ export function lastKind(address: string): string | undefined {
 export function resetLens() {
   kinds.clear();
   changes.clear();
+  own.clear();
   bump();
 }
 
