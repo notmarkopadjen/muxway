@@ -12,11 +12,15 @@ nothing but the hub to talk to.
    pasting a token once. The token is sent to the hub and forgotten; a
    session cookie takes its place. See [signing in](sign-in.md).
 2. **Panes**: every host you may reach, with its sessions, windows and
-   panes. Offline hosts are dimmed. A badge marks a pane that needs you:
-   `?` question, `!` permission, `…` idle, `✓` done. Type `/` to filter.
+   panes. Each row leads with what runs in the pane, the command and its
+   title, and ends with the address; offline hosts are dimmed. A badge
+   marks a pane that needs you: `?` question, `!` permission, `…` idle,
+   `✓` done. Type `/` to filter.
 3. **Pane**: the content with its colours, refreshed every second, and an
-   input line. Text is typed literally and Enter is sent after it; the key
-   bar sends the named keys the protocol allows. Read-only panes say so.
+   input line. The screen opens at its bottom and follows new output;
+   scroll up to read back, and it stays put until you scroll down again.
+   Text is typed literally and Enter is sent after it; the key bar sends
+   the named keys the protocol allows. Read-only panes say so.
 
 ![panes](images/web-panes.png)
 

@@ -76,13 +76,13 @@ function HostTree({
                       data-address={p.address}
                     >
                       <Badge attention={p.attention} />
-                      <span className="mx-addr">
-                        {p.address}
-                        {p.alias && <span className="mx-dim"> @{p.alias}</span>}
-                      </span>
                       <span className="mx-meta">
                         {p.command}
                         {p.title && p.title !== p.command ? ` · ${p.title}` : ''}
+                      </span>
+                      <span className="mx-addr">
+                        {p.alias && <span className="mx-dim">@{p.alias} </span>}
+                        {p.address}
                       </span>
                       <span className={`mx-mode ${p.mode}`}>{p.mode}</span>
                     </div>

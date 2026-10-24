@@ -6,3 +6,4 @@
 *.key
 /test-runs/
 /tmp/
+.playwright-mcp/

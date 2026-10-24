@@ -52,12 +52,25 @@ export const Screen = memo(function Screen({
   useEffect(() => {
     prev.current = new Set(plain);
   }, [plain]);
+  // The view follows the bottom until the person scrolls up, and again
+  // once they scroll back down; new content and a new size keep it there.
+  const pinned = useRef(true);
+  const follow = () => {
+    const el = box.current;
+    if (el && pinned.current) el.scrollTop = el.scrollHeight;
+  };
+  const onScroll = () => {
+    const el = box.current;
+    if (el) pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+  };
+  useLayoutEffect(follow, [content, font, box]);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-    if (nearBottom) el.scrollTop = el.scrollHeight;
-  }, [content, box]);
+    const ro = new ResizeObserver(follow);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
   // Scale to the box when the pane's size is known.
   useLayoutEffect(() => {
     const el = box.current;
@@ -82,6 +95,7 @@ export const Screen = memo(function Screen({
       data-font={font ? font.toFixed(1) : undefined}
       tabIndex={0}
       onClick={onClick}
+      onScroll={onScroll}
       style={font ? { fontSize: `${font}px` } : undefined}
     >
       <pre>

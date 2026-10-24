@@ -85,7 +85,7 @@
 }
 .mx-pane-row {
   display: grid;
-  /* the tree bar, the badge, the address, the command, the mode */
+  /* the tree bar, the badge, what runs there, the address, the mode */
   grid-template-columns: 1em 1.6em 1fr auto auto;
   gap: var(--mx-gap);
   align-items: center;
@@ -107,12 +107,12 @@
   box-shadow: var(--mx-glow-box-strong);
   text-shadow: var(--mx-glow-text-strong);
 }
-.mx-pane-row .mx-addr {
+.mx-pane-row .mx-meta {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mx-pane-row .mx-meta {
+.mx-pane-row .mx-addr {
   color: var(--mx-ink-dim);
   white-space: nowrap;
 }
@@ -313,7 +313,7 @@
     grid-template-columns: 1em 1.2em 1fr auto;
     margin-left: 1em;
   }
-  .mx-pane-row .mx-meta {
+  .mx-pane-row .mx-addr {
     display: none;
   }
   .mx-signin {
