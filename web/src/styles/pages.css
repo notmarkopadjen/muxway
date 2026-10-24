@@ -756,3 +756,32 @@ button.mx-window:focus-visible {
     display: none;
   }
 }
+.mx-cmdbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: thin;
+}
+.mx-cmdbar button {
+  flex: none;
+  font-size: 12px;
+  padding: 1px 7px;
+}
+.mx-cmdbar .mx-cmdmark {
+  flex: none;
+  color: var(--mx-ink-dim);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+}
+.mx-cmdbar .mx-cmdmark .mx-mark {
+  width: 1em;
+  height: 1em;
+}
+.mx-cmdbar .mx-cmdsep {
+  color: var(--mx-ink-faint);
+  margin-right: 6px;
+}

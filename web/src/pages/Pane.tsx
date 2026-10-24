@@ -1,10 +1,10 @@
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useAllPanes, useInput, usePane, usePaneCached } from '../api/queries';
 import type { Key, Mouse, Pane } from '../api/types';
 import { Divider } from '../components/Divider';
-import { KeyBar } from '../components/KeyBar';
+import { InputPanel } from '../components/InputPanel';
 import { LensMark } from '../components/Lens';
 import { ClaudeMark, PaneTitle } from '../components/PaneTitle';
 import { useToast } from '../components/Toast';
@@ -343,7 +343,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const focusedPane = usePaneCached(focused).data?.pane;
   const writable = focusedPane?.mode === 'write';
   const input = useInput(focused);
-  const [text, setText] = useState('');
   const [layout, setLayout] = useState<Arrangement>(() =>
     defaultFor(window.innerWidth > window.innerHeight),
   );
@@ -445,13 +444,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
       );
     }
   };
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    const t = text;
-    setText('');
-    if (t) await send({ text: t });
-    await send({ key: 'Enter' });
-  };
 
   const windowPath = focusedPane
     ? `/w/${focusedPane.host}/${focusedPane.session}/${focusedPane.window_index}`
@@ -514,37 +506,26 @@ function Tiles({ addresses }: { addresses: string[] }) {
       <div className="mx-area">
         <Tree node={tree(n, layout)} weights={weights} setWeights={setWeights} tile={tile} />
       </div>
-      <form className="mx-input" onSubmit={submit}>
-        <span className="mx-prompt">{writable ? '>' : '○'}</span>
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          disabled={!writable}
-          placeholder={
-            focusedPane
-              ? writable
-                ? several
-                  ? `type into ${focused}`
-                  : 'type, Enter sends'
-                : 'read-only pane'
-              : 'no pane'
-          }
-          aria-label="input"
-          autoComplete="off"
-          data-testid="input"
-        />
-        <button type="submit" disabled={!writable}>
-          send
-        </button>
-      </form>
-      <div>
-        <KeyBar onKey={(k) => void send({ key: k })} disabled={!writable} />
+      <InputPanel
+        pane={focusedPane}
+        writable={writable}
+        placeholder={
+          focusedPane
+            ? writable
+              ? several
+                ? `type into ${focused}`
+                : 'type, Enter sends'
+              : 'read-only pane'
+            : 'no pane'
+        }
+        send={send}
+      >
         {focusedPane && !writable && (
           <div className="mx-readonly" data-testid="readonly">
             read-only: your grant or the pane's mark does not allow typing
           </div>
         )}
-      </div>
+      </InputPanel>
     </div>
   );
 }

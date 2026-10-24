@@ -1,11 +1,11 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useAllPanes, useInput, usePane } from '../api/queries';
 import type { Key, Mouse } from '../api/types';
 import { LensMark } from '../components/Lens';
 import { Divider } from '../components/Divider';
-import { KeyBar } from '../components/KeyBar';
+import { InputPanel } from '../components/InputPanel';
 import { Palette } from '../components/Palette';
 import { PaneTitle } from '../components/PaneTitle';
 import { useToast } from '../components/Toast';
@@ -294,7 +294,6 @@ export function BoardPage() {
   );
   const writable = focusedPane?.mode === 'write';
   const input = useInput(focus ?? '');
-  const [text, setText] = useState('');
   useEffect(() => {
     setHeading({ pane: focusedPane, place: `board ${name}` });
     return () => setHeading({ place: '' });
@@ -386,13 +385,6 @@ export function BoardPage() {
       });
     }
   };
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    const t = text;
-    setText('');
-    if (t) await send({ text: t });
-    await send({ key: 'Enter' });
-  };
 
   if (!valid) {
     return (
@@ -454,22 +446,12 @@ export function BoardPage() {
           </div>
         )}
       </div>
-      <form className="mx-input" onSubmit={submit}>
-        <span className="mx-prompt">{writable ? '>' : '○'}</span>
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          disabled={!writable}
-          placeholder={focus ? (writable ? `type into ${focus}` : 'read-only pane') : 'no pane'}
-          aria-label="input"
-          autoComplete="off"
-          data-testid="input"
-        />
-        <button type="submit" disabled={!writable}>
-          send
-        </button>
-      </form>
-      <KeyBar onKey={(k) => void send({ key: k })} disabled={!writable} />
+      <InputPanel
+        pane={focusedPane}
+        writable={writable}
+        placeholder={focus ? (writable ? `type into ${focus}` : 'read-only pane') : 'no pane'}
+        send={send}
+      />
       {adding && (
         <Palette
           title={adding === 'h' ? 'add beside' : 'add below'}

@@ -112,6 +112,7 @@ by side. The page is the Android client's pane view:
 └───────────────────────────────────────────────────────────────────────────────┘
 > ________________________________________________________________________ [send]
 [Enter][Tab][BSpace][Escape]…
+✳ [/clear][/compact][/rename][/model][/resume][/usage][/context][/help]
 ```
 
 - `‹` goes back to the list.
@@ -143,6 +144,21 @@ by side. The page is the Android client's pane view:
   number; `}` and `{` show the next or previous pane of the strip in the
   focused tile (the phone's swipe); `w` opens the focused pane's window
   view, `b` puts it on the board, `Enter` opens it alone.
+- The **command row** under the key bar is for the program in the
+  focused pane, one row that scrolls sideways. When the pane is Claude
+  Code's it carries the slash commands typed most: `/clear`, `/compact`,
+  `/rename`, `/model`, `/resume`, `/usage`, `/context`, `/help`, behind
+  Claude's spark. When it is a shell it carries starters, `exit`,
+  `htop`, `claude`, `claude -c`, `codex`, `gemini`, `git status`, `ls`,
+  `clear`, behind a `$`, and after a bar the last eight lines sent to a
+  shell from this browser, newest first, kept by the browser. A button
+  sends its command and `Enter`, as the input line does; `/rename` fills
+  the input line and leaves the name to you. Any other program gets no
+  row. The window view and the board have the same row for their
+  focused pane.
+
+![the command row for a shell](images/web-command-row-shell.png)
+![the command row for Claude Code](images/web-command-row-claude.png)
 
 ![tiles](images/web-tiles.png)
 ![the list with two panes picked](images/web-list-picked.png)
@@ -323,6 +339,14 @@ and fails if the committed output differs from the sources.
   suite proves it from a second origin.
 - No request ever leaves the hub's origin: no fonts, scripts or analytics
   from elsewhere. Browser notifications carry kind and address only.
+- The command row sends what you could type: a fixed string from the
+  client's own list, or a line you sent before, and `Enter`, to the
+  focused pane, under the same write grant and audit as the input line.
+  Nothing from a pane, a title or the hub reaches the list; a pane that
+  dresses as Claude Code or a shell only chooses which row shows. The
+  last eight lines sent to a shell are kept in the browser's storage,
+  like boards: do not send a secret as a shell line on a shared
+  browser, or clear the site's data afterwards.
 - Node dependencies are pinned exactly with a committed lockfile and
   installed with `npm ci`. They are a build-time concern: the hub binary
   carries only the built files.
