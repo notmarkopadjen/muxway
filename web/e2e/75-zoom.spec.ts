@@ -12,6 +12,11 @@ test('75 double-click shows a pane alone and brings the others back, in a window
   await expect(page.getByTestId('cell')).toHaveCount(1);
   await expect(page.getByTestId('unzoom')).toBeVisible();
   await expect(page.getByTestId('focus')).toContainText(`${HOST}/work/0.1`);
+  // The pane alone takes the whole area.
+  const area = (await page.locator('.mx-area').boundingBox())!;
+  const cell = (await page.getByTestId('cell').boundingBox())!;
+  expect(cell.width).toBeGreaterThan(area.width * 0.95);
+  expect(cell.height).toBeGreaterThan(area.height * 0.95);
   // Moving the focus moves the zoom with it.
   await page.keyboard.press(']');
   await expect(page.getByTestId('focus')).toContainText(`${HOST}/work/0.0`);
@@ -35,6 +40,9 @@ test('75 double-click shows a pane alone and brings the others back, in a window
   await expect(page.getByTestId('cell')).toHaveCount(1);
   await expect(page.getByTestId('unzoom')).toBeVisible();
   await expect(page.getByTestId('focus')).toContainText(B);
+  const board = (await page.locator('.mx-area').boundingBox())!;
+  const alone = (await page.getByTestId('cell').boundingBox())!;
+  expect(alone.width).toBeGreaterThan(board.width * 0.95);
   await page.getByTestId('cell-screen').dblclick();
   await expect(page.getByTestId('cell')).toHaveCount(2);
   await expect(page).toHaveURL(/\/b\/main$/);

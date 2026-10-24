@@ -354,7 +354,8 @@
   flex-shrink: 1;
 }
 .mx-slot > .mx-split,
-.mx-slot > .mx-cell {
+.mx-slot > .mx-cell,
+.mx-area > .mx-cell {
   flex: 1;
 }
 .mx-cell {
