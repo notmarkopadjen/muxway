@@ -113,3 +113,9 @@ Spec `91-wheel.spec.ts` runs them as four tests; the harness gained
 1. Guideline rows; `Screen.onWheel`; the three views pass it.
 2. The strip's wheel and `‹ ›`.
 3. Spec 91; `web/dist`; docs; run, record, push.
+
+## Test run
+
+[Run 20261024-173129-a8fd888](https://github.com/notmarkopadjen/muxway/issues/66): passed, 78 tests, at
+`a8fd888`, with spec 91's four tests and its screenshots `91-wheel` and
+`91-strip`. Web only; Android already sends the wheel.
