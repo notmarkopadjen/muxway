@@ -76,10 +76,12 @@ interface TreeProps {
   onFocus: (id: string) => void;
   onZoom: (id: string) => void;
   onCell: (address: string, x: number, y: number) => void;
+  onWheel: (address: string, up: boolean, x: number, y: number) => Promise<void>;
 }
 
 function Tree(props: TreeProps) {
-  const { node, path, arr, panes, focused, burn, fit, setArr, onFocus, onZoom, onCell } = props;
+  const { node, path, arr, panes, focused, burn, fit, setArr, onFocus, onZoom, onCell, onWheel } =
+    props;
   const box = useRef<HTMLDivElement>(null);
   const lens = useLens();
   if (node.kind === 'pane') {
@@ -132,6 +134,9 @@ function Tree(props: TreeProps) {
           onClick={() => onFocus(node.id)}
           height={p.height}
           onCell={p.mode === 'write' && p.mouse ? (x, y) => onCell(p.address, x, y) : undefined}
+          onWheel={
+            p.mode === 'write' && p.mouse ? (up, x, y) => onWheel(p.address, up, x, y) : undefined
+          }
           testId="cell-screen"
         />
       </div>
@@ -329,7 +334,7 @@ export function WindowPage() {
       });
     }
   };
-  // A click lands in the pane clicked, focused or not.
+  // A click or a wheel notch lands in the pane under the pointer, focused or not.
   const click = async (address: string, mouse: Mouse) => {
     try {
       noteOwn(address);
@@ -443,6 +448,9 @@ export function WindowPage() {
             onFocus={setFocused}
             onZoom={toggleZoom}
             onCell={(address, x, y) => void click(address, { button: 'left', x, y })}
+            onWheel={(address, up, x, y) =>
+              click(address, { button: up ? 'wheelup' : 'wheeldown', x, y })
+            }
           />
         )}
       </div>

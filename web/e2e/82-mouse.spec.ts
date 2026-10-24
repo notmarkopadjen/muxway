@@ -50,6 +50,11 @@ test('82 a click on a pane whose program asked for the mouse is a click at that 
   await shot(page, info, '82-mouse');
   await page.getByTestId('keybar').getByRole('button', { name: 'C-c' }).click();
   await expect.poll(() => control(request, '/command', { target: 'work:0.0' })).toBe('bash');
+  // cat left the mouse on; the next spec wants a plain shell.
+  await control(request, '/send', {
+    target: 'work:0.0',
+    text: `printf '\\033[?1000l\\033[?1006l'`,
+  });
   // Leaving the pane gives the window back to tmux, so the next spec finds it at rest.
   await page.goto('/');
   await expect

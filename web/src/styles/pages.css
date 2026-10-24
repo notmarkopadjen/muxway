@@ -607,6 +607,24 @@ button.mx-window:focus-visible {
   gap: 6px;
   white-space: nowrap;
 }
+.mx-strip {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+.mx-strip-end {
+  flex: none;
+  padding: 0 6px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--mx-ink-dim);
+  background: none;
+  border: 0;
+}
+.mx-strip-end:hover {
+  color: var(--mx-ink);
+}
 .mx-tabs {
   display: flex;
   gap: 4px;
@@ -621,6 +639,7 @@ button.mx-window:focus-visible {
 }
 .mx-tab {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 0.4em;
   white-space: nowrap;

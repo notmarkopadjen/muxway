@@ -175,7 +175,11 @@ func (e *env) startControl(t *testing.T, ts *tmuxServer, a *agentProc) string {
 		text(w, out)
 	})
 	mux.HandleFunc("/split", func(w http.ResponseWriter, r *http.Request) {
-		id, _ := ts.run("split-window", "-t", r.URL.Query().Get("target"), "-P", "-F", "#{pane_id}", shell())
+		args := []string{"split-window", "-t", r.URL.Query().Get("target"), "-P", "-F", "#{pane_id}"}
+		if r.URL.Query().Get("dir") == "h" {
+			args = append(args, "-h")
+		}
+		id, _ := ts.run(append(args, shell())...)
 		ts.run("select-pane", "-t", id, "-T", "test-pane")
 		text(w, id)
 	})
@@ -192,6 +196,15 @@ func (e *env) startControl(t *testing.T, ts *tmuxServer, a *agentProc) string {
 		ts.run("send-keys", "-t", q.Get("target"), "-l", q.Get("text"))
 		ts.run("send-keys", "-t", q.Get("target"), "Enter")
 		text(w, "ok")
+	})
+	mux.HandleFunc("/clear-history", func(w http.ResponseWriter, r *http.Request) {
+		_, err := ts.run("clear-history", "-t", r.URL.Query().Get("target"))
+		text(w, fmt.Sprint(err))
+	})
+	mux.HandleFunc("/key", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		_, err := ts.run("send-keys", "-t", q.Get("target"), q.Get("key"))
+		text(w, fmt.Sprint(err))
 	})
 	mux.HandleFunc("/rename", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()

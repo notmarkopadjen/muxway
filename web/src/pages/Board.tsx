@@ -187,6 +187,11 @@ function Cell(props: CellProps) {
         onCell={
           writable && p?.mouse ? (x, y) => void click(address, { button: 'left', x, y }) : undefined
         }
+        onWheel={
+          writable && p?.mouse
+            ? (up, x, y) => click(address, { button: up ? 'wheelup' : 'wheeldown', x, y })
+            : undefined
+        }
         testId="cell-screen"
       />
     </div>

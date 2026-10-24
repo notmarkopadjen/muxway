@@ -32,8 +32,19 @@ nothing but the hub to talk to.
    bar sends the named keys the protocol allows. A click on the screen of
    a pane whose program asked for the mouse, Claude Code among them, is a
    click at that cell on the host, so an option shown can be chosen by
-   clicking it; in a pane that did not ask, a click only focuses.
-   Read-only panes say so.
+   clicking it; in a pane that did not ask, a click only focuses. The
+   wheel follows the same rule. In a shell it scrolls the browser's box
+   through what the hub sent: the screen and up to a few hundred lines of
+   history. A program that asked for the mouse scrolls itself: Claude
+   Code, `htop` and `vim` run on the terminal's alternate screen, which
+   has no history of its own, so the wheel over such a pane goes to the
+   host as wheel notches at the cell under the pointer, one per row of
+   travel, and the program moves its own view. Any shell history above it
+   is still there, reachable by the box's scrollbar. The tab strip keeps
+   its tabs at their width and scrolls sideways: the wheel over it moves
+   it, `‹ ›` at its ends appear when there is more than fits, and `}` `{`
+   show the next and previous pane in the focused tile. Read-only panes
+   say so.
 
 ![panes](images/web-panes.png)
 
