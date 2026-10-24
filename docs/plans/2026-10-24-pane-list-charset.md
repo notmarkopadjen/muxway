@@ -65,4 +65,6 @@ One commit: `charsetParam` shared by read and list, fold entry, tests, docs.
 
 ## Test run
 
-To be recorded.
+Run `20261024-081755-cd79e70` at commit `cd79e70`: passed, 67 tests (unit
+and end-to-end), recorded as [issue #30](https://github.com/notmarkopadjen/muxway/issues/30).
+Logs in the run directory on the machine that ran it.
