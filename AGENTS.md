@@ -76,6 +76,13 @@ corners, keyboard first, information-dense. No gradients, no rounded SaaS
 cards, no stock illustrations. On tiny screens (feature phones, glasses)
 retro is native: respect the device, do not imitate a bigger one.
 
+The clients are one product. `docs/ui-guideline.md` says what every
+client shows (naming, the lens, the pane list, the pane view with its
+strip and tiles, the look, and which action each key or gesture
+triggers), what is web-only and what is Android-only. A change to a
+shared feature starts there and is made in every client that has it;
+a key or gesture is added to its table before it is bound anywhere.
+
 ## 5. How work is done
 
 Every feature follows `docs/templates/feature.md`:
