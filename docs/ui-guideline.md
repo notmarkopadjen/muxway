@@ -159,6 +159,7 @@ The same action on every client, triggered the way the device does it.
 | a console key from an empty input line | `↑` `↓` `←` `→` `PageUp` `PageDown` `Home` `End` `Tab` | the key row | D-pad |
 | Escape to the pane while typing | `Shift+Esc` | `Esc` in the key row | — |
 | speak: record a clip, stop it, drop it | `v`, `◉` / `■` / the meter; `Esc` drops | tap `◉` / `■`; back drops | the glasses' own mic |
+| answer from the watch: a key of its pane screen, or a spoken line confirmed there | — | a tap on the watch's pane screen; the phone validates and sends | — |
 | another hub | `H`, `⇄`, the help's *hubs*: a link to its own page and sign-in | the hubs list on the connect screen: *use* | — |
 | theme | `t` | setting | setting |
 | effects | `m` | setting | — |
@@ -192,6 +193,7 @@ Feature page: `docs/features/web-client.md`.
 | reflow with fit off | small screens |
 | hardware keys and D-pad | glasses touchpads and keyboards reaching the phone |
 | watch and background notifications | the phone's own channels |
+| the watch's pane screen: the pane's tail and a row of answers (`Enter` `Esc` `y` `n` `^C`, speak, phone), every request through the phone | the wrist has no keyboard and holds no token; the phone checks each request against its listing and the key whitelist, and a phone-side setting, off by default, allows writes at all |
 | `FLAG_SECURE` | the platform's screenshot block |
 
 Feature pages: `muxway-android/docs/features/`.
