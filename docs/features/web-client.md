@@ -46,7 +46,8 @@ host becomes the columns and rows that fit the box: where it spans its
 window, the window is sized; where it shares the window with neighbours,
 they give or take the difference, and the window grows only when they
 would have nothing left. In the window view, fit sizes the whole
-*window* to the area, so every pane is shown one to one. Fit is on by
+*window* to the area, the panes keeping their proportions, so every pane
+is shown one to one. Fit is on by
 default for a single pane you may write to, because a resize changes what
 the person at the host sees, and off by default in the window view.
 Leaving a fitted view gives the window back to tmux's automatic sizing

@@ -178,11 +178,18 @@ func (s Server) SendKey(ctx context.Context, paneID, key string) error {
 	return err
 }
 
-// ResizeWindow sets the size of the window holding paneID; tmux then lays
-// its panes out inside. The window keeps that size until released.
+// ResizeWindow sets the size of the window holding paneID and lays its
+// panes out inside in the proportions they had: tmux's own resize does
+// not keep them. The window keeps that size until released.
 func (s Server) ResizeWindow(ctx context.Context, paneID string, cols, rows int) error {
-	_, err := s.run(ctx, "resize-window", "-t", paneID, "-x", strconv.Itoa(cols), "-y", strconv.Itoa(rows))
-	return err
+	before, _ := s.WindowLayout(ctx, paneID)
+	if _, err := s.run(ctx, "resize-window", "-t", paneID, "-x", strconv.Itoa(cols), "-y", strconv.Itoa(rows)); err != nil {
+		return err
+	}
+	if scaled, err := ScaleLayout(before, cols, rows); err == nil {
+		s.run(ctx, "select-layout", "-t", paneID, scaled)
+	}
+	return nil
 }
 
 // ResizePane makes one pane cols × rows. On an axis the pane spans, its

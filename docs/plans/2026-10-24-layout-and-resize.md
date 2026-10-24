@@ -48,7 +48,10 @@ back to tmux's automatic sizing (`set-option -w -u window-size`,
 > spans its window the window is sized as before; on an axis it shares,
 > `resize-pane -x -y` takes the difference from the neighbours, after
 > growing the window when they would have nothing left. The window view
-> keeps sizing the window (`scope: window`). The agent remembers each
+> keeps sizing the window (`scope: window`) and the agent then reapplies
+> the window's layout scaled to the new size, because tmux's own resize
+> does not keep the panes' proportions: a three-pane window fitted to a
+> browser came out with 11 rows on top and 24 below. The agent remembers each
 > window's layout string before its first resize, and a release puts it
 > back with `select-layout` after the window returns to automatic sizing. The agent treats a resize as a **write**: the pane
 must be marked for writing and the same-process check holds, because a

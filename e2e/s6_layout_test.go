@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/notmarkopadjen/muxway/internal/secure"
+	"github.com/notmarkopadjen/muxway/internal/tmux"
 	"github.com/notmarkopadjen/muxway/internal/wire"
 )
 
@@ -251,14 +252,19 @@ func TestFlow58_PaneFitInASplitWindow(t *testing.T) {
 		t.Fatalf("window is %s after 120x40", got)
 	}
 	time.Sleep(1100 * time.Millisecond)
-	// The window scope sizes the window, the panes share it as before.
+	// The window scope sizes the window; the panes keep their proportions
+	// (40 and 19 rows of 60 become 16 and 8 of 25), which tmux alone would not.
+	wide := ts.layout("work:0")
 	r = e.resize(tok, shell0, `{"cols":90,"rows":25,"scope":"window"}`)
 	expect(t, r, http.StatusOK, "window resize")
 	if got := ts.windowSize("work:0"); got != "90x25" {
 		t.Fatalf("window is %s after 90x25", got)
 	}
-	if got := paneSize(r); got == "90x25" {
-		t.Fatalf("the pane took the whole window: %s", got)
+	if got := paneSize(r); got != "90x16" {
+		t.Fatalf("pane is %s after the window went to 90x25", got)
+	}
+	if want, err := tmux.ScaleLayout(wide, 90, 25); err != nil || ts.layout("work:0") != want {
+		t.Fatalf("layout after the window resize: %s, want %s (%v)", ts.layout("work:0"), want, err)
 	}
 	// The release puts the window and its panes back as they were.
 	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")
