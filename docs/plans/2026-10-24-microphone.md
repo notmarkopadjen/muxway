@@ -124,3 +124,58 @@ answers a fixed sentence. No real audio, no real text.
 3. Web: spec 93; `web/dist`; docs.
 4. Android: permission, recorder, button, probe; tests; docs; version.
 5. Run, record, push.
+
+---
+
+## Review (after implementation)
+
+- [x] Diff matches the plan. Deviations: a clip under half a second is
+  not sent, the client says `too short` itself (and reads the hub's
+  `400` the same way), `403` reads `no write grant`; `v` while recording
+  stops the clip as `■` does and `Esc` drops it, through a listener that
+  runs before the page's own keys so `Esc` does not leave the view
+  mid-clip; the worklet posts a frame per tenth of a second and the
+  meter shows the last eight; the probe is one query that never goes
+  stale and is cleared with the session, not a flag; the UI harness got
+  a second Go test with the transcription suite's stand-in hub rather
+  than a switch on the main one, since the main hub must stay without a
+  transcriber for the no-button case, and the one spec file serves both
+  through `MX_STT`. Android: the clip (header, cap, meter) lives in the
+  protocol module as `Clip`, pure and tested on the JVM, and `Recorder`
+  only drives `AudioRecord` into it; refusals go to the status line
+  under the input bar, where a refused send already shows, since the
+  phone has no toasts; the transcribe call gets a 95 s read timeout to
+  match the hub's 90 s on the transcriber.
+- [x] Security rules (AGENTS.md section 2) hold: no protocol change; the
+  clip goes to the hub only, over the session cookie and client header
+  on the web and the bearer token on the phone; the hub's write-grant,
+  WAV, size and rate checks are untouched and the UI tests prove the
+  refusals reach the user as toasts without a clip reaching the stand-in;
+  recording starts only from a click, a tap or a key on the page behind
+  the browser's or the system's permission prompt, and the tracks are
+  closed the moment it stops; the worklet is a file of the client's own
+  under `script-src 'self'` and spec 93 checks the policy reported
+  nothing; the transcript is cleaned (hub) and cleaned again as typed
+  text (Android), shown before anything is sent, and goes through the
+  input endpoint's checks when it is; no new dependency on either client.
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and the diff
+  read; the audio is Chromium's fake device, the sentence the stand-in's.
+- [x] Docs updated: guideline §1.4 (input) and §1.6 (speak); the
+  transcription page (a section for the browser and one for the phone,
+  security considerations); web-client (using it, keyboard, security
+  considerations); the protocol's note on who the clients are; the
+  testing page (the second UI environment); Android pane-view (typing,
+  security considerations).
+
+## Test run
+
+[Run 20261024-190449-45b4755](https://github.com/notmarkopadjen/muxway/issues/77): passed, 82 tests, at
+`45b4755`, with spec 93's five tests across the two UI environments (no
+button and one probe on a hub without a transcriber; no button on a
+read-only pane or for a read-only token; the meter, the words on the
+line focused and unsent, and a second clip within five seconds refused
+with no clip reaching the stand-in; Esc dropping a clip and the words
+joining typed text; the transcriber failing) and the screenshots
+`93-recording` and `93-heard`; the header, resampler and meter unit
+tests run with the web client's suite. Android: recorded below once its
+run is in.
