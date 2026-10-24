@@ -38,6 +38,8 @@ Everywhere a pane is named, in the list, the pane header, the tab title,
 the window view, boards and the selector, it is named by what runs in
 it, not by tmux: the command, and after it what the program says about
 itself in the pane title when that adds something (`vim · notes.md`).
+The header names the pane a view is about, in the window view and on a
+board the focused one, and a notification names the pane the same way.
 A pane running **Claude Code** is named *Claude*, with its mark, and the
 status Claude writes into the title follows (`Claude · fixing the
 build`); it is recognised by its command, or by the spark Claude Code
@@ -63,13 +65,16 @@ they give or take the difference, and the window grows only when they
 would have nothing left. In the window view, fit sizes the whole
 *window* to the area and lays it out as the browser shows it: the panes
 keep their proportions until you drag a divider, and then the host's
-split follows the divider, so every pane is shown one to one and none
-is left with empty rows. Fit is on by
-default for a single pane you may write to, because a resize changes what
-the person at the host sees, and off by default in the window view.
-Leaving a fitted view gives the window back to tmux's automatic sizing
-and the panes back to the layout they had. With fit off, the pane keeps
-the host's size and is scaled to the box instead.
+split follows the divider; a pane zoomed here is zoomed on the host too,
+with tmux's own zoom, so it gets the whole window. With fit on a pane is
+read at the font you chose (the help overlay, `?`, cycles it from 11 to
+20 px, remembered by the browser) and the host is sized by that cell, so
+every pane is shown one to one. Fit is on by default wherever you may
+write: in the pane view and the window view; on a board it is off,
+because several host windows changing at once is a decision for you.
+Leaving a fitted view gives the window back to tmux's automatic sizing,
+unzoomed, and the panes back to the layout they had. With fit off, the
+pane keeps the host's size and is scaled to the box instead.
 
 Several clients can fit the same window, and the last one to send a size
 wins; a client sends its size only when it changes, so after a phone has
@@ -87,8 +92,9 @@ may read, in tmux's own layout, each scaled to its box. One pane is
 focused (click, or `]` and `[`); the input line and key bar go to it,
 `Enter` opens it alone. Double-click a pane, or press `z`, to show it
 alone in the view, and again to bring the others back; `]` and `[` move
-the zoom with the focus. Then, in the browser only (with fit on, a
-dragged divider reaches the host, see above):
+the zoom with the focus; with fit on the host zooms the pane too. Then,
+in the browser only (with fit on, a dragged divider reaches the host,
+see above):
 
 - drag a divider to change the split,
 - `+` and `-` to make the focused pane's text bigger or smaller,
@@ -156,6 +162,7 @@ because several host windows changing at once is a decision for you.
 | `x`, `z`, `0`, `+`, `-` | window view: hide, zoom (or double-click), host layout, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
 | `t` | next theme: green, amber, paper |
+| `?` then `font` | screen font: 11 to 20 px, the cell fit sizes the host by |
 | `m` | effects on / off |
 | `n` | browser notifications on / off (in the help overlay) |
 | `?` | help |
@@ -201,8 +208,9 @@ and fails if the committed output differs from the sources.
 - A resize is a write on the host: it needs the write grant and the write
   mark, is audited with its size, and is limited to one per second per
   window. A browser arrangement reaches the host only with fit on, as the
-  proportions of a window resize; the hub parses the layout and the agent
-  accepts one that names exactly the window's panes, nothing else.
+  proportions and the zoom of a window resize; the hub parses the layout
+  and the agent accepts one that names exactly the window's panes,
+  nothing else.
 - The cookie is `SameSite=Strict` and useless without the client header,
   so a page on another origin can neither read nor use the session. The
   suite proves it from a second origin.

@@ -344,6 +344,9 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	if req.Scope != "" && req.Scope != "pane" && req.Scope != "window" {
 		return wire.ErrBadInput
 	}
+	if req.Zoom && req.Scope != "window" {
+		return wire.ErrBadInput
+	}
 	// A layout names exactly the window's panes, or it is refused.
 	if req.Layout != "" {
 		if req.Scope != "window" || len(req.Layout) > wire.MaxLayoutBytes {
@@ -400,7 +403,7 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	}
 	var err error
 	if req.Scope == "window" {
-		err = a.tmux.ResizeWindow(ctx, p.PaneID, req.Cols, req.Rows, req.Layout)
+		err = a.tmux.ResizeWindow(ctx, p.PaneID, req.Cols, req.Rows, req.Layout, req.Zoom)
 	} else {
 		err = a.tmux.ResizePane(ctx, p.PaneID, req.Cols, req.Rows)
 	}
@@ -490,6 +493,9 @@ func (a *Agent) audit(req wire.Request, code string) {
 			}
 			if req.Layout != "" {
 				attrs = append(attrs, "layout", true)
+			}
+			if req.Zoom {
+				attrs = append(attrs, "zoom", true)
 			}
 		}
 	}

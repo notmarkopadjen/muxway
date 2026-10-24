@@ -21,7 +21,6 @@ test("76 fit on in the window view: the host takes the browser's dividers", asyn
   await signIn(page);
   await page.goto(`/w/${HOST}/work/0`);
   await expect(page.getByTestId('cell')).toHaveCount(2);
-  await page.getByTestId('fit').click();
   await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '1');
   await expect.poll(size, { timeout: 5000 }).not.toBe('100x30');
   const slots = page.locator('.mx-slot');
@@ -42,9 +41,6 @@ test("76 fit on in the window view: the host takes the browser's dividers", asyn
   // The host's new sizes do not reset the browser's arrangement.
   await page.waitForTimeout(1500);
   expect(Number(await slots.nth(0).getAttribute('data-fraction'))).toBeCloseTo(want, 2);
-  for (const screen of await page.getByTestId('cell-screen').all()) {
-    expect(Number(await screen.getAttribute('data-font'))).toBeGreaterThan(9);
-  }
   // Leaving gives the window back: its own size and layout.
   await page.goto('/');
   await expect.poll(size, { timeout: 5000 }).toBe('100x30');

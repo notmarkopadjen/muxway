@@ -65,6 +65,8 @@ func TestSec53_ResizeBoundsAndBurst(t *testing.T) {
 		`{"cols":100,"rows":30,"scope":"pane","layout":"a87d,100x30,0,0,0"}`,
 		`{"cols":100,"rows":30,"scope":"window","layout":"junk"}`,
 		`{"cols":100,"rows":30,"scope":"window","layout":"a87d,100x30,0,0,999"}`,
+		`{"cols":100,"rows":30,"zoom":true}`, `{"cols":100,"rows":30,"scope":"pane","zoom":true}`,
+		`{"cols":100,"rows":30,"scope":"window","zoom":"yes"}`,
 		`{"cols":100,"rows":30,"scope":"window","layout":"` + strings.Repeat("1", 3000) + `"}`} {
 		r := e.resize(tok, shell0, body)
 		if r.status != http.StatusBadRequest {
@@ -285,6 +287,30 @@ func TestFlow58_PaneFitInASplitWindow(t *testing.T) {
 	if got := paneSize(r); got != "90x18" {
 		t.Fatalf("pane is %s after the window took the layout", got)
 	}
+	time.Sleep(1100 * time.Millisecond)
+	// With zoom, the pane is shown alone: the whole window is its size,
+	// and the layout underneath is kept.
+	r = e.resize(tok, shell0, fmt.Sprintf(`{"cols":90,"rows":25,"scope":"window","layout":"%s","zoom":true}`, sent))
+	expect(t, r, http.StatusOK, "window resize with zoom")
+	if got := paneSize(r); got != "90x25" || !strings.Contains(r.body, `"zoomed":true`) {
+		t.Fatalf("zoomed pane: %s %s", got, r.body)
+	}
+	if ts.must("display-message", "-p", "-t", "work:0", "#{window_zoomed_flag}") != "1" {
+		t.Fatal("window not zoomed")
+	}
+	if want, _ := tmux.ScaleLayout(sent, 90, 25); ts.layout("work:0") != want {
+		t.Fatalf("layout under the zoom: %s, want %s", ts.layout("work:0"), want)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	// Without zoom, the next resize undoes it.
+	r = e.resize(tok, shell0, fmt.Sprintf(`{"cols":90,"rows":25,"scope":"window","layout":"%s"}`, sent))
+	expect(t, r, http.StatusOK, "window resize without zoom")
+	if got := paneSize(r); got != "90x18" || strings.Contains(r.body, `"zoomed"`) {
+		t.Fatalf("pane after the zoom was undone: %s %s", got, r.body)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	// A release undoes a zoom too.
+	expect(t, e.resize(tok, shell0, fmt.Sprintf(`{"cols":90,"rows":25,"scope":"window","zoom":true}`)), http.StatusOK, "zoom again")
 	// The release puts the window and its panes back as they were.
 	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")
 	if got := ts.windowSize("work:0"); got != size {
@@ -292,6 +318,9 @@ func TestFlow58_PaneFitInASplitWindow(t *testing.T) {
 	}
 	if got := ts.layout("work:0"); got != layout {
 		t.Fatalf("after release the layout is %s, before %s", got, layout)
+	}
+	if ts.must("display-message", "-p", "-t", "work:0", "#{window_zoomed_flag}") != "0" {
+		t.Fatal("still zoomed after the release")
 	}
 	if opt := ts.must("show-options", "-w", "-t", "work:0", "window-size"); opt != "" {
 		t.Fatalf("window-size still set: %s", opt)

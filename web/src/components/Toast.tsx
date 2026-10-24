@@ -12,7 +12,8 @@ import {
 export interface ToastItem {
   id: number;
   kind: string;
-  title: string;
+  title: ReactNode;
+  meta?: string;
   text?: string;
   onClick?: () => void;
 }
@@ -54,6 +55,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           >
             <span className="mx-kind">{t.kind}</span>
             {t.title}
+            {t.meta && <span className="mx-dim"> {t.meta}</span>}
             {t.text && <span className="mx-text">{t.text}</span>}
           </div>
         ))}

@@ -3,9 +3,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isOnline, onReachability, onUnauthorized } from '../api/client';
 import { useEventStream } from '../api/events';
-import { usePaneCached } from '../api/queries';
+import { keys } from '../api/queries';
+import type { Pane, Tree } from '../api/types';
 import { PaneTitle } from '../components/PaneTitle';
 import { label } from '../term/describe';
+import { useHeading } from './heading';
 import type { Event } from '../api/types';
 import { useSession } from '../auth/session';
 import { GLYPH } from '../components/Badge';
@@ -59,38 +61,58 @@ export function Shell() {
   const [help, setHelp] = useState(false);
   const [palette, setPalette] = useState(false);
   const [resync, setResync] = useState(false);
-  const paneAddress = location.pathname.startsWith('/p/')
-    ? decodeURIComponent(location.pathname.slice(3))
-    : '';
-  const pane = usePaneCached(paneAddress).data?.pane;
-  const flash = useTitleFlash(pane ? `${label(pane)} · muxway` : 'muxway');
+  const heading = useHeading();
+  const flash = useTitleFlash(
+    heading.pane
+      ? `${label(heading.pane)} · muxway`
+      : heading.place
+        ? `${heading.place} · muxway`
+        : 'muxway',
+  );
   useSettings();
 
+  // The pane an event is about, as some list already has it.
+  const qc = useQueryClient();
+  const known = useCallback(
+    (address: string): Pane | undefined => {
+      const all = qc.getQueryData<Pane[]>(keys.panes)?.find((p) => p.address === address);
+      if (all) return all;
+      const host = address.split('/')[0];
+      for (const s of qc.getQueryData<Tree>(keys.tree(host))?.sessions ?? [])
+        for (const w of s.windows) for (const p of w.panes) if (p.address === address) return p;
+      return undefined;
+    },
+    [qc],
+  );
   const onEvent = useCallback(
     (e: Event) => {
       if (!ATTENTION.has(e.kind)) return;
       const kind = e.kind as keyof typeof GLYPH;
+      const pane = known(e.address);
       toast.push({
         kind: `${GLYPH[kind]} ${e.kind}`,
-        title: e.address,
+        title: pane ? <PaneTitle pane={pane} /> : e.address,
+        meta: pane ? e.address : undefined,
         text: e.text,
         onClick: () => navigate({ to: '/p/$', params: { _splat: e.address } }),
       });
       flash();
       if (getNotify() && document.visibilityState === 'hidden') {
         try {
-          new Notification(`muxway: ${e.kind}`, { body: e.address, tag: e.address });
+          new Notification(`muxway: ${e.kind}`, {
+            body: pane ? `${label(pane)} · ${e.address}` : e.address,
+            tag: e.address,
+          });
         } catch {
           /* denied */
         }
       }
     },
-    [toast, navigate, flash],
+    [toast, navigate, flash, known],
   );
   useEventStream(onEvent, signedIn);
 
   // The hub forgot the session, after a restart or an expiry: sign in again.
-  const qc = useQueryClient();
   useEffect(
     () =>
       onUnauthorized(() => {
@@ -153,18 +175,8 @@ export function Shell() {
           <Link to="/">┌─ muxway ─┐</Link>
         </span>
         <span className="mx-crumb" data-testid="crumb">
-          {paneAddress ? (
-            <>
-              {pane && <PaneTitle pane={pane} />}
-              <span className="mx-dim">{pane ? ` ${paneAddress}` : paneAddress}</span>
-            </>
-          ) : location.pathname.startsWith('/w/') ? (
-            'window ' + decodeURIComponent(location.pathname.slice(3))
-          ) : location.pathname.startsWith('/b/') ? (
-            'board ' + decodeURIComponent(location.pathname.slice(3))
-          ) : (
-            ''
-          )}
+          {heading.pane && <PaneTitle pane={heading.pane} />}
+          {heading.place && <span className="mx-dim">{heading.place}</span>}
         </span>
         <span className="mx-spacer" />
         {signedIn && (

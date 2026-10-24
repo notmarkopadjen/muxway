@@ -28,6 +28,7 @@ func (h *Hub) handleResize(w http.ResponseWriter, r *http.Request, t Principal) 
 		Fit    string `json:"fit"`
 		Scope  string `json:"scope"`
 		Layout string `json:"layout"`
+		Zoom   bool   `json:"zoom"`
 	}
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
 	dec.DisallowUnknownFields()
@@ -50,6 +51,10 @@ func (h *Hub) handleResize(w http.ResponseWriter, r *http.Request, t Principal) 
 		return
 	}
 	if in.Scope != "" && in.Scope != "pane" && in.Scope != "window" || release && in.Scope != "" {
+		fail(w, http.StatusBadRequest, "bad_parameter")
+		return
+	}
+	if in.Zoom && in.Scope != "window" {
 		fail(w, http.StatusBadRequest, "bad_parameter")
 		return
 	}
@@ -77,13 +82,13 @@ func (h *Hub) handleResize(w http.ResponseWriter, r *http.Request, t Principal) 
 		fail(w, http.StatusForbidden, "read_only")
 		return
 	}
-	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpResize, Actor: t.ID, Pane: p.PaneID, Cols: in.Cols, Rows: in.Rows, Fit: in.Fit, Scope: in.Scope, Layout: in.Layout})
+	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpResize, Actor: t.ID, Pane: p.PaneID, Cols: in.Cols, Rows: in.Rows, Fit: in.Fit, Scope: in.Scope, Layout: in.Layout, Zoom: in.Zoom})
 	if err != nil {
 		fail(w, http.StatusServiceUnavailable, "host_offline")
 		return
 	}
 	a.forget()
-	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID, "cols", in.Cols, "rows", in.Rows, "fit", in.Fit, "scope", in.Scope, "layout", in.Layout != ""}
+	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID, "cols", in.Cols, "rows", in.Rows, "fit", in.Fit, "scope", in.Scope, "layout", in.Layout != "", "zoom", in.Zoom}
 	if resp.Error != "" {
 		h.log.Info("audit resize", append(attrs, "result", resp.Error)...)
 		status, code := statusFor(resp.Error)

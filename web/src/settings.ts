@@ -1,8 +1,10 @@
 import { useSyncExternalStore } from 'react';
 
-// Per-browser preferences: theme, effects, browser notifications.
+// Per-browser preferences: theme, effects, browser notifications, the
+// screen font size.
 export const THEMES = ['green', 'amber', 'paper'] as const;
 export type Theme = (typeof THEMES)[number];
+export const FONTS = [11, 12, 13, 14, 16, 18, 20] as const;
 
 const listeners = new Set<() => void>();
 function read(key: string): string | null {
@@ -29,6 +31,22 @@ export function applyRoot() {
   const theme = getTheme();
   document.documentElement.dataset.theme = theme === 'green' ? '' : theme;
   document.documentElement.dataset.motion = getMotion() ? '' : 'off';
+  document.documentElement.style.setProperty('--mx-screen-size', `${getFont()}px`);
+}
+
+// The font size a pane is read at, and the cell the host is sized by.
+export function getFont(): number {
+  const n = Number(read('mx-font'));
+  return (FONTS as readonly number[]).includes(n) ? n : 14;
+}
+export function setFont(px: number) {
+  write('mx-font', String(px));
+  applyRoot();
+}
+export function cycleFont(): number {
+  const next = FONTS[(FONTS.indexOf(getFont() as (typeof FONTS)[number]) + 1) % FONTS.length];
+  setFont(next);
+  return next;
 }
 
 export function getTheme(): Theme {
@@ -70,5 +88,8 @@ export async function toggleNotify(): Promise<boolean> {
 }
 
 export function useSettings() {
-  return useSyncExternalStore(subscribe, () => `${getTheme()}|${getMotion()}|${getNotify()}`);
+  return useSyncExternalStore(
+    subscribe,
+    () => `${getTheme()}|${getMotion()}|${getNotify()}|${getFont()}`,
+  );
 }

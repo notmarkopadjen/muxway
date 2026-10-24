@@ -28,6 +28,7 @@ export interface Pane {
   mode: 'read' | 'write';
   alias?: string;
   attention?: Attention;
+  zoomed?: boolean;
 }
 
 export interface Host {
@@ -66,7 +67,8 @@ export interface WindowContent {
 }
 
 export type Resize =
-  { cols: number; rows: number; scope?: 'pane' | 'window'; layout?: string } | { fit: 'auto' };
+  | { cols: number; rows: number; scope?: 'pane' | 'window'; layout?: string; zoom?: boolean }
+  | { fit: 'auto' };
 
 export interface Event {
   seq: number;

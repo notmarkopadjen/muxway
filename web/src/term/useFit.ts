@@ -33,6 +33,7 @@ export function useFit(
   box: React.RefObject<HTMLElement | null>,
   scope: FitScope = 'pane',
   layout?: string,
+  zoom = false,
 ) {
   const [size, setSize] = useState<{ cols: number; rows: number } | null>(null);
   const last = useRef<string>('');
@@ -44,11 +45,11 @@ export function useFit(
     if (!enabled || !box.current) return;
     const el = box.current;
     const send = (cols: number, rows: number) => {
-      const key = `${cols}x${rows} ${layout ?? ''}`;
+      const key = `${cols}x${rows} ${layout ?? ''} ${zoom}`;
       if (key === last.current) return;
       last.current = key;
       fitted.current = true;
-      resizePane(address, { cols, rows, scope, layout })
+      resizePane(address, { cols, rows, scope, layout, zoom: zoom || undefined })
         .then((r) => setSize({ cols: r.pane.width, rows: r.pane.height }))
         .catch((err) => {
           if (err instanceof ApiError && err.status === 429) {
@@ -80,7 +81,7 @@ export function useFit(
       if (timer.current) window.clearTimeout(timer.current);
       last.current = '';
     };
-  }, [address, enabled, box, scope, layout]);
+  }, [address, enabled, box, scope, layout, zoom]);
   const refit = useCallback(() => again.current?.(), []);
 
   // Release on the way out, if we ever fitted: on unmount, and on a page

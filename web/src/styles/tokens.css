@@ -38,6 +38,7 @@
   --mx-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
   --mx-pixel: 'Press Start 2P', var(--mx-mono);
   --mx-size: 14px;
+  --mx-screen-size: 14px;
   --mx-line: 1.35;
   --mx-gap: 8px;
   --mx-gap-2: 16px;

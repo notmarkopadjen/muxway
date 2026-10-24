@@ -9,6 +9,7 @@ import { PaneTitle } from '../components/PaneTitle';
 import { useToast } from '../components/Toast';
 import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
+import { setHeading } from '../shell/heading';
 
 export function PanePage() {
   const { _splat: address = '' } = useParams({ strict: false });
@@ -74,6 +75,10 @@ export function PanePage() {
     );
   }
   const p = pane.data?.pane;
+  useEffect(() => {
+    setHeading({ pane: p, place: address });
+    return () => setHeading({ place: '' });
+  }, [p, address]);
   const windowPath = p ? `/w/${p.host}/${p.session}/${p.window_index}` : undefined;
   return (
     <div className="mx-pane" data-testid="pane">

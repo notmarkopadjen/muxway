@@ -21,6 +21,7 @@ import {
 } from '../term/layout';
 import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
+import { setHeading } from '../shell/heading';
 
 // A window as tmux lays it out, with an arrangement of the browser's own:
 // fractions per split, hidden panes, a font multiplier per pane. The
@@ -57,13 +58,14 @@ interface TreeProps {
   panes: Map<string, PaneContent>;
   focused: string | null;
   burn: boolean;
+  fit: boolean;
   setArr: (f: (a: Arrangement) => Arrangement) => void;
   onFocus: (id: string) => void;
   onZoom: (id: string) => void;
 }
 
 function Tree(props: TreeProps) {
-  const { node, path, arr, panes, focused, burn, setArr, onFocus, onZoom } = props;
+  const { node, path, arr, panes, focused, burn, fit, setArr, onFocus, onZoom } = props;
   const box = useRef<HTMLDivElement>(null);
   if (node.kind === 'pane') {
     if (arr.hidden.includes(node.id)) return null;
@@ -101,8 +103,8 @@ function Tree(props: TreeProps) {
         <Screen
           content={pc.content}
           burn={burn}
-          cols={p.width}
-          rows={p.height}
+          cols={fit ? undefined : p.width}
+          rows={fit ? undefined : p.height}
           scale={arr.scale[node.id] ?? 1}
           focused={focused === node.id}
           onClick={() => onFocus(node.id)}
@@ -202,10 +204,16 @@ export function WindowPage() {
   const input = useInput(focusedPane?.address ?? '');
   const [text, setText] = useState('');
   const area = useRef<HTMLDivElement>(null);
-  const [fit, setFit] = useState(false);
-  // With fit on the host takes the browser's proportions too.
+  const [fit, setFit] = useState(true);
+  const fitting = fit && !!writable;
+  // With fit on the host takes the browser's proportions too, and its
+  // zoom: the pane shown alone here is shown alone there.
   const sent = fit && tree ? layoutFor(tree, arr) : undefined;
-  const { refit } = useFit(focusedPane?.address ?? '', fit && !!writable, area, 'window', sent);
+  const { refit } = useFit(focusedPane?.address ?? '', fitting, area, 'window', sent, !!zoom);
+  useEffect(() => {
+    setHeading({ pane: focusedPane, place: `window ${host}/${session}/${win}` });
+    return () => setHeading({ place: '' });
+  }, [focusedPane, host, session, win]);
 
   // The host's layout wins: a new layout string resets the arrangement.
   // Except with fit on, when the host's sizes are the browser's own: a
@@ -390,6 +398,7 @@ export function WindowPage() {
             panes={panes}
             focused={focus}
             burn={!data.isPlaceholderData}
+            fit={fitting}
             setArr={setArr}
             onFocus={setFocused}
             onZoom={toggleZoom}

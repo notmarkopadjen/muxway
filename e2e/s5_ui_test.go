@@ -166,6 +166,10 @@ func (e *env) startControl(t *testing.T, ts *tmuxServer, a *agentProc) string {
 		out, _ := ts.run("display-message", "-p", "-t", r.URL.Query().Get("target"), "#{window_width}x#{window_height}")
 		text(w, out)
 	})
+	mux.HandleFunc("/zoomed", func(w http.ResponseWriter, r *http.Request) {
+		out, _ := ts.run("display-message", "-p", "-t", r.URL.Query().Get("target"), "#{window_zoomed_flag}")
+		text(w, out)
+	})
 	mux.HandleFunc("/layout", func(w http.ResponseWriter, r *http.Request) {
 		out, _ := ts.run("display-message", "-p", "-t", r.URL.Query().Get("target"), "#{window_layout}")
 		text(w, out)

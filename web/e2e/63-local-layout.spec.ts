@@ -10,6 +10,12 @@ test('63 drag, hide and reset change only the browser', async ({ page, request }
   await signIn(page);
   await page.goto(`/w/${HOST}/work/0`);
   await expect(page.getByTestId('cell')).toHaveCount(2);
+  // With fit off nothing reaches the host from here on.
+  await page.keyboard.press('f');
+  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '0');
+  await expect.poll(() => control(request, '/layout', { target: 'work:0' })).toBe(layoutBefore);
+  await page.waitForTimeout(500);
+  resizes.length = 0;
   const slots = page.locator('.mx-slot');
   const before = Number(await slots.nth(0).getAttribute('data-fraction'));
   const divider = page.getByTestId('divider').first();

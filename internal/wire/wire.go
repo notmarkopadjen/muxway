@@ -31,6 +31,8 @@ type Request struct {
 	// Layout, with scope "window", is a tmux layout string whose
 	// proportions the window takes at the new size.
 	Layout string `json:"layout,omitempty"`
+	// Zoom, with scope "window", shows the pane alone in its window.
+	Zoom bool `json:"zoom,omitempty"`
 }
 
 // Response from agent to hub.

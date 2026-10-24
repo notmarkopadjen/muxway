@@ -65,6 +65,16 @@ back to tmux's automatic sizing (`set-option -w -u window-size`,
 > a change of shape. The hub parses the layout, the agent checks it
 > names exactly the window's panes, and 2048 bytes is the limit. Flow 58
 > and security test 53 cover it on the API, spec 76 in the browser.
+>
+> And once more, after zoom: a pane shown alone in the browser kept its
+> share of the host window, so with fit on it was scaled up with black
+> around it. A window resize now carries `zoom`, and the agent zooms the
+> pane with tmux's own zoom (undone by the next resize without it and by
+> the release); the listing marks the zoomed pane. With fit on the
+> browser no longer scales a pane to its box: it reads it at the font the
+> person chose (a setting, 11 to 20 px) and sizes the host by that cell,
+> as the Android client does. Fit is on by default in the window view.
+> Flow 58, security test 53 and spec 78.
 
 The agent treats a resize as a **write**: the pane
 must be marked for writing and the same-process check holds, because a
@@ -254,6 +264,7 @@ environment, with every pane titled by the harness.
 | 66 | Focus: `]`, `[`, typing goes to the focused pane | UI | text appears in the right pane only |
 | 74 | A pane titled by Claude Code | UI | named *Claude* with its status and mark in the list, header, tab title, selector and window view; the address stays, dimmed |
 | 75 | Double-click and `z` in the window view and on a board | UI | one pane shown, then all again; no navigation |
+| 78 | Window view, fit on by default: double-click a pane; change the font | UI | the host zooms the pane and unzooms; the host's columns follow the font; leaving releases |
 | 77 | Fit on; another client sizes the window; `⟳` and `r` | UI | the window takes this client's size again each time |
 | 76 | Fit on in the window view, drag a divider | UI | the host's split follows within a few per cent; the arrangement survives the host's new sizes; leaving restores size and layout |
 | u5 | Layout string parser: nested splits, sizes, pane ids, malformed strings | unit (Vitest) | as specified |

@@ -1,4 +1,6 @@
 import {
+  cycleFont,
+  getFont,
   getMotion,
   getNotify,
   getTheme,
@@ -15,11 +17,14 @@ const KEYS: [string, string][] = [
   ['Esc', 'back to the panes'],
   ['p', 'go to a pane or window'],
   ['/', 'filter panes'],
-  ['f', 'fit: the host pane (window view: the window) follows this box'],
+  ['f', 'fit: the host pane (window view: the window) follows this box, at the chosen font'],
   ['r', 'fit again, after another client sized the window'],
   ['b', 'the main board; from a pane: put it on the board'],
   ['] / [', 'window view and board: next / previous pane'],
-  ['x / z / 0 / + / -', 'window view: hide, zoom (or double-click), host layout, bigger, smaller'],
+  [
+    'x / z / 0 / + / -',
+    'window view: hide, zoom (or double-click; with fit, on the host too), host layout, bigger, smaller',
+  ],
   [
     'a / A / x / s / z / = / F / w',
     'board: add beside / below, remove, swap, zoom (or double-click), equalise, fit all, its window',
@@ -52,6 +57,9 @@ export function Help({ onClose }: { onClose: () => void }) {
             </button>
             <button type="button" onClick={() => toggleMotion()}>
               effects: {getMotion() ? 'on' : 'off'}
+            </button>
+            <button type="button" onClick={() => cycleFont()} data-testid="font">
+              font: {getFont()}px
             </button>
             <button type="button" onClick={() => void toggleNotify()}>
               notifications: {getNotify() ? 'on' : 'off'}

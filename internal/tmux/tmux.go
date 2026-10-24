@@ -83,6 +83,7 @@ type Pane struct {
 	Mode         string     `json:"mode"`
 	Alias        string     `json:"alias,omitempty"`
 	Attention    *Attention `json:"attention,omitempty"`
+	Zoomed       bool       `json:"zoomed,omitempty"` // shown alone in its window
 	PID          int        `json:"-"`
 }
 
@@ -99,6 +100,7 @@ var fields = []string{
 	"#{window_layout}", "#{window_active}", "#{pane_id}", "#{pane_index}", "#{pane_active}",
 	"#{pane_width}", "#{pane_height}", "#{pane_title}", "#{pane_current_command}",
 	"#{window_activity}", "#{" + optMode + "}", "#{" + optAlias + "}", "#{pane_pid}",
+	"#{window_zoomed_flag}",
 }
 
 // List returns every pane of the server, marked or not. Lines it cannot
@@ -128,6 +130,7 @@ func (s Server) List(ctx context.Context) (panes []Pane, skipped int, err error)
 			WindowLayout: f[5], WindowActive: f[6] == "1", PaneID: f[7], PaneIndex: atoi(f[8]),
 			PaneActive: f[9] == "1", Width: atoi(f[10]), Height: atoi(f[11]), Title: f[12], Command: f[13],
 			Activity: act, Mode: f[15], Alias: f[16], PID: atoi(f[17]),
+			Zoomed: f[18] == "1" && f[9] == "1",
 		})
 	}
 	return panes, skipped, nil
@@ -180,19 +183,33 @@ func (s Server) SendKey(ctx context.Context, paneID, key string) error {
 
 // ResizeWindow sets the size of the window holding paneID and lays its
 // panes out inside in the proportions of layout, or, without one, the
-// proportions they had: tmux's own resize does not keep them. The window
+// proportions they had: tmux's own resize does not keep them. With zoom
+// the pane is then shown alone; without, a zoom is undone. The window
 // keeps that size until released.
-func (s Server) ResizeWindow(ctx context.Context, paneID string, cols, rows int, layout string) error {
+func (s Server) ResizeWindow(ctx context.Context, paneID string, cols, rows int, layout string, zoom bool) error {
 	if layout == "" {
 		layout, _ = s.WindowLayout(ctx, paneID)
 	}
+	s.unzoom(ctx, paneID)
 	if _, err := s.run(ctx, "resize-window", "-t", paneID, "-x", strconv.Itoa(cols), "-y", strconv.Itoa(rows)); err != nil {
 		return err
 	}
 	if scaled, err := ScaleLayout(layout, cols, rows); err == nil {
 		s.run(ctx, "select-layout", "-t", paneID, scaled)
 	}
+	if zoom {
+		_, err := s.run(ctx, "resize-pane", "-Z", "-t", paneID)
+		return err
+	}
 	return nil
+}
+
+// unzoom undoes a zoom in the window holding paneID, whichever pane has it.
+func (s Server) unzoom(ctx context.Context, paneID string) {
+	out, err := s.run(ctx, "display-message", "-p", "-t", paneID, "#{window_zoomed_flag}")
+	if err == nil && strings.TrimSpace(string(out)) == "1" {
+		s.run(ctx, "resize-pane", "-Z", "-t", paneID)
+	}
 }
 
 // ResizePane makes one pane cols × rows. On an axis the pane spans, its
@@ -220,7 +237,7 @@ func (s Server) ResizePane(ctx context.Context, paneID string, cols, rows int) e
 	}
 	nw, nh := axis(cols, pw, ww), axis(rows, ph, wh)
 	if nw != ww || nh != wh {
-		if err := s.ResizeWindow(ctx, paneID, nw, nh, ""); err != nil {
+		if err := s.ResizeWindow(ctx, paneID, nw, nh, "", false); err != nil {
 			return err
 		}
 	}
@@ -243,6 +260,7 @@ func (s Server) WindowLayout(ctx context.Context, paneID string) (string, error)
 // layout, the panes are put back as they were; tmux refuses a layout
 // whose panes are not the window's any more, which is then left as is.
 func (s Server) ReleaseWindow(ctx context.Context, paneID, layout string) error {
+	s.unzoom(ctx, paneID)
 	if _, err := s.run(ctx, "resize-window", "-A", "-t", paneID); err != nil {
 		return err
 	}

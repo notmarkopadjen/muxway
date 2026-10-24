@@ -6,6 +6,10 @@ test('62 the window view mirrors the host layout', async ({ page, request }, inf
   await page.goto(`/w/${HOST}/work/0`);
   await expect(page.getByTestId('window')).toBeVisible();
   await expect(page.getByTestId('cell')).toHaveCount(2);
+  // Fit is on by default: off, the view mirrors the host and scales to the box.
+  await page.keyboard.press('f');
+  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '0');
+  await expect.poll(() => control(request, '/window-size', { target: 'work:0' })).toBe('100x30');
   const layout = await control(request, '/layout', { target: 'work:0' });
   await expect(page.getByTestId('window')).toHaveAttribute('data-layout', layout);
   // Expected fractions from the host's own sizes, along the split's axis.

@@ -2,9 +2,11 @@
 // makes a pane of cols × rows fill a box.
 
 let cell: { w: number; h: number; px: number } | null = null;
+let cellFor = '';
 
 export function measureCell(): { w: number; h: number; px: number } {
-  if (cell) return cell;
+  const size = document.documentElement.style.getPropertyValue('--mx-screen-size');
+  if (cell && cellFor === size) return cell;
   const probe = document.createElement('pre');
   probe.className = 'mx-screen';
   probe.style.position = 'absolute';
@@ -17,6 +19,7 @@ export function measureCell(): { w: number; h: number; px: number } {
   const rect = probe.getBoundingClientRect();
   probe.remove();
   cell = { w: rect.width / 10, h: rect.height / 10, px };
+  cellFor = size;
   return cell;
 }
 

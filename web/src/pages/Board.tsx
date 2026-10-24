@@ -24,6 +24,7 @@ import {
 } from '../term/board';
 import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
+import { setHeading } from '../shell/heading';
 
 // A board: the person's own arrangement of panes from any window, session
 // or host, kept in this browser. Each cell reads its pane as the pane view
@@ -271,6 +272,10 @@ export function BoardPage() {
   const writable = focusedPane?.mode === 'write';
   const input = useInput(focus ?? '');
   const [text, setText] = useState('');
+  useEffect(() => {
+    setHeading({ pane: focusedPane, place: `board ${name}` });
+    return () => setHeading({ place: '' });
+  }, [focusedPane, name]);
   const open = useCallback(
     (id: string) => navigate({ to: '/p/$', params: { _splat: id } }),
     [navigate],

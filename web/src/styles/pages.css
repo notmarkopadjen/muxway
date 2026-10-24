@@ -149,6 +149,7 @@
   text-shadow: 0 0 8px var(--mx-warn);
 }
 .mx-screen {
+  font-size: var(--mx-screen-size);
   overflow: auto;
   border: 1px solid var(--mx-ink-dim);
   box-shadow: var(--mx-glow-box);
