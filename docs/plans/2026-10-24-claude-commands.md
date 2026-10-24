@@ -161,11 +161,16 @@ Synthetic fixtures only (`alice-laptop`, `work:0.0`, a title of
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan. The three views lost their own copies of
+  the input form to `InputPanel`, as the design says; nothing else moved.
+- [x] Security rules (AGENTS.md section 2) hold: no new endpoint, no new
+  input shape, the write grant and the host's audit apply as before.
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read.
+- [x] Docs and diagrams updated; screenshots from the run.
 
 ## Test run
 
-To be filled in after the run.
+[Run 20261024-154329-ef0fe84](https://github.com/notmarkopadjen/muxway/issues/54): passed, 72 tests, at
+`ef0fe84`, the same tree before it was rebased onto the transcription
+commit as `0ab55ba` (hub-side only, no shared files), with spec 87 and its screenshots `87-shell-row` and
+`87-claude-row`. Android: muxway-android#4.
