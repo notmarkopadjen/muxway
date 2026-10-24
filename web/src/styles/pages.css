@@ -427,6 +427,17 @@
   align-items: center;
 }
 
+/* A cell whose pane waits for you glows; a shadow never moves a neighbour. */
+.mx-cell[data-state='waiting'] {
+  box-shadow:
+    0 0 0 1px var(--mx-warn),
+    0 0 14px var(--mx-warn);
+  animation: mx-cell-glow 1.4s var(--mx-ease-out) infinite alternate;
+}
+.mx-cell[data-state='waiting'] > .mx-screen {
+  border-color: var(--mx-warn);
+}
+
 /* palette */
 .mx-palette-list {
   list-style: none;
@@ -630,13 +641,15 @@ button.mx-window:focus-visible {
   font-weight: bold;
 }
 .mx-tab[data-state='waiting'],
-.mx-tile-head[data-state='waiting'] {
+.mx-tile-head[data-state='waiting'],
+.mx-cell-head[data-state='waiting'] {
   background: var(--mx-warn);
   color: var(--mx-bg);
   text-shadow: none;
 }
 .mx-tab[data-state='working'],
-.mx-tile-head[data-state='working'] {
+.mx-tile-head[data-state='working'],
+.mx-cell-head[data-state='working'] {
   background: var(--mx-ink-dim);
   color: var(--mx-bg);
   text-shadow: none;
@@ -664,7 +677,9 @@ button.mx-window:focus-visible {
 .mx-tile-head[data-state='waiting'] .mx-mode.write,
 .mx-tile-head[data-state='working'] .mx-mode.write,
 .mx-tile-head[data-state='waiting'] button,
-.mx-tile-head[data-state='working'] button {
+.mx-tile-head[data-state='working'] button,
+.mx-cell-head[data-state='waiting'] button,
+.mx-cell-head[data-state='working'] button {
   color: var(--mx-bg);
   text-shadow: none;
 }

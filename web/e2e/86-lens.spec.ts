@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { control, SHELL0, shot, signIn } from './fixtures';
+import { control, HOST, SHELL0, shot, signIn } from './fixtures';
 
 test('86 the lens paints a working Claude pane dim and a waiting one in the attention colour', async ({
   page,
@@ -47,6 +47,30 @@ test('86 the lens paints a working Claude pane dim and a waiting one in the atte
   await page.getByTestId('input').press('Enter');
   await expect(page.getByTestId('pane-attention')).toHaveCount(0);
   await expect(tab).not.toHaveAttribute('data-state', 'waiting');
+  // In the window view a waiting pane's cell glows, and nothing moves.
+  await page.goto(`/w/${HOST}/work/0`);
+  const cells = page.getByTestId('cell');
+  await expect(cells).toHaveCount(2);
+  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '1');
+  // The fit lands first (after the hub's per-second limit, at worst), then the cells are measured.
+  const size = () => control(request, '/window-size', { target: 'work:0' });
+  await expect.poll(size, { timeout: 5000 }).not.toBe('100x30');
+  await page.waitForTimeout(1500);
+  const before = await cells.evaluateAll((els) =>
+    els.map((e) => JSON.stringify(e.getBoundingClientRect())),
+  );
+  await control(request, '/notify', { pane, kind: 'permission', text: 'run it?' });
+  const cell = page.locator(`[data-testid="cell"][data-pane="${pane}"]`);
+  await expect(cell).toHaveAttribute('data-state', 'waiting', { timeout: 10_000 });
+  expect(await cell.evaluate((e) => getComputedStyle(e).boxShadow)).not.toBe('none');
+  await expect(cell.locator('.mx-cell-head')).toHaveAttribute('data-state', 'waiting');
+  await shot(page, info, '86-window-glow');
+  expect(
+    await cells.evaluateAll((els) => els.map((e) => JSON.stringify(e.getBoundingClientRect()))),
+  ).toEqual(before);
+  await page.getByTestId('input').fill('y');
+  await page.getByTestId('input').press('Enter');
+  await expect(cell).not.toHaveAttribute('data-state', 'waiting');
   await control(request, '/rename', { what: 'title', target: 'work:0.0', name: 'test-pane' });
   // Leaving the pane gives the window back to tmux, so the next spec finds it at rest.
   await page.goto('/');

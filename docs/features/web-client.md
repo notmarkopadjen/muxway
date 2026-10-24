@@ -198,6 +198,10 @@ see above):
 - `x` to hide the focused pane (the bar above brings it back),
 - `0` to return to the host's layout.
 
+Each cell's header is painted with the pane's state as a tab is, and a
+pane that waits for you glows in the attention colour, a shadow around
+its cell that moves nothing else. Boards do the same.
+
 The arrangement is remembered per window in your browser, and dropped
 whenever tmux's own layout changes, so the view never shows a stale
 picture; with fit on, a change of sizes alone is the browser's own

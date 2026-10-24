@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { api, ApiError } from '../api/client';
 import { useAllPanes, useInput, usePane } from '../api/queries';
 import type { Key, Mouse } from '../api/types';
-import { Badge } from '../components/Badge';
+import { LensMark } from '../components/Lens';
 import { Divider } from '../components/Divider';
 import { KeyBar } from '../components/KeyBar';
 import { Palette } from '../components/Palette';
@@ -22,7 +22,7 @@ import {
   type Board,
   type BoardNode,
 } from '../term/board';
-import { noteOwn } from '../term/lens';
+import { noteOwn, useLens } from '../term/lens';
 import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
@@ -74,6 +74,9 @@ function Cell(props: CellProps) {
   }, [refitTick, refit]);
   const [over, setOver] = useState(false);
   const short = address.split('/').slice(1).join('/');
+  const lens = useLens();
+  const st = p ? lens.status(p) : 'quiet';
+  const state = st === 'quiet' ? undefined : st;
   if (pane.isError) {
     const err = pane.error;
     return (
@@ -97,6 +100,7 @@ function Cell(props: CellProps) {
       className={`mx-cell${over ? ' mx-drop' : ''}`}
       data-testid="cell"
       data-pane={address}
+      data-state={state}
       onDoubleClick={props.onZoom}
       onDragOver={(e) => {
         if (dragging && dragging !== address) {
@@ -112,7 +116,8 @@ function Cell(props: CellProps) {
       }}
     >
       <div
-        className="mx-cell-head"
+        className="mx-cell-head mx-painted"
+        data-state={state}
         onClick={props.onFocus}
         draggable
         onDragStart={(e) => {
@@ -123,7 +128,7 @@ function Cell(props: CellProps) {
         onDragEnd={props.onDragEnd}
         title="drag onto another cell to swap"
       >
-        <Badge attention={p?.attention} />
+        <LensMark status={st} attention={p?.attention} />
         {p ? <PaneTitle pane={p} /> : <span>…</span>}
         <span className="mx-dim">
           {short}

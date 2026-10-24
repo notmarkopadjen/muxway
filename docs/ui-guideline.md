@@ -48,6 +48,11 @@ Selection is never a colour: an open or focused element has a border
 (thick when focused) and its name in bold, so the state shows on the
 pane you are looking at. tmux's own activity flag is not used.
 
+Wherever a pane is shown in a cell among others (tiles, the window view,
+a board), its header is painted with the state, and a **waiting** pane's
+cell glows in the attention colour: a shadow around it, pulsing with
+effects on, drawn outside the layout so no neighbour moves or resizes.
+
 Web: `web/src/term/lens.ts`, `components/Lens.tsx`. Android:
 `protocol/Lens.kt`. Feature pages: core `web-client.md` (The lens),
 Android `lenses.md`.

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { api, ApiError } from '../api/client';
 import { useInput, useWindow } from '../api/queries';
 import type { Key, Mouse, PaneContent } from '../api/types';
-import { Badge } from '../components/Badge';
+import { LensMark } from '../components/Lens';
 import { Divider } from '../components/Divider';
 import { KeyBar } from '../components/KeyBar';
 import { PaneTitle } from '../components/PaneTitle';
@@ -19,7 +19,7 @@ import {
   type Arrangement,
   type Node,
 } from '../term/layout';
-import { noteOwn } from '../term/lens';
+import { noteOwn, useLens } from '../term/lens';
 import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
@@ -81,6 +81,7 @@ interface TreeProps {
 function Tree(props: TreeProps) {
   const { node, path, arr, panes, focused, burn, fit, setArr, onFocus, onZoom, onCell } = props;
   const box = useRef<HTMLDivElement>(null);
+  const lens = useLens();
   if (node.kind === 'pane') {
     if (arr.hidden.includes(node.id)) return null;
     const pc = panes.get(node.id);
@@ -92,15 +93,22 @@ function Tree(props: TreeProps) {
       );
     }
     const p = pc.pane;
+    const st = lens.status(p);
+    const state = st === 'quiet' ? undefined : st;
     return (
       <div
         className="mx-cell"
         data-testid="cell"
         data-pane={node.id}
+        data-state={state}
         onDoubleClick={() => onZoom(node.id)}
       >
-        <div className="mx-cell-head" onClick={() => onFocus(node.id)}>
-          <Badge attention={p.attention} />
+        <div
+          className="mx-cell-head mx-painted"
+          data-state={state}
+          onClick={() => onFocus(node.id)}
+        >
+          <LensMark status={st} attention={p.attention} />
           <PaneTitle pane={p} />
           <span className="mx-dim">
             {p.address.split('/').slice(1).join('/')} · {p.width}×{p.height}
