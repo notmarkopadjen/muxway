@@ -73,7 +73,7 @@ Android `lenses.md`.
 | open | a tap or click opens the pane alone |
 | pick | several panes, up to four, open side by side: Android hold, web `[ ]` box or `space`; a bar under the list offers *clear* and *open N side by side*; with a pick on, a tap adds or removes |
 | `+ pane` | a dim row under a window's panes when one of them is writable; a tap splits the window (beside on a wide pane, below on a tall one) and opens the new pane |
-| `+ session` | at the right of the host's line, for a host whose agent allows it (`sessions` in `GET /v1/hosts`) and an account with a write grant there; asks for a name (web: a one-line form, Android: a dialog) and opens the session's first pane |
+| `+ session` | at the right of the host's line, for a host whose agent allows it (`sessions` in `GET /v1/hosts`; the web also wants a write pattern of `/v1/me` naming the host); asks for a name (web: a one-line form, Android: a dialog) and opens the session's first pane; the hub's answer decides |
 | refresh | re-read every 15 s (Android) or 5 s (web), and at once on any event |
 
 Web adds the tmux tree (session, window) and a button per window that
