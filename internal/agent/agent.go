@@ -338,9 +338,11 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	if !release && (req.Fit != "" || !wire.ValidSize(req.Cols, req.Rows)) {
 		return wire.ErrBadInput
 	}
+	// One resize per second per window; a release is always taken, so a
+	// client leaving right after a resize can still hand the window back.
 	a.mu.Lock()
 	last := a.resized[p.WindowID]
-	if time.Since(last) < time.Second {
+	if !release && time.Since(last) < time.Second {
 		a.mu.Unlock()
 		return wire.ErrRateLimit
 	}

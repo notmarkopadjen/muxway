@@ -162,6 +162,23 @@ func (e *env) startControl(t *testing.T, ts *tmuxServer, a *agentProc) string {
 		out, _ := ts.run("display-message", "-p", "-t", r.URL.Query().Get("target"), "#{pane_current_command}")
 		text(w, out)
 	})
+	mux.HandleFunc("/window-size", func(w http.ResponseWriter, r *http.Request) {
+		out, _ := ts.run("display-message", "-p", "-t", r.URL.Query().Get("target"), "#{window_width}x#{window_height}")
+		text(w, out)
+	})
+	mux.HandleFunc("/layout", func(w http.ResponseWriter, r *http.Request) {
+		out, _ := ts.run("display-message", "-p", "-t", r.URL.Query().Get("target"), "#{window_layout}")
+		text(w, out)
+	})
+	mux.HandleFunc("/split", func(w http.ResponseWriter, r *http.Request) {
+		id, _ := ts.run("split-window", "-t", r.URL.Query().Get("target"), "-P", "-F", "#{pane_id}", shell())
+		ts.run("select-pane", "-t", id, "-T", "test-pane")
+		text(w, id)
+	})
+	mux.HandleFunc("/kill-pane", func(w http.ResponseWriter, r *http.Request) {
+		_, err := ts.run("kill-pane", "-t", r.URL.Query().Get("target"))
+		text(w, fmt.Sprint(err))
+	})
 	mux.HandleFunc("/capture", func(w http.ResponseWriter, r *http.Request) {
 		out, _ := ts.run("capture-pane", "-p", "-t", r.URL.Query().Get("target"))
 		text(w, out)

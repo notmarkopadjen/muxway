@@ -1,5 +1,5 @@
-import { useParams } from '@tanstack/react-router';
-import { useRef, useState, type FormEvent } from 'react';
+import { Link, useParams } from '@tanstack/react-router';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../api/client';
 import { useInput, usePane } from '../api/queries';
 import type { Key } from '../api/types';
@@ -7,6 +7,7 @@ import { Badge } from '../components/Badge';
 import { KeyBar } from '../components/KeyBar';
 import { useToast } from '../components/Toast';
 import { Screen } from '../term/Screen';
+import { useFit } from '../term/useFit';
 
 export function PanePage() {
   const { _splat: address = '' } = useParams({ strict: false });
@@ -15,7 +16,23 @@ export function PanePage() {
   const toast = useToast();
   const [text, setText] = useState('');
   const field = useRef<HTMLInputElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   const writable = pane.data?.pane.mode === 'write';
+  // Fit is on by default for a pane the person may write to.
+  const [fit, setFit] = useState<boolean | null>(null);
+  const fitOn = fit ?? writable;
+  const fitted = useFit(address, fitOn && writable, box);
+
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const target = ev.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      if (ev.key === 'f' && !ev.ctrlKey && !ev.metaKey && !ev.altKey && writable)
+        setFit((f) => !(f ?? writable));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [writable]);
 
   const send = async (body: { text: string } | { key: Key }) => {
     try {
@@ -55,6 +72,7 @@ export function PanePage() {
     );
   }
   const p = pane.data?.pane;
+  const windowPath = p ? `/w/${p.host}/${p.session}/${p.window_index}` : undefined;
   return (
     <div className="mx-pane" data-testid="pane">
       <div className="mx-pane-head">
@@ -63,9 +81,30 @@ export function PanePage() {
           <>
             <span className="mx-dim">
               {p.command}
-              {p.title && p.title !== p.command ? ` · ${p.title}` : ''} · {p.width}×{p.height}
+              {p.title && p.title !== p.command ? ` · ${p.title}` : ''} ·{' '}
+              <span data-testid="pane-size">
+                {p.width}×{p.height}
+              </span>
             </span>
             <span className={`mx-mode ${p.mode}`}>{p.mode}</span>
+            {writable && (
+              <button
+                type="button"
+                className={`mx-toggle${fitOn ? ' on' : ''}`}
+                onClick={() => setFit(!fitOn)}
+                title="fit the host window to this box (f)"
+                data-testid="fit"
+                data-on={fitOn ? '1' : '0'}
+              >
+                fit {fitOn ? 'on' : 'off'}
+                {fitOn && fitted ? ` ${fitted.cols}×${fitted.rows}` : ''}
+              </button>
+            )}
+            {windowPath && (
+              <Link to={windowPath} className="mx-dim" data-testid="to-window">
+                window ▸
+              </Link>
+            )}
             {p.attention && (
               <span className="mx-attention" data-testid="pane-attention">
                 <Badge attention={p.attention} /> {p.attention.kind}
@@ -75,7 +114,13 @@ export function PanePage() {
           </>
         )}
       </div>
-      <Screen content={pane.data?.content ?? ''} burn={!pane.isPlaceholderData} />
+      <Screen
+        content={pane.data?.content ?? ''}
+        burn={!pane.isPlaceholderData}
+        cols={fitOn ? undefined : p?.width}
+        rows={fitOn ? undefined : p?.height}
+        boxRef={box}
+      />
       <form className="mx-input" onSubmit={submit}>
         <span className="mx-prompt">{writable ? '>' : '○'}</span>
         <input

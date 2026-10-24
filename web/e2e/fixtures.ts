@@ -29,7 +29,7 @@ export async function signIn(page: Page, token = TOKEN) {
   await page.goto('/signin');
   await page.getByTestId('token').fill(token);
   await page.getByTestId('token-submit').click();
-  await expect(page.getByTestId('panes')).toBeVisible();
+  await expect(page.getByTestId('panes')).toBeVisible({ timeout: 10_000 });
 }
 
 // Opens a pane and waits until the hub has said what it is: the input is

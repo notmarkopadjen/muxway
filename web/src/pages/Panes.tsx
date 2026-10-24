@@ -19,6 +19,7 @@ function HostTree({
   register: (host: string, panes: Pane[]) => void;
 }) {
   const tree = useTree(host.name, host.online);
+  const navigate = useNavigate();
   const panes = useMemo(() => {
     const all: Pane[] = [];
     for (const s of tree.data?.sessions ?? []) for (const w of s.windows) all.push(...w.panes);
@@ -57,8 +58,14 @@ function HostTree({
               <div className="mx-session">{s.name}</div>
               {shown.map(({ w, panes: ps }) => (
                 <div key={w.index}>
-                  <div className="mx-window">
+                  <div
+                    className="mx-window"
+                    data-testid="window-row"
+                    onClick={() => navigate({ to: `/w/${host.name}/${s.name}/${w.index}` })}
+                    title="open the window view"
+                  >
                     {w.index}: {w.name}
+                    {ps.length > 1 && <span className="mx-faint"> ▦ {ps.length}</span>}
                   </div>
                   {ps.map((p) => (
                     <div

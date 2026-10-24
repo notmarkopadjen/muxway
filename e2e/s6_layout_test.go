@@ -194,7 +194,7 @@ func TestFlow56_ResizeAndRelease(t *testing.T) {
 	if got := ts.windowSize("work:0"); got != "140x32" {
 		t.Fatalf("window is %s", got)
 	}
-	time.Sleep(1100 * time.Millisecond)
+	// A release right after a resize is accepted: it is how a client leaves.
 	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")
 	if got := ts.windowSize("work:0"); got != before {
 		t.Fatalf("after release the window is %s, before %s", got, before)

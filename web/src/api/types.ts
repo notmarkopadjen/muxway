@@ -58,6 +58,15 @@ export interface PaneContent {
   content: string;
 }
 
+export interface WindowContent {
+  host: string;
+  session: string;
+  window: { index: number; name: string; layout: string; active: boolean };
+  panes: PaneContent[];
+}
+
+export type Resize = { cols: number; rows: number } | { fit: 'auto' };
+
 export interface Event {
   seq: number;
   at: number;

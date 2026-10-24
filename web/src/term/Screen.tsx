@@ -1,8 +1,10 @@
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { fontFor } from './measure';
 import { classes, parse, type Span } from './sgr';
 
 // Renders a pane's content. Lines that were not there a moment ago burn
 // in; the view follows the bottom while the person has not scrolled up.
+// With cols and rows given, the font is sized so the pane fills the box.
 function SpanView({ s }: { s: Span }) {
   const style: Record<string, string> = {};
   if (typeof s.fg === 'string') style.color = s.fg;
@@ -14,10 +16,32 @@ function SpanView({ s }: { s: Span }) {
   );
 }
 
-export const Screen = memo(function Screen({ content, burn }: { content: string; burn: boolean }) {
+export const Screen = memo(function Screen({
+  content,
+  burn,
+  cols,
+  rows,
+  scale = 1,
+  boxRef,
+  onClick,
+  focused,
+  testId = 'screen',
+}: {
+  content: string;
+  burn: boolean;
+  cols?: number;
+  rows?: number;
+  scale?: number;
+  boxRef?: React.RefObject<HTMLDivElement | null>;
+  onClick?: () => void;
+  focused?: boolean;
+  testId?: string;
+}) {
   const lines = useMemo(() => parse(content), [content]);
   const prev = useRef<Set<string>>(new Set());
-  const box = useRef<HTMLDivElement>(null);
+  const own = useRef<HTMLDivElement>(null);
+  const box = boxRef ?? own;
+  const [font, setFont] = useState<number | null>(null);
   const plain = useMemo(() => lines.map((l) => l.map((s) => s.text).join('')), [lines]);
   const fresh = new Set<number>();
   if (burn && prev.current.size) {
@@ -33,9 +57,34 @@ export const Screen = memo(function Screen({ content, burn }: { content: string;
     if (!el) return;
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
     if (nearBottom) el.scrollTop = el.scrollHeight;
-  }, [content]);
+  }, [content, box]);
+  // Scale to the box when the pane's size is known.
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el || !cols || !rows) {
+      setFont(null);
+      return;
+    }
+    // Layout sizes, not the bounding rectangle: the CRT power-on scales
+    // the page with a transform, which the rectangle reflects and a
+    // ResizeObserver never reports.
+    const apply = () =>
+      setFont(fontFor(cols, rows, el.clientWidth - 18, el.clientHeight - 18, scale));
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [cols, rows, scale, box]);
   return (
-    <div className="mx-screen" ref={box} data-testid="screen" tabIndex={0}>
+    <div
+      className={`mx-screen${focused ? ' mx-focused' : ''}`}
+      ref={box}
+      data-testid={testId}
+      data-font={font ? font.toFixed(1) : undefined}
+      tabIndex={0}
+      onClick={onClick}
+      style={font ? { fontSize: `${font}px` } : undefined}
+    >
       <pre>
         {lines.map((spans, i) => (
           <div key={i} className={fresh.has(i) ? 'ln mx-burn' : 'ln'}>

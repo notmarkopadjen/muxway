@@ -52,5 +52,5 @@ func (h *Hub) webHandler() http.Handler {
 // appRoute lists the paths the client renders; anything else is a 404
 // like before, never the page.
 func appRoute(p string) bool {
-	return p == "/" || p == "/signin" || strings.HasPrefix(p, "/p/")
+	return p == "/" || p == "/signin" || strings.HasPrefix(p, "/p/") || strings.HasPrefix(p, "/w/")
 }

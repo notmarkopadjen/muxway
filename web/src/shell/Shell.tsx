@@ -8,6 +8,7 @@ import { GLYPH } from '../components/Badge';
 import { useToast } from '../components/Toast';
 import { cycleTheme, getNotify, toggleMotion, useSettings } from '../settings';
 import { Help } from './Help';
+import { Palette } from '../components/Palette';
 
 const ATTENTION = new Set(['question', 'permission', 'idle', 'done']);
 
@@ -46,6 +47,7 @@ export function Shell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [help, setHelp] = useState(false);
+  const [palette, setPalette] = useState(false);
   const [resync, setResync] = useState(false);
   const flash = useTitleFlash();
   useSettings();
@@ -78,7 +80,8 @@ export function Shell() {
       const target = ev.target as HTMLElement | null;
       const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
       if (ev.key === 'Escape') {
-        if (help) setHelp(false);
+        if (palette) setPalette(false);
+        else if (help) setHelp(false);
         else if (typing) (target as HTMLElement).blur();
         else if (location.pathname !== '/') navigate({ to: '/' });
         return;
@@ -86,6 +89,9 @@ export function Shell() {
       if (typing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
       if (ev.key === '?') {
         setHelp((h) => !h);
+        ev.preventDefault();
+      } else if (ev.key === 'p' && signedIn) {
+        setPalette(true);
         ev.preventDefault();
       } else if (ev.key === 't') {
         const theme = cycleTheme();
@@ -103,7 +109,7 @@ export function Shell() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [help, location.pathname, navigate, toast]);
+  }, [help, palette, signedIn, location.pathname, navigate, toast]);
 
   return (
     <>
@@ -114,7 +120,9 @@ export function Shell() {
         <span className="mx-crumb" data-testid="crumb">
           {location.pathname.startsWith('/p/')
             ? decodeURIComponent(location.pathname.slice(3))
-            : ''}
+            : location.pathname.startsWith('/w/')
+              ? 'window ' + decodeURIComponent(location.pathname.slice(3))
+              : ''}
         </span>
         <span className="mx-spacer" />
         {signedIn && (
@@ -122,6 +130,14 @@ export function Shell() {
             <span className="mx-who" data-testid="who">
               {me?.name}
             </span>
+            <button
+              type="button"
+              onClick={() => setPalette(true)}
+              title="go to a pane (p)"
+              data-testid="open-palette"
+            >
+              ≡
+            </button>
             <button type="button" onClick={() => setHelp(true)} title="help (?)">
               ?
             </button>
@@ -151,6 +167,7 @@ export function Shell() {
         </span>
       </footer>
       {help && <Help onClose={() => setHelp(false)} />}
+      {palette && <Palette onClose={() => setPalette(false)} />}
     </>
   );
 }

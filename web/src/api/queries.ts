@@ -1,7 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { api, ApiError } from './client';
-import type { AuthMethods, Host, Key, Me, PaneContent, Tree } from './types';
+import type {
+  AuthMethods,
+  Host,
+  Key,
+  Me,
+  Pane,
+  PaneContent,
+  Resize,
+  Tree,
+  WindowContent,
+} from './types';
 
 export const keys = {
   auth: ['auth'] as const,
@@ -9,6 +19,9 @@ export const keys = {
   hosts: ['hosts'] as const,
   tree: (host: string) => ['tree', host] as const,
   pane: (address: string) => ['pane', address] as const,
+  window: (host: string, session: string, window: string) =>
+    ['window', host, session, window] as const,
+  panes: ['panes'] as const,
 };
 
 function useVisible(): boolean {
@@ -78,5 +91,38 @@ export function useInput(address: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.pane(address) });
     },
+  });
+}
+
+export function useWindow(host: string, session: string, window: string) {
+  const visible = useVisible();
+  return useQuery({
+    queryKey: keys.window(host, session, window),
+    queryFn: () =>
+      api<WindowContent>(`/v1/windows/${host}/${session}/${window}?ansi=1&lines=300`, {
+        conditional: true,
+      }),
+    refetchInterval: visible ? 1_000 : 5_000,
+    retry: (count, err) => !(err instanceof ApiError) && count < 2,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// Every pane the principal may read, flat, for the selector.
+export function useAllPanes(enabled: boolean) {
+  return useQuery({
+    queryKey: keys.panes,
+    queryFn: () => api<{ panes: Pane[] | null }>('/v1/panes').then((v) => v.panes ?? []),
+    enabled,
+    refetchInterval: 5_000,
+  });
+}
+
+// resize asks the host to size the pane's window; the answer is the pane
+// as tmux has it now. 429 means another resize landed within the second.
+export function resizePane(address: string, body: Resize): Promise<{ pane: Pane }> {
+  return api<{ pane: Pane }>(`/v1/panes/${address}/resize`, {
+    method: 'POST',
+    body: JSON.stringify(body),
   });
 }

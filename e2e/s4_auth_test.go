@@ -361,6 +361,7 @@ func TestFlow37_AuthMethodsFollowConfiguration(t *testing.T) {
 		t.Fatalf("web client at /: %d %v", page.status, page.header)
 	}
 	expect(t, plain.noFollow("GET", "/etc/passwd", nil), http.StatusNotFound, "unknown path with the web client")
+	expect(t, plain.noFollow("GET", "/w/alice-laptop/work/0", nil), http.StatusOK, "window route with the web client")
 	expect(t, plain.noFollow("GET", "/hub.json", nil), http.StatusNotFound, "file name with the web client")
 	bare, _, _ := basic(t, "--no-web")
 	expect(t, bare.noFollow("GET", "/", nil), http.StatusNotFound, "root without web and provider")

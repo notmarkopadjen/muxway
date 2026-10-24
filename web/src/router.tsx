@@ -11,6 +11,7 @@ import { Crt } from './shell/Crt';
 import { Shell } from './shell/Shell';
 import { PanePage } from './pages/Pane';
 import { PanesPage } from './pages/Panes';
+import { WindowPage } from './pages/Window';
 import { SignInPage } from './pages/SignIn';
 import { queryClient } from './query';
 import { keys } from './api/queries';
@@ -48,6 +49,12 @@ const pane = createRoute({
   beforeLoad: requireSession,
   component: PanePage,
 });
+const window = createRoute({
+  getParentRoute: () => root,
+  path: '/w/$host/$session/$window',
+  beforeLoad: requireSession,
+  component: WindowPage,
+});
 const notFound = createRoute({
   getParentRoute: () => root,
   path: '$',
@@ -59,7 +66,7 @@ const notFound = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: root.addChildren([signIn, panes, pane, notFound]),
+  routeTree: root.addChildren([signIn, panes, pane, window, notFound]),
 });
 
 declare module '@tanstack/react-router' {
