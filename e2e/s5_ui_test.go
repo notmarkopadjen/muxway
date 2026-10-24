@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -26,18 +27,7 @@ import (
 // lets a spec drive tmux, notifications and the hub.
 
 func TestUI_WebClient(t *testing.T) {
-	if os.Getenv("MUXWAY_SKIP_UI") != "" {
-		t.Skip("MUXWAY_SKIP_UI set")
-	}
-	npx, err := exec.LookPath("npx")
-	if err != nil {
-		t.Skip("npx not found; the UI suite needs Node")
-	}
-	webDir, _ := filepath.Abs("../web")
-	if _, err := os.Stat(filepath.Join(webDir, "node_modules", ".bin", "playwright")); err != nil {
-		t.Skip("web/node_modules missing; run npm ci in web/")
-	}
-
+	npx, webDir := uiTools(t)
 	idp := authtest.New()
 	defer idp.Close()
 	secretDir, _ := os.MkdirTemp("", "mxw-ui-")
@@ -64,6 +54,51 @@ func TestUI_WebClient(t *testing.T) {
 
 	control := e.startControl(t, ts, a)
 	attack := startAttackPage(t, e.url())
+	runPlaywright(t, e, npx, webDir, os.Getenv("MX_GREP"),
+		"MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_CONTROL="+control, "MX_ATTACK="+attack)
+}
+
+// The microphone needs a hub with a transcriber: the stand-in from the
+// transcription tests, with a control hook to break it and count its calls.
+// Spec 93 runs here with MX_STT set; its no-transcriber case runs above.
+func TestUI_Microphone(t *testing.T) {
+	npx, webDir := uiTools(t)
+	if g := os.Getenv("MX_GREP"); g != "" {
+		if ok, _ := regexp.MatchString(g, "93"); !ok {
+			t.Skip("MX_GREP leaves spec 93 out")
+		}
+	}
+	e, _ := sttEnv(t)
+	ts := newTmux(t)
+	a := e.pairAgent(host, ts)
+	ts.split("work:0.0")
+	e.expose(ts, "work:0.0", "--write")
+	e.expose(ts, "work:0.1")
+	full := e.token("browser", []string{"*"}, []string{"*"})
+	readOnly := e.token("viewer", []string{host + "/*"}, nil)
+	control := e.startControl(t, ts, a)
+	runPlaywright(t, e, npx, webDir, "93",
+		"MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_CONTROL="+control, "MX_STT=1")
+}
+
+func uiTools(t *testing.T) (npx, webDir string) {
+	if os.Getenv("MUXWAY_SKIP_UI") != "" {
+		t.Skip("MUXWAY_SKIP_UI set")
+	}
+	npx, err := exec.LookPath("npx")
+	if err != nil {
+		t.Skip("npx not found; the UI suite needs Node")
+	}
+	webDir, _ = filepath.Abs("../web")
+	if _, err := os.Stat(filepath.Join(webDir, "node_modules", ".bin", "playwright")); err != nil {
+		t.Skip("web/node_modules missing; run npm ci in web/")
+	}
+	return npx, webDir
+}
+
+// runPlaywright runs the specs (those matching grep, or all) against e and
+// reports each as a subtest.
+func runPlaywright(t *testing.T, e *env, npx, webDir, grep string, extraEnv ...string) {
 	screens := filepath.Join(runDir, "screens")
 	traces := filepath.Join(runDir, "traces")
 	os.MkdirAll(screens, 0o755)
@@ -71,15 +106,15 @@ func TestUI_WebClient(t *testing.T) {
 	report := filepath.Join(e.dir, "playwright.json")
 
 	args := []string{"playwright", "test", "--reporter=json"}
-	if g := os.Getenv("MX_GREP"); g != "" {
-		args = append(args, "--grep", g)
+	if grep != "" {
+		args = append(args, "--grep", grep)
 	}
 	cmd := exec.Command(npx, args...)
 	cmd.Dir = webDir
 	cmd.Env = append(os.Environ(),
-		"MX_BASE_URL="+e.url(), "MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_HOST="+host,
-		"MX_CONTROL="+control, "MX_ATTACK="+attack, "MX_SCREENS="+screens, "MX_TRACES="+traces,
+		"MX_BASE_URL="+e.url(), "MX_HOST="+host, "MX_SCREENS="+screens, "MX_TRACES="+traces,
 		"PLAYWRIGHT_JSON_OUTPUT_NAME="+report, "CI=1")
+	cmd.Env = append(cmd.Env, extraEnv...)
 	var stderr bytes.Buffer
 	cmd.Stdout = e.logFile("playwright")
 	cmd.Stderr = &stderr
@@ -224,6 +259,21 @@ func (e *env) startControl(t *testing.T, ts *tmuxServer, a *agentProc) string {
 		q := r.URL.Query()
 		out, err := e.notify(a, "--pane", q.Get("pane"), "--kind", q.Get("kind"), "--text", q.Get("text"))
 		text(w, out+fmt.Sprint(err))
+	})
+	// The transcriber stand-in, where the environment has one: how it answers
+	// the next clips, and how many it has had.
+	mux.HandleFunc("/stt", func(w http.ResponseWriter, r *http.Request) {
+		if e.stt == nil {
+			text(w, "none")
+			return
+		}
+		switch r.URL.Query().Get("answer") {
+		case "ok":
+			e.stt.answer = sttOK
+		case "500":
+			e.stt.answer = func(w http.ResponseWriter) { w.WriteHeader(http.StatusInternalServerError) }
+		}
+		text(w, fmt.Sprint(e.stt.calls.Load()))
 	})
 	mux.HandleFunc("/hub", func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Query().Get("state") {

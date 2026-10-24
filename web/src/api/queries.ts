@@ -24,6 +24,7 @@ export const keys = {
   window: (host: string, session: string, window: string) =>
     ['window', host, session, window] as const,
   panes: ['panes'] as const,
+  transcriber: ['transcriber'] as const,
 };
 
 function useVisible(): boolean {
@@ -149,4 +150,33 @@ export function resizePane(address: string, body: Resize): Promise<{ pane: Pane 
     noteOwn(address);
     return r;
   });
+}
+
+// Whether the hub has a transcriber: asked once per sign-in, so a hub
+// without one is never asked again.
+export function useTranscriber() {
+  return useQuery({
+    queryKey: keys.transcriber,
+    queryFn: () =>
+      api<void>('/v1/transcribe')
+        .then(() => true)
+        .catch((err: unknown) => {
+          if (err instanceof ApiError && err.status === 404) return false;
+          throw err;
+        }),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
+
+// A spoken clip to the hub's transcriber; the text comes back for the input
+// line to show, never sent by itself.
+export function transcribe(wav: ArrayBuffer): Promise<string> {
+  return api<{ text: string }>('/v1/transcribe', {
+    method: 'POST',
+    body: wav,
+    headers: { 'Content-Type': 'audio/wav' },
+  }).then((r) => r.text);
 }

@@ -11,6 +11,17 @@ export default tseslint.config(
     rules: { 'no-control-regex': 'off' },
   },
   {
+    // The worklet runs on the audio thread, with that scope's globals.
+    files: ['public/mic-worklet.js'],
+    languageOptions: {
+      globals: {
+        AudioWorkletProcessor: 'readonly',
+        registerProcessor: 'readonly',
+        sampleRate: 'readonly',
+      },
+    },
+  },
+  {
     files: ['src/**/*.{ts,tsx}', 'e2e/**/*.ts'],
     rules: {
       // Pane content and names are hostile text; they go through React's escaping, never markup.

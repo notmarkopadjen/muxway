@@ -63,7 +63,13 @@ nothing but the hub to talk to.
    nothing of it, even when its program has the mouse. The punctuation
    after an address stays text, a bracket the address opened stays in,
    and an address wrapped onto a second row opens up to the row's end.
-   Read-only panes say so.
+   When the hub has a transcriber (see [transcription](transcription.md))
+   and the pane is writable, a `◉` button sits between the field and
+   *send*: a click or `v` records a clip, a level meter and the seconds
+   take the field's place, `■` or `v` again stops it, and the words the
+   hub heard land on the line, focused, for you to read and send with
+   `Enter`; `Esc` or *cancel* drops the clip. Without a transcriber there
+   is no button. Read-only panes say so.
 
 ![panes](images/web-panes.png)
 
@@ -322,6 +328,7 @@ because several host windows changing at once is a decision for you.
 | `Tab` | input line: take the highlighted completion; from an empty line, `Tab` goes to the pane |
 | `↑` `↓` | input line: pick a completion; from an empty line, the key goes to the pane, as do `←` `→` `PageUp` `PageDown` `Home` `End` |
 | `Shift+Esc` | input line: leave the line |
+| `v` | speak: record a clip for the hub's transcriber, onto the input line; `v` again stops, `Esc` drops it |
 | `p` | selector: go to a pane or window |
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |
@@ -416,6 +423,16 @@ and fails if the committed output differs from the sources.
   on a link sends nothing to the host, so a program cannot use one to
   provoke a click at a cell. A pane can print a misleading address, as any
   terminal can; the browser's own address bar shows where it went.
+- A spoken clip goes to the hub only, over the session the page has, and
+  the hub's checks stand in front of the transcriber: the write grant,
+  the WAV header, the size, one clip per five seconds. The clip is kept
+  in memory for the request and dropped; the microphone is closed the
+  moment recording stops. The transcript is shown on the line before
+  anything is sent, so a hostile transcriber gets words on a line you
+  read, nothing more, and the input endpoint's own checks apply when
+  they go. Recording starts only from a click or a key on the page,
+  behind the browser's permission prompt, and the worklet is a file of
+  the client's own: the content security policy is unchanged.
 - Node dependencies are pinned exactly with a committed lockfile and
   installed with `npm ci`. They are a build-time concern: the hub binary
   carries only the built files.

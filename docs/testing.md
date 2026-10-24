@@ -39,8 +39,11 @@ UI tests drive the web client with Playwright. The specs live in
 reports each spec as a subtest, so one `results.xml` covers everything.
 Specs reach tmux, notifications and the hub through a small control
 endpoint the Go test serves on loopback, and a second loopback origin
-serves the cross-site attack page. Screenshots land in
-`screens/<spec>/`, traces in `traces/`.
+serves the cross-site attack page. A second Go test in the same file
+starts a hub with the transcription tests' stand-in transcriber and
+runs the microphone spec against it, with Chromium's fake microphone;
+the control endpoint there also breaks the transcriber and counts its
+calls. Screenshots land in `screens/<spec>/`, traces in `traces/`.
 
 Locally the suite needs Node 22 and Chromium (`cd web && npm ci && npx
 playwright install chromium`); without Node, `scripts/e2e.sh` skips the

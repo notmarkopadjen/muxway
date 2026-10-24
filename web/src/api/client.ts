@@ -45,7 +45,7 @@ export async function api<T>(
   const headers = new Headers(init.headers);
   headers.set('X-Muxway-Client', 'web');
   headers.set('Accept', 'application/json');
-  if (init.body) headers.set('Content-Type', 'application/json');
+  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   const cached = init.conditional ? etags.get(path) : undefined;
   if (cached) headers.set('If-None-Match', cached.etag);
   let res: Response;

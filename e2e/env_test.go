@@ -81,6 +81,7 @@ type env struct {
 	hubArgs []string
 	client  *http.Client
 	procs   []*exec.Cmd
+	stt     *stt // the transcriber stand-in, in environments that have one
 }
 
 func newEnv(t *testing.T, hubArgs ...string) *env {

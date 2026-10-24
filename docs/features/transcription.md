@@ -1,10 +1,10 @@
 # Transcription
 
-A client with a microphone and no keyboard, a pair of glasses, lets its
-wearer say a reply. The glasses never talk to a speech-to-text service
-themselves: they send the clip to the hub, and the hub forwards it to
-the transcriber its owner chose. Without one, the hub has no such
-endpoint and clients do not offer the action.
+A client with a microphone lets its user say a reply: a pair of glasses
+with no keyboard, the browser, the phone. No client talks to a
+speech-to-text service itself: it sends the clip to the hub, and the hub
+forwards it to the transcriber its owner chose. Without one, the hub has
+no such endpoint and clients do not offer the action.
 
 ```mermaid
 sequenceDiagram
@@ -59,11 +59,55 @@ ten-second clip in about two seconds on a small server.
   method, bytes, seconds, how long the transcriber took, and the result,
   never the text.
 
+## In the browser
+
+With a transcriber on the hub and a writable pane in focus, the input
+line has a `◉` button between the field and *send* (`v` from outside the
+line). It opens the microphone, after the browser's own permission
+prompt, and the field's place shows a level meter in block characters
+and the seconds; `■`, a click on the meter, `v` again or sixty seconds
+stops the clip, *cancel* or `Esc` drops it.
+
+```
+> ______________________________________ ◉ [send]       idle
+● ▁▃▅▇▅▃▁ 4 s · click to stop          ■ [cancel]      recording
+> ⟳ hearing…                                             sent
+> run the tests again                     ◉ [send]       heard: edit or send
+```
+
+The clip is 16 kHz mono 16-bit PCM, gathered by an `AudioWorklet` served
+from the client's own files and kept in memory; where the browser
+cannot run the graph at 16 kHz the frames are resampled on stop. The
+hub's answer lands on the line, after a space when something was typed
+already, with the caret at its end and the line focused: the words are
+read before Enter sends them. The microphone is closed the moment
+recording stops, so the browser's recording indicator is honest.
+Refusals are toasts: `microphone refused`, `no microphone`, `too short`
+(under half a second), `one clip every five seconds`, `transcriber
+unavailable`.
+
+The hub without a transcriber is asked once per sign-in and never again;
+the button is not there, and `v` does nothing.
+
+## On the phone
+
+The same button in the text row of the pane view, shown under the same
+two conditions. The first tap asks for the microphone permission;
+`AudioRecord` fills a buffer at 16 kHz mono up to sixty seconds, the
+meter and the seconds take the field's place, a second tap stops and
+sends, back drops the clip. See the Android client's pane view page.
+
 ## Security considerations
 
 - Audio leaves the client only for the hub, over HTTPS with the bearer
-  token, and leaves the hub only for the transcriber the owner set. A
-  remote provider is the owner's choice, made in the hub's flags.
+  token (the browser: the session cookie and the client header), and
+  leaves the hub only for the transcriber the owner set. A remote
+  provider is the owner's choice, made in the hub's flags. No client
+  stores or logs a clip; the browser keeps it in memory for the request.
+- A page never records without a click or a key pressed on it, behind
+  the browser's own permission prompt; the worklet is a file of the
+  client's own under the existing `script-src 'self'`, so the content
+  security policy gains nothing.
 - A hostile transcriber cannot type: its text is cleaned, capped, shown
   to the wearer first, and then goes through the input endpoint, which
   refuses control characters and unknown keys.

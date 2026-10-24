@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -7,20 +8,48 @@ import {
   type ReactNode,
   type SyntheticEvent,
 } from 'react';
+import { ApiError } from '../api/client';
+import { transcribe, useTranscriber } from '../api/queries';
 import type { Key, Pane } from '../api/types';
 import { commandsFor, isShell, remember, useRecent, type Command } from '../term/commands';
 import { complete, completions } from '../term/complete';
+import { meter, Recorder, RecorderError } from '../term/recorder';
 import { CommandBar } from './CommandBar';
 import { Completions } from './Completions';
 import { KeyBar } from './KeyBar';
+import { useToast } from './Toast';
 
 // The input line, the key bar and the command row for the focused pane,
 // shared by the tiles, the window view and the board. The line is a small
 // editor: Enter sends, Shift+Enter starts a new line, and it grows upward
 // to six rows. While the first word is typed a list of completions opens
-// above it. From an empty line the console keys go to the pane.
+// above it. From an empty line the console keys go to the pane. With a
+// transcriber on the hub a microphone button records a clip and puts the
+// words on the line, to be read before they are sent.
 
 const ROWS = 6;
+
+type Mic = 'idle' | 'recording' | 'hearing';
+
+// What the hub's refusal of a clip says in a toast.
+function micRefusal(err: unknown): string {
+  if (!(err instanceof ApiError)) return 'hub unreachable';
+  switch (err.status) {
+    case 429:
+      return 'one clip every five seconds';
+    case 502:
+    case 404:
+      return 'transcriber unavailable';
+    case 413:
+      return 'too long';
+    case 400:
+      return 'too short';
+    case 403:
+      return 'no write grant';
+    default:
+      return err.code;
+  }
+}
 
 // What an empty field sends when these keys are pressed, so a menu in
 // the pane is driven without leaving the line.
@@ -55,7 +84,19 @@ export function InputPanel({
   const [closed, setClosed] = useState(false);
   const field = useRef<HTMLTextAreaElement>(null);
   const wantCaret = useRef<number | null>(null);
+  const wantFocus = useRef(false);
+  const textNow = useRef(text);
+  textNow.current = text;
   const recent = useRecent();
+  const toast = useToast();
+  const transcriber = useTranscriber().data === true;
+  const [mic, setMic] = useState<Mic>('idle');
+  const [level, setLevel] = useState<{ levels: number[]; seconds: number }>({
+    levels: [],
+    seconds: 0,
+  });
+  const rec = useRef<Recorder | null>(null);
+  const canMic = transcriber && writable && !!pane;
   const row = pane ? commandsFor(pane, recent) : null;
   const list = pane && writable && !closed ? completions(pane, text, caret, recent) : [];
   const picked = Math.min(pick, Math.max(list.length - 1, 0));
@@ -86,6 +127,92 @@ export function InputPanel({
     setPick(0);
     setClosed(false);
   };
+
+  // The microphone. The clip stays in memory until the hub has answered;
+  // the words land on the line, after a space when something is there,
+  // and the line takes focus so they are read before Enter.
+  const say = (what: string) => toast.push({ kind: 'mic', title: what });
+  const hear = async () => {
+    const r = rec.current;
+    if (!r) return;
+    rec.current = null;
+    const clip = r.stop();
+    if (!clip) {
+      setMic('idle');
+      wantFocus.current = true;
+      say('too short');
+      return;
+    }
+    setMic('hearing');
+    try {
+      const heard = await transcribe(clip.wav);
+      if (heard) {
+        const t = textNow.current;
+        const next = t ? `${t} ${heard}` : heard;
+        wantCaret.current = next.length;
+        change(next, next.length);
+      }
+    } catch (err) {
+      say(micRefusal(err));
+    }
+    setMic('idle');
+    wantFocus.current = true;
+  };
+  const record = async () => {
+    if (!canMic || mic !== 'idle' || rec.current) return;
+    const r = new Recorder();
+    r.onFrame = (levels, seconds) => setLevel({ levels: [...levels], seconds });
+    r.onFull = () => void hear();
+    rec.current = r;
+    setLevel({ levels: [], seconds: 0 });
+    setMic('recording');
+    try {
+      await r.start();
+    } catch (err) {
+      // Unless Esc dropped it while the browser was still asking.
+      if (rec.current !== r) return;
+      rec.current = null;
+      setMic('idle');
+      say(
+        err instanceof RecorderError && err.why === 'refused'
+          ? 'microphone refused'
+          : 'no microphone',
+      );
+    }
+  };
+  const cancelMic = () => {
+    rec.current?.cancel();
+    rec.current = null;
+    setMic('idle');
+    wantFocus.current = true;
+  };
+  // Leaving the view, or the focused pane changing under it, drops the clip.
+  useEffect(() => cancelMic, [pane?.address]);
+  useEffect(() => {
+    if (mic === 'idle' && wantFocus.current) {
+      wantFocus.current = false;
+      field.current?.focus();
+    }
+  }, [mic, text]);
+  // v starts and stops a clip from outside the line; Esc drops one. Seen
+  // before the page's own keys, so Esc does not leave the view mid-clip.
+  useEffect(() => {
+    const onKey = (ev: globalThis.KeyboardEvent) => {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      const target = ev.target as HTMLElement | null;
+      const typing = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+      if (mic === 'recording') {
+        if (ev.key === 'Escape') cancelMic();
+        else if (ev.key === 'v' && !typing) void hear();
+        else return;
+      } else if (mic === 'idle' && ev.key === 'v' && !typing && canMic) void record();
+      else return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  });
   const line = async (t: string) => {
     if (t) {
       if (pane && isShell(pane.command) && !t.includes('\n')) remember(t);
@@ -153,24 +280,59 @@ export function InputPanel({
   return (
     <>
       <form className="mx-input" onSubmit={submit}>
-        <span className="mx-prompt">{writable ? '>' : '○'}</span>
-        <textarea
-          ref={field}
-          rows={1}
-          value={text}
-          onChange={(e) => change(e.target.value, e.target.selectionStart)}
-          onSelect={select}
-          onKeyDown={onKey}
-          disabled={!writable}
-          placeholder={placeholder}
-          aria-label="input"
-          autoComplete="off"
-          spellCheck={false}
-          data-testid="input"
-        />
-        <button type="submit" disabled={!writable}>
-          send
-        </button>
+        <span className={`mx-prompt${mic === 'recording' ? ' mx-rec' : ''}`}>
+          {mic === 'recording' ? '●' : writable ? '>' : '○'}
+        </span>
+        {mic === 'idle' ? (
+          <textarea
+            ref={field}
+            rows={1}
+            value={text}
+            onChange={(e) => change(e.target.value, e.target.selectionStart)}
+            onSelect={select}
+            onKeyDown={onKey}
+            disabled={!writable}
+            placeholder={placeholder}
+            aria-label="input"
+            autoComplete="off"
+            spellCheck={false}
+            data-testid="input"
+          />
+        ) : (
+          <div
+            className={`mx-mic-line${mic === 'hearing' ? ' mx-hearing' : ''}`}
+            data-testid="mic-line"
+            data-state={mic}
+            onClick={mic === 'recording' ? () => void hear() : undefined}
+          >
+            {mic === 'recording'
+              ? `${meter(level.levels)} ${Math.floor(level.seconds)} s · click to stop`
+              : '⟳ hearing…'}
+          </div>
+        )}
+        {canMic && (
+          <button
+            type="button"
+            className={`mx-mic${mic === 'recording' ? ' on' : ''}`}
+            disabled={mic === 'hearing'}
+            onClick={() => void (mic === 'recording' ? hear() : record())}
+            title={mic === 'recording' ? 'stop and hear (v); Esc drops the clip' : 'speak (v)'}
+            aria-label={mic === 'recording' ? 'stop' : 'speak'}
+            data-testid="mic"
+            data-state={mic}
+          >
+            {mic === 'recording' ? '■' : '◉'}
+          </button>
+        )}
+        {mic === 'recording' ? (
+          <button type="button" onClick={cancelMic} data-testid="mic-cancel">
+            cancel
+          </button>
+        ) : (
+          <button type="submit" disabled={!writable || mic === 'hearing'}>
+            send
+          </button>
+        )}
         {list.length > 0 && <Completions items={list} picked={picked} onTake={take} />}
       </form>
       <div>

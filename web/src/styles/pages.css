@@ -207,6 +207,28 @@
   color: var(--mx-ink-faint);
   border-color: var(--mx-ink-faint);
 }
+.mx-input .mx-rec,
+.mx-input .mx-mic.on {
+  color: var(--mx-bad);
+}
+.mx-input .mx-mic.on {
+  border-color: var(--mx-bad);
+}
+.mx-input .mx-mic-line {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--mx-ink);
+  padding: 2px 8px;
+  line-height: 1.4;
+  white-space: pre;
+  overflow: hidden;
+  cursor: pointer;
+}
+.mx-input .mx-mic-line.mx-hearing {
+  color: var(--mx-ink-dim);
+  cursor: default;
+}
 .mx-complete {
   position: absolute;
   left: calc(1ch + var(--mx-gap));

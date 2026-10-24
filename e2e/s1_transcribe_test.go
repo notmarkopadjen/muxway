@@ -24,11 +24,12 @@ type stt struct {
 	answer func(w http.ResponseWriter)
 }
 
+func sttOK(w http.ResponseWriter) {
+	json.NewEncoder(w).Encode(map[string]string{"text": "run the tests again"})
+}
+
 func newSTT(t *testing.T) *stt {
-	s := &stt{}
-	s.answer = func(w http.ResponseWriter) {
-		json.NewEncoder(w).Encode(map[string]string{"text": "run the tests again"})
-	}
+	s := &stt{answer: sttOK}
 	s.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.calls.Add(1)
 		if err := r.ParseMultipartForm(8 << 20); err != nil {
@@ -107,6 +108,7 @@ func sttEnv(t *testing.T) (*env, *stt) {
 	remember("stt-test-key-0000")
 	e := newEnv(t, "--stt-url", s.srv.URL+"/v1/audio/transcriptions", "--stt-key-file", keyFile,
 		"--stt-model", "whisper-base.en", "--stt-prompt", "alice-laptop, muxway")
+	e.stt = s
 	return e, s
 }
 

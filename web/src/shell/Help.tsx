@@ -39,6 +39,7 @@ const KEYS: [string, string][] = [
   ['Enter / Shift+Enter', 'input line: send / a new line'],
   ['Tab', 'input line: take the completion; from an empty line, Tab goes to the pane'],
   ['Shift+Esc', 'input line: leave it'],
+  ['v', 'speak: record a clip for the hub to transcribe onto the line; again stops, Esc drops it'],
   ['g then a letter', 'jump to the first host starting with it'],
   ['t', 'next theme (green, amber, paper)'],
   ['m', 'effects on / off'],
