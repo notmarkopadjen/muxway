@@ -49,7 +49,7 @@ func (h *Hub) routes() http.Handler {
 	} else {
 		mux.Handle("/", h.webHandler())
 	}
-	return securityHeaders(mux)
+	return securityHeaders(cors(mux))
 }
 
 // handleRoot stands in for the web client on a hub that does not serve
