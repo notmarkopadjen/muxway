@@ -79,7 +79,7 @@ function Tabs({
           <button
             key={address}
             type="button"
-            className="mx-tab"
+            className="mx-tab mx-painted"
             data-testid="tab"
             data-address={address}
             data-open={isOpen ? '' : undefined}
@@ -192,7 +192,7 @@ function Tile(props: TileProps) {
       }}
     >
       <div
-        className="mx-tile-head"
+        className="mx-tile-head mx-painted"
         data-state={st === 'quiet' ? undefined : st}
         onClick={props.onFocus}
         draggable={several}

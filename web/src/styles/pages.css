@@ -641,23 +641,24 @@ button.mx-window:focus-visible {
   color: var(--mx-bg);
   text-shadow: none;
 }
-[data-state='waiting'] .mx-badge,
-[data-state='working'] .mx-badge,
-[data-state='waiting'] .mx-title,
-[data-state='working'] .mx-title,
-[data-state='waiting'] .mx-title-status,
-[data-state='working'] .mx-title-status,
-[data-state='waiting'] .mx-dim,
-[data-state='working'] .mx-dim,
-[data-state='waiting'] .mx-mode,
-[data-state='working'] .mx-mode,
-[data-state='waiting'] .mx-mark-claude,
-[data-state='working'] .mx-mark-claude {
+/* On a painted tab or header everything is drawn in the background colour. */
+.mx-painted[data-state='waiting'] .mx-badge,
+.mx-painted[data-state='working'] .mx-badge,
+.mx-painted[data-state='waiting'] .mx-title,
+.mx-painted[data-state='working'] .mx-title,
+.mx-painted[data-state='waiting'] .mx-title-status,
+.mx-painted[data-state='working'] .mx-title-status,
+.mx-painted[data-state='waiting'] .mx-dim,
+.mx-painted[data-state='working'] .mx-dim,
+.mx-painted[data-state='waiting'] .mx-mode,
+.mx-painted[data-state='working'] .mx-mode,
+.mx-painted[data-state='waiting'] .mx-mark-claude,
+.mx-painted[data-state='working'] .mx-mark-claude {
   color: var(--mx-bg);
   text-shadow: none;
   filter: none;
 }
-[data-state='waiting'] .mx-badge {
+.mx-painted[data-state='waiting'] .mx-badge {
   border-color: var(--mx-bg);
 }
 .mx-tile-head[data-state='waiting'] .mx-mode.write,

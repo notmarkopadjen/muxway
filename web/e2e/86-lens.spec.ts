@@ -17,6 +17,11 @@ test('86 the lens paints a working Claude pane dim and a waiting one in the atte
   await control(request, '/notify', { pane, kind: 'working', text: '' });
   await expect(row).toHaveAttribute('data-state', 'working', { timeout: 10_000 });
   await expect(row).toContainText('working');
+  // The row is not painted: its name stays readable.
+  const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  expect(await row.locator('.mx-title-name').evaluate((el) => getComputedStyle(el).color)).not.toBe(
+    bg,
+  );
   await row.click();
   const tab = page.locator(`[data-testid="tab"][data-address="${SHELL0}"]`);
   await expect(tab).toHaveAttribute('data-state', 'working');
