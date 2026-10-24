@@ -88,7 +88,7 @@ opens the window view; see §2.
 | strip | every readable pane in listing order, named as §1.1 says, painted as §1.2 says; open tabs bordered, the focused one thick and bold; a closed tab tapped swaps into the focused tile; the strip scrolls and keeps the focused tab in view |
 | tiles | one to four panes; arrangements by count: 2 → row, column; 3 → + main-left, main-top; 4 → + grid; `▦` cycles; wide screens start with row, tall with column; splits drag with a 15 % floor; a header dragged onto another tile swaps the two; the arrangement never reaches the host |
 | header | painted like its tab: glyph, name, command, mode, the word, the size with fit on; the focused tile has the thick border and bold name |
-| fit | per tile, the pane's own scope; every writable tile opens with fit on, one or several; `⤢` or `f` toggles; a second press sends the size again; leaving releases |
+| fit | per tile, the pane's own scope; every writable tile opens with fit on, one or several; `⤢` or `f` toggles; a second press sends the size again; leaving releases. The host never lets a fit take a neighbour under 20 columns or 5 rows: the window grows instead. **To do on both clients** (muxway#48, muxway-android#3): where several open tiles are panes of one window, only the focused tile's pane fits and the others say *held*, so tiles do not fight over one row |
 | input | one line and one key row for the focused tile; `Esc` pinned left and `Enter` right on a phone; *type* sends text, *send* sends text then Enter; read-only panes show `read-only` and no way to type |
 | mouse | a tap or click on a pane whose program asked for the mouse is a left click at that cell; otherwise it only focuses |
 | reading | the focused pane every second, the others every two |
@@ -144,7 +144,7 @@ A new action gets a row here before it gets a key anywhere.
 
 | Feature | Why only here |
 |---|---|
-| window view (`/w/…`, "mirror layout") | the host's own arrangement needs the room of a screen; the list's window buttons and `w` open it |
+| window view (`/w/…`, "mirror layout") | the host's own arrangement needs the room of a screen; the list's window buttons and `w` open it; `=` gives every split equal shares, on the host too with fit on |
 | boards (`/b/…`) | long-lived arrangements across hosts, kept per browser |
 | selector (`p`) | a keyboard is at hand |
 | sign-in with an identity provider | a browser has the flow |

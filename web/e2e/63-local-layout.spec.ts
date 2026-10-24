@@ -30,6 +30,11 @@ test('63 drag, hide and reset change only the browser', async ({ page, request }
   const after = Number(await slots.nth(0).getAttribute('data-fraction'));
   expect(after).toBeGreaterThan(before + 0.05);
   await shot(page, info, '63-local');
+  // = gives every split equal shares; 0 below goes back to the host's.
+  await page.keyboard.press('=');
+  await expect(slots.nth(0)).toHaveAttribute('data-fraction', '0.500');
+  await page.getByTestId('equalise').click();
+  await expect(slots.nth(0)).toHaveAttribute('data-fraction', '0.500');
   await page.keyboard.press(']');
   await expect(page.getByTestId('focus')).toContainText(`${HOST}/work/0.1`);
   await page.keyboard.press('x');

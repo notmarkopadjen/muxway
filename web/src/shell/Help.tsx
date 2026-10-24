@@ -25,8 +25,8 @@ const KEYS: [string, string][] = [
   ['} / {', 'the focused tile shows the next / previous pane of the strip'],
   ['1 – 4 / l / x / F', 'tiles: focus one, next arrangement, close, fit all'],
   [
-    'x / z / 0 / + / -',
-    'window view: hide, zoom (or double-click; with fit, on the host too), host layout, bigger, smaller',
+    'x / z / 0 / = / + / -',
+    'window view: hide, zoom (or double-click; with fit, on the host too), host layout, equal shares, bigger, smaller',
   ],
   [
     'a / A / x / s / z / = / F / w',

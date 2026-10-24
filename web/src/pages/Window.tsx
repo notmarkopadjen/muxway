@@ -24,6 +24,18 @@ import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
 
+// Equal shares in every split, in the browser; with fit on the host follows.
+function equalised(a: Arrangement, tree: Node): Arrangement {
+  const fractions: Record<string, number[]> = {};
+  const walk = (n: Node, path: string) => {
+    if (n.kind === 'pane') return;
+    fractions[path] = Array(n.children.length).fill(1 / n.children.length) as number[];
+    n.children.forEach((c, i) => walk(c, `${path}.${i}`));
+  };
+  walk(tree, '0');
+  return { ...a, fractions };
+}
+
 // A window as tmux lays it out, with an arrangement of the browser's own:
 // fractions per split, hidden panes, a font multiplier per pane. The
 // arrangement is kept per window and dropped whenever the host's layout
@@ -261,7 +273,8 @@ export function WindowPage() {
       else if (ev.key === 'z' && focus) toggleZoom(focus);
       else if (ev.key === 'x' && focus) setArr((a) => ({ ...a, hidden: [...a.hidden, focus] }));
       else if (ev.key === '0') setArr(() => fresh(layout));
-      else if ((ev.key === '+' || ev.key === '=') && focus) {
+      else if (ev.key === '=' && tree) setArr((a) => equalised(a, tree));
+      else if (ev.key === '+' && focus) {
         setArr((a) => ({
           ...a,
           scale: { ...a.scale, [focus]: Math.min(3, (a.scale[focus] ?? 1) * 1.15) },
@@ -385,6 +398,14 @@ export function WindowPage() {
             zoomed
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => tree && setArr((a) => equalised(a, tree))}
+          title="equal shares (=)"
+          data-testid="equalise"
+        >
+          equalise
+        </button>
         <button
           type="button"
           onClick={() => setArr(() => fresh(layout))}

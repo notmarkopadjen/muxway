@@ -76,8 +76,8 @@ A terminal tells tmux its size; the browser does the same when **fit** is
 on (`f`, or the button in the header). In the pane view the *pane* on the
 host becomes the columns and rows that fit the box: where it spans its
 window, the window is sized; where it shares the window with neighbours,
-they give or take the difference, and the window grows only when they
-would have nothing left. In the window view, fit sizes the whole
+they give or take the difference, and the window grows before any pane
+of it would go under 20 columns or 5 rows. In the window view, fit sizes the whole
 *window* to the area and lays it out as the browser shows it: the panes
 keep their proportions until you drag a divider, and then the host's
 split follows the divider; a pane zoomed here is zoomed on the host too,
@@ -192,6 +192,8 @@ in the browser only (with fit on, a dragged divider reaches the host,
 see above):
 
 - drag a divider to change the split,
+- `=` to give every split equal shares (with fit on, the host follows:
+  the way to put a squeezed window right),
 - `+` and `-` to make the focused pane's text bigger or smaller,
 - `x` to hide the focused pane (the bar above brings it back),
 - `0` to return to the host's layout.
@@ -257,7 +259,7 @@ because several host windows changing at once is a decision for you.
 | `]` / `[` | next / previous tile (window view: pane) |
 | `}` / `{` | the focused tile shows the next / previous pane of the strip |
 | `1`–`4`, `l`, `x`, `F`, `w` | tiles: focus one, next arrangement, close, fit all, the pane's window |
-| `x`, `z`, `0`, `+`, `-` | window view: hide, zoom (or double-click), host layout, bigger, smaller |
+| `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, zoom (or double-click), host layout, equal shares, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
 | `t` | next theme: green, amber, paper |
 | `?` then `font` | screen font: 11 to 20 px, the cell fit sizes the host by |

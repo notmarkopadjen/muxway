@@ -331,6 +331,51 @@ func TestFlow58_PaneFitInASplitWindow(t *testing.T) {
 	}
 }
 
+// 59: a pane fit never starves a neighbour. Four panes across a 100-column
+// window have about 24 columns each; fitting one to 60 would leave the
+// other three 12, so the window grows until every pane has the floor.
+func TestFlow59_PaneFitKeepsAFloorUnderNeighbours(t *testing.T) {
+	e, ts, _ := basic(t)
+	for i := 0; i < 3; i++ {
+		id := ts.must("split-window", "-h", "-t", "work:0.0", "-P", "-F", "#{pane_id}", shell())
+		ts.title(id)
+	}
+	ts.must("select-layout", "-t", "work:0", "even-horizontal")
+	e.expose(ts, "work", "--write")
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	target := host + "/work/0.1"
+	r := e.resize(tok, target, `{"cols":60,"rows":30}`)
+	expect(t, r, http.StatusOK, "pane resize")
+	var v struct {
+		Pane struct{ Width, Height int } `json:"pane"`
+	}
+	json.Unmarshal([]byte(r.body), &v)
+	if v.Pane.Width != 60 {
+		t.Fatalf("pane is %d wide after 60", v.Pane.Width)
+	}
+	widths := strings.Fields(ts.must("list-panes", "-t", "work:0", "-F", "#{pane_width}"))
+	if len(widths) != 4 {
+		t.Fatalf("panes: %v", widths)
+	}
+	for _, w := range widths {
+		var n int
+		fmt.Sscan(w, &n)
+		if n < 20 {
+			t.Fatalf("a pane was left %d columns wide: %v", n, widths)
+		}
+	}
+	var ww int
+	fmt.Sscan(strings.Split(ts.windowSize("work:0"), "x")[0], &ww)
+	if ww < 60+3*20+3 {
+		t.Fatalf("window is %d wide, too narrow for the floor: %v", ww, widths)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	expect(t, e.resize(tok, target, `{"fit":"auto"}`), http.StatusOK, "release")
+	if got := ts.windowSize("work:0"); got != "100x30" {
+		t.Fatalf("after release the window is %s", got)
+	}
+}
+
 // 57
 func TestFlow57_WindowReadWithETag(t *testing.T) {
 	e, ts, _ := basic(t)
