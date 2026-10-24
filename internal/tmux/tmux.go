@@ -178,6 +178,24 @@ func (s Server) SendKey(ctx context.Context, paneID, key string) error {
 	return err
 }
 
+// ResizeWindow sets the size of the window holding paneID; tmux then lays
+// its panes out inside. The window keeps that size until released.
+func (s Server) ResizeWindow(ctx context.Context, paneID string, cols, rows int) error {
+	_, err := s.run(ctx, "resize-window", "-t", paneID, "-x", strconv.Itoa(cols), "-y", strconv.Itoa(rows))
+	return err
+}
+
+// ReleaseWindow gives the window holding paneID back to automatic sizing:
+// first to the largest session's size, then the manual mark is removed.
+// The other way round, resize-window would set the mark again.
+func (s Server) ReleaseWindow(ctx context.Context, paneID string) error {
+	if _, err := s.run(ctx, "resize-window", "-A", "-t", paneID); err != nil {
+		return err
+	}
+	_, err := s.run(ctx, "set-option", "-w", "-u", "-t", paneID, "window-size")
+	return err
+}
+
 // Scope of a target: a session, a window or a pane.
 func Scope(target string) string {
 	switch {

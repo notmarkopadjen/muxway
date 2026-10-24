@@ -42,7 +42,8 @@ func (h *Hub) routes() http.Handler {
 	mux.HandleFunc("GET /v1/panes", h.withPrincipal(h.handlePanes))
 	mux.HandleFunc("GET /v1/events", h.withPrincipal(h.handleEvents))
 	mux.HandleFunc("GET /v1/panes/{host}/{path...}", h.withPrincipal(h.handleRead))
-	mux.HandleFunc("POST /v1/panes/{host}/{path...}", h.withPrincipal(h.handleInput))
+	mux.HandleFunc("POST /v1/panes/{host}/{path...}", h.withPrincipal(h.handlePost))
+	mux.HandleFunc("GET /v1/windows/{host}/{session}/{window}", h.withPrincipal(h.handleWindow))
 	if h.cfg.NoWeb {
 		mux.HandleFunc("/", h.handleRoot)
 	} else {
@@ -438,8 +439,19 @@ func statusFor(code string) (int, string) {
 		return http.StatusForbidden, "read_only"
 	case wire.ErrBadInput:
 		return http.StatusBadRequest, "bad_input"
+	case wire.ErrRateLimit:
+		return http.StatusTooManyRequests, "rate_limited"
 	}
 	return http.StatusBadGateway, "host_error"
+}
+
+// handlePost routes the two actions on a pane: /input and /resize.
+func (h *Hub) handlePost(w http.ResponseWriter, r *http.Request, t Principal) {
+	if strings.HasSuffix(r.PathValue("path"), "/resize") {
+		h.handleResize(w, r, t)
+		return
+	}
+	h.handleInput(w, r, t)
 }
 
 func intParam(r *http.Request, name string, def, lo, hi int) (int, bool) {

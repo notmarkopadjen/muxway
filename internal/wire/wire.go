@@ -7,9 +7,10 @@ import "github.com/notmarkopadjen/muxway/internal/tmux"
 
 // Ops the hub may request.
 const (
-	OpList  = "list"
-	OpRead  = "read"
-	OpInput = "input"
+	OpList   = "list"
+	OpRead   = "read"
+	OpInput  = "input"
+	OpResize = "resize"
 )
 
 // Request from hub to agent. Actor is the id of the client token the hub
@@ -23,6 +24,9 @@ type Request struct {
 	ANSI  bool    `json:"ansi,omitempty"`
 	Text  *string `json:"text,omitempty"`
 	Key   string  `json:"key,omitempty"`
+	Cols  int     `json:"cols,omitempty"`
+	Rows  int     `json:"rows,omitempty"`
+	Fit   string  `json:"fit,omitempty"` // "auto" gives the window back to tmux
 }
 
 // Response from agent to hub.
@@ -40,13 +44,21 @@ const (
 	ErrBadInput   = "bad_input"
 	ErrUnknownOp  = "unknown_op"
 	ErrTmux       = "tmux_error"
+	ErrRateLimit  = "rate_limited"
 )
 
 // Limits shared by hub and agent.
 const (
-	MaxLines     = 2000
-	MaxTextBytes = 4096
+	MaxLines         = 2000
+	MaxTextBytes     = 4096
+	MinCols, MaxCols = 20, 500
+	MinRows, MaxRows = 5, 300
 )
+
+// ValidSize reports whether a window may be resized to cols by rows.
+func ValidSize(cols, rows int) bool {
+	return cols >= MinCols && cols <= MaxCols && rows >= MinRows && rows <= MaxRows
+}
 
 // ValidText reports whether text may be typed into a pane: UTF-8 without
 // control characters (C0, DEL, C1), at most MaxTextBytes.

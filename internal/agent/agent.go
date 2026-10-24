@@ -156,7 +156,8 @@ type Agent struct {
 	mu        sync.Mutex
 	seen      map[string]int // pane id -> process id when first seen exposed
 	attention map[string]tmux.Attention
-	sess      *secure.Session // current connection to the hub, nil while away
+	resized   map[string]time.Time // window id -> last resize applied
+	sess      *secure.Session      // current connection to the hub, nil while away
 }
 
 // New prepares an agent; Run connects it.
@@ -169,7 +170,7 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 		return nil, err
 	}
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
-		seen: map[string]int{}, attention: map[string]tmux.Attention{}}, nil
+		seen: map[string]int{}, attention: map[string]tmux.Attention{}, resized: map[string]time.Time{}}, nil
 }
 
 // Run keeps a connection to the hub until ctx ends, and listens for
@@ -313,11 +314,48 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		}
 		resp.Error = code
 		a.audit(req, code)
+	case wire.OpResize:
+		resp.Error = a.resize(ctx, req)
+		a.audit(req, resp.Error)
 	default:
 		resp.Error = wire.ErrUnknownOp
 		a.audit(req, wire.ErrUnknownOp)
 	}
 	return resp
+}
+
+// resize changes the size of the pane's window, or releases it. It is a
+// write: the person at the host sees it. One per second per window.
+func (a *Agent) resize(ctx context.Context, req wire.Request) string {
+	p, code := a.find(ctx, req.Pane)
+	if code != "" {
+		return code
+	}
+	if p.Mode != tmux.ModeWrite {
+		return wire.ErrReadOnly
+	}
+	release := req.Fit == "auto" && req.Cols == 0 && req.Rows == 0
+	if !release && (req.Fit != "" || !wire.ValidSize(req.Cols, req.Rows)) {
+		return wire.ErrBadInput
+	}
+	a.mu.Lock()
+	last := a.resized[p.WindowID]
+	if time.Since(last) < time.Second {
+		a.mu.Unlock()
+		return wire.ErrRateLimit
+	}
+	a.resized[p.WindowID] = time.Now()
+	a.mu.Unlock()
+	var err error
+	if release {
+		err = a.tmux.ReleaseWindow(ctx, p.PaneID)
+	} else {
+		err = a.tmux.ResizeWindow(ctx, p.PaneID, req.Cols, req.Rows)
+	}
+	if err != nil {
+		return wire.ErrTmux
+	}
+	return ""
 }
 
 // find returns an exposed pane by id, re-read from tmux for every request.
@@ -389,6 +427,13 @@ func (a *Agent) audit(req wire.Request, code string) {
 	}
 	if req.Text != nil {
 		attrs = append(attrs, "text_bytes", len(*req.Text))
+	}
+	if req.Op == wire.OpResize {
+		if req.Fit != "" {
+			attrs = append(attrs, "fit", req.Fit)
+		} else {
+			attrs = append(attrs, "cols", req.Cols, "rows", req.Rows)
+		}
 	}
 	if code == "" {
 		attrs = append(attrs, "result", "ok")
