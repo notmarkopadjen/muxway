@@ -1,12 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 import { control, HOST, openPane, SHELL0, settled, shot, signIn } from './fixtures';
 
-// Tiles of one window share one fit; a pane alone fits its window with the
-// pane zoomed; a pane left for another stays at size and comes back
-// without a resize.
+// Tiles that are every pane of one window fit the window as one; tiles of
+// a window not wholly open share one fit; a pane alone fits its window
+// with the pane zoomed; a pane left for another stays at size and comes
+// back without a resize.
 
 const LOGS = `${HOST}/work/1.0`;
 const SPLIT = `${HOST}/work/1.1`;
+const SPLIT2 = `${HOST}/work/1.2`;
 
 interface Resize {
   address: string;
@@ -26,12 +28,13 @@ const fitsOf = (rs: Resize[], address: string) =>
 const releasesOf = (rs: Resize[], address: string) =>
   rs.filter((r) => r.address === address && r.body.fit === 'auto');
 
-test('99 two tiles of one window: the focused one fits, the other is held; focus moves the fit', async ({
+test('99 every pane of a window as tiles: the window fits as one, laid out as the tiles', async ({
   page,
   request,
 }, info) => {
   const id = await control(request, '/split', { target: 'work:1.0', dir: 'h' });
   const resizes = watchResizes(page);
+  const size = () => control(request, '/window-size', { target: 'work:1' });
   await signIn(page);
   await expect(page.getByTestId('pane-row').filter({ hasText: SPLIT })).toBeVisible({
     timeout: 10_000,
@@ -40,6 +43,50 @@ test('99 two tiles of one window: the focused one fits, the other is held; focus
   const tiles = page.getByTestId('tile');
   await expect(tiles).toHaveCount(2);
   await settled(page);
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-layout', 'row');
+  await expect(page.locator('.mx-area')).toHaveAttribute('data-window-fit', '');
+  await expect(tiles.nth(1)).not.toHaveAttribute('data-held', '');
+  await expect(page.getByTestId('held')).toHaveCount(0);
+  await expect.poll(() => fitsOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
+  const fit = fitsOf(resizes, LOGS)[0].body;
+  expect(fit.scope).toBe('window');
+  expect(String(fit.layout)).toMatch(
+    /^[0-9a-f]{4},1000x1000,0,0\{500x1000,0,0,\d+,500x1000,0,0,\d+\}$/,
+  );
+  await expect.poll(size, { timeout: 5000 }).toBe(`${fit.cols}x${fit.rows}`);
+  await page.waitForTimeout(1500);
+  expect(fitsOf(resizes, SPLIT)).toHaveLength(0);
+  // Each pane is its tile: the two share the window's width, side by side.
+  const sizes = await Promise.all(
+    [LOGS, SPLIT].map((a) => page.locator(`[data-pane="${a}"] .mx-tile-head .mx-dim`).innerText()),
+  );
+  const cols = sizes.map((t) => Number(/(\d+)×/.exec(t)![1]));
+  expect(cols[0] + cols[1] + 1).toBe(Number(fit.cols));
+  expect(Math.abs(cols[0] - cols[1])).toBeLessThanOrEqual(1);
+  await shot(page, info, '99-window');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('panes')).toBeVisible();
+  await expect.poll(() => releasesOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
+  await expect.poll(size, { timeout: 5000 }).toBe('100x30');
+  await control(request, '/kill-pane', { target: id });
+});
+
+test('99 two tiles of a window not wholly open: the focused one fits, the other is held; focus moves the fit', async ({
+  page,
+  request,
+}, info) => {
+  const id = await control(request, '/split', { target: 'work:1.0', dir: 'h' });
+  const id2 = await control(request, '/split', { target: 'work:1.0', dir: 'v' });
+  const resizes = watchResizes(page);
+  await signIn(page);
+  await expect(page.getByTestId('pane-row').filter({ hasText: SPLIT2 })).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.goto(`/p/${LOGS},${SPLIT}`);
+  const tiles = page.getByTestId('tile');
+  await expect(tiles).toHaveCount(2);
+  await settled(page);
+  await expect(page.locator('.mx-area')).not.toHaveAttribute('data-window-fit', '');
   await expect(tiles.nth(0)).toHaveAttribute('data-focused', '');
   await expect(tiles.nth(0)).toHaveAttribute('data-fit', '1');
   await expect(tiles.nth(0)).not.toHaveAttribute('data-held', '');
@@ -62,6 +109,7 @@ test('99 two tiles of one window: the focused one fits, the other is held; focus
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();
   await expect.poll(() => releasesOf(resizes, SPLIT).length, { timeout: 5000 }).toBe(1);
+  await control(request, '/kill-pane', { target: id2 });
   await control(request, '/kill-pane', { target: id });
 });
 

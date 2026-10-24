@@ -121,13 +121,17 @@ sizes the window without a zoom. With several tiles, each *pane* on the
 host becomes the columns and rows that fit its tile: where it spans its
 window, the window is sized; where it shares the window with neighbours,
 they give or take the difference, and the window grows before any pane
-of it would go under 20 columns or 5 rows. Tiles that are panes of one
-window share one fit, because two fits on one row can only undo each
-other: the focused tile's pane fits (or the first of them, when the
+of it would go under 20 columns or 5 rows. Tiles that are every pane of
+one window fit the window as one, laid out as the tiles are, the way the
+window view does, so each pane is exactly its tile and a divider dragged
+moves the host's split. Where only some of a window's panes are open as
+tiles, they share one fit, because two fits on one row can only undo
+each other: the focused tile's pane fits (or the first of them, when the
 focus is in another window), and the others say *held* in their header,
-keep fit off and are drawn scaled to their box; focus moving to another
-tile of the window moves the fit there, releasing the previous pane
-first. In the window view, fit sizes the whole
+keep fit off and are drawn scaled to their box, which leaves the width
+the host gave the pane unused; focus moving to another tile of the
+window moves the fit there, releasing the previous pane first. In the
+window view, fit sizes the whole
 *window* to the area and lays it out as the browser shows it: the panes
 keep their proportions until you drag a divider, and then the host's
 split follows the divider; a pane zoomed here is zoomed on the host too,

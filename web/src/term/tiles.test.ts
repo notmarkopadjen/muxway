@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { close, drag, next, options, parseRoute, replace, routeFor, swap, tree } from './tiles';
+import {
+  close,
+  drag,
+  next,
+  options,
+  parseRoute,
+  replace,
+  routeFor,
+  swap,
+  tilesLayout,
+  tree,
+} from './tiles';
 
 const A = 'alice-laptop/work/0.0';
 const B = 'alice-laptop/work/0.1';
@@ -57,5 +68,20 @@ describe('tiles', () => {
     expect(parseRoute([A, B, C, 'c/d/1.0', 'e/f/1.0'].join(','))).toHaveProperty('error');
     expect(parseRoute('../etc/passwd')).toHaveProperty('error');
     expect(parseRoute('<img src=x>/a/1.0')).toHaveProperty('error');
+  });
+});
+
+describe('tilesLayout', () => {
+  it('writes the arrangement as a tmux layout of the panes, in the weights', () => {
+    const ids = ['%3', '%4', '%5'];
+    expect(tilesLayout(tree(2, 'row'), {}, ids)).toMatch(
+      /^[0-9a-f]{4},1000x1000,0,0\{500x1000,0,0,3,500x1000,0,0,4\}$/,
+    );
+    expect(tilesLayout(tree(2, 'column'), { main: [0.25, 0.75] }, ids)).toMatch(
+      /^[0-9a-f]{4},1000x1000,0,0\[1000x250,0,0,3,1000x750,0,0,4\]$/,
+    );
+    expect(tilesLayout(tree(3, 'main-left'), {}, ids)).toMatch(
+      /^[0-9a-f]{4},1000x1000,0,0\{500x1000,0,0,3,500x1000,0,0\[500x500,0,0,4,500x500,0,0,5\]\}$/,
+    );
   });
 });

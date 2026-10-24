@@ -23,6 +23,7 @@ import {
   replace,
   routeFor,
   swap,
+  tilesLayout,
   tree,
   type Arrangement,
   type TileNode,
@@ -67,6 +68,8 @@ interface TileProps {
   fit: boolean | undefined;
   // Another tile of the same window carries the fit for it.
   held: boolean;
+  // The tiles fit their window as one, with the arrangement as its layout.
+  windowFit: boolean;
   // Alone in the view: the window is sized and the pane zoomed in it,
   // when it has siblings to be zoomed over.
   alone: boolean;
@@ -84,14 +87,14 @@ interface TileProps {
 }
 
 function Tile(props: TileProps) {
-  const { address, focused, several, refitTick, dragging, alone, zoomable } = props;
+  const { address, focused, several, refitTick, dragging, alone, zoomable, windowFit } = props;
   const pane = usePane(address, focused ? 1_000 : 2_000);
   const box = useRef<HTMLDivElement>(null);
   const p = pane.data?.pane;
   const writable = p?.mode === 'write';
   // Every writable tile opens with fit on, as a single pane does.
   const fit = props.fit ?? writable;
-  const fitting = fit && writable && !props.held;
+  const fitting = fit && writable && !props.held && !windowFit;
   const { size: fitted, refit } = useFit(
     address,
     fitting,
@@ -257,8 +260,8 @@ function Tile(props: TileProps) {
       <Screen
         content={shown?.content ?? ''}
         burn={!pane.isPlaceholderData}
-        cols={fitting ? undefined : sp?.width}
-        rows={fitting ? undefined : sp?.height}
+        cols={fitting || windowFit ? undefined : sp?.width}
+        rows={fitting || windowFit ? undefined : sp?.height}
         boxRef={box}
         focused={several && focused}
         onClick={props.onFocus}
@@ -384,6 +387,26 @@ function Tiles({ addresses }: { addresses: string[] }) {
     const w = windowOf(a);
     return (all.data ?? []).some((q) => q.address !== a && windowOf(q.address) === w);
   };
+  // Open tiles that are every pane of one window fit the window as one,
+  // laid out as the tiles are, the way the window view does: each pane
+  // is then its tile, and no tile is held.
+  const oneWindow = useMemo(() => {
+    if (!several || !all.data) return null;
+    const w = windowOf(addresses[0]);
+    const mates = all.data.filter((q) => windowOf(q.address) === w);
+    if (mates.length !== n || !addresses.every((a) => mates.some((q) => q.address === a)))
+      return null;
+    return addresses.map((a) => mates.find((q) => q.address === a)!.pane_id);
+  }, [several, all.data, addresses, n, windowOf]);
+  const area = useRef<HTMLDivElement>(null);
+  const windowFit = !!oneWindow && (fit[focused] ?? true) && !!writable;
+  const windowLayout = oneWindow ? tilesLayout(tree(n, layout), weights, oneWindow) : undefined;
+  const { refit: refitWindow } = useFit(focused, windowFit, area, 'window', windowLayout, false, {
+    keep: true,
+  });
+  useEffect(() => {
+    if (refitTick && windowFit) refitWindow();
+  }, [refitTick, windowFit, refitWindow]);
 
   const go = useCallback(
     (next: string[]) => {
@@ -503,7 +526,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
         focused={i === index}
         several={several}
         fit={fit[a]}
-        held={heldTile(a)}
+        held={!oneWindow && heldTile(a)}
+        windowFit={!!oneWindow}
         alone={!several}
         zoomable={siblings(a)}
         refitTick={i === index ? refitTick : 0}
@@ -585,7 +609,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
           )}
         </span>
       </div>
-      <div className="mx-area">
+      <div className="mx-area" ref={area} data-window-fit={windowFit ? '' : undefined}>
         <Tree node={tree(n, layout)} weights={weights} setWeights={setWeights} tile={tile} />
       </div>
       <InputPanel

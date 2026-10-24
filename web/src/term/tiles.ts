@@ -1,4 +1,5 @@
 import { ADDRESS } from './board';
+import { checksum } from './layout';
 
 // Tiles: one to four panes on one screen in the arrangements the Android
 // client has. The arrangement is the browser's own and never reaches the
@@ -117,4 +118,21 @@ export function parseRoute(splat: string): { addresses: string[] } | { error: st
 
 export function routeFor(addresses: string[]): string {
   return addresses.join(',');
+}
+
+// The tiles' arrangement as a tmux layout for their window, when the open
+// tiles are all of its panes: each split hands its children a thousand
+// units in the weights' proportions, and the host scales it to the window.
+export function tilesLayout(node: TileNode, weights: Weights, ids: string[]): string {
+  const cell = (n: TileNode, w: number, h: number): string => {
+    if (typeof n === 'number') return `${w}x${h},0,0,${ids[n].replace(/^%/, '')}`;
+    const f = weights[n.key] ?? equal(n.children.length);
+    const parts = n.children.map((c, i) => {
+      const size = Math.max(1, Math.round(f[i] * 1000));
+      return n.kind === 'h' ? cell(c, size, h) : cell(c, w, size);
+    });
+    return `${w}x${h},0,0${n.kind === 'h' ? '{' : '['}${parts.join(',')}${n.kind === 'h' ? '}' : ']'}`;
+  };
+  const body = cell(node, 1000, 1000);
+  return `${checksum(body)},${body}`;
 }
