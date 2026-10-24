@@ -98,6 +98,7 @@ $ [exit][htop][claude][codex]…  │ [make test]
 | input | a text line and one key row for the focused tile; `Esc` pinned left and `Enter` right on a phone; *type* sends text, *send* sends text then Enter; read-only panes show `read-only` and no way to type. The line is a small editor: text wraps and the field grows upward, to six rows, then scrolls inside; Enter (web) or the keyboard's send key (Android) sends, Shift+Enter starts a new line; a text with several lines reaches the pane as one paste, bracketed when the program asked. **Web only for now** (muxway-android#12): while the first word is typed, a list above the line offers Claude Code's slash commands or a shell's starters and recent lines; `↑` `↓` pick, `Tab` or a click takes, `Esc` closes, Enter never completes. `Esc` pressed in the line is the pane's Escape, as the button is (an open completion list closes first); `Shift+Esc` leaves the line |
 | command row | one row under the key row, scrolling sideways, never wrapping, for the program in the focused pane. Claude Code (the lens decides): `/clear` `/compact` `/rename` `/model` `/resume` `/usage` `/context` `/help`, marked with Claude's spark. A shell (`bash`, `zsh`, `fish`, `sh`, …): `exit` `htop` `claude` `claude -c` `codex` `gemini` `git status` `ls` `clear`, marked `$`, then after a bar the last eight lines sent to a shell from this client, newest first. A button sends its command then Enter; `/rename` fills the input line and waits. Any other program: no row. A read-only pane cannot use it |
 | mouse | a tap or click on a pane whose program asked for the mouse is a left click at that cell; otherwise it only focuses. The same program gets the wheel: a notch per row of travel (web: the wheel, three notches per event at most; Android: a vertical drag) as `wheelup` / `wheeldown` at the cell under the pointer. A pane without the mouse scrolls in the client, through the history the hub sent |
+| links | a web address in a pane's text, `http` or `https` and nothing else, is a link: underlined dotted, in the colours the pane gave it; a click (web) or a tap (Android) opens it in the browser in a new tab and sends nothing to the host, mouse mode or not; the punctuation after it stays text, a bracket it opened stays in; an address wrapped onto a second row opens up to the row's end |
 | reading | the focused pane every second, the others every two |
 
 Web: `web/src/pages/Pane.tsx`, `term/tiles.ts`, `term/commands.ts`,
@@ -145,6 +146,7 @@ The same action on every client, triggered the way the device does it.
 | the board | `b` | — | — |
 | go to a pane | `p`, `≡` | the strip | — |
 | a command of the row | click | tap | — |
+| open a link printed in a pane | click | tap | — |
 | a new line in the input | `Shift+Enter` | `Shift+Enter` on a hardware keyboard | — |
 | take a completion | `Tab`, click | — | — |
 | focus the input line, leave it | `i`, `Esc` | tap, back | — |

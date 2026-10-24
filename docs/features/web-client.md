@@ -58,6 +58,11 @@ nothing but the hub to talk to.
    its tabs at their width and scrolls sideways: the wheel over it moves
    it, `‹ ›` at its ends appear when there is more than fits, and
    `Ctrl+→` `Ctrl+←` show the next and previous pane in the focused tile.
+   A web address in the pane's text, `http` or `https`, is a link with a
+   dotted underline: a click opens it in a new tab, and the pane hears
+   nothing of it, even when its program has the mouse. The punctuation
+   after an address stays text, a bracket the address opened stays in,
+   and an address wrapped onto a second row opens up to the row's end.
    Read-only panes say so.
 
 ![panes](images/web-panes.png)
@@ -403,6 +408,14 @@ and fails if the committed output differs from the sources.
   last eight lines sent to a shell are kept in the browser's storage,
   like boards: do not send a secret as a shell line on a shared
   browser, or clear the site's data afterwards.
+- A link's target is pane content, so it is untrusted. Only `http://` and
+  `https://` runs become links; `javascript:`, `data:` and every other
+  scheme stay text. The address is set as an attribute from the match,
+  never built as markup, and the anchor opens with `noopener noreferrer`,
+  so the page it opens gets neither this window nor its address. A click
+  on a link sends nothing to the host, so a program cannot use one to
+  provoke a click at a cell. A pane can print a misleading address, as any
+  terminal can; the browser's own address bar shows where it went.
 - Node dependencies are pinned exactly with a committed lockfile and
   installed with `npm ci`. They are a build-time concern: the hub binary
   carries only the built files.

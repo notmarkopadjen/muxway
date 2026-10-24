@@ -1,4 +1,5 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { findLinks, type Link } from './links';
 import { fontFor, inner, measureCell } from './measure';
 import { classes, parse, type Span } from './sgr';
 
@@ -9,7 +10,8 @@ import { classes, parse, type Span } from './sgr';
 // reports the cell under the pointer, 1-based. With onWheel, the wheel
 // over the screen's rows reports a notch per row of travel at that cell,
 // up to three per event, one request at a time; over the history above
-// them, and without onWheel, the box scrolls as any box.
+// them, and without onWheel, the box scrolls as any box. A web address in
+// a line is a link that opens in a new tab; its click stays in the browser.
 function SpanView({ s }: { s: Span }) {
   const style: Record<string, string> = {};
   if (typeof s.fg === 'string') style.color = s.fg;
@@ -18,6 +20,65 @@ function SpanView({ s }: { s: Span }) {
     <span className={classes(s) || undefined} style={Object.keys(style).length ? style : undefined}>
       {s.text}
     </span>
+  );
+}
+
+// A line's spans cut at the links' bounds and grouped: a piece is one link
+// or plain text between links, with the spans' colours as they were.
+interface Piece {
+  href?: string;
+  spans: Span[];
+}
+
+function pieces(spans: Span[], links: Link[]): Piece[] {
+  if (!links.length) return [{ spans }];
+  const out: Piece[] = [];
+  let at = 0;
+  let k = 0;
+  for (const s of spans) {
+    let text = s.text;
+    while (text) {
+      while (k < links.length && links[k][1] <= at) k++;
+      const l = links[k];
+      const inside = l !== undefined && l[0] <= at;
+      const take = Math.min(l ? (inside ? l[1] : l[0]) - at : text.length, text.length);
+      const href = inside ? l[2] : undefined;
+      const last = out[out.length - 1];
+      const piece = { ...s, text: text.slice(0, take) };
+      if (last && last.href === href) last.spans.push(piece);
+      else out.push({ href, spans: [piece] });
+      text = text.slice(take);
+      at += take;
+    }
+  }
+  return out;
+}
+
+// The browser opens the tab; the pane hears nothing, mouse mode or not.
+const keep = (ev: React.MouseEvent) => ev.stopPropagation();
+
+function LineView({ pieces }: { pieces: Piece[] }) {
+  return pieces.map((p, j) =>
+    p.href ? (
+      <a
+        key={j}
+        className="mx-link"
+        href={p.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={keep}
+      >
+        {p.spans.map((s, k) => (
+          <SpanView key={k} s={s} />
+        ))}
+      </a>
+    ) : (
+      <Fragment key={j}>
+        {p.spans.map((s, k) => (
+          <SpanView key={k} s={s} />
+        ))}
+      </Fragment>
+    ),
   );
 }
 
@@ -54,6 +115,10 @@ export const Screen = memo(function Screen({
   const box = boxRef ?? own;
   const [font, setFont] = useState<number | null>(null);
   const plain = useMemo(() => lines.map((l) => l.map((s) => s.text).join('')), [lines]);
+  const linked = useMemo(
+    () => lines.map((spans, i) => pieces(spans, findLinks(plain[i]))),
+    [lines, plain],
+  );
   const fresh = new Set<number>();
   if (burn && prev.current.size) {
     plain.forEach((t, i) => {
@@ -172,11 +237,9 @@ export const Screen = memo(function Screen({
       style={font ? { fontSize: `${font}px` } : undefined}
     >
       <pre>
-        {lines.map((spans, i) => (
+        {linked.map((ps, i) => (
           <div key={i} className={fresh.has(i) ? 'ln mx-burn' : 'ln'}>
-            {spans.map((s, j) => (
-              <SpanView key={j} s={s} />
-            ))}
+            <LineView pieces={ps} />
           </div>
         ))}
       </pre>

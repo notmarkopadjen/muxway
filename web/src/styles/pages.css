@@ -171,6 +171,17 @@
 .mx-screen .ln {
   min-height: 1.35em;
 }
+.mx-screen .mx-link {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+.mx-screen .mx-link:hover,
+.mx-screen .mx-link:focus-visible {
+  text-decoration-style: solid;
+  outline: none;
+}
 .mx-input {
   display: flex;
   gap: var(--mx-gap);
