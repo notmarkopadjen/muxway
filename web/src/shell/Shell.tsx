@@ -10,6 +10,7 @@ import { useToast } from '../components/Toast';
 import { cycleTheme, getNotify, toggleMotion, useSettings } from '../settings';
 import { Help } from './Help';
 import { Palette } from '../components/Palette';
+import { addPane, loadBoard, saveBoard } from '../term/board';
 
 const ATTENTION = new Set(['question', 'permission', 'idle', 'done']);
 
@@ -106,6 +107,15 @@ export function Shell() {
       } else if (ev.key === 'p' && signedIn) {
         setPalette(true);
         ev.preventDefault();
+      } else if (ev.key === 'b' && signedIn) {
+        // From a pane, b puts it on the main board; from anywhere, b opens the board.
+        if (location.pathname.startsWith('/p/'))
+          saveBoard(
+            'main',
+            addPane(loadBoard('main'), decodeURIComponent(location.pathname.slice(3)), null, 'h'),
+          );
+        navigate({ to: '/b/$name', params: { name: 'main' } });
+        ev.preventDefault();
       } else if (ev.key === 't') {
         const theme = cycleTheme();
         setResync(true);
@@ -135,7 +145,9 @@ export function Shell() {
             ? decodeURIComponent(location.pathname.slice(3))
             : location.pathname.startsWith('/w/')
               ? 'window ' + decodeURIComponent(location.pathname.slice(3))
-              : ''}
+              : location.pathname.startsWith('/b/')
+                ? 'board ' + decodeURIComponent(location.pathname.slice(3))
+                : ''}
         </span>
         <span className="mx-spacer" />
         {signedIn && (

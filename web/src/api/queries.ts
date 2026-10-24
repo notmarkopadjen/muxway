@@ -72,12 +72,12 @@ export function useTree(host: string, online: boolean) {
   });
 }
 
-export function usePane(address: string) {
+export function usePane(address: string, every = 1_000) {
   const visible = useVisible();
   return useQuery({
     queryKey: keys.pane(address),
     queryFn: () => api<PaneContent>(`/v1/panes/${address}?ansi=1&lines=400`, { conditional: true }),
-    refetchInterval: visible ? 1_000 : 5_000,
+    refetchInterval: visible ? every : 5_000,
     retry: (count, err) => !(err instanceof ApiError) && count < 2,
     placeholderData: (prev) => prev,
   });

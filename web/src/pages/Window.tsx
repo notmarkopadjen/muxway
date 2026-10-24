@@ -4,8 +4,10 @@ import { ApiError } from '../api/client';
 import { useInput, useWindow } from '../api/queries';
 import type { Key, PaneContent } from '../api/types';
 import { Badge } from '../components/Badge';
+import { Divider } from '../components/Divider';
 import { KeyBar } from '../components/KeyBar';
 import { useToast } from '../components/Toast';
+import { addPane, loadBoard, saveBoard } from '../term/board';
 import { fractions, fresh, leaves, parseLayout, type Arrangement, type Node } from '../term/layout';
 import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
@@ -36,33 +38,6 @@ function save(key: string, a: Arrangement) {
   } catch {
     /* ignore */
   }
-}
-
-function Divider({ kind, onDrag }: { kind: 'h' | 'v'; onDrag: (dx: number, dy: number) => void }) {
-  return (
-    <div
-      className={`mx-divider mx-divider-${kind}`}
-      data-testid="divider"
-      onPointerDown={(e) => {
-        e.preventDefault();
-        const el = e.currentTarget;
-        el.setPointerCapture(e.pointerId);
-        let lx = e.clientX;
-        let ly = e.clientY;
-        const move = (ev: PointerEvent) => {
-          onDrag(ev.clientX - lx, ev.clientY - ly);
-          lx = ev.clientX;
-          ly = ev.clientY;
-        };
-        const up = () => {
-          el.removeEventListener('pointermove', move);
-          el.removeEventListener('pointerup', up);
-        };
-        el.addEventListener('pointermove', move);
-        el.addEventListener('pointerup', up);
-      }}
-    />
-  );
 }
 
 interface TreeProps {
@@ -245,8 +220,12 @@ export function WindowPage() {
       } else if (ev.key === 'Enter' && focusedPane)
         navigate({ to: '/p/$', params: { _splat: focusedPane.address } });
       else if (ev.key === 'f' && writable) setFit((f) => !f);
-      else return;
+      else if (ev.key === 'b' && focusedPane) {
+        saveBoard('main', addPane(loadBoard('main'), focusedPane.address, null, 'h'));
+        navigate({ to: '/b/$name', params: { name: 'main' } });
+      } else return;
       ev.preventDefault();
+      ev.stopImmediatePropagation();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

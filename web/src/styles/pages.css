@@ -455,3 +455,25 @@
 .mx-badge.mx-win {
   color: var(--mx-ink-dim);
 }
+
+/* boards */
+.mx-board .mx-cell-head {
+  cursor: grab;
+}
+.mx-board .mx-cell.mx-drop {
+  outline: 1px dashed var(--mx-warn);
+  outline-offset: -2px;
+}
+.mx-board .mx-cell-head > span:first-of-type {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mx-board-empty {
+  flex: 1;
+  gap: var(--mx-gap-2);
+  color: var(--mx-ink-dim);
+}
+.mx-cell-gap {
+  gap: var(--mx-gap);
+}

@@ -25,8 +25,19 @@ export async function shot(page: Page, info: TestInfo, name: string) {
   await page.screenshot({ path: join(dir, `${name}.png`), animations: 'disabled', caret: 'hide' });
 }
 
+// The CRT powers on with a transform; a click during it lands on a
+// squashed page. Interact once the animations have run.
+export async function settled(page: Page) {
+  await page
+    .locator('.mx-crt')
+    .evaluate((el) =>
+      Promise.all(el.getAnimations().map((a) => a.finished.catch(() => undefined))),
+    );
+}
+
 export async function signIn(page: Page, token = TOKEN) {
   await page.goto('/signin');
+  await settled(page);
   await page.getByTestId('token').fill(token);
   await page.getByTestId('token-submit').click();
   await expect(page.getByTestId('panes')).toBeVisible({ timeout: 10_000 });
@@ -63,4 +74,22 @@ export async function violations(page: Page) {
 }
 export async function alerts(page: Page) {
   return page.evaluate(() => (window as unknown as { __csp: string[]; __alerts: number }).__alerts);
+}
+
+// Stores a board in the page's browser, as the board page would.
+export async function seedBoard(page: Page, name: string, panes: string[], kind: 'h' | 'v' = 'h') {
+  await page.evaluate(
+    ([n, ids, k]) => {
+      const layout =
+        ids.length === 1
+          ? { kind: 'pane', id: ids[0] }
+          : {
+              kind: k,
+              children: ids.map((id) => ({ kind: 'pane', id })),
+              shares: ids.map(() => 1 / ids.length),
+            };
+      localStorage.setItem(`mx-board:${n}`, JSON.stringify({ layout, scale: {}, fit: {} }));
+    },
+    [name, panes, kind] as [string, string[], 'h' | 'v'],
+  );
 }

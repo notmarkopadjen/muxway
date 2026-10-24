@@ -83,6 +83,31 @@ of an address, alias, command or title; panes that need you come first;
 
 ![selector](images/web-selector.png)
 
+## Boards: your own arrangement of panes from anywhere
+
+The window view is the host's arrangement. A **board** is yours: panes
+from any window, session or host, side by side as you like, kept in this
+browser only. `b` opens the main board (`/b/main`); from a pane, `b` puts
+that pane on it first. The selector lists every board with `▤`, and
+`board <name>` typed there makes a new one.
+
+On a board, `a` adds a pane beside the focused one and `A` below it,
+through the selector, which offers only panes not yet on the board. `x`
+takes the focused pane off (the pane itself goes on), `s` swaps it with
+the next, and dragging a cell's header onto another cell swaps the two.
+Dividers drag, `+` and `-` scale the focused pane, `=` gives every split
+equal shares, `z` shows the focused pane alone and back, `Enter` opens it
+on its own, `w` opens its window view. `]` and `[` move focus; the input
+line and the key bar go to the focused pane. A pane that is gone, or not
+yours to see, shows a gap with a `remove` button.
+
+Fit on a board is per pane: `f` sizes the focused host pane to its cell,
+`F` turns fit on or off for every writable pane. It is off by default,
+because several host windows changing at once is a decision for you.
+
+![board](images/web-board.png)
+![board, rearranged](images/web-board-arranged.png)
+
 ## Keyboard
 
 | Key | Does |
@@ -94,6 +119,9 @@ of an address, alias, command or title; panes that need you come first;
 | `i` | focus the input line |
 | `p` | selector: go to a pane or window |
 | `f` | fit: the host pane (window view: the window) follows the box |
+| `b` | the main board; from a pane: put it on the board first |
+| `a` / `A` | board: add a pane beside / below the focused one |
+| `x` / `s` / `z` / `=` / `F` / `w` | board: remove, swap, zoom, equal shares, fit all, the pane's window |
 | `]` / `[` | window view: next / previous pane |
 | `x`, `0`, `+`, `-` | window view: hide, host layout, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
