@@ -16,6 +16,7 @@ import { cycleTheme, getNotify, toggleMotion, useSettings } from '../settings';
 import { Help } from './Help';
 import { Palette } from '../components/Palette';
 import { addPane, loadBoard, saveBoard } from '../term/board';
+import { noteEvent } from '../term/lens';
 
 const ATTENTION = new Set(['question', 'permission', 'idle', 'done']);
 
@@ -86,6 +87,7 @@ export function Shell() {
   );
   const onEvent = useCallback(
     (e: Event) => {
+      noteEvent(e.address, e.kind);
       if (!ATTENTION.has(e.kind)) return;
       const kind = e.kind as keyof typeof GLYPH;
       const pane = known(e.address);
@@ -142,12 +144,10 @@ export function Shell() {
         setPalette(true);
         ev.preventDefault();
       } else if (ev.key === 'b' && signedIn) {
-        // From a pane, b puts it on the main board; from anywhere, b opens the board.
-        if (location.pathname.startsWith('/p/'))
-          saveBoard(
-            'main',
-            addPane(loadBoard('main'), decodeURIComponent(location.pathname.slice(3)), null, 'h'),
-          );
+        // From a pane, b puts the focused one on the main board; from
+        // anywhere, b opens the board.
+        if (location.pathname.startsWith('/p/') && heading.pane)
+          saveBoard('main', addPane(loadBoard('main'), heading.pane.address, null, 'h'));
         navigate({ to: '/b/$name', params: { name: 'main' } });
         ev.preventDefault();
       } else if (ev.key === 't') {
@@ -166,7 +166,7 @@ export function Shell() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [help, palette, signedIn, location.pathname, navigate, toast]);
+  }, [help, palette, signedIn, location.pathname, navigate, toast, heading.pane]);
 
   return (
     <>
@@ -176,7 +176,7 @@ export function Shell() {
         </span>
         <span className="mx-crumb" data-testid="crumb">
           {heading.pane && <PaneTitle pane={heading.pane} />}
-          {heading.place && <span className="mx-dim">{heading.place}</span>}
+          {heading.place && <span className="mx-place">{heading.place}</span>}
         </span>
         <span className="mx-spacer" />
         {signedIn && (

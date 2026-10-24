@@ -12,19 +12,28 @@ nothing but the hub to talk to.
    pasting a token once. The token is sent to the hub and forgotten; a
    session cookie takes its place. See [signing in](sign-in.md).
 2. **Panes**: every host you may reach, with its sessions, windows and
-   panes. Each row leads with what runs in the pane and ends with the
-   address; offline hosts are dimmed. A badge marks a pane that needs
-   you: `?` question, `!` permission, `…` idle, `✓` done. Type `/` to
-   filter.
-3. **Pane**: the content with its colours, refreshed every second, and an
-   input line. The screen opens at its bottom and follows new output;
-   scroll up to read back, and it stays put until you scroll down again.
-   Text is typed literally and Enter is sent after it; the key bar sends
-   the named keys the protocol allows. A click on the screen of a pane
-   whose program asked for the mouse, Claude Code among them, is a click
-   at that cell on the host, so an option shown can be chosen by
-   clicking it; in a pane that did not ask, a click only focuses. Read-only
-   panes say so.
+   panes, laid out as the Android client lays them out. A row has a pick
+   box, `*` when you may type there, what runs in the pane with its
+   state, and the address; offline hosts are dimmed. A badge marks a pane
+   that needs you: `?` question, `!` permission, `…` idle, `✓` done, and
+   the word follows (`! permission`); a Claude Code pane that is busy
+   shows `⟳ working` (see [the lens](#the-lens)). A click opens the pane.
+   The pick box, `space` on the highlighted row, or a click while
+   something is picked gathers up to four panes; a bar under the list
+   then offers **open N side by side**. Each window has a button, `▦ 0:
+   main · 2 panes · mirror layout ▸`, that opens the
+   [window view](#the-window-view). Type `/` to filter.
+3. **Tiles**: one to four panes on one screen, with a strip of every pane
+   above them; see [tiles](#tiles-the-android-view). Each pane's content
+   comes with its colours, refreshed every second, and one input line
+   serves the focused tile. The screen opens at its bottom and follows
+   new output; scroll up to read back, and it stays put until you scroll
+   down again. Text is typed literally and Enter is sent after it; the key
+   bar sends the named keys the protocol allows. A click on the screen of
+   a pane whose program asked for the mouse, Claude Code among them, is a
+   click at that cell on the host, so an option shown can be chosen by
+   clicking it; in a pane that did not ask, a click only focuses.
+   Read-only panes say so.
 
 ![panes](images/web-panes.png)
 
@@ -42,8 +51,10 @@ Everywhere a pane is named, in the list, the pane header, the tab title,
 the window view, boards and the selector, it is named by what runs in
 it, not by tmux: the command, and after it what the program says about
 itself in the pane title when that adds something (`vim · notes.md`).
-The header names the pane a view is about, in the window view and on a
-board the focused one, and a notification names the pane the same way.
+The header names the pane a view is about, the focused one where several
+are shown, and a notification names the pane the same way: the mark,
+the name upright, what the program says about itself in italics, and
+the place dimmed after it, all on one line.
 A pane running **Claude Code** is named *Claude*, with its mark, and the
 status Claude writes into the title follows (`Claude · fixing the
 build`); it is recognised by its command, or by the spark Claude Code
@@ -88,10 +99,87 @@ fit, or `r`, sends this client's size once more.
 ![fit](images/web-fit.png)
 ![fit in the window view, a divider dragged](images/web-window-fit.png)
 
+## Tiles: the Android view
+
+`/p/<address>` opens one pane; `/p/<a>,<b>,<c>` opens up to four, side
+by side. The page is the Android client's pane view:
+
+```
+[‹] [⟳ fixing the build][! review][bash][tail · build.log]      [▦] window ▸
+┌─ ✳ Claude · fixing the build · work/0.0 · 96×28 · write · ⟳ working ─ fit on ─┐
+│ $ make test                                                                   │
+│ ok                                                                            │
+└───────────────────────────────────────────────────────────────────────────────┘
+> ________________________________________________________________________ [send]
+[Enter][Tab][BSpace][Escape]…
+```
+
+- `‹` goes back to the list.
+- The **tab strip** lists every pane you may read, in listing order,
+  named by what Claude wrote into the title or by what runs there. Each
+  tab is **painted with its state** from the lens: the attention colour
+  when the pane waits for you (`!` `?` `z` `✓`, pulsing), dim when it
+  works (`⟳`), plain when quiet. Open panes have a border, the focused
+  one a thick border and its name in bold; selection never changes the
+  colour, so the state shows on the pane you are looking at. A click on
+  an open tab focuses its tile; a click on a closed tab swaps it into
+  the focused tile. The strip scrolls and keeps the focused tab in view.
+- **Tiles** share the area in one of the Android arrangements: two panes
+  have a `row` and a `column`; three add `main-left` (a main pane with
+  the others stacked beside it) and `main-top`; four add a `grid`. `▦`,
+  or `l`, cycles the ones that make sense for the count. A wide window
+  starts with the row, a tall one with the column. The bar between two
+  tiles drags, and no tile goes under fifteen percent. Drag a tile's
+  header onto another to swap the two; `×` in a header, or `x`, closes a
+  tile. The arrangement is the browser's own and never reaches the host.
+- A tile's **header** is painted like its tab and names the pane, its
+  address, its size, its mode and the lens's word; the focused tile has
+  the thick border and the bold name, and carries the `fit` button.
+- **Fit** is per tile, with the pane's own scope (see
+  [fit](#fit-the-host-follows-the-browser)). One writable pane opens
+  with fit on; several open with fit off, so no host changes until you
+  say so. `f` toggles the focused tile, `F` every writable tile, `r`
+  sends the size once more.
+- `]` and `[` focus the next or previous tile, `1` to `4` a tile by
+  number; `}` and `{` show the next or previous pane of the strip in the
+  focused tile (the phone's swipe); `w` opens the focused pane's window
+  view, `b` puts it on the board, `Enter` opens it alone.
+
+![tiles](images/web-tiles.png)
+![the list with two panes picked](images/web-list-picked.png)
+
+## The lens
+
+A lens knows one program and tells the rest of the client what its pane
+is up to. The first is for Claude Code, recognised as [above](#what-a-
+pane-is-called). A pane is **waiting for you** when the listing carries a
+notification; **working** when the last event the hub sent for it was
+`working` (the hook on a submitted prompt) or, while a tile reads it, its
+screen changed in the last ten seconds; **quiet** otherwise. Panes that
+are not Claude's show notifications the same way and never show
+"working". tmux's own activity flag is not used: it is the window's,
+shared by every pane in it.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Quiet
+    Quiet --> Working: working event, or the open pane's screen changes
+    Working --> Quiet: a later event that is not a notification, 10 s without a change
+    Quiet --> Waiting: notification arrives
+    Working --> Waiting: notification arrives
+    Waiting --> Quiet: notification cleared (working hook, or input from a client)
+```
+
+The lens reads three fields the client already renders as text (title,
+command, notification kind) and one number. A pane can at most make
+itself look like Claude Code or look busy.
+
+![the lens](images/web-lens.png)
+
 ## The window view
 
-A window row in the list, the `▦` entries in the selector, or `window ▸`
-in a pane header open the **window view**: every pane of the window you
+A window's `▦ … mirror layout ▸` button in the list, the `▦` entries in
+the selector, or `window ▸` above the tiles open the **window view**: every pane of the window you
 may read, in tmux's own layout, each scaled to its box. One pane is
 focused (click, or `]` and `[`); the input line and key bar go to it,
 `Enter` opens it alone. Double-click a pane, or press `z`, to show it
@@ -152,7 +240,8 @@ because several host windows changing at once is a decision for you.
 | Key | Does |
 |---|---|
 | `j` / `k` | move the selection down / up |
-| `Enter` | open the selected pane |
+| `space` | pick the selected pane, up to four |
+| `Enter` | open the selected pane, or the picked ones side by side |
 | `Esc` | back to the panes; or leave the input line |
 | `/` | filter panes |
 | `i` | focus the input line |
@@ -162,7 +251,9 @@ because several host windows changing at once is a decision for you.
 | `b` | the main board; from a pane: put it on the board first |
 | `a` / `A` | board: add a pane beside / below the focused one |
 | `x` / `s` / `z` / `=` / `F` / `w` | board: remove, swap, zoom, equal shares, fit all, the pane's window |
-| `]` / `[` | window view: next / previous pane |
+| `]` / `[` | next / previous tile (window view: pane) |
+| `}` / `{` | the focused tile shows the next / previous pane of the strip |
+| `1`–`4`, `l`, `x`, `F`, `w` | tiles: focus one, next arrangement, close, fit all, the pane's window |
 | `x`, `z`, `0`, `+`, `-` | window view: hide, zoom (or double-click), host layout, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
 | `t` | next theme: green, amber, paper |

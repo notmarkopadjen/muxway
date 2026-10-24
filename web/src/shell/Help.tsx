@@ -13,14 +13,17 @@ import { Box } from '../components/Box';
 
 const KEYS: [string, string][] = [
   ['j / k', 'move down / up'],
-  ['Enter', 'open the selected pane'],
+  ['space', 'pick a pane, up to four'],
+  ['Enter', 'open the selected pane, or the picked ones side by side'],
   ['Esc', 'back to the panes'],
   ['p', 'go to a pane or window'],
   ['/', 'filter panes'],
   ['f', 'fit: the host pane (window view: the window) follows this box, at the chosen font'],
   ['r', 'fit again, after another client sized the window'],
   ['b', 'the main board; from a pane: put it on the board'],
-  ['] / [', 'window view and board: next / previous pane'],
+  ['] / [', 'next / previous tile (window view and board: pane)'],
+  ['} / {', 'the focused tile shows the next / previous pane of the strip'],
+  ['1 – 4 / l / x / F', 'tiles: focus one, next arrangement, close, fit all'],
   [
     'x / z / 0 / + / -',
     'window view: hide, zoom (or double-click; with fit, on the host too), host layout, bigger, smaller',

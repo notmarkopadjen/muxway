@@ -74,6 +74,8 @@ const notFound = createRoute({
 
 export const router = createRouter({
   routeTree: root.addChildren([signIn, panes, pane, window, board, notFound]),
+  // Several panes travel in one splat, comma separated.
+  pathParamsAllowedCharacters: [','],
 });
 
 declare module '@tanstack/react-router' {

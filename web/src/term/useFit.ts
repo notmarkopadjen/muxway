@@ -10,15 +10,20 @@ import { cellsFor, inner } from './measure';
 // is given; the release puts both back. A size already sent is not sent
 // again, so `refit` is there for when another client sized the window
 // since: it sends this one's size once more.
-// The release must survive the page going away, hence keepalive.
-function release(address: string) {
+// The release must survive the page going away, hence keepalive. It can
+// land within the second of the resize it undoes, so a 429 is tried again.
+function release(address: string, tries = 3) {
   fetch(`/v1/panes/${address}/resize`, {
     method: 'POST',
     keepalive: true,
     credentials: 'same-origin',
     headers: { 'X-Muxway-Client': 'web', 'Content-Type': 'application/json' },
     body: JSON.stringify({ fit: 'auto' }),
-  }).catch(() => {});
+  })
+    .then((r) => {
+      if (r.status === 429 && tries > 1) window.setTimeout(() => release(address, tries - 1), 1100);
+    })
+    .catch(() => {});
 }
 
 export type FitScope = 'pane' | 'window';

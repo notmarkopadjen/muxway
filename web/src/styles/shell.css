@@ -84,7 +84,7 @@ button:disabled {
 
 .mx-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--mx-gap-2);
   padding: var(--mx-gap) var(--mx-gap-2);
   border-bottom: 1px solid var(--mx-ink-faint);
@@ -101,9 +101,17 @@ button:disabled {
   color: inherit;
 }
 .mx-crumb {
-  color: var(--mx-ink-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.mx-crumb .mx-place {
+  color: var(--mx-ink-faint);
+  font-size: 12px;
+  white-space: nowrap;
 }
 .mx-header .mx-spacer {
   flex: 1;
@@ -229,6 +237,15 @@ button:disabled {
 .mx-badge.mx-done {
   color: var(--mx-ok);
 }
+.mx-badge.mx-working {
+  color: var(--mx-ink-dim);
+  border-color: transparent;
+  font-family: var(--mx-mono);
+  font-size: 12px;
+}
+.mx-word {
+  margin-left: 4px;
+}
 
 .mx-help {
   position: fixed;
@@ -309,6 +326,7 @@ button:disabled {
 }
 .mx-title-status {
   color: var(--mx-ink-dim);
+  font-style: italic;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

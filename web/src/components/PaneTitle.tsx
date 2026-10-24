@@ -1,7 +1,7 @@
 import type { Pane } from '../api/types';
 import { describe } from '../term/describe';
 
-function ClaudeMark() {
+export function ClaudeMark() {
   // A spark: twelve rays from the centre.
   const rays = Array.from({ length: 12 }, (_, i) => (i * 30 * Math.PI) / 180);
   return (

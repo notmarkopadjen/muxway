@@ -50,4 +50,9 @@ test('82 a click on a pane whose program asked for the mouse is a click at that 
   await shot(page, info, '82-mouse');
   await page.getByTestId('keybar').getByRole('button', { name: 'C-c' }).click();
   await expect.poll(() => control(request, '/command', { target: 'work:0.0' })).toBe('bash');
+  // Leaving the pane gives the window back to tmux, so the next spec finds it at rest.
+  await page.goto('/');
+  await expect
+    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 5000 })
+    .toBe('100x30');
 });

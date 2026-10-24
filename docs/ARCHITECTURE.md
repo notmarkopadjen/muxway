@@ -40,8 +40,9 @@ flowchart LR
   rewrapped to the width the client asks for, in UTF-8, Latin-1 or ASCII
   (see [text mode](features/text-mode.md)).
 - **Web client**: served by the hub from embedded files at `/`; its
-  boards and arrangements are browser state and never reach the hub; React,
-  plain CSS, polling the API with the session cookie. See
+  tile arrangements, boards and the lens that says what a pane is up to
+  are browser state and never reach the hub; React, plain CSS, polling
+  the API with the session cookie. See
   [features/web-client.md](features/web-client.md).
 - **Notifications**: a process in a pane, such as a Claude Code hook, runs
   `muxway notify`; the agent marks the pane and the hub tells clients, see
