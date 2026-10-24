@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { control, HOST, shot, signIn } from './fixtures';
+import { control, HOST, settled, shot, signIn } from './fixtures';
 
 test('62 the window view mirrors the host layout', async ({ page, request }, info) => {
   await signIn(page);
   await page.goto(`/w/${HOST}/work/0`);
   await expect(page.getByTestId('window')).toBeVisible();
   await expect(page.getByTestId('cell')).toHaveCount(2);
+  // The boxes are measured below: not while the screen still powers on.
+  await settled(page);
   // Fit is on by default: off, the view mirrors the host and scales to the box.
   await page.keyboard.press('f');
   await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '0');
