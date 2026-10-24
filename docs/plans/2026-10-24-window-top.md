@@ -139,8 +139,12 @@ retaken.
 
 ## Test run
 
-[Run 20261024-174524-614d2d7](https://github.com/notmarkopadjen/muxway/issues/68):
-passed, 78 tests, on the tree committed as `4844796` (the run directory
-is named after the base commit, `614d2d7`, since it ran before the
-commit). Screenshots `62-window`, `63-local`, `76-window-fit` and
-`86-window-glow`; the first three are the feature page's images.
+[Run 20261024-182003-a596712](https://github.com/notmarkopadjen/muxway/issues/71):
+passed, 81 tests, at `a596712`, after the rebase onto the scrolling and
+input-line features (the strip's wheel and ‹ › moved into the shared
+component; `Esc` and `Shift+Esc` in the line settled as the goal says).
+Screenshots `62-window`, `63-local`, `76-window-fit` and
+`86-window-glow`; the first three are the feature page's images. An
+earlier run of the same change before the rebase:
+[Run 20261024-174524-614d2d7](https://github.com/notmarkopadjen/muxway/issues/68),
+passed, 78 tests.
