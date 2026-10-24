@@ -249,21 +249,19 @@ export function InputPanel({
     const plain = !e.ctrlKey && !e.altKey && !e.metaKey;
     if (k === 'Enter' && plain && !e.shiftKey) {
       e.preventDefault();
-      void submit();
+      if (list.length) {
+        const r = complete(text, caret, list[picked]);
+        change('', 0);
+        void line(r.text.trimEnd());
+      } else void submit();
     } else if (k === 'Escape' && e.shiftKey) {
-      // Shift+Esc leaves the line; Esc alone is the pane's Escape, as the
-      // key bar's button is, once an open completion list has closed.
       e.preventDefault();
       e.stopPropagation();
-      field.current?.blur();
+      void send({ key: 'Escape' });
     } else if (k === 'Escape' && list.length) {
       e.preventDefault();
       e.stopPropagation();
       setClosed(true);
-    } else if (k === 'Escape' && writable) {
-      e.preventDefault();
-      e.stopPropagation();
-      void send({ key: 'Escape' });
     } else if (list.length && plain && (k === 'ArrowDown' || k === 'ArrowUp')) {
       e.preventDefault();
       const step = k === 'ArrowDown' ? 1 : list.length - 1;
@@ -335,7 +333,7 @@ export function InputPanel({
         )}
         {list.length > 0 && <Completions items={list} picked={picked} onTake={take} />}
       </form>
-      <div>
+      <div className="mx-below">
         <KeyBar onKey={(k) => void send({ key: k })} disabled={!writable} />
         {row && <CommandBar row={row} disabled={!writable} onRun={run} />}
         {children}

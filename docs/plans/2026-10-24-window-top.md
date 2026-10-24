@@ -22,18 +22,40 @@ below), the hub and the agent, the Android client.
 Two keyboard changes the owner asked for while this was being built
 ride along, since they touch the same input line and views:
 
-- **Escape in the input line** is the pane's Escape, as the key bar's
-  button is, and the line keeps the focus. Before, it only left the
-  line. The input-line feature (#57), built alongside, had given `Esc`
-  the completion list to close and `Shift+Esc` the pane's Escape; on
-  the owner's ask the two are swapped: `Esc` closes an open list, else
-  reaches the pane; `Shift+Esc` leaves the line. `Esc` outside the line
-  still goes back to the list.
-- **Ctrl+→ and Ctrl+←** switch the pane from anywhere, the input line
-  included: in the tile view the focused tile shows the strip's
-  neighbour (what `}` and `{` did; those keys go), in the window view
-  and on a board they move the focus, and the zoom with it, as `]` and
-  `[` do.
+- **Escape in the input line.** First asked for as the pane's Escape;
+  the input-line feature (#57), built alongside, gave `Esc` the line to
+  leave (closing an open completion list first) and `Shift+Esc` the
+  pane's Escape. The owner settled on that: leaving the line is the
+  more frequent move and should not need Shift.
+- **`]` and `[` go to the next pane** everywhere: the next tile, or
+  with one tile open the strip's neighbour shown in it (what `}` and
+  `{` did; those go, and so does the Ctrl+arrow pair tried in between,
+  which a Mac keeps for itself). The window view and a board had them
+  already.
+- **Zoom is the pane view.** The window view's own zoom (one cell shown
+  alone, the host zooming with fit on) goes; `⊡`, `z`, `Enter` or a
+  double-click on a cell or its header open the focused pane in the
+  pane view, and from there `⊡`, `z`, `w` or a double-click on the tile
+  come back to the window. One set of features at two distances instead
+  of two modes.
+- **Shift+click on a tab** opens the pane beside the open tiles, up to
+  four, so a second pane and the `▦` arrangements are reachable from
+  the pane view itself, not only from the list's pick.
+- **Enter on the completion list** sends the highlighted completion.
+  The input-line feature had Enter send the typed text only, so `/`
+  followed by Enter reached Claude Code as a bare slash and its own menu
+  picked whatever came first (`/cd`, in the owner's screenshot).
+- **Claude's mark on every Claude tab.** The strip showed the state
+  glyph instead of the mark whenever a pane was not quiet, so only idle
+  Claude panes kept their spark; now the mark stays and the glyph
+  follows it.
+- **More under the input line.** The key bar grows from sixteen keys to
+  forty-two (`BTab`, `Space`, `Insert`, `Delete`, ten more control
+  keys, `F1` to `F12`), which is a protocol change: the named-key
+  whitelist on the hub and the agent grows the same way, and the
+  protocol page says so. The command row offers twenty-four Claude Code
+  slash commands and twenty-eight shell starters instead of eight and
+  nine.
 
 ## 2. Design
 
@@ -78,7 +100,11 @@ stateDiagram-v2
 
 ## 3. Protocol and API changes
 
-None. The browser alone.
+The named-key whitelist of `POST /v1/panes/{address}/input` grows (see
+`docs/protocol/v1.md`): `Space`, `Insert`, `Delete`, `C-a`, `C-e`,
+`C-u`, `C-k`, `C-w`, `C-r`, `C-x`, `C-n`, `C-p`, `C-f`, `F1` to `F12`.
+Compatible: an older hub answers `400 bad_input` to the new names, as
+it does to any name it does not know. Nothing else changes.
 
 ## 4. Security analysis
 
@@ -103,8 +129,9 @@ committed.
 | 4 | 75: `⊡` selected while zoomed, a click toggles | e2e | as before, by the icon |
 | 5 | 62, 64, 76, 86: `fit` on the `⤢` icon with `data-on` | e2e | unchanged |
 | 6 | 86: a waiting pane's cell header says `permission: run it?` | UI | `86-window-glow` |
-| 7 | 48: Escape in the input line keeps the focus; `Tab` leaves it | e2e | the pane list after a second Escape |
-| 8 | 85, 75, 71: Ctrl+→ / Ctrl+← from the input line in the tiles, the zoomed window view, a board | e2e | the neighbour shown; the focus and zoom moved |
+| 7 | 48, 92: Escape leaves the input line, Shift+Esc reaches the pane | e2e | the pane list after a second Escape |
+| 8 | 85, 91: `]` / `[` with one tile open show the strip's neighbour; Shift+click opens beside; 75: zoom in and out between the window view and the pane view by key, icon and double-click | e2e | the neighbour shown; the URL changes both ways |
+| 9 | Sec07: the new key names are accepted, `F13`, `C-b` and the rest stay refused | e2e-security | 204 for a listed key, 400 otherwise |
 
 ## 7. Documentation
 

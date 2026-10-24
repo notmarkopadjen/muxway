@@ -194,8 +194,8 @@ test('91 the strip: the wheel and ‹ › move it when the tabs overflow', async
     await page.getByTestId('tabs-next').click();
     await expect.poll(left).toBeGreaterThan(100);
     await shot(page, info, '91-strip');
-    // Ctrl+→ shows the strip's next pane in the focused tile.
-    await page.keyboard.press('Control+ArrowRight');
+    // With one tile open, ] shows the strip's next pane in it.
+    await page.keyboard.press(']');
     await expect(page.getByTestId('pane')).not.toHaveAttribute('data-panes', SHELL0);
     await expect(page.locator('[data-testid="tab"][data-focused]')).not.toHaveAttribute(
       'data-address',

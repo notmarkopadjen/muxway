@@ -40,16 +40,26 @@ test('85 the tab strip: every pane, a tab swaps into the focused tile, keys move
     .poll(() => control(request, '/capture', { target: 'work:1.0' }), { timeout: 5000 })
     .toContain('typed-in-85');
   expect(await control(request, '/capture', { target: 'work:0.1' })).toBe(before);
-  // Ctrl with an arrow, from the input line too, shows the neighbouring pane
-  // of the strip in the focused tile:
-  // whichever side of the strip the other closed pane is on.
+  // With one tile open, ] and [ show the strip's neighbouring pane in it.
+  // Esc leaves the input line first.
   const order = await tabs.evaluateAll((els) => els.map((e) => e.getAttribute('data-address')));
-  const other = order.find((a) => a !== RO && a !== LOGS && a !== SHELL0)!;
+  const at = order.indexOf(RO);
+  const other = (order[at + 1] ?? order[at - 1])!;
   await page.getByTestId('input').focus();
-  await page.keyboard.press(
-    order.indexOf(other) > order.indexOf(LOGS) ? 'Control+ArrowRight' : 'Control+ArrowLeft',
-  );
-  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', `${RO} ${other}`);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('input')).not.toBeFocused();
+  await page.keyboard.press('x');
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', RO);
+  await page.keyboard.press(order.indexOf(other) > at ? ']' : '[');
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', other);
+  // Shift+click on a closed tab opens it beside instead of swapping it in.
+  await page.locator(`[data-testid="tab"][data-address="${RO}"]`).click({ modifiers: ['Shift'] });
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', `${other} ${RO}`);
+  await expect(page.getByTestId('tile')).toHaveCount(2);
+  await expect(page.getByTestId('arrange')).toBeVisible();
+  await page.keyboard.press('2');
+  await page.keyboard.press('x');
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', other);
   await shot(page, info, '85-tabs');
   // The header names the focused pane, and the way back leads to the list.
   await expect(page.getByTestId('crumb')).toContainText(other);

@@ -251,6 +251,10 @@
   border-color: var(--mx-ink);
   box-shadow: var(--mx-glow-box-strong);
 }
+/* The key bar wraps; the command row scrolls. Neither may widen the page. */
+.mx-below {
+  min-width: 0;
+}
 .mx-keybar {
   display: flex;
   flex-wrap: wrap;

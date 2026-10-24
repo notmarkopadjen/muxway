@@ -72,7 +72,7 @@ test('92 lines: Shift+Enter adds a row, the field grows upward, Enter sends the 
   expect(await height(input)).toBe(oneRow);
 });
 
-test('92 completion: Claude slash commands, a shell recent line; Enter never completes', async ({
+test('92 completion: Claude slash commands, a shell recent line; Enter sends the pick', async ({
   page,
   request,
 }, info) => {
@@ -89,13 +89,13 @@ test('92 completion: Claude slash commands, a shell recent line; Enter never com
   await input.click();
   await page.keyboard.type('/co');
   await expect(list).toBeVisible();
-  await expect(rows).toHaveText(['▸ /compact', '  /context', '  /config', '  /cost']);
+  await expect(rows).toHaveText(['▸ /compact', '  /context', '  /cost', '  /config']);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await expect(rows.nth(2)).toHaveAttribute('aria-selected', 'true');
   await shot(page, info, '92-complete');
   await page.keyboard.press('Tab');
-  await expect(input).toHaveValue('/config ');
+  await expect(input).toHaveValue('/cost ');
   await expect(input).toBeFocused();
   await expect(list).toHaveCount(0);
   // A click takes a row too, and the caret lands after the space.
@@ -103,17 +103,18 @@ test('92 completion: Claude slash commands, a shell recent line; Enter never com
   await rows.filter({ hasText: '/resume' }).click();
   await expect(input).toHaveValue('/resume ');
   expect(await input.evaluate((el: HTMLTextAreaElement) => el.selectionStart)).toBe(8);
-  // Enter sends what is typed, not the highlighted completion.
+  // Enter sends the highlighted completion, not the half-typed word.
   await input.fill('');
   const inputs = watchInput(page);
   await page.keyboard.type('/co');
   await expect(list).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(list).toHaveCount(0);
+  await expect(input).toHaveValue('');
   await expect
     .poll(() => inputs)
-    .toEqual([JSON.stringify({ text: '/co' }), JSON.stringify({ key: 'Enter' })]);
-  await expect.poll(capture, { timeout: 5000 }).toContain('$ /co');
+    .toEqual([JSON.stringify({ text: '/compact' }), JSON.stringify({ key: 'Enter' })]);
+  await expect.poll(capture, { timeout: 5000 }).toContain('$ /compact');
   // A second word, or a caret before the first word's end, gets no list.
   await page.keyboard.type('/compact now');
   await expect(list).toHaveCount(0);
@@ -123,23 +124,24 @@ test('92 completion: Claude slash commands, a shell recent line; Enter never com
   await expect(page.getByTestId('cmdbar')).toHaveAttribute('data-kind', 'shell', {
     timeout: 10_000,
   });
+  // A line that is no starter, with output short enough to keep its prompt in view.
   await input.click();
-  await page.keyboard.type('git status');
+  await page.keyboard.type('echo hi-$((90+2))');
   await page.keyboard.press('Enter');
-  await expect.poll(capture, { timeout: 5000 }).toContain('$ git status');
-  await page.keyboard.type('g');
-  await expect(rows).toHaveText(['▸ gemini', '  git status']);
+  await expect.poll(capture, { timeout: 5000 }).toContain('$ echo hi-$((90+2))');
+  await page.keyboard.type('e');
+  await expect(rows).toHaveText(['▸ exit', '  echo hi-$((90+2))']);
   await page.keyboard.press('Escape');
   await expect(list).toHaveCount(0);
   await expect(input).toBeFocused();
-  await expect(input).toHaveValue('g');
-  await page.keyboard.type('i');
-  await expect(rows).toHaveText(['▸ git status']);
+  await expect(input).toHaveValue('e');
+  await page.keyboard.type('c');
+  await expect(rows).toHaveText(['▸ echo hi-$((90+2))']);
   await input.fill('');
   await page.evaluate(() => localStorage.removeItem('mx-recent'));
 });
 
-test('92 keys: i focuses the line, Shift+Esc leaves it, console keys from an empty line, Esc', async ({
+test('92 keys: i focuses the line, Esc leaves it, console keys from an empty line, Shift+Esc', async ({
   page,
   request,
 }) => {
@@ -151,8 +153,8 @@ test('92 keys: i focuses the line, Shift+Esc leaves it, console keys from an emp
   await expect(page.getByTestId('cmdbar')).toHaveCount(0, { timeout: 10_000 });
   await page.keyboard.press('i');
   await expect(input).toBeFocused();
-  // Shift+Esc leaves the line: the view's keys work again, Esc then goes to the list.
-  await page.keyboard.press('Shift+Escape');
+  // Esc leaves the line: the view's keys work again, a second Esc goes to the list.
+  await page.keyboard.press('Escape');
   await expect(input).not.toBeFocused();
   await expect(page.getByTestId('pane')).toBeVisible();
   await page.keyboard.press('Escape');
@@ -176,8 +178,8 @@ test('92 keys: i focuses the line, Shift+Esc leaves it, console keys from an emp
   await page.keyboard.press('End');
   expect(await input.evaluate((el: HTMLTextAreaElement) => el.selectionStart)).toBe(3);
   expect(inputs).toHaveLength(4);
-  // Esc sends Escape to the pane and keeps the line and its text.
-  await page.keyboard.press('Escape');
+  // Shift+Esc sends Escape to the pane and keeps the line and its text.
+  await page.keyboard.press('Shift+Escape');
   await expect.poll(() => inputs.at(-1)).toBe(JSON.stringify({ key: 'Escape' }));
   await expect(input).toBeFocused();
   await expect(input).toHaveValue('abc');

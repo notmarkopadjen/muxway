@@ -12,13 +12,15 @@ export function Tabs({
   open,
   focused,
   hidden = [],
+  addable = false,
   onTab,
 }: {
   panes: Pane[];
   open: string[];
   focused: string | null;
   hidden?: string[];
-  onTab: (address: string) => void;
+  addable?: boolean;
+  onTab: (address: string, add: boolean) => void;
 }) {
   const lens = useLens();
   const strip = useRef<HTMLDivElement>(null);
@@ -28,7 +30,7 @@ export function Tabs({
       ?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   }, [focused, panes.length]);
   // The strip hides its scrollbar: the wheel moves it sideways, and ‹ ›
-  // appear at its ends while there is more than fits. Keys: Ctrl+→ and Ctrl+←.
+  // appear at its ends while there is more than fits. Keys: ] and [ with one tile.
   const [more, setMore] = useState(false);
   useEffect(() => {
     const el = strip.current;
@@ -67,7 +69,7 @@ export function Tabs({
           type="button"
           className="mx-strip-end"
           onClick={() => page(-1)}
-          title="earlier tabs (Ctrl+← shows the previous pane)"
+          title="earlier tabs ([ shows the previous pane in a single tile)"
           data-testid="tabs-prev"
         >
           ‹
@@ -89,14 +91,17 @@ export function Tabs({
               data-focused={address === focused ? '' : undefined}
               data-hidden={isHidden ? '' : undefined}
               data-state={st === 'quiet' ? undefined : st}
-              onClick={() => onTab(address)}
-              title={isHidden ? `${address} · hidden here, click brings it back` : address}
+              onClick={(e) => onTab(address, e.shiftKey)}
+              title={
+                isHidden
+                  ? `${address} · hidden here, click brings it back`
+                  : addable && !isOpen
+                    ? `${address} · Shift+click opens it beside`
+                    : address
+              }
             >
-              {st !== 'quiet' ? (
-                <LensMark status={st} attention={pane?.attention} />
-              ) : pane && describe(pane).agent === 'claude' ? (
-                <ClaudeMark />
-              ) : null}
+              {pane && describe(pane).agent === 'claude' && <ClaudeMark />}
+              {st !== 'quiet' && <LensMark status={st} attention={pane?.attention} />}
               <span className="mx-tab-name">
                 {pane ? tabName(pane) : address.split('/').slice(1).join('/')}
               </span>
@@ -109,7 +114,7 @@ export function Tabs({
           type="button"
           className="mx-strip-end"
           onClick={() => page(1)}
-          title="later tabs (Ctrl+→ shows the next pane)"
+          title="later tabs (] shows the next pane in a single tile)"
           data-testid="tabs-next"
         >
           ›

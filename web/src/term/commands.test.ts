@@ -36,14 +36,14 @@ group('commands', () => {
   });
 
   it('adds the lines sent recently after the fixed ones, newest first, without repeats', () => {
-    remember('make test');
+    remember('make lint');
     remember('  ls  ');
     remember('git status');
-    remember('make test');
+    remember('make lint');
     remember('');
     const row = commandsFor({ command: 'bash', title: 'bash' }, recentLines());
     const extra = row!.commands.slice(SHELL_COMMANDS.length).map((c) => c.text);
-    expect(extra).toEqual(['make test']);
+    expect(extra).toEqual(['make lint']);
     const long = 'x'.repeat(40);
     const r2 = commandsFor({ command: 'bash', title: 'bash' }, [long]);
     const last = r2!.commands[r2!.commands.length - 1];

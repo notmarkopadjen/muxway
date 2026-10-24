@@ -2,7 +2,7 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useAllPanes, useInput, usePane, usePaneCached } from '../api/queries';
-import type { Key, Mouse } from '../api/types';
+import type { Key, Mouse, Pane } from '../api/types';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
 import { LensMark } from '../components/Lens';
@@ -16,6 +16,7 @@ import {
   defaultFor,
   drag,
   equal,
+  MAX_TILES,
   next,
   options,
   parseRoute,
@@ -62,6 +63,7 @@ interface TileProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   onDrop: () => void;
+  onZoomOut: (p: Pane) => void;
   refused: (why: string) => void;
 }
 
@@ -139,6 +141,7 @@ function Tile(props: TileProps) {
         setOver(false);
         props.onDrop();
       }}
+      onDoubleClick={() => p && props.onZoomOut(p)}
     >
       <div
         className="mx-tile-head mx-painted"
@@ -329,10 +332,13 @@ function Tiles({ addresses }: { addresses: string[] }) {
     for (const a of addresses) if (!order.includes(a)) order.push(a);
     return order;
   }, [all.data, addresses]);
+  // A tab focuses its tile, or swaps into the focused one; with Shift it
+  // opens beside the others instead.
   const onTab = useCallback(
-    (address: string) => {
+    (address: string, add = false) => {
       const at = addresses.indexOf(address);
       if (at >= 0) setFocusedIndex(at);
+      else if (add && addresses.length < MAX_TILES) go([...addresses, address]);
       else go(replace(addresses, index, address));
     },
     [addresses, index, go],
@@ -351,15 +357,15 @@ function Tiles({ addresses }: { addresses: string[] }) {
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       const target = ev.target as HTMLElement | null;
-      // Ctrl with an arrow switches the pane from anywhere, the input line too.
-      const arrow = ev.ctrlKey && !ev.metaKey && !ev.altKey && /^Arrow(Left|Right)$/.test(ev.key);
-      const step = ev.key === 'ArrowRight' ? 1 : -1;
-      if (arrow) neighbour(step);
-      else if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-      else if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
-      else if (ev.key === ']') setFocusedIndex((index + 1) % n);
-      else if (ev.key === '[') setFocusedIndex((index - 1 + n) % n);
-      else if (/^[1-4]$/.test(ev.key) && Number(ev.key) <= n) setFocusedIndex(Number(ev.key) - 1);
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      // ] and [ go to the next pane: the next tile, or with one tile open
+      // the strip's neighbour shown in it.
+      if (ev.key === ']' || ev.key === '[') {
+        const d = ev.key === ']' ? 1 : -1;
+        if (several) setFocusedIndex((index + d + n) % n);
+        else neighbour(d);
+      } else if (/^[1-4]$/.test(ev.key) && Number(ev.key) <= n) setFocusedIndex(Number(ev.key) - 1);
       else if (ev.key === 'l' && several) setLayout((l) => next(l, n));
       else if (ev.key === 'x' && several) go(close(addresses, focused));
       else if (ev.key === 'f' && writable) toggleFit(focused);
@@ -369,7 +375,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         for (const a of addresses) f[a] = on;
         setFit(f);
       } else if (ev.key === 'r' && writable) setRefitTick((t) => t + 1);
-      else if (ev.key === 'w' && focusedPane)
+      else if ((ev.key === 'w' || ev.key === 'z') && focusedPane)
         navigate({
           to: `/w/${focusedPane.host}/${focusedPane.session}/${focusedPane.window_index}`,
         });
@@ -420,6 +426,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
           if (dragging && dragging !== a) go(swap(addresses, dragging, a));
           setDragging(null);
         }}
+        onZoomOut={(p) => navigate({ to: `/w/${p.host}/${p.session}/${p.window_index}` })}
         refused={refused}
       />
     );
@@ -435,7 +442,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         <Link to="/" className="mx-back" title="back to the panes (Esc)" data-testid="back">
           ‹
         </Link>
-        <Tabs panes={all.data ?? []} open={addresses} focused={focused} onTab={onTab} />
+        <Tabs panes={all.data ?? []} open={addresses} focused={focused} onTab={onTab} addable />
         <span className="mx-tools">
           {several && (
             <button
@@ -448,8 +455,13 @@ function Tiles({ addresses }: { addresses: string[] }) {
             </button>
           )}
           {windowPath && (
-            <Link to={windowPath} className="mx-dim" data-testid="to-window">
-              window ▸
+            <Link
+              to={windowPath}
+              className="mx-toggle on"
+              title="the whole window (z, w, or double-click)"
+              data-testid="to-window"
+            >
+              ⊡
             </Link>
           )}
         </span>
@@ -465,7 +477,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
             ? writable
               ? several
                 ? `type into ${focused}`
-                : 'type · Enter sends · Shift+Enter new line · Shift+Esc leaves'
+                : 'type · Enter sends · Shift+Enter new line · Esc leaves'
               : 'read-only pane'
             : 'no pane'
         }

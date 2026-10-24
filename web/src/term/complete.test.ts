@@ -7,21 +7,26 @@ const shell = { command: 'bash', title: 'bash' };
 
 group('completions', () => {
   it('matches the first word by prefix, the row commands first, at most eight', () => {
-    expect(completions(claude, '/co', 3, [])).toEqual(['/compact', '/context', '/config', '/cost']);
+    expect(completions(claude, '/co', 3, [])).toEqual(['/compact', '/context', '/cost', '/config']);
     const all = completions(claude, '/', 1, []);
     expect(all).toHaveLength(MAX_COMPLETIONS);
-    expect(all.slice(0, CLAUDE_COMMANDS.length)).toEqual(CLAUDE_COMMANDS.map((c) => c.text.trim()));
+    expect(all).toEqual(CLAUDE_COMMANDS.slice(0, MAX_COMPLETIONS).map((c) => c.text.trim()));
     expect(new Set(CLAUDE_SLASH).size).toBe(CLAUDE_SLASH.length);
     expect(completions(claude, '/nothing', 8, [])).toEqual([]);
   });
 
   it('gives a shell its starters and the recent lines, without repeats', () => {
-    expect(completions(shell, 'g', 1, ['git status', 'grep -r x', 'make'])).toEqual([
-      'gemini',
-      'git status',
-      'grep -r x',
+    expect(completions(shell, 'ma', 2, ['make', 'make lint'])).toEqual([
+      'make',
+      'make test',
+      'make lint',
     ]);
-    expect(completions(shell, 'cl', 2, [])).toEqual(['claude', 'claude -c', 'clear']);
+    expect(completions(shell, 'cl', 2, [])).toEqual([
+      'claude',
+      'claude -c',
+      'claude --resume',
+      'clear',
+    ]);
   });
 
   it('offers nothing for a second word, an empty line, or an unknown program', () => {

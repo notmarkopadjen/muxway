@@ -221,19 +221,16 @@ export function WindowPage() {
   );
   const [focused, setFocused] = useState<string | null>(null);
   const focus = focused && visible.includes(focused) ? focused : (visible[0] ?? null);
-  // Zoom shows one pane alone, in the browser only; a second time brings
-  // the window back.
-  const [zoomed, setZoomed] = useState<string | null>(null);
-  const zoom = zoomed && visible.includes(zoomed) ? zoomed : null;
-  const zoomLeaf = tree && zoom ? leaves(tree).find((l) => l.id === zoom) : undefined;
-  const toggleZoom = useCallback((id: string) => {
-    setFocused(id);
-    setZoomed((z) => (z === id ? null : id));
-  }, []);
-  const move = (id: string | null) => {
-    setFocused(id);
-    if (zoom) setZoomed(id);
-  };
+  // Zoom opens the pane alone in the pane view, with everything that
+  // view has; from there the window is one key away again.
+  const open = useCallback(
+    (id: string) => {
+      const address = panes.get(id)?.pane.address;
+      if (address) navigate({ to: '/p/$', params: { _splat: address } });
+    },
+    [panes, navigate],
+  );
+  const move = (id: string | null) => setFocused(id);
   const focusedPane = focus ? panes.get(focus)?.pane : undefined;
   // The strip: this window's panes in layout order, hidden ones dimmed.
   const stripPanes = useMemo(
@@ -255,10 +252,9 @@ export function WindowPage() {
   const area = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(true);
   const fitting = fit && !!writable;
-  // With fit on the host takes the browser's proportions too, and its
-  // zoom: the pane shown alone here is shown alone there.
+  // With fit on the host takes the browser's proportions too.
   const sent = fit && tree ? layoutFor(tree, arr) : undefined;
-  const { refit } = useFit(focusedPane?.address ?? '', fitting, area, 'window', sent, !!zoom);
+  const { refit } = useFit(focusedPane?.address ?? '', fitting, area, 'window', sent);
   useEffect(() => {
     setHeading({ pane: focusedPane, place: `window ${host}/${session}/${win}` });
     return () => setHeading({ place: '' });
@@ -298,17 +294,13 @@ export function WindowPage() {
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       const target = ev.target as HTMLElement | null;
-      // Ctrl with an arrow switches the pane from anywhere, the input line too.
-      const arrow = ev.ctrlKey && !ev.metaKey && !ev.altKey && /^Arrow(Left|Right)$/.test(ev.key);
-      const step = ev.key === 'ArrowRight' ? 1 : -1;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
       const i = focus ? visible.indexOf(focus) : -1;
       const by = (d: number) => move(visible[(i + d + visible.length) % visible.length] ?? null);
-      if (arrow) by(step);
-      else if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-      else if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
-      else if (ev.key === ']') by(1);
+      if (ev.key === ']') by(1);
       else if (ev.key === '[') by(-1);
-      else if (ev.key === 'z' && focus) toggleZoom(focus);
+      else if ((ev.key === 'z' || ev.key === 'Enter') && focus) open(focus);
       else if (ev.key === 'x' && focus) setArr((a) => ({ ...a, hidden: [...a.hidden, focus] }));
       else if (ev.key === '0') setArr(() => fresh(layout));
       else if (ev.key === '=' && tree) setArr((a) => equalised(a, tree));
@@ -322,9 +314,7 @@ export function WindowPage() {
           ...a,
           scale: { ...a.scale, [focus]: Math.max(0.4, (a.scale[focus] ?? 1) / 1.15) },
         }));
-      } else if (ev.key === 'Enter' && focusedPane)
-        navigate({ to: '/p/$', params: { _splat: focusedPane.address } });
-      else if (ev.key === 'f' && writable) setFit((f) => !f);
+      } else if (ev.key === 'f' && writable) setFit((f) => !f);
       else if (ev.key === 'r' && fit && writable) refit();
       else if (ev.key === 'b' && focusedPane) {
         saveBoard('main', addPane(loadBoard('main'), focusedPane.address, null, 'h'));
@@ -335,19 +325,7 @@ export function WindowPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [
-    visible,
-    focus,
-    focusedPane,
-    layout,
-    navigate,
-    setArr,
-    writable,
-    zoom,
-    toggleZoom,
-    fit,
-    refit,
-  ]);
+  }, [visible, focus, focusedPane, layout, navigate, setArr, writable, open, fit, refit]);
 
   const send = async (body: { text: string } | { key: Key } | { mouse: Mouse }) => {
     if (!focusedPane) return;
@@ -425,15 +403,9 @@ export function WindowPage() {
           {focus && (
             <button
               type="button"
-              className={`mx-toggle${zoom ? ' on' : ''}`}
-              onClick={() => toggleZoom(focus)}
-              title={
-                zoom
-                  ? 'the whole window again (z, or double-click)'
-                  : 'the focused pane alone (z, or double-click)'
-              }
+              onClick={() => open(focus)}
+              title="this pane alone, in the pane view (z, Enter, or double-click)"
               data-testid="zoom"
-              data-on={zoom ? '1' : '0'}
             >
               ⊡
             </button>
@@ -459,7 +431,7 @@ export function WindowPage() {
       <div className="mx-area" ref={area}>
         {tree && (
           <Tree
-            node={zoomLeaf ?? tree}
+            node={tree}
             path="0"
             arr={arr}
             panes={panes}
@@ -468,7 +440,7 @@ export function WindowPage() {
             fit={fitting}
             setArr={setArr}
             onFocus={setFocused}
-            onZoom={toggleZoom}
+            onZoom={open}
             onCell={(address, x, y) => void click(address, { button: 'left', x, y })}
             onWheel={(address, up, x, y) =>
               click(address, { button: up ? 'wheelup' : 'wheeldown', x, y })

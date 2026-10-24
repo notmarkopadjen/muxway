@@ -17,11 +17,7 @@ test('48 keyboard: j k Enter Esc / i t m ?', async ({ page }, info) => {
   await expect(page.getByTestId('crumb')).toContainText(first!);
   await page.keyboard.press('i');
   await expect(page.getByTestId('input')).toBeFocused();
-  // Escape in the input line goes to the pane, as the key bar's button does;
-  // the line keeps the focus. Shift+Esc leaves it.
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('input')).toBeFocused();
-  await page.keyboard.press('Shift+Escape');
   await expect(page.getByTestId('input')).not.toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();

@@ -144,7 +144,7 @@ test('93 cancel: Esc drops the clip and posts nothing; the words join what was t
   const input = page.getByTestId('input');
   const line = page.getByTestId('mic-line');
   await input.fill('hello');
-  await page.keyboard.press('Shift+Escape');
+  await page.keyboard.press('Escape');
   await expect(input).not.toBeFocused();
   await page.keyboard.press('v');
   await expect(line).toHaveAttribute('data-state', 'recording');

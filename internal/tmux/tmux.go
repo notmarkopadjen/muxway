@@ -232,10 +232,15 @@ func (s Server) SendMouse(ctx context.Context, paneID string, button, x, y int) 
 
 // Keys a client may send by name. Anything else is refused.
 var Keys = map[string]string{
-	"Enter": "Enter", "Tab": "Tab", "BTab": "BTab", "BSpace": "BSpace", "Escape": "Escape",
+	"Enter": "Enter", "Tab": "Tab", "BTab": "BTab", "BSpace": "BSpace", "Escape": "Escape", "Space": "Space",
 	"Up": "Up", "Down": "Down", "Left": "Left", "Right": "Right",
 	"PageUp": "PageUp", "PageDown": "PageDown", "Home": "Home", "End": "End",
+	"Insert": "IC", "Delete": "DC",
 	"C-c": "C-c", "C-d": "C-d", "C-z": "C-z", "C-l": "C-l",
+	"C-a": "C-a", "C-e": "C-e", "C-u": "C-u", "C-k": "C-k", "C-w": "C-w",
+	"C-r": "C-r", "C-x": "C-x", "C-n": "C-n", "C-p": "C-p", "C-f": "C-f",
+	"F1": "F1", "F2": "F2", "F3": "F3", "F4": "F4", "F5": "F5", "F6": "F6",
+	"F7": "F7", "F8": "F8", "F9": "F9", "F10": "F10", "F11": "F11", "F12": "F12",
 }
 
 // SendKey sends one named key from Keys.
