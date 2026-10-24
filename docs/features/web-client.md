@@ -22,7 +22,12 @@ nothing but the hub to talk to.
    something is picked gathers up to four panes; a bar under the list
    then offers **open N side by side**. Each window has a button, `▦ 0:
    main · 2 panes · mirror layout ▸`, that opens the
-   [window view](#the-window-view). Type `/` to filter.
+   [window view](#the-window-view). Under a window where you may type, a
+   dim `+ pane` row splits it (beside on a wide pane, below on a tall
+   one) and opens the new pane; at the right of a host's line,
+   `+ session` asks for a name and opens the new session's pane, on hosts
+   whose agent allows it (see [new panes and sessions](new-panes.md)).
+   Type `/` to filter.
 3. **Tiles**: one to four panes on one screen, with a strip of every pane
    above them; see [tiles](#tiles-the-android-view). Each pane's content
    comes with its colours, refreshed every second, and one input line
@@ -334,7 +339,9 @@ because several host windows changing at once is a decision for you.
 | `↑` `↓` | input line: pick a completion; from an empty line, the key goes to the pane, as do `←` `→` `PageUp` `PageDown` `Home` `End` |
 | `Shift+Esc` | input line: send `Escape` to the pane and keep typing |
 | `v` | speak: record a clip for the hub's transcriber, onto the input line; `v` again stops, `Esc` drops it |
-| `p` | selector: go to a pane or window |
+| `p` | selector: go to a pane or window, or start a session on a host |
+| `+` | one more pane in the selected row's window; it opens |
+| `S` | a new session on the selected row's host (or the first that allows it): a one-line form, `Enter` starts, `Esc` cancels |
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |
 | `b` | the main board; from a pane: put it on the board first |
@@ -437,6 +444,12 @@ and fails if the committed output differs from the sources.
   they go. Recording starts only from a click or a key on the page,
   behind the browser's permission prompt, and the worklet is a file of
   the client's own: the content security policy is unchanged.
+- A new pane or session is a shell started on the host, under the write
+  grant the hub checks (and, for a split, re-checks on the new pane's
+  address); the client sends a direction or a name it validated, nothing
+  else, and shows the rows only where the account has a write grant on
+  the host and the host allows it. The hub's answer, not the click,
+  decides. See [new panes and sessions](new-panes.md).
 - Node dependencies are pinned exactly with a committed lockfile and
   installed with `npm ci`. They are a build-time concern: the hub binary
   carries only the built files.

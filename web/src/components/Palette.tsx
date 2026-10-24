@@ -1,19 +1,22 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useAllPanes } from '../api/queries';
+import { useAllPanes, useHosts, useMe } from '../api/queries';
 import type { Pane } from '../api/types';
 import { Badge } from './Badge';
 import { Box } from './Box';
 import { PaneTitle } from './PaneTitle';
 import { label } from '../term/describe';
 import { BOARD_NAME, boardNames } from '../term/board';
+import { mayWriteOn } from '../term/grants';
+import { requestSession } from '../term/intent';
 
 // The pane selector: every pane, window and board the person may reach,
-// filtered as they type, attention first. With `pick`, it offers panes
-// only, except those excluded, and hands the chosen one back.
+// and a new session on each host that starts them, filtered as they type,
+// attention first. With `pick`, it offers panes only, except those
+// excluded, and hands the chosen one back.
 interface Row {
   key: string;
-  kind: 'pane' | 'window' | 'board';
+  kind: 'pane' | 'window' | 'board' | 'session';
   label: string;
   meta: string;
   sort: string;
@@ -33,6 +36,8 @@ export function Palette({
   title?: string;
 }) {
   const panes = useAllPanes(true);
+  const hosts = useHosts();
+  const me = useMe();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(0);
@@ -80,6 +85,21 @@ export function Palette({
           to: () => navigate({ to: '/b/$name', params: { name: wanted } }),
         });
     }
+    if (!pick)
+      for (const h of hosts.data ?? []) {
+        if (!h.online || !h.sessions || !mayWriteOn(me.data?.write ?? [], h.name)) continue;
+        out.push({
+          key: 's:' + h.name,
+          kind: 'session',
+          label: `session on ${h.name}`,
+          meta: 'new session',
+          sort: '~' + h.name,
+          to: () => {
+            navigate({ to: '/' });
+            requestSession(h.name);
+          },
+        });
+      }
     for (const [wk, ps] of windows) {
       if (pick || ps.length < 2) continue;
       const p = ps[0];
@@ -96,7 +116,7 @@ export function Palette({
     return out
       .filter((r) => !f || `${r.label} ${r.meta} ${r.pane?.title ?? ''}`.toLowerCase().includes(f))
       .sort((a, b) => rank(a) - rank(b) || a.sort.localeCompare(b.sort));
-  }, [panes.data, q, navigate, pick, exclude]);
+  }, [panes.data, hosts.data, me.data, q, navigate, pick, exclude]);
 
   useEffect(() => setSel(0), [q]);
   const go = (r: Row | undefined) => {
@@ -137,7 +157,9 @@ export function Palette({
                 {r.kind === 'pane' ? (
                   <Badge attention={r.pane?.attention} />
                 ) : (
-                  <span className="mx-badge mx-win">{r.kind === 'window' ? '▦' : '▤'}</span>
+                  <span className="mx-badge mx-win">
+                    {r.kind === 'window' ? '▦' : r.kind === 'board' ? '▤' : '+'}
+                  </span>
                 )}
                 <span className="mx-addr">{r.pane ? <PaneTitle pane={r.pane} /> : r.label}</span>
                 <span className="mx-meta">{r.meta}</span>

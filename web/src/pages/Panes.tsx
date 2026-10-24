@@ -1,34 +1,123 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useHosts, useTree } from '../api/queries';
+import { keys, newSession, splitWindow, useHosts, useMe, useTree } from '../api/queries';
+import { ApiError } from '../api/client';
 import type { Host, Pane } from '../api/types';
 import { Box } from '../components/Box';
 import { LensMark } from '../components/Lens';
 import { PaneTitle } from '../components/PaneTitle';
+import { useToast } from '../components/Toast';
 import { label } from '../term/describe';
+import { mayWriteOn } from '../term/grants';
+import { onSessionRequest } from '../term/intent';
 import { useLens, word } from '../term/lens';
 import { MAX_TILES, routeFor } from '../term/tiles';
 
 // The pane list: every host, its sessions, windows and panes. A click
 // opens a pane; the pick box, space, or a click while something is
 // picked gathers up to four to open side by side. A window row opens the
-// window view, the host's own layout.
+// window view, the host's own layout. Under a window where you may type,
+// `+ pane` splits it; on a host that starts sessions, `+ session`.
+
+// The pane a split starts from: the window's active pane when you may
+// type there, else the first you may.
+export function splitSource(panes: Pane[]): Pane | undefined {
+  const writable = panes.filter((p) => p.mode === 'write');
+  return writable.find((p) => p.pane_active) ?? writable[0];
+}
+
+// Beside on a wide pane, below on a tall one, as the host shows it: a cell
+// is about twice as tall as it is wide.
+export function splitDirection(p: Pane): 'h' | 'v' {
+  return p.width > 2 * p.height ? 'h' : 'v';
+}
+
+function SessionForm({ host, onDone }: { host: string; onDone: (address: string | null) => void }) {
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const field = useRef<HTMLInputElement>(null);
+  useEffect(() => field.current?.focus(), []);
+  const submit = async () => {
+    if (busy) return;
+    const n = name.trim();
+    if (!/^[a-z0-9_-]{1,32}$/.test(n)) {
+      setError('a-z, 0-9, _ and -, up to 32');
+      return;
+    }
+    setBusy(true);
+    try {
+      const { pane } = await newSession(host, n);
+      onDone(pane.address);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.code.replace('_', ' ') : 'failed');
+      setBusy(false);
+    }
+  };
+  return (
+    <form
+      className="mx-session-form"
+      data-testid="session-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+    >
+      <span>+ session</span>
+      <input
+        ref={field}
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value);
+          setError('');
+        }}
+        placeholder="name"
+        aria-label="session name"
+        data-testid="session-name"
+        maxLength={32}
+        spellCheck={false}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            onDone(null);
+          }
+        }}
+      />
+      {error ? (
+        <span className="mx-bad" data-testid="session-error">
+          {error}
+        </span>
+      ) : (
+        <span className="mx-dim">Enter starts · Esc cancels</span>
+      )}
+    </form>
+  );
+}
 
 function HostTree({
   host,
   filter,
   selected,
   picked,
+  naming,
+  canStart,
   onOpen,
   onPick,
+  onSplit,
+  onNaming,
   register,
 }: {
   host: Host;
   filter: string;
   selected: string | null;
   picked: string[];
+  naming: boolean;
+  canStart: boolean;
   onOpen: (address: string) => void;
   onPick: (address: string) => void;
+  onSplit: (panes: Pane[]) => void;
+  onNaming: (host: string | null) => void;
   register: (host: string, panes: Pane[]) => void;
 }) {
   const tree = useTree(host.name, host.online);
@@ -53,7 +142,29 @@ function HostTree({
       active={false}
       testId={`host-${host.name}`}
     >
-      <span className="mx-host-state">{host.online ? 'online' : 'offline'}</span>
+      <span className="mx-host-top">
+        {host.online && canStart && !naming && (
+          <button
+            type="button"
+            className="mx-host-new"
+            data-testid="new-session"
+            title="start a session on this host (S)"
+            onClick={() => onNaming(host.name)}
+          >
+            + session
+          </button>
+        )}
+        {naming && (
+          <SessionForm
+            host={host.name}
+            onDone={(address) => {
+              onNaming(null);
+              if (address) onOpen(address);
+            }}
+          />
+        )}
+        <span className="mx-host-state">{host.online ? 'online' : 'offline'}</span>
+      </span>
       {host.online && tree.isPending && <div className="mx-empty">listing…</div>}
       {host.online && tree.isError && (
         <div className="mx-empty mx-bad">could not list this host</div>
@@ -127,6 +238,18 @@ function HostTree({
                       </div>
                     );
                   })}
+                  {splitSource(w.panes) && (
+                    <button
+                      type="button"
+                      className="mx-new-row"
+                      data-testid="new-pane"
+                      data-window={`${host.name}/${s.name}/${w.index}`}
+                      title="one more pane in this window (+)"
+                      onClick={() => onSplit(w.panes)}
+                    >
+                      + pane
+                    </button>
+                  )}
                 </div>
               ))}
             </li>
@@ -139,10 +262,14 @@ function HostTree({
 
 export function PanesPage() {
   const hosts = useHosts();
+  const me = useMe();
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const toast = useToast();
   const [filter, setFilter] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
+  const [naming, setNaming] = useState<string | null>(null);
   const filterRef = useRef<HTMLInputElement>(null);
   const [lists, setLists] = useState<Map<string, Pane[]>>(new Map());
   const register = useMemo(
@@ -169,6 +296,41 @@ export function PanesPage() {
           : p,
     );
   }, []);
+  // The selector asks for the form from anywhere.
+  useEffect(() => onSessionRequest(setNaming), []);
+  const canStart = useCallback(
+    (h: Host) => !!h.sessions && mayWriteOn(me.data?.write ?? [], h.name),
+    [me.data],
+  );
+
+  // One more pane in the window these panes make up; the new one opens.
+  const splitting = useRef(false);
+  const split = useCallback(
+    async (panes: Pane[]) => {
+      const src = splitSource(panes);
+      if (!src || splitting.current) return;
+      splitting.current = true;
+      try {
+        const { pane } = await splitWindow(
+          src.host,
+          src.session,
+          src.window_index,
+          splitDirection(src),
+        );
+        qc.invalidateQueries({ queryKey: keys.tree(src.host) });
+        qc.invalidateQueries({ queryKey: keys.panes });
+        open([pane.address]);
+      } catch (err) {
+        toast.push({
+          kind: 'new pane',
+          title: err instanceof ApiError ? err.code.replace('_', ' ') : 'failed',
+        });
+      } finally {
+        splitting.current = false;
+      }
+    },
+    [open, qc, toast],
+  );
 
   // A layout effect: the listener exists before the first paint, so a key
   // pressed the instant the page shows is not lost.
@@ -191,6 +353,9 @@ export function PanesPage() {
         return;
       }
       const i = selected ? ordered.indexOf(selected) : -1;
+      const current = selected
+        ? [...lists.values()].flat().find((p) => p.address === selected)
+        : undefined;
       if (ev.key === 'j') setSelected(ordered[Math.min(i + 1, ordered.length - 1)] ?? null);
       else if (ev.key === 'k') setSelected(ordered[Math.max(i - 1, 0)] ?? null);
       else if (ev.key === ' ' && selected) {
@@ -202,10 +367,21 @@ export function PanesPage() {
         ev.preventDefault();
         filterRef.current?.focus();
       } else if (ev.key === 'g') pendingG = true;
+      else if (ev.key === '+' && current) {
+        const siblings = (lists.get(current.host) ?? []).filter(
+          (p) => p.session === current.session && p.window_index === current.window_index,
+        );
+        void split(siblings);
+      } else if (ev.key === 'S') {
+        const host = (hosts.data ?? []).find(
+          (h) => h.online && canStart(h) && (!current || h.name === current.host),
+        );
+        if (host) setNaming(host.name);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ordered, selected, picked, open, pick, hosts.data, lists]);
+  }, [ordered, selected, picked, open, pick, split, canStart, hosts.data, lists]);
 
   return (
     <div data-testid="panes">
@@ -232,8 +408,12 @@ export function PanesPage() {
           filter={filter}
           selected={selected}
           picked={picked}
+          naming={naming === h.name}
+          canStart={canStart(h)}
           onOpen={(a) => open([a])}
           onPick={pick}
+          onSplit={(panes) => void split(panes)}
+          onNaming={setNaming}
           register={register}
         />
       ))}

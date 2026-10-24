@@ -35,6 +35,7 @@ export interface Pane {
 export interface Host {
   name: string;
   online: boolean;
+  sessions?: boolean; // the agent starts sessions for clients
 }
 
 export interface Window {

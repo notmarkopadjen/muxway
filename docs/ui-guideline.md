@@ -60,9 +60,10 @@ Android `lenses.md`.
 ### 1.3 The pane list
 
 ```
-── alice-laptop ──────────────────────────────────── online ──
+── alice-laptop ──────────────────────── + session · online ──
   [ ] * ⟳ fixing the build     alice-laptop/work/0.0   working
   [ ]   bash                   alice-laptop/work/0.1
+  │  + pane
 ```
 
 | Element | Shared behaviour |
@@ -71,6 +72,8 @@ Android `lenses.md`.
 | row | write mark `*`, the lens glyph, the name, the place, the lens word |
 | open | a tap or click opens the pane alone |
 | pick | several panes, up to four, open side by side: Android hold, web `[ ]` box or `space`; a bar under the list offers *clear* and *open N side by side*; with a pick on, a tap adds or removes |
+| `+ pane` | a dim row under a window's panes when one of them is writable; a tap splits the window (beside on a wide pane, below on a tall one) and opens the new pane |
+| `+ session` | at the right of the host's line, for a host whose agent allows it (`sessions` in `GET /v1/hosts`) and an account with a write grant there; asks for a name (web: a one-line form, Android: a dialog) and opens the session's first pane |
 | refresh | re-read every 15 s (Android) or 5 s (web), and at once on any event |
 
 Web adds the tmux tree (session, window) and a button per window that
@@ -144,6 +147,8 @@ The same action on every client, triggered the way the device does it.
 | the window view (zoom out) | `z`, `w`, `⊡`, double-click a tile | — | — |
 | the board | `b` | — | — |
 | go to a pane | `p`, `≡` | the strip | — |
+| one more pane in a window | `+ pane` row, `+` on the selected row | `+ pane` row | — |
+| a new session on a host | `+ session`, `S`; the selector lists it | `+ session` | — |
 | a command of the row | click | tap | — |
 | open a link printed in a pane | click | tap | — |
 | a new line in the input | `Shift+Enter` | `Shift+Enter` on a hardware keyboard | — |

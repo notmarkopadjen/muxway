@@ -38,7 +38,7 @@ func TestUI_WebClient(t *testing.T) {
 		"--oidc-client-secret-file", secret, "--oidc-label", "Sign in with Test")
 	defer remember(idp.Secrets...)
 	ts := newTmux(t)
-	a := e.pairAgent(host, ts)
+	a := e.pairAgent(host, ts, "--allow-sessions")
 	ts.split("work:0.0")
 	ts.must("new-window", "-t", "work:1", "-n", "logs", shell())
 	ts.title("work:1.0")

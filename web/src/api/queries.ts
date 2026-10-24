@@ -152,6 +152,29 @@ export function resizePane(address: string, body: Resize): Promise<{ pane: Pane 
   });
 }
 
+// splitWindow asks the host for one more pane in a window, beside ("h") or
+// below ("v") the pane it is split from; the answer is the new pane.
+export function splitWindow(
+  host: string,
+  session: string,
+  window: number,
+  direction: 'h' | 'v',
+): Promise<{ pane: Pane }> {
+  return api<{ pane: Pane }>(`/v1/windows/${host}/${session}/${window}/panes`, {
+    method: 'POST',
+    body: JSON.stringify({ direction }),
+  });
+}
+
+// newSession starts a session on a host whose agent allows it; the answer
+// is its first pane.
+export function newSession(host: string, name: string): Promise<{ pane: Pane }> {
+  return api<{ pane: Pane }>(`/v1/hosts/${host}/sessions`, {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+}
+
 // Whether the hub has a transcriber: asked once per sign-in, so a hub
 // without one is never asked again.
 export function useTranscriber() {
