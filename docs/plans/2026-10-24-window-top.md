@@ -195,12 +195,15 @@ retaken.
 
 ## Test run
 
-[Run 20261024-192208-5f261c4](https://github.com/notmarkopadjen/muxway/issues/80):
-passed, 82 tests, on the tree pushed as `5f5d619` (a docs-only rebase
-after the run). The earlier rounds of the same plan:
+[Run 20261024-211928-402ac2a](https://github.com/notmarkopadjen/muxway/issues/85):
+passed, 89 tests, at `402ac2a`, with the one-view, microphone, key bar,
+held-frame and toast changes, after the rebase onto the new-panes
+feature. Screenshots `60-fit`, `84-tiles`, `87-claude-row`,
+`87-shell-row`, `74-pane`, `62-window`, `63-local`, `76-window-fit` and
+`86-window-glow` are the feature page's images. The rounds before:
+[Run 20261024-192208-5f261c4](https://github.com/notmarkopadjen/muxway/issues/80),
+82 tests;
 [Run 20261024-182003-a596712](https://github.com/notmarkopadjen/muxway/issues/71),
-81 tests, the window row and the first key changes, and
+81 tests;
 [Run 20261024-174524-614d2d7](https://github.com/notmarkopadjen/muxway/issues/68),
-78 tests, before the rebases. Screenshots `62-window`, `63-local`,
-`76-window-fit` and `86-window-glow`; the first three are the feature
-page's images.
+78 tests.
