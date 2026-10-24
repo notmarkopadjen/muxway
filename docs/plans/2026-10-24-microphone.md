@@ -177,5 +177,10 @@ line focused and unsent, and a second clip within five seconds refused
 with no clip reaching the stand-in; Esc dropping a clip and the words
 joining typed text; the transcriber failing) and the screenshots
 `93-recording` and `93-heard`; the header, resampler and meter unit
-tests run with the web client's suite. Android: recorded below once its
-run is in.
+tests run with the web client's suite. Android:
+[Run 20261024-191445-67df4f5](https://github.com/notmarkopadjen/muxway-android/issues/15): passed, 98 tests,
+commit `67df4f5` (0.7.5 (17)) against core `b6f4cb2`'s sources, with the
+clip's JVM tests (the header, the sixty-second cap, the meter) and the
+API's (the probe reads 204 and 404, the clip goes as `audio/wav` with
+the bearer token and the text comes back cleaned); no device attached,
+so a recording on the phone waits for the next device run.
