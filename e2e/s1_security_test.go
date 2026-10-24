@@ -603,6 +603,9 @@ func TestSec08_MalformedOversizedAndTraversalRequests(t *testing.T) {
 	for _, q := range []string{"?lines=0", "?lines=99999", "?width=2", "?width=x", "?lines=-5", "?charset=utf-16", "?charset=", "?charset=ASCII", "?charset=latin1&charset=utf-8", "?lines=5&lines=5"} {
 		expect(t, e.get(tok, "/v1/panes/"+shell0+q), http.StatusBadRequest, q)
 	}
+	for _, q := range []string{"?charset=utf-16", "?charset=latin1&charset=utf-8"} {
+		expect(t, e.get(tok, "/v1/panes"+q), http.StatusBadRequest, "list"+q)
+	}
 	for _, path := range []string{"/v1/panes/" + host + "/work/0.0/../../x", "/v1/panes/..%2F..%2Fetc%2Fpasswd/x/0.0",
 		"/v1/panes/" + strings.ToUpper(host) + "/work/0.0", "/v1/panes/" + host + "/work", "/v1/admin", "/v1/panes/" + host + "/@BAD"} {
 		r := e.get(tok, path)

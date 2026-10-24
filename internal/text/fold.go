@@ -49,6 +49,8 @@ var symbols = map[rune]string{
 	'\u2605': "*", '\u2606': "*", '\u2611': "v", '\u2612': "x",
 	'\u26a0': "!", '\u2713': "v", '\u2714': "v", '\u2716': "x", '\u2717': "x", '\u2718': "x", '\u276f': ">", '\u279c': ">",
 	'\u2b22': "*", '\u2b21': "*", '\u25fc': "*", '\u25fb': "*",
+	// Claude Code's mark in the pane title.
+	'\u2733': "*",
 }
 
 // Box drawing, U+2500..U+257F: which are horizontal and which vertical;

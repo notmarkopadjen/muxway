@@ -261,6 +261,11 @@ func (h *Hub) readable(ctx context.Context, t Principal, host string) ([]tmux.Pa
 }
 
 func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
+	charset, ok := charsetParam(r)
+	if !ok {
+		fail(w, http.StatusBadRequest, "bad_parameter")
+		return
+	}
 	var out []PaneView
 	for _, host := range h.visibleHosts(t) {
 		panes, _, err := h.readable(r.Context(), t, host)
@@ -272,14 +277,17 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 		}
 	}
 	if wantsText(r) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		// Command and title are what a program in the pane chose; the rest is ASCII already.
+		w.Header().Set("Content-Type", text.ContentType(charset))
+		var b strings.Builder
 		for _, v := range out {
 			kind := ""
 			if v.Attention != nil {
 				kind = v.Attention.Kind
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", v.Address, v.Mode, v.Command, v.Title, kind)
+			fmt.Fprintf(&b, "%s\t%s\t%s\t%s\t%s\n", v.Address, v.Mode, text.Fold(v.Command, charset), text.Fold(v.Title, charset), kind)
 		}
+		w.Write(text.Encode(b.String(), charset))
 		return
 	}
 	reply(w, map[string]any{"panes": out})
@@ -474,17 +482,25 @@ func intParam(r *http.Request, name string, def, lo, hi int) (int, bool) {
 	return n, err == nil && n >= lo && n <= hi
 }
 
+// charsetParam reads the text-mode charset, UTF-8 when absent; a repeated
+// or unknown value is refused.
+func charsetParam(r *http.Request) (string, bool) {
+	v := r.URL.Query()["charset"]
+	if len(v) == 0 {
+		return text.UTF8, true
+	}
+	if len(v) > 1 || !text.Charset(v[0]) {
+		return "", false
+	}
+	return v[0], true
+}
+
 func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 	lines, ok1 := intParam(r, "lines", 100, 1, wire.MaxLines)
 	width, ok2 := intParam(r, "width", 80, 8, 400)
 	ansi := r.URL.Query().Get("ansi") == "1"
-	charset := text.UTF8
-	if v := r.URL.Query()["charset"]; len(v) == 1 {
-		charset = v[0]
-	} else if len(v) > 1 {
-		charset = ""
-	}
-	if !ok1 || !ok2 || !text.Charset(charset) {
+	charset, ok3 := charsetParam(r)
+	if !ok1 || !ok2 || !ok3 {
 		fail(w, http.StatusBadRequest, "bad_parameter")
 		return
 	}

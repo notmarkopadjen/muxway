@@ -29,7 +29,7 @@ The smallest phones cannot show Unicode: a 2002 Nokia has no glyph for
 `─` and decodes bytes as Latin-1 unless told otherwise, so a rule drawn
 by Claude Code arrives as rows of odd glyphs, three bytes per character.
 `charset=latin1` or `charset=ascii` makes the hub rewrite the content
-before wrapping, and the answer's `Content-Type` says what was sent:
+before wrapping (and, on the pane list, each pane's command and title), and the answer's `Content-Type` says what was sent:
 `text/plain; charset=iso-8859-1` or `charset=us-ascii`. Without the
 parameter, or with `charset=utf-8`, nothing changes.
 
@@ -41,7 +41,7 @@ parameter, or with `charset=utf-8`, nothing changes.
 | diagonals `╱ ╲ ╳` | `/ \ X` |
 | block elements `▀ ▄ █ ░ ▒ ▓` | `#` |
 | `❯ › » ▶ ▸ ⏵ ➜ →` | `>`; `‹ « ◀ ←` `<`; `↑` `^`; `↓` `v` |
-| bullets `● • ○ ◦ ■ □ ▪ ◆ ★ ☆`, braille spinners | `*` |
+| bullets `● • ○ ◦ ■ □ ▪ ◆ ★ ☆`, braille spinners, Claude Code's `✳` | `*` |
 | `·` | `.`; `…` `...`; `— – ‐ −` `-`; `×` `x`; `✓ ✔` `v`; `✗ ✘ ✖` `x`; `⚠` `!` |
 | curly quotes, no-break space | `'`, `"`, a space |
 | letters with marks (Latin-1 Supplement, Latin Extended-A) | the base letter; `ß` `ss`, `æ` `ae`, `œ` `oe`, `þ` `th`, `ĳ` `ij` |

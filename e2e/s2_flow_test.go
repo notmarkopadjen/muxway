@@ -46,6 +46,24 @@ func TestFlow16_ListTreeAndReadInJSONAndTextMode(t *testing.T) {
 	if lines := strings.Split(strings.TrimSpace(text.body), "\n"); len(lines) != 3 || !strings.HasPrefix(lines[2], host+"/work/1.0\twrite\t") {
 		t.Fatalf("text list:\n%s", text.body)
 	}
+	// The title is the program's own; a small phone asks for it folded like the content.
+	ts.must("select-pane", "-t", "work:0.1", "-T", "✳ bücher")
+	waitFor(t, "title seen past the hub's one-second list cache", func() bool {
+		return strings.Contains(e.getText(tok, "/v1/panes").body, "✳ bücher")
+	})
+	for _, c := range []struct{ q, ct, title string }{
+		{"", "text/plain; charset=utf-8", "✳ bücher"},
+		{"?charset=latin1", "text/plain; charset=iso-8859-1", "* b\xfccher"},
+		{"?charset=ascii", "text/plain; charset=us-ascii", "* bucher"},
+	} {
+		r := e.getText(tok, "/v1/panes"+c.q)
+		if r.status != http.StatusOK || r.header.Get("Content-Type") != c.ct {
+			t.Fatalf("list%s: %d %q", c.q, r.status, r.header.Get("Content-Type"))
+		}
+		if lines := strings.Split(strings.TrimSpace(r.body), "\n"); len(lines) != 3 || lines[1] != host+"/work/0.1\twrite\tbash\t"+c.title+"\t" {
+			t.Fatalf("list%s:\n%q", c.q, r.body)
+		}
+	}
 
 	tree := e.get(tok, "/v1/hosts/"+host+"/tree")
 	var tr struct {
