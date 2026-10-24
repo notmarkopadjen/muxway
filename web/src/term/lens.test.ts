@@ -10,6 +10,11 @@ describe('lens', () => {
     const attention = { kind: 'permission' as const, at: 1 };
     expect(status({ ...shell, attention }, 'working', now, now)).toBe('waiting');
     expect(status({ ...claude, attention }, undefined, undefined, now)).toBe('waiting');
+    // An idle notice while the screen still moves is background work, not a wait.
+    const idle = { kind: 'idle' as const, at: 1 };
+    expect(status({ ...claude, attention: idle }, undefined, now - 3_000, now)).toBe('working');
+    expect(status({ ...claude, attention: idle }, undefined, now - 30_000, now)).toBe('waiting');
+    expect(status({ ...shell, attention: idle }, undefined, now - 3_000, now)).toBe('waiting');
   });
 
   it('works on a working event or a recent change, for Claude only', () => {

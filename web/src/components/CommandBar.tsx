@@ -32,6 +32,7 @@ export function CommandBar({
             title={c.send ? `send ${c.text} and Enter` : `put ${c.text.trim()} on the input line`}
             data-testid="cmd"
             data-text={c.text}
+            data-tone={c.tone}
             onClick={() => {
               setPressed(c.text);
               onRun(c);

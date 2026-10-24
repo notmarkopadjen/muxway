@@ -28,6 +28,8 @@ import { useToast } from './Toast';
 // words on the line, to be read before they are sent.
 
 const ROWS = 6;
+// A press on the microphone longer than this is a hold.
+const HOLD_MS = 400;
 
 type Mic = 'idle' | 'recording' | 'hearing';
 
@@ -180,6 +182,55 @@ export function InputPanel({
       );
     }
   };
+  // The button records while held and stops on release; a press shorter
+  // than a moment is a click, and the next click stops. The click that
+  // ends a hold is not a toggle.
+  const pressed = useRef(0);
+  const swallow = useRef(false);
+  const micDown = () => {
+    if (mic !== 'idle' || !canMic) return;
+    pressed.current = Date.now();
+    void record();
+  };
+  const micUp = () => {
+    if (!pressed.current || Date.now() - pressed.current < HOLD_MS) return;
+    pressed.current = 0;
+    swallow.current = true;
+    void hear();
+  };
+  const micClick = () => {
+    if (swallow.current) {
+      swallow.current = false;
+      return;
+    }
+    if (pressed.current) {
+      pressed.current = 0;
+      return;
+    }
+    void (mic === 'recording' ? hear() : record());
+  };
+  // The toasts line up with the key row: its top is published for them.
+  const below = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = below.current;
+    if (!el) return;
+    const root = document.documentElement.style;
+    const place = () => {
+      root.setProperty('--mx-rows-top', `${Math.round(el.getBoundingClientRect().top)}px`);
+      root.setProperty('--mx-rows-bottom', 'auto');
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
+    if (el.previousElementSibling) ro.observe(el.previousElementSibling);
+    window.addEventListener('resize', place);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', place);
+      root.removeProperty('--mx-rows-top');
+      root.removeProperty('--mx-rows-bottom');
+    };
+  }, []);
   const cancelMic = () => {
     rec.current?.cancel();
     rec.current = null;
@@ -313,8 +364,16 @@ export function InputPanel({
             type="button"
             className={`mx-mic${mic === 'recording' ? ' on' : ''}`}
             disabled={mic === 'hearing'}
-            onClick={() => void (mic === 'recording' ? hear() : record())}
-            title={mic === 'recording' ? 'stop and hear (v); Esc drops the clip' : 'speak (v)'}
+            onPointerDown={micDown}
+            onPointerUp={micUp}
+            onPointerLeave={micUp}
+            onPointerCancel={micUp}
+            onClick={micClick}
+            title={
+              mic === 'recording'
+                ? 'stop and hear (v); Esc drops the clip'
+                : 'speak (v): hold and release, or click and click again'
+            }
             aria-label={mic === 'recording' ? 'stop' : 'speak'}
             data-testid="mic"
             data-state={mic}
@@ -323,17 +382,17 @@ export function InputPanel({
           </button>
         )}
         {mic === 'recording' ? (
-          <button type="button" onClick={cancelMic} data-testid="mic-cancel">
+          <button type="button" className="mx-send" onClick={cancelMic} data-testid="mic-cancel">
             cancel
           </button>
         ) : (
-          <button type="submit" disabled={!writable || mic === 'hearing'}>
+          <button type="submit" className="mx-send" disabled={!writable || mic === 'hearing'}>
             send
           </button>
         )}
         {list.length > 0 && <Completions items={list} picked={picked} onTake={take} />}
       </form>
-      <div className="mx-below">
+      <div className="mx-below" ref={below}>
         <KeyBar onKey={(k) => void send({ key: k })} disabled={!writable} />
         {row && <CommandBar row={row} disabled={!writable} onRun={run} />}
         {children}

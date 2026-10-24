@@ -190,10 +190,12 @@ button:disabled {
   color: var(--mx-ink-dim);
 }
 
+/* Bottom right; with an input line on the page, level with its key row. */
 .mx-toaster {
   position: fixed;
   right: var(--mx-gap-2);
-  bottom: 40px;
+  top: var(--mx-rows-top, auto);
+  bottom: var(--mx-rows-bottom, 40px);
   display: grid;
   gap: var(--mx-gap);
   z-index: 60;
@@ -202,7 +204,7 @@ button:disabled {
 .mx-toast {
   border: 1px solid var(--mx-ink);
   background: var(--mx-bg-raised);
-  padding: var(--mx-gap) var(--mx-gap-2);
+  padding: 1px var(--mx-gap-2) var(--mx-gap);
   box-shadow: var(--mx-glow-box-strong);
   cursor: pointer;
 }

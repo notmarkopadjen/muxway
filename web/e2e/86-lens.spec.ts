@@ -16,7 +16,9 @@ test('86 the lens paints a working Claude pane dim and a waiting one in the atte
   // Opening the pane sizes it, and the reflow is this client's doing, not Claude's.
   await row.click();
   const tab = page.locator(`[data-testid="tab"][data-address="${SHELL0}"]`);
-  await expect(page.getByTestId('fit')).toHaveText(/fit on \d+×\d+/, { timeout: 5000 });
+  await expect
+    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 5000 })
+    .not.toBe('100x30');
   await page.waitForTimeout(1500);
   await expect(tab).not.toHaveAttribute('data-state', /./);
   await page.getByTestId('back').click();

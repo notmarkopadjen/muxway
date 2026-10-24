@@ -63,7 +63,9 @@ test('91 the wheel in a shell scrolls the box; once the mouse is asked for, the 
   await signIn(page);
   await openPane(page, SHELL0);
   await mouseIs(page, false);
-  await expect(page.getByTestId('fit')).toHaveText(/fit on \d+×\d+/, { timeout: 5000 });
+  await expect
+    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 5000 })
+    .not.toBe('100x30');
   await expect(page.getByTestId('screen')).toContainText('history-line-120', { timeout: 5000 });
   const screen = page.getByTestId('screen');
   const gap = () => screen.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight);
@@ -105,7 +107,9 @@ test('91 the wheel over a program with the mouse is wheelup and wheeldown at the
   await control(request, '/clear-history', { target: 'work:0.0' });
   await signIn(page);
   await openPane(page, SHELL0);
-  await expect(page.getByTestId('fit')).toHaveText(/fit on \d+×\d+/, { timeout: 5000 });
+  await expect
+    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 5000 })
+    .not.toBe('100x30');
   await control(request, '/send', { target: 'work:0.0', text: `${ALT_ON}; cat -v` });
   await expect.poll(() => control(request, '/command', { target: 'work:0.0' })).toBe('cat');
   await mouseIs(page, true);

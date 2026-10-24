@@ -207,6 +207,22 @@
   color: var(--mx-ink-faint);
   border-color: var(--mx-ink-faint);
 }
+/* The microphone and send buttons keep their width, so nothing shifts
+   while a clip records and send becomes cancel. */
+.mx-input .mx-mic {
+  flex: none;
+  width: 2.6em;
+  padding-left: 0;
+  padding-right: 0;
+  text-align: center;
+}
+.mx-input .mx-send {
+  flex: none;
+  width: 7ch;
+  padding-left: 0;
+  padding-right: 0;
+  text-align: center;
+}
 .mx-input .mx-rec,
 .mx-input .mx-mic.on {
   color: var(--mx-bad);
@@ -251,18 +267,62 @@
   border-color: var(--mx-ink);
   box-shadow: var(--mx-glow-box-strong);
 }
-/* The key bar wraps; the command row scrolls. Neither may widen the page. */
+/* The key bar and the command row are one row each, scrolling sideways
+   without a scrollbar; neither may widen the page. */
 .mx-below {
   min-width: 0;
 }
 .mx-keybar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.mx-keybar::-webkit-scrollbar {
+  display: none;
 }
 .mx-keybar button {
+  flex: none;
   font-size: 12px;
   padding: 1px 7px;
+}
+/* A discreet tint per group of keys and per tone of command: a touch of
+   colour on the border and the ground, the ink as it is. */
+.mx-keybar button[data-group='edit'] {
+  --mx-tint: var(--mx-tint-edit);
+}
+.mx-keybar button[data-group='nav'] {
+  --mx-tint: var(--mx-tint-nav);
+}
+.mx-keybar button[data-group='ctrl'] {
+  --mx-tint: var(--mx-tint-ctrl);
+}
+.mx-keybar button[data-group='fn'] {
+  --mx-tint: var(--mx-tint-fn);
+}
+.mx-cmdbar button[data-tone='danger'] {
+  --mx-tint: var(--mx-tint-danger);
+}
+.mx-cmdbar button[data-tone='start'] {
+  --mx-tint: var(--mx-tint-start);
+}
+.mx-cmdbar button[data-tone='info'] {
+  --mx-tint: var(--mx-tint-info);
+}
+.mx-cmdbar button[data-tone='act'] {
+  --mx-tint: var(--mx-tint-act);
+}
+.mx-keybar button[data-group],
+.mx-cmdbar button[data-tone] {
+  border-color: color-mix(in srgb, var(--mx-tint) 45%, var(--mx-ink-faint));
+  background: color-mix(in srgb, var(--mx-tint) 9%, transparent);
+}
+.mx-keybar button[data-group]:hover,
+.mx-cmdbar button[data-tone]:hover,
+.mx-keybar button[data-group]:focus-visible,
+.mx-cmdbar button[data-tone]:focus-visible {
+  border-color: var(--mx-ink);
 }
 .mx-readonly {
   color: var(--mx-ink-dim);
@@ -927,7 +987,10 @@ button.mx-window:focus-visible {
   margin-top: 6px;
   overflow-x: auto;
   white-space: nowrap;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+.mx-cmdbar::-webkit-scrollbar {
+  display: none;
 }
 .mx-cmdbar button {
   flex: none;

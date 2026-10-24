@@ -32,8 +32,8 @@ test('84 pick two panes, open them side by side, arrange, drag, swap, close', as
   });
   // Every writable tile opens with fit on: both host panes take their tile's size.
   await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '1');
-  await expect(page.getByTestId('fit')).toHaveText(/fit on \d+×\d+/, { timeout: 5000 });
-  await expect(page.getByTestId('tile-fit')).toHaveAttribute('data-on', '1');
+  await expect(tiles.nth(0)).toHaveAttribute('data-fit', '1');
+  await expect(tiles.nth(1)).toHaveAttribute('data-fit', '1');
   // The arrangement cycles: two panes have a row and a column.
   await page.keyboard.press('l');
   await expect(page.getByTestId('pane')).toHaveAttribute('data-layout', 'column');

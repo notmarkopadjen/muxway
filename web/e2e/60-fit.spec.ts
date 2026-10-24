@@ -11,9 +11,8 @@ test('60 fit on: the host pane follows the browser', async ({ page, request }, i
   // The pane is one of two stacked in the window: the window takes the
   // pane's width, the neighbour gives the rows.
   await expect.poll(size, { timeout: 5000 }).toMatch(/^1[2-4]\dx\d+$/);
-  await expect(page.getByTestId('fit')).toHaveText(/fit on \d+×\d+/);
-  const fitted = (await page.getByTestId('fit').innerText()).replace(/^fit on /, '');
-  await expect(page.getByTestId('pane-size')).toHaveText(fitted);
+  await expect(page.getByTestId('pane-size')).toHaveText(/^1[2-4]\d×\d+$/);
+  const fitted = await page.getByTestId('pane-size').innerText();
   const wide = await size();
   expect(wide.split('x')[0]).toBe(fitted.split('×')[0]);
   expect(Number(wide.split('x')[1])).toBeGreaterThan(Number(fitted.split('×')[1]));
@@ -22,8 +21,10 @@ test('60 fit on: the host pane follows the browser', async ({ page, request }, i
   await expect.poll(size, { timeout: 5000 }).not.toBe(wide);
   const narrow = await size();
   expect(Number(narrow.split('x')[0])).toBeLessThan(Number(wide.split('x')[0]));
-  const again = (await page.getByTestId('fit').innerText()).replace(/^fit on /, '');
-  await expect(page.getByTestId('pane-size')).toHaveText(again);
+  await expect(page.getByTestId('pane-size')).toHaveText(
+    new RegExp(`^${narrow.split('x')[0]}×\\d+$`),
+  );
+  const again = await page.getByTestId('pane-size').innerText();
   expect(narrow.split('x')[0]).toBe(again.split('×')[0]);
   // Leaving the pane gives the window back to tmux: the session's own size and layout.
   await page.goto('/');

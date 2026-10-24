@@ -8,10 +8,16 @@ import { describe } from './describe';
 // lines sent to a shell from this browser. A command either goes at once,
 // followed by Enter, or fills the input line and waits for the rest.
 
+// A command's tone tints its button: danger for what throws work away,
+// start for what begins something, info for what only tells, act for
+// the rest.
+export type Tone = 'danger' | 'start' | 'info' | 'act';
+
 export interface Command {
   label: string;
   text: string;
   send: boolean;
+  tone: Tone;
 }
 
 export interface Row {
@@ -19,47 +25,52 @@ export interface Row {
   commands: Command[];
 }
 
-const at = (text: string): Command => ({ label: text, text, send: true });
-const fill = (text: string): Command => ({ label: text, text: text + ' ', send: false });
+const at = (text: string, tone: Tone = 'act'): Command => ({ label: text, text, send: true, tone });
+const fill = (text: string, tone: Tone = 'act'): Command => ({
+  label: text,
+  text: text + ' ',
+  send: false,
+  tone,
+});
 
 export const CLAUDE_COMMANDS: Command[] = [
-  at('/clear'),
+  at('/clear', 'danger'),
+  at('/exit', 'danger'),
   at('/compact'),
   fill('/rename'),
-  at('/model'),
-  at('/resume'),
-  at('/usage'),
-  at('/context'),
-  at('/help'),
-  at('/status'),
-  at('/cost'),
-  at('/todos'),
-  at('/plan'),
+  at('/model', 'info'),
+  at('/resume', 'start'),
+  at('/usage', 'info'),
+  at('/context', 'info'),
+  at('/help', 'info'),
+  at('/status', 'info'),
+  at('/cost', 'info'),
+  at('/todos', 'info'),
+  at('/plan', 'start'),
   at('/review'),
-  at('/memory'),
-  at('/init'),
-  at('/config'),
-  at('/permissions'),
-  at('/mcp'),
-  at('/agents'),
-  at('/hooks'),
-  at('/doctor'),
+  at('/memory', 'info'),
+  at('/init', 'start'),
+  at('/config', 'info'),
+  at('/permissions', 'info'),
+  at('/mcp', 'info'),
+  at('/agents', 'info'),
+  at('/hooks', 'info'),
+  at('/doctor', 'info'),
   at('/fast'),
   at('/export'),
-  at('/exit'),
 ];
 
 export const SHELL_COMMANDS: Command[] = [
-  at('exit'),
-  at('htop'),
-  at('claude'),
-  at('claude -c'),
-  at('claude --resume'),
-  at('codex'),
-  at('gemini'),
-  at('git status'),
-  at('git diff'),
-  at('git log --oneline -20'),
+  at('exit', 'danger'),
+  at('htop', 'info'),
+  at('claude', 'start'),
+  at('claude -c', 'start'),
+  at('claude --resume', 'start'),
+  at('codex', 'start'),
+  at('gemini', 'start'),
+  at('git status', 'info'),
+  at('git diff', 'info'),
+  at('git log --oneline -20', 'info'),
   at('git pull'),
   at('git push'),
   at('git stash'),
@@ -68,16 +79,16 @@ export const SHELL_COMMANDS: Command[] = [
   at('make test'),
   at('npm test'),
   at('npm run build'),
-  at('docker ps'),
-  at('tmux ls'),
-  at('ls'),
-  at('ls -la'),
-  at('pwd'),
+  at('docker ps', 'info'),
+  at('tmux ls', 'info'),
+  at('ls', 'info'),
+  at('ls -la', 'info'),
+  at('pwd', 'info'),
   at('cd ..'),
   at('clear'),
-  at('history'),
-  at('df -h'),
-  at('free -h'),
+  at('history', 'info'),
+  at('df -h', 'info'),
+  at('free -h', 'info'),
 ];
 
 const SHELLS = new Set(['bash', 'zsh', 'fish', 'sh', 'dash', 'ash', 'ksh', 'tcsh', 'csh']);
@@ -97,6 +108,7 @@ export function commandsFor(p: Pick<Pane, 'command' | 'title'>, recent: string[]
       label: r.length > LABEL ? r.slice(0, LABEL - 1) + '…' : r,
       text: r,
       send: true,
+      tone: 'act' as const,
     }));
   return { kind: 'shell', commands: [...SHELL_COMMANDS, ...extra] };
 }

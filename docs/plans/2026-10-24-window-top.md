@@ -41,6 +41,33 @@ ride along, since they touch the same input line and views:
 - **Shift+click on a tab** opens the pane beside the open tiles, up to
   four, so a second pane and the `▦` arrangements are reachable from
   the pane view itself, not only from the list's pick.
+- **One view.** The tile header's `fit on 96×28` button goes; `⤢` fit,
+  `⟳` fit again and `⊡` zoom sit in the pane view's top row beside `▦`,
+  as the window view has them. Zoom out from a single tile opens the
+  window's panes side by side as tiles (up to four, the one that was
+  alone first), not
+  the mirror layout, so every control stays where it was; `w` still
+  opens the mirror layout. The owner: "we only have one type of view,
+  and zoom in means switching to one pane, and zoom out means
+  displaying multiple panes".
+- **No flash on a switch.** A tile whose fit is in flight keeps its last
+  frame until the host answers at the fitted size (three seconds at
+  most): the owner saw each switch collapse to the host's old size and
+  grow back.
+- **Toasts and the idle notice.** A toast names the pane as its tab
+  does (the open pane's own record is consulted first, so the name is
+  there in the pane view too) and sits level with the key row. An
+  `idle` notice while the screen still moved in the last ten seconds is
+  background work, not a wait: the lens shows working and no toast is
+  shown. The working mark is a drawn ring, so it no longer depends on
+  the font having `⟳`.
+- **The microphone button** records while held and stops on release,
+  or toggles with a click. It and the send/cancel button keep a fixed
+  width, so the row no longer shifts while a clip records.
+- **The key bar is one row** that scrolls sideways without a scrollbar,
+  as the command row does; the command row loses its scrollbar too.
+  Keys are tinted by group and commands by tone, discreetly, through
+  theme tokens.
 - **Enter on the completion list** sends the highlighted completion.
   The input-line feature had Enter send the typed text only, so `/`
   followed by Enter reached Claude Code as a bare slash and its own menu
@@ -132,6 +159,8 @@ committed.
 | 7 | 48, 92: Escape leaves the input line, Shift+Esc reaches the pane | e2e | the pane list after a second Escape |
 | 8 | 85, 91: `]` / `[` with one tile open show the strip's neighbour; Shift+click opens beside; 75: zoom in and out between the window view and the pane view by key, icon and double-click | e2e | the neighbour shown; the URL changes both ways |
 | 9 | Sec07: the new key names are accepted, `F13`, `C-b` and the rest stay refused | e2e-security | 204 for a listed key, 400 otherwise |
+| 10 | 60, 77, 84, 86: fit from the top row, the tile's `data-fit`; 75: zoom in and out between one tile and the window's tiles | e2e | sizes as before; the URL changes both ways |
+| 11 | 93: the microphone held and released | e2e (transcriber environment) | the words on the line |
 
 ## 7. Documentation
 

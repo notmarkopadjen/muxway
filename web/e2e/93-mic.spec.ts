@@ -185,3 +185,22 @@ test('93 down: the transcriber fails: a toast, the line unchanged', async ({ pag
   await expect(mic).toBeEnabled();
   await control(request, '/stt', { answer: 'ok' });
 });
+
+test('93 hold: the button records while held and stops on release', async ({ page, request }) => {
+  test.skip(!STT, 'needs the transcriber environment');
+  await signIn(page);
+  await openPane(page, SHELL0);
+  await control(request, '/stt', { answer: 'ok' });
+  await page.waitForTimeout(5200);
+  const mic = page.getByTestId('mic');
+  const line = page.getByTestId('mic-line');
+  const input = page.getByTestId('input');
+  const box = (await mic.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect(line).toHaveAttribute('data-state', 'recording');
+  await page.waitForTimeout(900);
+  await page.mouse.up();
+  await expect(input).toHaveValue(HEARD, { timeout: 10_000 });
+  await expect(mic).toHaveText('◉');
+});

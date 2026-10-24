@@ -2,7 +2,7 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useAllPanes, useInput, usePane, usePaneCached } from '../api/queries';
-import type { Key, Mouse, Pane } from '../api/types';
+import type { Key, Mouse, Pane, PaneContent } from '../api/types';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
 import { LensMark } from '../components/Lens';
@@ -30,6 +30,9 @@ import {
 } from '../term/tiles';
 import { useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
+
+// How long a tile shows its last frame while the host catches up with a fit.
+const HOLD_FRAME_MS = 3000;
 
 // The pane view, as the Android client has it: a strip of every pane the
 // token may read, painted with its state; one to four of them open as
@@ -63,7 +66,7 @@ interface TileProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   onDrop: () => void;
-  onZoomOut: (p: Pane) => void;
+  onZoom: (p: Pane) => void;
   refused: (why: string) => void;
 }
 
@@ -75,7 +78,28 @@ function Tile(props: TileProps) {
   const writable = p?.mode === 'write';
   // Every writable tile opens with fit on, as a single pane does.
   const fit = props.fit ?? writable;
-  const { size: fitted, refit } = useFit(address, fit && writable, box, 'pane');
+  const fitting = fit && writable;
+  const { size: fitted, refit } = useFit(address, fitting, box, 'pane');
+  // While a fit is in flight the host still answers at its old size; the
+  // tile keeps showing the last frame it had rather than that one, for a
+  // moment at most, so switching panes does not flash a smaller screen.
+  const held = useRef<PaneContent | null>(null);
+  const [, bump] = useState(0);
+  const since = useRef(Date.now());
+  useEffect(() => {
+    since.current = Date.now();
+    held.current = null;
+    const t = window.setTimeout(() => bump((n) => n + 1), HOLD_FRAME_MS + 50);
+    return () => window.clearTimeout(t);
+  }, [address]);
+  let shown = pane.data;
+  if (fitting && shown) {
+    const settled =
+      !!fitted && shown.pane.width === fitted.cols && shown.pane.height === fitted.rows;
+    if (settled || Date.now() - since.current > HOLD_FRAME_MS) held.current = shown;
+    else if (held.current) shown = held.current;
+  }
+  const sp = shown?.pane;
   useEffect(() => {
     if (refitTick) refit();
   }, [refitTick, refit]);
@@ -129,6 +153,7 @@ function Tile(props: TileProps) {
       data-pane={address}
       data-several={several ? '' : undefined}
       data-focused={focused ? '' : undefined}
+      data-fit={writable ? (fit ? '1' : '0') : undefined}
       onDragOver={(e) => {
         if (dragging && dragging !== address) {
           e.preventDefault();
@@ -141,7 +166,7 @@ function Tile(props: TileProps) {
         setOver(false);
         props.onDrop();
       }}
-      onDoubleClick={() => p && props.onZoomOut(p)}
+      onDoubleClick={() => p && props.onZoom(p)}
     >
       <div
         className="mx-tile-head mx-painted"
@@ -178,35 +203,6 @@ function Tile(props: TileProps) {
           </>
         )}
         <span className="mx-spacer" />
-        {p && writable && (
-          <button
-            type="button"
-            className={`mx-toggle${fit ? ' on' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              props.onFit();
-            }}
-            title="size the host pane to this tile (f)"
-            data-testid={focused ? 'fit' : 'tile-fit'}
-            data-on={fit ? '1' : '0'}
-          >
-            fit {fit ? 'on' : 'off'}
-            {fit && fitted ? ` ${fitted.cols}×${fitted.rows}` : ''}
-          </button>
-        )}
-        {p && writable && fit && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              refit();
-            }}
-            title="fit again: this client's size (r)"
-            data-testid={focused ? 'refit' : 'tile-refit'}
-          >
-            ⟳
-          </button>
-        )}
         {several && (
           <button
             type="button"
@@ -222,14 +218,14 @@ function Tile(props: TileProps) {
         )}
       </div>
       <Screen
-        content={pane.data?.content ?? ''}
+        content={shown?.content ?? ''}
         burn={!pane.isPlaceholderData}
-        cols={fit && writable ? undefined : p?.width}
-        rows={fit && writable ? undefined : p?.height}
+        cols={fitting ? undefined : sp?.width}
+        rows={fitting ? undefined : sp?.height}
         boxRef={box}
         focused={several && focused}
         onClick={props.onFocus}
-        height={p?.height}
+        height={sp?.height}
         onCell={
           writable && p?.mouse
             ? (x, y) => void click(address, { button: 'left', x, y }, props.refused)
@@ -375,7 +371,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
         for (const a of addresses) f[a] = on;
         setFit(f);
       } else if (ev.key === 'r' && writable) setRefitTick((t) => t + 1);
-      else if ((ev.key === 'w' || ev.key === 'z') && focusedPane)
+      else if (ev.key === 'z' && focusedPane) zoom(focusedPane);
+      else if (ev.key === 'w' && focusedPane)
         navigate({
           to: `/w/${focusedPane.host}/${focusedPane.session}/${focusedPane.window_index}`,
         });
@@ -402,9 +399,31 @@ function Tiles({ addresses }: { addresses: string[] }) {
     }
   };
 
-  const windowPath = focusedPane
-    ? `/w/${focusedPane.host}/${focusedPane.session}/${focusedPane.window_index}`
-    : undefined;
+  // Zoom: the focused pane alone, or the window's panes side by side
+  // again, up to four, the one that was alone first; a window of one pane
+  // shows its mirror layout instead.
+  const zoom = useCallback(
+    (p: Pane) => {
+      if (several) {
+        go([p.address]);
+        return;
+      }
+      const mates = (all.data ?? [])
+        .filter(
+          (q) => q.host === p.host && q.session === p.session && q.window_index === p.window_index,
+        )
+        .map((q) => q.address);
+      const rest = mates.filter((a) => a !== p.address).slice(0, MAX_TILES - 1);
+      if (!rest.length) {
+        navigate({ to: `/w/${p.host}/${p.session}/${p.window_index}` });
+        return;
+      }
+      go([p.address, ...rest]);
+      setFocusedIndex(0);
+    },
+    [several, all.data, go, navigate],
+  );
+  const focusedFit = fit[focused] ?? writable;
   const tile = (i: number) => {
     const a = addresses[i];
     return (
@@ -426,7 +445,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
           if (dragging && dragging !== a) go(swap(addresses, dragging, a));
           setDragging(null);
         }}
-        onZoomOut={(p) => navigate({ to: `/w/${p.host}/${p.session}/${p.window_index}` })}
+        onZoom={zoom}
         refused={refused}
       />
     );
@@ -454,15 +473,43 @@ function Tiles({ addresses }: { addresses: string[] }) {
               ▦
             </button>
           )}
-          {windowPath && (
-            <Link
-              to={windowPath}
-              className="mx-toggle on"
-              title="the whole window (z, w, or double-click)"
-              data-testid="to-window"
+          {writable && (
+            <button
+              type="button"
+              className={`mx-toggle${focusedFit ? ' on' : ''}`}
+              onClick={() => toggleFit(focused)}
+              title={`fit: the host pane follows this tile (f), ${focusedFit ? 'on' : 'off'}; F: every tile`}
+              data-testid="fit"
+              data-on={focusedFit ? '1' : '0'}
+            >
+              ⤢
+            </button>
+          )}
+          {writable && focusedFit && (
+            <button
+              type="button"
+              onClick={() => setRefitTick((t) => t + 1)}
+              title="fit again: this client's size (r)"
+              data-testid="refit"
+            >
+              ⟳
+            </button>
+          )}
+          {focusedPane && (
+            <button
+              type="button"
+              className={`mx-toggle${several ? '' : ' on'}`}
+              onClick={() => zoom(focusedPane)}
+              title={
+                several
+                  ? 'this pane alone (z, Enter, or double-click)'
+                  : "the window's panes side by side (z, or double-click); w: the mirror layout"
+              }
+              data-testid="zoom"
+              data-on={several ? '0' : '1'}
             >
               ⊡
-            </Link>
+            </button>
           )}
         </span>
       </div>

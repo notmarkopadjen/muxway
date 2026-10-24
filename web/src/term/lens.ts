@@ -20,9 +20,11 @@ export function status(
   changedAt: number | undefined,
   now: number,
 ): Status {
-  if (p.attention) return 'waiting';
   const claude = describe(p).agent === 'claude';
   const recent = changedAt !== undefined && now - changedAt >= 0 && now - changedAt < RECENT_MS;
+  // An idle notice while the screen still moves is the program's own
+  // background work, not a pane waiting for its owner.
+  if (p.attention && !(p.attention.kind === 'idle' && claude && recent)) return 'waiting';
   if (claude && (lastKind === 'working' || recent)) return 'working';
   return 'quiet';
 }
@@ -90,6 +92,11 @@ export function noteOwn(address: string, at = Date.now()) {
 
 export function changedAt(address: string): number | undefined {
   return changes.get(address);
+}
+
+export function changedRecently(address: string, now = Date.now()): boolean {
+  const at = changes.get(address);
+  return at !== undefined && now - at >= 0 && now - at < RECENT_MS;
 }
 
 export function lastKind(address: string): string | undefined {

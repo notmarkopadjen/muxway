@@ -9,9 +9,11 @@ test('82 a click on a pane whose program asked for the mouse is a click at that 
   await openPane(page, SHELL0);
   // Fit sizes the pane first; then a click in a shell, which did not ask
   // for the mouse, types nothing.
-  await expect(page.getByTestId('fit')).toHaveText(/fit on \d+×\d+/, { timeout: 5000 });
-  const fitted = (await page.getByTestId('fit').innerText()).replace(/^fit on /, '');
-  await expect(page.getByTestId('pane-size')).toHaveText(fitted);
+  await expect
+    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 5000 })
+    .not.toBe('100x30');
+  const fitted = await page.getByTestId('pane-size').innerText();
+  expect(fitted).toMatch(/^\d+×\d+$/);
   await page.waitForTimeout(500);
   const before = await control(request, '/capture', { target: 'work:0.0' });
   await page.getByTestId('screen').click();

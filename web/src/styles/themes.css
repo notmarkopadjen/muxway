@@ -31,3 +31,37 @@
   --mx-glow-box: 2px 2px 0 var(--mx-ink-faint);
   --mx-glow-box-strong: 0 0 0 2px var(--mx-accent);
 }
+
+/* Tints for the key bar's groups and the command row's tones. They are
+   mixed into borders and grounds at a few percent, so they stay discreet
+   and the ink stays the theme's. */
+:root {
+  --mx-tint-edit: #39ff14;
+  --mx-tint-nav: #3ad6ff;
+  --mx-tint-ctrl: #ffb000;
+  --mx-tint-fn: #c68cff;
+  --mx-tint-danger: #ff3b3b;
+  --mx-tint-start: #39ff14;
+  --mx-tint-info: #3a9bff;
+  --mx-tint-act: #ffb000;
+}
+:root[data-theme='amber'] {
+  --mx-tint-edit: #ffb000;
+  --mx-tint-nav: #3ad6ff;
+  --mx-tint-ctrl: #ff7a1a;
+  --mx-tint-fn: #c68cff;
+  --mx-tint-danger: #ff3b3b;
+  --mx-tint-start: #39ff14;
+  --mx-tint-info: #3a9bff;
+  --mx-tint-act: #ffb000;
+}
+:root[data-theme='paper'] {
+  --mx-tint-edit: #1f2a1f;
+  --mx-tint-nav: #0b5d8a;
+  --mx-tint-ctrl: #9a5b00;
+  --mx-tint-fn: #5b2d8a;
+  --mx-tint-danger: #a3161b;
+  --mx-tint-start: #0b5d1e;
+  --mx-tint-info: #0b4f8a;
+  --mx-tint-act: #9a5b00;
+}

@@ -235,3 +235,22 @@
 :root[data-motion='off'] .mx-vignette {
   display: none;
 }
+
+/* The working mark turns. */
+@keyframes mx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.mx-mark-working {
+  animation: mx-spin 1.6s linear infinite;
+  transform-origin: center;
+}
+:root[data-motion='off'] .mx-mark-working {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mx-mark-working {
+    animation: none;
+  }
+}

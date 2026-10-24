@@ -146,14 +146,14 @@ fit, or `r`, sends this client's size once more.
 by side. The page is the Android client's pane view:
 
 ```
-[‹] [⟳ fixing the build][! review][bash][tail · build.log]      [▦] window ▸
-┌─ ✳ Claude · fixing the build · work/0.0 · 96×28 · write · ⟳ working ─ fit on ─┐
+[‹] [⟳ fixing the build][! review][bash][tail · build.log]      [▦][⤢][⟳][⊡]
+┌─ ✳ Claude · fixing the build · work/0.0 · 96×28 · write · ⟳ working ──────┐
 │ $ make test                                                                   │
 │ ok                                                                            │
 └───────────────────────────────────────────────────────────────────────────────┘
 > ________________________________________________________________________ [send]
 [Enter][Tab][BSpace][Escape]…
-✳ [/clear][/compact][/rename][/model][/resume][/usage][/context][/help]
+✳ [/clear][/exit][/compact][/rename][/model][/resume][/usage][/context][/help]…
 ```
 
 - `‹` goes back to the list.
@@ -178,16 +178,27 @@ by side. The page is the Android client's pane view:
   tile. The arrangement is the browser's own and never reaches the host.
 - A tile's **header** is painted like its tab and names the pane, its
   address, its size, its mode and the lens's word; the focused tile has
-  the thick border and the bold name, and carries the `fit` button.
+  the thick border and the bold name. The controls sit in the top row,
+  at the right, as icons: `▦` the next arrangement (with several tiles),
+  `⤢` fit for the focused tile (selected when on), `⟳` fit again, `⊡`
+  zoom.
 - **Fit** is per tile, with the pane's own scope (see
   [fit](#fit-the-host-follows-the-browser)). Every writable tile opens
-  with fit on, one or several. `f` toggles the focused tile, `F` every
-  tile, `r` sends the size once more.
+  with fit on, one or several. `⤢` or `f` toggles the focused tile, `F`
+  every tile, `⟳` or `r` sends the size once more. The header shows the
+  pane's size, which with fit on is the tile's.
+- **Zoom** is one view at two distances, not two views: `⊡`, `z` or a
+  double-click on a tile open the focused pane alone, and the same from
+  a single tile bring the window's panes back side by side, up to four,
+  the pane that was alone first (a window of one pane shows its mirror
+  layout instead). `w` opens the window's mirror layout.
+- While a fit is on its way to the host, a tile keeps the last frame it
+  had instead of the host's answers at the old size, for three seconds
+  at most, so switching panes does not flash a smaller screen.
 - `]` and `[` go to the next or previous pane: the next tile, or with
   one tile open the strip's neighbour shown in it (the phone's swipe);
-  `1` to `4` focus a tile by number. `⊡`, `z`, `w` or a double-click on
-  a tile open the focused pane's window
-  view, `b` puts it on the board, `Enter` opens it alone.
+  `1` to `4` focus a tile by number; `b` puts the focused pane on the
+  board, `Enter` opens it alone.
 - The **command row** under the key bar is for the program in the
   focused pane, one row that scrolls sideways. When the pane is Claude
   Code's it carries the slash commands typed most: `/clear`, `/compact`,
@@ -208,6 +219,14 @@ by side. The page is the Android client's pane view:
 ![the list with two panes picked](images/web-list-picked.png)
 
 ## The lens
+
+An `idle` notice while the pane's screen still moves, in the last ten
+seconds, counts as working: Claude is at its prompt but its background
+tasks still print, so the pane is not waiting on you and no toast is
+shown for it. The working mark is a turning ring, drawn rather than
+typed, the same in every font. A toast names the pane as its tab does,
+with the place after it, and sits level with the key row while an input
+line is on the page.
 
 A lens knows one program and tells the rest of the client what its pane
 is up to. The first is for Claude Code, recognised as [above](#what-a-
@@ -267,10 +286,10 @@ One pane is focused (its tab, a click on its header, or `]` and `[`);
 the input line and key bar go to it. **Zoom is the pane view**: `⊡`,
 `z`, `Enter` or a double-click on a cell, its header included, open the
 focused pane alone there, with the strip, the input line, the
-completions and the command row; from the pane view `⊡`, `z`, `w` or a
-double-click on the tile come back to the window. One set of features at
-two distances. Then, in the browser only (with fit on, a dragged divider
-reaches the host, see above):
+completions and the command row; from the pane view `⊡`, `z` or a
+double-click bring the window's panes back side by side as tiles, and
+`w` returns to this mirror layout. Then, in the browser only (with fit
+on, a dragged divider reaches the host, see above):
 
 - drag a divider to change the split,
 - `+` and `-` to make the focused pane's text bigger or smaller,
@@ -348,7 +367,7 @@ because several host windows changing at once is a decision for you.
 | `a` / `A` | board: add a pane beside / below the focused one |
 | `x` / `s` / `z` / `=` / `F` / `w` | board: remove, swap, zoom, equal shares, fit all, the pane's window |
 | `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view, board: pane) |
-| `1`–`4`, `l`, `x`, `F`, `z` / `w` | tiles: focus one, next arrangement, close, fit all, the whole window (or double-click) |
+| `1`–`4`, `l`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, close, fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
 | `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, this pane alone (or `Enter`, double-click), host layout, equal shares, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
 | `t` | next theme: green, amber, paper |
@@ -453,3 +472,24 @@ and fails if the committed output differs from the sources.
 - Node dependencies are pinned exactly with a committed lockfile and
   installed with `npm ci`. They are a build-time concern: the hub binary
   carries only the built files.
+
+## The key bar and the command row
+
+Under the input line, one row of named keys and one row of commands for
+the program in the focused pane. Each is a single row that scrolls
+sideways, with no scrollbar to take the room; the wheel over it moves
+it. The keys are tinted by group, discreetly, on the border and the
+ground only: editing keys (`Enter` `Tab` `BTab` `BSpace` `Escape`
+`Space` `Insert` `Delete`), the directions (`Up` `Down` `Left` `Right`
+`PageUp` `PageDown` `Home` `End`), the control keys (`C-c` to `C-f`)
+and `F1` to `F12`. Commands are tinted by tone the same way: red for
+what throws work away (`/clear`, `/exit`, `exit`), green for what
+begins something (`/init`, `/resume`, `/plan`, `claude`, `codex`,
+`gemini`), blue for what only tells (`/help`, `/status`, `git status`,
+`ls`, …), amber for the rest. The tints are theme tokens
+(`--mx-tint-*` in `web/src/styles/themes.css`), one set per theme.
+
+The microphone button `◉` on the input line works two ways: hold it and
+release to stop, or click it and click again. It and the *send* button,
+which reads *cancel* while a clip records, keep their width, so nothing
+under the pointer moves while recording.

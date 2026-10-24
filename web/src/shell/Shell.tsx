@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { isOnline, onReachability, onUnauthorized } from '../api/client';
 import { useEventStream } from '../api/events';
 import { keys } from '../api/queries';
-import type { Pane, Tree } from '../api/types';
+import type { Pane, Tree, PaneContent } from '../api/types';
 import { PaneTitle } from '../components/PaneTitle';
 import { label } from '../term/describe';
 import { useHeading } from './heading';
@@ -16,7 +16,7 @@ import { cycleTheme, getNotify, toggleMotion, useSettings } from '../settings';
 import { Help } from './Help';
 import { Palette } from '../components/Palette';
 import { addPane, loadBoard, saveBoard } from '../term/board';
-import { noteEvent } from '../term/lens';
+import { changedRecently, noteEvent } from '../term/lens';
 
 const ATTENTION = new Set(['question', 'permission', 'idle', 'done']);
 
@@ -76,6 +76,8 @@ export function Shell() {
   const qc = useQueryClient();
   const known = useCallback(
     (address: string): Pane | undefined => {
+      const open = qc.getQueryData<PaneContent>(keys.pane(address))?.pane;
+      if (open) return open;
       const all = qc.getQueryData<Pane[]>(keys.panes)?.find((p) => p.address === address);
       if (all) return all;
       const host = address.split('/')[0];
@@ -89,6 +91,8 @@ export function Shell() {
     (e: Event, live: boolean) => {
       noteEvent(e.address, e.kind);
       if (!live || !ATTENTION.has(e.kind)) return;
+      // Idle while the screen still moves is background work: no notice.
+      if (e.kind === 'idle' && changedRecently(e.address)) return;
       const kind = e.kind as keyof typeof GLYPH;
       const pane = known(e.address);
       toast.push({

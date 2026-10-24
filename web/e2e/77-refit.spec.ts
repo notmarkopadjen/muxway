@@ -10,10 +10,10 @@ test("77 refit sends this client's size again after another client sized the win
   await signIn(page);
   await openPane(page, SHELL0);
   await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '1');
-  await expect(page.getByTestId('fit')).toHaveText(/fit on \d+×\d+/, { timeout: 5000 });
-  const fitted = (await page.getByTestId('fit').innerText()).replace(/^fit on /, '');
-  await expect(page.getByTestId('pane-size')).toHaveText(fitted);
+  await expect.poll(size, { timeout: 5000 }).not.toBe('100x30');
   const width = (await size()).split('x')[0];
+  await expect(page.getByTestId('pane-size')).toHaveText(new RegExp(`^${width}×\\d+$`));
+  const fitted = await page.getByTestId('pane-size').innerText();
   // Another client, with its own token, sizes the same window.
   await page.waitForTimeout(1100);
   const r = await request.post(`/v1/panes/${SHELL0}/resize`, {

@@ -27,8 +27,8 @@ const KEYS: [string, string][] = [
     "next / previous pane: the tile, or with one tile open the strip's neighbour (window view and board: pane)",
   ],
   [
-    '1 – 4 / l / x / F / z',
-    'tiles: focus one, next arrangement, close, fit all, the whole window (or double-click); Shift+click a tab to open it beside',
+    '1 – 4 / l / x / F / z / w',
+    "tiles: focus one, next arrangement, close, fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout; Shift+click a tab to open it beside",
   ],
   [
     'x / z / 0 / = / + / -',
@@ -45,7 +45,10 @@ const KEYS: [string, string][] = [
   ],
   ['Tab', 'input line: take the completion; from an empty line, Tab goes to the pane'],
   ['Shift+Esc', 'input line: send Escape to the pane and keep typing'],
-  ['v', 'speak: record a clip for the hub to transcribe onto the line; again stops, Esc drops it'],
+  [
+    'v',
+    'speak: record a clip for the hub to transcribe onto the line; again stops, Esc drops it. The ◉ button: hold and release, or click and click again',
+  ],
   ['g then a letter', 'jump to the first host starting with it'],
   ['t', 'next theme (green, amber, paper)'],
   ['m', 'effects on / off'],
