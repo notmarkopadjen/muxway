@@ -88,12 +88,16 @@ func ValidSize(cols, rows int) bool {
 }
 
 // ValidText reports whether text may be typed into a pane: UTF-8 without
-// control characters (C0, DEL, C1), at most MaxTextBytes.
+// control characters (C0, DEL, C1), at most MaxTextBytes. The newline is
+// the one exception: a text with one is pasted, not typed.
 func ValidText(s string) bool {
 	if len(s) == 0 || len(s) > MaxTextBytes {
 		return false
 	}
 	for _, r := range s {
+		if r == '\n' {
+			continue
+		}
 		if r < 0x20 || r == 0x7f || (r >= 0x80 && r <= 0x9f) || r == 0xfffd {
 			return false
 		}

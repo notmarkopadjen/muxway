@@ -28,7 +28,20 @@ nothing but the hub to talk to.
    comes with its colours, refreshed every second, and one input line
    serves the focused tile. The screen opens at its bottom and follows
    new output; scroll up to read back, and it stays put until you scroll
-   down again. Text is typed literally and Enter is sent after it; the key
+   down again. The input line is a small editor: text wraps, `Enter`
+   sends, `Shift+Enter` starts a new line, and the field grows upward to
+   six rows before it scrolls inside. A text with several lines is
+   pasted into the pane as one block (bracketed, when the program asked
+   for it), so Claude Code takes it as one message and a shell as one
+   editable block; then `Enter` is sent. While the first word is typed a
+   list opens above the line: Claude Code's slash commands, or a shell's
+   starters and the lines sent before from this browser; `↑` `↓` pick,
+   `Tab` or a click takes one, `Esc` closes it, and `Enter` always sends
+   what is typed, never the pick. From an empty line the console keys
+   (`↑` `↓` `←` `→`, `PageUp` `PageDown` `Home` `End`, `Tab`) go to the
+   pane, so a menu in it is driven without leaving the line; with text
+   they move the caret. `i` focuses the line, `Esc` leaves it, and
+   `Shift+Esc` sends `Escape` to the pane while typing goes on. The key
    bar sends the named keys the protocol allows. A click on the screen of
    a pane whose program asked for the mouse, Claude Code among them, is a
    click at that cell on the host, so an option shown can be chosen by
@@ -278,9 +291,13 @@ because several host windows changing at once is a decision for you.
 | `j` / `k` | move the selection down / up |
 | `space` | pick the selected pane, up to four |
 | `Enter` | open the selected pane, or the picked ones side by side |
-| `Esc` | back to the panes; or leave the input line |
+| `Esc` | back to the panes; or leave the input line (first closing its completion list) |
 | `/` | filter panes |
 | `i` | focus the input line |
+| `Enter` / `Shift+Enter` | input line: send / a new line |
+| `Tab` | input line: take the highlighted completion; from an empty line, `Tab` goes to the pane |
+| `↑` `↓` | input line: pick a completion; from an empty line, the key goes to the pane, as do `←` `→` `PageUp` `PageDown` `Home` `End` |
+| `Shift+Esc` | input line: send `Escape` to the pane and keep typing |
 | `p` | selector: go to a pane or window |
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |
@@ -350,6 +367,15 @@ and fails if the committed output differs from the sources.
   suite proves it from a second origin.
 - No request ever leaves the hub's origin: no fonts, scripts or analytics
   from elsewhere. Browser notifications carry kind and address only.
+- A text with newlines is the one new thing the line sends. The hub
+  admits the newline and no other control character; the agent delivers
+  it through a tmux buffer, never a shell, and the bracketed-paste marks
+  around it are written by tmux when the program asked for them, never
+  accepted from a client (`ESC` stays refused). A shell without bracketed
+  paste runs each line at its newline, as a local paste would.
+- Completion is a list in the client plus your own recent shell lines;
+  nothing from a pane, a title or the hub enters it, and it never sends by
+  itself: `Enter` sends what is typed.
 - The command row sends what you could type: a fixed string from the
   client's own list, or a line you sent before, and `Enter`, to the
   focused pane, under the same write grant and audit as the input line.

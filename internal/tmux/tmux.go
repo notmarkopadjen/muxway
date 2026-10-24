@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -41,6 +42,11 @@ type Server struct {
 }
 
 func (s Server) run(ctx context.Context, args ...string) ([]byte, error) {
+	return s.runIn(ctx, nil, args...)
+}
+
+// runIn runs a tmux command with stdin, for load-buffer.
+func (s Server) runIn(ctx context.Context, stdin []byte, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	var pre []string
@@ -50,6 +56,9 @@ func (s Server) run(ctx context.Context, args ...string) ([]byte, error) {
 		pre = append(pre, "-L", s.Name)
 	}
 	cmd := exec.CommandContext(ctx, "tmux", append(pre, args...)...)
+	if stdin != nil {
+		cmd.Stdin = bytes.NewReader(stdin)
+	}
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
@@ -158,10 +167,31 @@ func (s Server) Capture(ctx context.Context, paneID string, lines int, ansi bool
 	return strings.Join(all, "\n"), nil
 }
 
-// SendText types text literally.
+// SendText types text literally; a text with newlines is pasted instead.
 func (s Server) SendText(ctx context.Context, paneID, text string) error {
+	if strings.Contains(text, "\n") {
+		return s.paste(ctx, paneID, text)
+	}
 	_, err := s.run(ctx, "send-keys", "-t", paneID, "-l", "--", text)
 	return err
+}
+
+var pasteSeq atomic.Uint64
+
+// paste delivers a text with newlines as one paste through a tmux buffer:
+// the program gets it between the bracketed paste marks when it asked for
+// them, as a block it can edit before Enter; otherwise as typed, newlines
+// included. The buffer is deleted with the paste.
+func (s Server) paste(ctx context.Context, paneID, text string) error {
+	name := fmt.Sprintf("muxway-%d", pasteSeq.Add(1))
+	if _, err := s.runIn(ctx, []byte(text), "load-buffer", "-b", name, "-"); err != nil {
+		return err
+	}
+	if _, err := s.run(ctx, "paste-buffer", "-p", "-d", "-b", name, "-t", paneID); err != nil {
+		s.run(ctx, "delete-buffer", "-b", name)
+		return err
+	}
+	return nil
 }
 
 // ErrNoMouse: the program in the pane did not ask for the mouse, so the

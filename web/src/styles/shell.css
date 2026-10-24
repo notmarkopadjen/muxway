@@ -25,7 +25,8 @@ a:focus-visible {
   outline: none;
 }
 button,
-input {
+input,
+textarea {
   font: inherit;
   color: inherit;
   background: transparent;
@@ -42,7 +43,8 @@ button {
 }
 button:hover,
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+textarea:focus-visible {
   border-color: var(--mx-ink);
   box-shadow: var(--mx-glow-box-strong);
   outline: none;

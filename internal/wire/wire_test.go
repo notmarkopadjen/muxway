@@ -36,6 +36,19 @@ func TestCleanText(t *testing.T) {
 	}
 }
 
+func TestValidText(t *testing.T) {
+	for _, ok := range []string{"a", "two\nlines", "ends\n", "\n", "čćž 日本", strings.Repeat("a\n", MaxTextBytes/2)} {
+		if !ValidText(ok) {
+			t.Errorf("ValidText(%q) should be true", ok)
+		}
+	}
+	for _, bad := range []string{"", "a\rb", "a\r\nb", "tab\there", "\x1b[200~x\x1b[201~", "del\x7f", "c1\u0085", "ok\ufffd", strings.Repeat("a\n", MaxTextBytes/2) + "a"} {
+		if ValidText(bad) {
+			t.Errorf("ValidText(%q) should be false", bad)
+		}
+	}
+}
+
 func TestKnownKind(t *testing.T) {
 	for _, k := range []string{KindQuestion, KindPermission, KindIdle, KindDone, KindWorking} {
 		if !KnownKind(k) {

@@ -572,7 +572,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
             ? writable
               ? several
                 ? `type into ${focused}`
-                : 'type, Enter sends'
+                : 'type · Enter sends · Shift+Enter new line · Esc leaves'
               : 'read-only pane'
             : 'no pane'
         }

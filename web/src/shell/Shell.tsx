@@ -157,7 +157,7 @@ export function Shell() {
       } else if (ev.key === 'm') {
         toast.push({ kind: 'effects', title: toggleMotion() ? 'on' : 'off' });
       } else if (ev.key === 'i') {
-        const input = document.querySelector<HTMLInputElement>('[data-testid="input"]');
+        const input = document.querySelector<HTMLTextAreaElement>('[data-testid="input"]');
         if (input && !input.disabled) {
           ev.preventDefault();
           input.focus();

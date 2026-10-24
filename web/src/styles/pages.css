@@ -174,15 +174,49 @@
 .mx-input {
   display: flex;
   gap: var(--mx-gap);
-  align-items: center;
+  align-items: flex-end;
+  position: relative;
 }
 .mx-input .mx-prompt {
   color: var(--mx-accent);
+  align-self: flex-start;
+  padding-top: 3px;
 }
-.mx-input input {
+.mx-input textarea {
   flex: 1;
   min-width: 0;
+  display: block;
+  box-sizing: border-box;
+  line-height: 1.4;
+  resize: none;
+  overflow-y: auto;
   border-color: var(--mx-ink);
+}
+.mx-input textarea:disabled {
+  color: var(--mx-ink-faint);
+  border-color: var(--mx-ink-faint);
+}
+.mx-complete {
+  position: absolute;
+  left: calc(1ch + var(--mx-gap));
+  bottom: 100%;
+  margin-bottom: 2px;
+  min-width: 18ch;
+  max-width: 100%;
+  background: var(--mx-bg);
+  border: 1px solid var(--mx-ink-dim);
+  z-index: 5;
+  white-space: pre;
+}
+.mx-complete div {
+  padding: 1px 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.mx-complete .mx-picked,
+.mx-complete div:hover {
+  border-color: var(--mx-ink);
+  box-shadow: var(--mx-glow-box-strong);
 }
 .mx-keybar {
   display: flex;

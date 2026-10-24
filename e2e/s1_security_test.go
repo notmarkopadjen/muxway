@@ -569,7 +569,7 @@ func TestSec07_ControlCharactersAndUnknownKeysAreRefused(t *testing.T) {
 	e, ts, _ := basic(t)
 	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
 	before := ts.capture("work:0.0")
-	for _, text := range []string{"\x1b[2J", "a\x1bb", "line\nbreak", "tab\there", "\x00", "del\x7f", "c1\u0085", "\u009b31m", ""} {
+	for _, text := range []string{"\x1b[2J", "a\x1bb", "line\r\nbreak", "line\rbreak", "tab\there", "\x00", "del\x7f", "c1\u0085", "\u009b31m", ""} {
 		expect(t, e.input(tok, shell0, map[string]string{"text": text}), http.StatusBadRequest, fmt.Sprintf("text %q", text))
 	}
 	for _, key := range []string{"C-b", "M-x", "F1", "enter", "Enter Enter", "\x1b", "C-c; rm", "S-Tab", "btab", "BTab Enter", ""} {

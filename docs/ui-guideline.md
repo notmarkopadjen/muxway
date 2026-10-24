@@ -95,13 +95,13 @@ $ [exit][htop][claude][codex]…  │ [make test]
 | tiles | one to four panes; arrangements by count: 2 → row, column; 3 → + main-left, main-top; 4 → + grid; `▦` cycles; wide screens start with row, tall with column; splits drag with a 15 % floor; a header dragged onto another tile swaps the two; the arrangement never reaches the host |
 | header | painted like its tab: glyph, name, command, mode, the word, the size with fit on; the focused tile has the thick border and bold name |
 | fit | per tile, the pane's own scope; every writable tile opens with fit on, one or several; `⤢` or `f` toggles; a second press sends the size again; leaving releases. The host never lets a fit take a neighbour under 20 columns or 5 rows: the window grows instead. **To do on both clients** (muxway#48, muxway-android#3): where several open tiles are panes of one window, only the focused tile's pane fits and the others say *held*, so tiles do not fight over one row |
-| input | one line and one key row for the focused tile; `Esc` pinned left and `Enter` right on a phone; *type* sends text, *send* sends text then Enter; read-only panes show `read-only` and no way to type |
+| input | a text line and one key row for the focused tile; `Esc` pinned left and `Enter` right on a phone; *type* sends text, *send* sends text then Enter; read-only panes show `read-only` and no way to type. The line is a small editor: text wraps and the field grows upward, to six rows, then scrolls inside; Enter (web) or the keyboard's send key (Android) sends, Shift+Enter starts a new line; a text with several lines reaches the pane as one paste, bracketed when the program asked. **Web only for now** (muxway-android#12): while the first word is typed, a list above the line offers Claude Code's slash commands or a shell's starters and recent lines; `↑` `↓` pick, `Tab` or a click takes, `Esc` closes, Enter never completes |
 | command row | one row under the key row, scrolling sideways, never wrapping, for the program in the focused pane. Claude Code (the lens decides): `/clear` `/compact` `/rename` `/model` `/resume` `/usage` `/context` `/help`, marked with Claude's spark. A shell (`bash`, `zsh`, `fish`, `sh`, …): `exit` `htop` `claude` `claude -c` `codex` `gemini` `git status` `ls` `clear`, marked `$`, then after a bar the last eight lines sent to a shell from this client, newest first. A button sends its command then Enter; `/rename` fills the input line and waits. Any other program: no row. A read-only pane cannot use it |
 | mouse | a tap or click on a pane whose program asked for the mouse is a left click at that cell; otherwise it only focuses. The same program gets the wheel: a notch per row of travel (web: the wheel, three notches per event at most; Android: a vertical drag) as `wheelup` / `wheeldown` at the cell under the pointer. A pane without the mouse scrolls in the client, through the history the hub sent |
 | reading | the focused pane every second, the others every two |
 
 Web: `web/src/pages/Pane.tsx`, `term/tiles.ts`, `term/commands.ts`,
-`components/CommandBar.tsx`. Android: `ui/ViewScreen.kt`, `Layout`,
+`term/complete.ts`, `components/InputPanel.tsx`, `components/CommandBar.tsx`. Android: `ui/ViewScreen.kt`, `Layout`,
 `protocol/Commands.kt`. Feature pages: core `web-client.md`
 (Tiles), Android `pane-view.md`.
 
@@ -145,6 +145,11 @@ The same action on every client, triggered the way the device does it.
 | the board | `b` | — | — |
 | go to a pane | `p`, `≡` | the strip | — |
 | a command of the row | click | tap | — |
+| a new line in the input | `Shift+Enter` | `Shift+Enter` on a hardware keyboard | — |
+| take a completion | `Tab`, click | — | — |
+| focus the input line, leave it | `i`, `Esc` | tap, back | — |
+| a console key from an empty input line | `↑` `↓` `←` `→` `PageUp` `PageDown` `Home` `End` `Tab` | the key row | D-pad |
+| Escape to the pane while typing | `Shift+Esc` | `Esc` in the key row | — |
 | theme | `t` | setting | setting |
 | effects | `m` | setting | — |
 | help | `?` | — | — |
