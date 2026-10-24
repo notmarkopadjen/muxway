@@ -9,7 +9,11 @@ import { cellsFor, inner } from './measure';
 // itself, "window" its whole window, laid out as `layout` says when one
 // is given; the release puts both back. A size already sent is not sent
 // again, so `refit` is there for when another client sized the window
-// since: it sends this one's size once more.
+// since: it sends this one's size once more. With `keep`, a tile going
+// away leaves its pane fitted: the pane view keeps panes at size while
+// another is shown in their place and releases them all when it is left
+// (releaseKept); a kept pane found at the size asked for is not sent
+// again.
 // The release must survive the page going away, hence keepalive. It can
 // land within the second of the resize it undoes, so a 429 is tried again.
 function release(address: string, tries = 3) {
@@ -28,6 +32,22 @@ function release(address: string, tries = 3) {
 
 export type FitScope = 'pane' | 'window';
 
+export interface FitOptions {
+  keep?: boolean;
+  // The pane's size as last listed, to spare a resize the host has.
+  known?: () => { cols: number; rows: number; zoomed?: boolean } | undefined;
+  // Window scope takes a cell off for the window view's cell chrome.
+  inset?: boolean;
+}
+
+// Panes fitted and not yet released, across tiles that came and went.
+const kept = new Set<string>();
+export function releaseKept() {
+  for (const a of kept) release(a);
+  kept.clear();
+}
+if (typeof window !== 'undefined') window.addEventListener('pagehide', releaseKept);
+
 // A window's area holds cells with their own padding and border, which
 // the cells per axis lose; one cell's worth is taken off.
 const CELL_INSET = 14;
@@ -39,12 +59,16 @@ export function useFit(
   scope: FitScope = 'pane',
   layout?: string,
   zoom = false,
+  opts: FitOptions = {},
 ) {
   const [size, setSize] = useState<{ cols: number; rows: number } | null>(null);
   const last = useRef<string>('');
   const timer = useRef<number | null>(null);
   const fitted = useRef(false);
   const again = useRef<(() => void) | null>(null);
+  const { keep = false, inset = scope === 'window' } = opts;
+  const known = useRef(opts.known);
+  known.current = opts.known;
 
   useEffect(() => {
     if (!enabled || !box.current) return;
@@ -54,6 +78,12 @@ export function useFit(
       if (key === last.current) return;
       last.current = key;
       fitted.current = true;
+      const have = kept.has(address) ? known.current?.() : undefined;
+      kept.add(address);
+      if (have && have.cols === cols && have.rows === rows && (!zoom || have.zoomed)) {
+        setSize({ cols, rows });
+        return;
+      }
       resizePane(address, { cols, rows, scope, layout, zoom: zoom || undefined })
         .then((r) => setSize({ cols: r.pane.width, rows: r.pane.height }))
         .catch((err) => {
@@ -65,8 +95,8 @@ export function useFit(
     };
     const measure = () => {
       const { w, h } = inner(el);
-      const inset = scope === 'window' ? CELL_INSET : 0;
-      const { cols, rows } = cellsFor(w - inset, h - inset);
+      const off = inset ? CELL_INSET : 0;
+      const { cols, rows } = cellsFor(w - off, h - off);
       send(Math.min(500, Math.max(20, cols)), Math.min(300, Math.max(5, rows)));
     };
     const schedule = () => {
@@ -86,29 +116,27 @@ export function useFit(
       if (timer.current) window.clearTimeout(timer.current);
       last.current = '';
     };
-  }, [address, enabled, box, scope, layout, zoom]);
+  }, [address, enabled, box, scope, layout, zoom, inset]);
   const refit = useCallback(() => again.current?.(), []);
 
-  // Release on the way out, if we ever fitted: on unmount, and on a page
-  // unload, which runs no React cleanup.
+  // Release on the way out, if we ever fitted: on unmount, unless the
+  // pane is kept for the view to release later. A page unload runs no
+  // React cleanup; the registry's pagehide listener covers that.
   useEffect(() => {
-    const bye = () => {
-      if (fitted.current) {
+    return () => {
+      if (fitted.current && !keep) {
         fitted.current = false;
+        kept.delete(address);
         release(address);
       }
     };
-    window.addEventListener('pagehide', bye);
-    return () => {
-      window.removeEventListener('pagehide', bye);
-      bye();
-    };
-  }, [address]);
+  }, [address, keep]);
 
   // Turning fit off releases too.
   useEffect(() => {
     if (!enabled && fitted.current) {
       fitted.current = false;
+      kept.delete(address);
       release(address);
       setSize(null);
     }

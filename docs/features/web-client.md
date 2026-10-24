@@ -114,11 +114,20 @@ the pane clears it.
 ## Fit: the host follows the browser
 
 A terminal tells tmux its size; the browser does the same when **fit** is
-on (`f`, or the button in the header). In the pane view the *pane* on the
-host becomes the columns and rows that fit the box: where it spans its
+on (`f`, or the button in the header). A pane alone in the pane view
+sizes its *window* to the box and is zoomed in it with tmux's own zoom,
+so its neighbours are not squeezed; a pane that is alone in its window
+sizes the window without a zoom. With several tiles, each *pane* on the
+host becomes the columns and rows that fit its tile: where it spans its
 window, the window is sized; where it shares the window with neighbours,
 they give or take the difference, and the window grows before any pane
-of it would go under 20 columns or 5 rows. In the window view, fit sizes the whole
+of it would go under 20 columns or 5 rows. Tiles that are panes of one
+window share one fit, because two fits on one row can only undo each
+other: the focused tile's pane fits (or the first of them, when the
+focus is in another window), and the others say *held* in their header,
+keep fit off and are drawn scaled to their box; focus moving to another
+tile of the window moves the fit there, releasing the previous pane
+first. In the window view, fit sizes the whole
 *window* to the area and lays it out as the browser shows it: the panes
 keep their proportions until you drag a divider, and then the host's
 split follows the divider; a pane zoomed here is zoomed on the host too,
@@ -129,8 +138,13 @@ every pane is shown one to one. Fit is on by default wherever you may
 write: in the pane view and the window view; on a board it is off,
 because several host windows changing at once is a decision for you.
 Leaving a fitted view gives the window back to tmux's automatic sizing,
-unzoomed, and the panes back to the layout they had. With fit off, the
-pane keeps the host's size and is scaled to the box instead.
+unzoomed, and the panes back to the layout they had. Moving between
+panes inside the pane view (`]` `[`, a tab, a swap) is not leaving: a
+pane shown in a tile stays at the size it was given, and when it comes
+back at that size nothing is sent, so switching back and forth does not
+resize the host; the tile shows the last frame it had of the pane until
+the host's next one. With fit off, the pane keeps the host's size and is
+scaled to the box instead.
 
 Several clients can fit the same window, and the last one to send a size
 wins; a client sends its size only when it changes, so after a phone has
