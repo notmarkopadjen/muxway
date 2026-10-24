@@ -34,8 +34,13 @@ test('87 the command row: a shell, its recent lines, Claude, and nothing for ano
   await expect(buttons).toHaveCount(fixed + 1);
   await expect(buttons.nth(fixed)).toHaveText('echo from the row');
   await buttons.nth(fixed).click();
+  // The line ran a second time (its output, not the echoed prompt, which
+  // shows before the Enter lands) before the page reloads.
   await expect
-    .poll(async () => (await capture()).split('$ echo from the row').length - 1, { timeout: 5000 })
+    .poll(
+      async () => (await capture()).split('\n').filter((l) => l.trim() === 'from the row').length,
+      { timeout: 5000 },
+    )
     .toBe(2);
   await page.reload();
   await expect(bar.getByTestId('cmd')).toHaveCount(fixed + 1);
