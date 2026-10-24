@@ -2,7 +2,7 @@ import { Link, useParams } from '@tanstack/react-router';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../api/client';
 import { useInput, usePane } from '../api/queries';
-import type { Key } from '../api/types';
+import type { Key, Mouse } from '../api/types';
 import { Badge } from '../components/Badge';
 import { KeyBar } from '../components/KeyBar';
 import { PaneTitle } from '../components/PaneTitle';
@@ -37,7 +37,7 @@ export function PanePage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [writable, refit]);
 
-  const send = async (body: { text: string } | { key: Key }) => {
+  const send = async (body: { text: string } | { key: Key } | { mouse: Mouse }) => {
     try {
       await input.mutateAsync(body);
     } catch (err) {
@@ -136,6 +136,12 @@ export function PanePage() {
         cols={fitOn ? undefined : p?.width}
         rows={fitOn ? undefined : p?.height}
         boxRef={box}
+        height={p?.height}
+        onCell={
+          writable && p?.mouse
+            ? (x, y) => void send({ mouse: { button: 'left', x, y } })
+            : undefined
+        }
       />
       <form className="mx-input" onSubmit={submit}>
         <span className="mx-prompt">{writable ? '>' : '○'}</span>

@@ -552,8 +552,9 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		return
 	}
 	var in struct {
-		Text *string `json:"text"`
-		Key  string  `json:"key"`
+		Text  *string     `json:"text"`
+		Key   string      `json:"key"`
+		Mouse *wire.Mouse `json:"mouse"`
 	}
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
 	dec.DisallowUnknownFields()
@@ -571,13 +572,18 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		return
 	}
 	switch {
-	case in.Text != nil && in.Key == "":
+	case in.Text != nil && in.Key == "" && in.Mouse == nil:
 		if !wire.ValidText(*in.Text) {
 			fail(w, http.StatusBadRequest, "bad_input")
 			return
 		}
-	case in.Text == nil && in.Key != "":
+	case in.Text == nil && in.Key != "" && in.Mouse == nil:
 		if _, known := tmux.Keys[in.Key]; !known {
+			fail(w, http.StatusBadRequest, "bad_input")
+			return
+		}
+	case in.Text == nil && in.Key == "" && in.Mouse != nil:
+		if _, known := wire.Buttons[in.Mouse.Button]; !known || in.Mouse.X < 1 || in.Mouse.Y < 1 {
 			fail(w, http.StatusBadRequest, "bad_input")
 			return
 		}
@@ -599,15 +605,22 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		fail(w, http.StatusForbidden, "read_only")
 		return
 	}
-	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpInput, Actor: t.ID, Pane: p.PaneID, Text: in.Text, Key: in.Key})
+	if in.Mouse != nil && !wire.ValidMouse(in.Mouse, p.Width, p.Height) {
+		fail(w, http.StatusBadRequest, "bad_input")
+		return
+	}
+	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpInput, Actor: t.ID, Pane: p.PaneID, Text: in.Text, Key: in.Key, Mouse: in.Mouse})
 	if err != nil {
 		fail(w, http.StatusServiceUnavailable, "host_offline")
 		return
 	}
 	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID}
-	if in.Text != nil {
+	switch {
+	case in.Text != nil:
 		attrs = append(attrs, "text_bytes", len(*in.Text))
-	} else {
+	case in.Mouse != nil:
+		attrs = append(attrs, "mouse", in.Mouse.Button)
+	default:
 		attrs = append(attrs, "key", in.Key)
 	}
 	if resp.Error != "" {

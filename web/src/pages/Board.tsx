@@ -1,8 +1,8 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { ApiError } from '../api/client';
+import { api, ApiError } from '../api/client';
 import { useAllPanes, useInput, usePane } from '../api/queries';
-import type { Key } from '../api/types';
+import type { Key, Mouse } from '../api/types';
 import { Badge } from '../components/Badge';
 import { Divider } from '../components/Divider';
 import { KeyBar } from '../components/KeyBar';
@@ -45,6 +45,18 @@ interface CellProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   onDrop: () => void;
+}
+
+// A click lands in the pane clicked, focused or not.
+async function click(address: string, mouse: Mouse) {
+  try {
+    await api<void>(`/v1/panes/${address}/input`, {
+      method: 'POST',
+      body: JSON.stringify({ mouse }),
+    });
+  } catch {
+    /* the pane view says why; here the click is simply lost */
+  }
 }
 
 function Cell(props: CellProps) {
@@ -164,6 +176,10 @@ function Cell(props: CellProps) {
         boxRef={box}
         focused={focused}
         onClick={props.onFocus}
+        height={p?.height}
+        onCell={
+          writable && p?.mouse ? (x, y) => void click(address, { button: 'left', x, y }) : undefined
+        }
         testId="cell-screen"
       />
     </div>
@@ -352,7 +368,7 @@ export function BoardPage() {
     setBoard,
   ]);
 
-  const send = async (body: { text: string } | { key: Key }) => {
+  const send = async (body: { text: string } | { key: Key } | { mouse: Mouse }) => {
     if (!focus) return;
     try {
       await input.mutateAsync(body);

@@ -29,6 +29,7 @@ export interface Pane {
   alias?: string;
   attention?: Attention;
   zoomed?: boolean;
+  mouse?: boolean;
 }
 
 export interface Host {
@@ -98,6 +99,14 @@ export interface Me {
 export interface AuthMethods {
   methods: string[];
   [provider: string]: { label: string } | string[];
+}
+
+export const BUTTONS = ['left', 'middle', 'right', 'wheelup', 'wheeldown'] as const;
+export type Button = (typeof BUTTONS)[number];
+export interface Mouse {
+  button: Button;
+  x: number;
+  y: number;
 }
 
 export const KEYS = [

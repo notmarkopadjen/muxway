@@ -1,10 +1,12 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { fontFor, inner } from './measure';
+import { fontFor, inner, measureCell } from './measure';
 import { classes, parse, type Span } from './sgr';
 
 // Renders a pane's content. Lines that were not there a moment ago burn
 // in; the view follows the bottom while the person has not scrolled up.
 // With cols and rows given, the font is sized so the pane fills the box.
+// With onCell, a click on the pane's screen (its last `height` lines)
+// reports the cell under the pointer, 1-based.
 function SpanView({ s }: { s: Span }) {
   const style: Record<string, string> = {};
   if (typeof s.fg === 'string') style.color = s.fg;
@@ -24,6 +26,8 @@ export const Screen = memo(function Screen({
   scale = 1,
   boxRef,
   onClick,
+  onCell,
+  height,
   focused,
   testId = 'screen',
 }: {
@@ -34,6 +38,8 @@ export const Screen = memo(function Screen({
   scale?: number;
   boxRef?: React.RefObject<HTMLDivElement | null>;
   onClick?: () => void;
+  onCell?: (x: number, y: number) => void;
+  height?: number;
   focused?: boolean;
   testId?: string;
 }) {
@@ -87,6 +93,19 @@ export const Screen = memo(function Screen({
     ro.observe(el);
     return () => ro.disconnect();
   }, [cols, rows, scale, box]);
+  const click = (ev: React.MouseEvent<HTMLDivElement>) => {
+    onClick?.();
+    if (!onCell || !height) return;
+    const ln = (ev.target as HTMLElement).closest('.ln');
+    if (!ln || !ln.parentElement) return;
+    const i = Array.prototype.indexOf.call(ln.parentElement.children, ln);
+    const y = i - (lines.length - height) + 1;
+    if (y < 1) return;
+    const rect = ln.getBoundingClientRect();
+    const c = measureCell();
+    const x = Math.floor((ev.clientX - rect.left) / (rect.height * (c.w / c.h))) + 1;
+    if (x >= 1) onCell(x, y);
+  };
   return (
     <div
       className={`mx-screen${focused ? ' mx-focused' : ''}`}
@@ -94,7 +113,7 @@ export const Screen = memo(function Screen({
       data-testid={testId}
       data-font={font ? font.toFixed(1) : undefined}
       tabIndex={0}
-      onClick={onClick}
+      onClick={click}
       onScroll={onScroll}
       style={font ? { fontSize: `${font}px` } : undefined}
     >

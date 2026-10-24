@@ -84,6 +84,7 @@ type Pane struct {
 	Alias        string     `json:"alias,omitempty"`
 	Attention    *Attention `json:"attention,omitempty"`
 	Zoomed       bool       `json:"zoomed,omitempty"` // shown alone in its window
+	Mouse        bool       `json:"mouse,omitempty"`  // the program asked for the mouse
 	PID          int        `json:"-"`
 }
 
@@ -100,7 +101,7 @@ var fields = []string{
 	"#{window_layout}", "#{window_active}", "#{pane_id}", "#{pane_index}", "#{pane_active}",
 	"#{pane_width}", "#{pane_height}", "#{pane_title}", "#{pane_current_command}",
 	"#{window_activity}", "#{" + optMode + "}", "#{" + optAlias + "}", "#{pane_pid}",
-	"#{window_zoomed_flag}",
+	"#{window_zoomed_flag}", "#{mouse_any_flag}#{mouse_button_flag}#{mouse_standard_flag}#{mouse_all_flag}",
 }
 
 // List returns every pane of the server, marked or not. Lines it cannot
@@ -130,7 +131,7 @@ func (s Server) List(ctx context.Context) (panes []Pane, skipped int, err error)
 			WindowLayout: f[5], WindowActive: f[6] == "1", PaneID: f[7], PaneIndex: atoi(f[8]),
 			PaneActive: f[9] == "1", Width: atoi(f[10]), Height: atoi(f[11]), Title: f[12], Command: f[13],
 			Activity: act, Mode: f[15], Alias: f[16], PID: atoi(f[17]),
-			Zoomed: f[18] == "1" && f[9] == "1",
+			Zoomed: f[18] == "1" && f[9] == "1", Mouse: strings.Contains(f[19], "1"),
 		})
 	}
 	return panes, skipped, nil
@@ -160,6 +161,42 @@ func (s Server) Capture(ctx context.Context, paneID string, lines int, ansi bool
 // SendText types text literally.
 func (s Server) SendText(ctx context.Context, paneID, text string) error {
 	_, err := s.run(ctx, "send-keys", "-t", paneID, "-l", "--", text)
+	return err
+}
+
+// ErrNoMouse: the program in the pane did not ask for the mouse, so the
+// bytes would be typed as text.
+var ErrNoMouse = errors.New("no mouse mode in the pane")
+
+// SendMouse clicks, or turns the wheel, at a cell, in the encoding the
+// program asked for: SGR, or the old one with its 223-cell reach.
+func (s Server) SendMouse(ctx context.Context, paneID string, button, x, y int) error {
+	out, err := s.run(ctx, "display-message", "-p", "-t", paneID,
+		"#{mouse_any_flag}#{mouse_button_flag}#{mouse_standard_flag}#{mouse_all_flag} #{mouse_sgr_flag}")
+	if err != nil {
+		return err
+	}
+	modes, sgr, _ := strings.Cut(strings.TrimSpace(string(out)), " ")
+	if !strings.Contains(modes, "1") {
+		return ErrNoMouse
+	}
+	wheel := button >= 64
+	var seq string
+	switch {
+	case sgr == "1":
+		seq = fmt.Sprintf("[<%d;%d;%dM", button, x, y)
+		if !wheel {
+			seq += fmt.Sprintf("[<%d;%d;%dm", button, x, y)
+		}
+	case x > 223 || y > 223:
+		return ErrNoMouse
+	default:
+		seq = fmt.Sprintf("[M%c%c%c", 32+button, 32+x, 32+y)
+		if !wheel {
+			seq += fmt.Sprintf("[M%c%c%c", 32+3, 32+x, 32+y)
+		}
+	}
+	_, err = s.run(ctx, "send-keys", "-t", paneID, "-l", "--", seq)
 	return err
 }
 

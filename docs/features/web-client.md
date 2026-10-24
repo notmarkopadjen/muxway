@@ -20,7 +20,11 @@ nothing but the hub to talk to.
    input line. The screen opens at its bottom and follows new output;
    scroll up to read back, and it stays put until you scroll down again.
    Text is typed literally and Enter is sent after it; the key bar sends
-   the named keys the protocol allows. Read-only panes say so.
+   the named keys the protocol allows. A click on the screen of a pane
+   whose program asked for the mouse, Claude Code among them, is a click
+   at that cell on the host, so an option shown can be chosen by
+   clicking it; in a pane that did not ask, a click only focuses. Read-only
+   panes say so.
 
 ![panes](images/web-panes.png)
 
@@ -202,6 +206,9 @@ and fails if the committed output differs from the sources.
   scripts, styles and fonts, no inline code and no other origin;
   `frame-ancestors 'none'`; `Referrer-Policy: no-referrer`;
   `X-Content-Type-Options: nosniff`.
+- A click is sent as a button and a cell, never as bytes; the hub checks
+  the cell against the pane's size and the agent refuses a pane whose
+  program did not ask for the mouse, so nothing is typed by accident.
 - Pane content, titles, session and window names and event text are
   rendered as text. The colour renderer turns escape sequences into class
   names and drops everything else. Lint forbids injecting markup.

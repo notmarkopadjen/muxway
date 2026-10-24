@@ -24,6 +24,7 @@ type Request struct {
 	ANSI  bool    `json:"ansi,omitempty"`
 	Text  *string `json:"text,omitempty"`
 	Key   string  `json:"key,omitempty"`
+	Mouse *Mouse  `json:"mouse,omitempty"`
 	Cols  int     `json:"cols,omitempty"`
 	Rows  int     `json:"rows,omitempty"`
 	Fit   string  `json:"fit,omitempty"`   // "auto" gives the window back to tmux
@@ -33,6 +34,25 @@ type Request struct {
 	Layout string `json:"layout,omitempty"`
 	// Zoom, with scope "window", shows the pane alone in its window.
 	Zoom bool `json:"zoom,omitempty"`
+}
+
+// Mouse is one click or wheel notch at a cell, 1-based.
+type Mouse struct {
+	Button string `json:"button"`
+	X      int    `json:"x"`
+	Y      int    `json:"y"`
+}
+
+// Buttons a client may send, with their xterm codes.
+var Buttons = map[string]int{"left": 0, "middle": 1, "right": 2, "wheelup": 64, "wheeldown": 65}
+
+// ValidMouse reports whether m is a known button at a cell of a w×h pane.
+func ValidMouse(m *Mouse, w, h int) bool {
+	if m == nil {
+		return false
+	}
+	_, ok := Buttons[m.Button]
+	return ok && m.X >= 1 && m.X <= w && m.Y >= 1 && m.Y <= h
 }
 
 // Response from agent to hub.

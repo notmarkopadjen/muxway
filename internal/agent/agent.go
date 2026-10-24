@@ -302,10 +302,18 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 				if err := a.tmux.SendText(ctx, p.PaneID, *req.Text); err != nil {
 					code = wire.ErrTmux
 				}
-			case req.Text == nil && req.Key != "":
+			case req.Text == nil && req.Key != "" && req.Mouse == nil:
 				if _, ok := tmux.Keys[req.Key]; !ok {
 					code = wire.ErrBadInput
 				} else if err := a.tmux.SendKey(ctx, p.PaneID, req.Key); err != nil {
+					code = wire.ErrTmux
+				}
+			case req.Text == nil && req.Key == "" && req.Mouse != nil:
+				if !wire.ValidMouse(req.Mouse, p.Width, p.Height) {
+					code = wire.ErrBadInput
+				} else if err := a.tmux.SendMouse(ctx, p.PaneID, wire.Buttons[req.Mouse.Button], req.Mouse.X, req.Mouse.Y); errors.Is(err, tmux.ErrNoMouse) {
+					code = wire.ErrBadInput
+				} else if err != nil {
 					code = wire.ErrTmux
 				}
 			default:
@@ -482,6 +490,9 @@ func (a *Agent) audit(req wire.Request, code string) {
 	}
 	if req.Text != nil {
 		attrs = append(attrs, "text_bytes", len(*req.Text))
+	}
+	if req.Mouse != nil {
+		attrs = append(attrs, "mouse", req.Mouse.Button)
 	}
 	if req.Op == wire.OpResize {
 		if req.Fit != "" {

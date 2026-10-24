@@ -1,8 +1,8 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { ApiError } from '../api/client';
+import { api, ApiError } from '../api/client';
 import { useInput, useWindow } from '../api/queries';
-import type { Key, PaneContent } from '../api/types';
+import type { Key, Mouse, PaneContent } from '../api/types';
 import { Badge } from '../components/Badge';
 import { Divider } from '../components/Divider';
 import { KeyBar } from '../components/KeyBar';
@@ -62,10 +62,11 @@ interface TreeProps {
   setArr: (f: (a: Arrangement) => Arrangement) => void;
   onFocus: (id: string) => void;
   onZoom: (id: string) => void;
+  onCell: (address: string, x: number, y: number) => void;
 }
 
 function Tree(props: TreeProps) {
-  const { node, path, arr, panes, focused, burn, fit, setArr, onFocus, onZoom } = props;
+  const { node, path, arr, panes, focused, burn, fit, setArr, onFocus, onZoom, onCell } = props;
   const box = useRef<HTMLDivElement>(null);
   if (node.kind === 'pane') {
     if (arr.hidden.includes(node.id)) return null;
@@ -108,6 +109,8 @@ function Tree(props: TreeProps) {
           scale={arr.scale[node.id] ?? 1}
           focused={focused === node.id}
           onClick={() => onFocus(node.id)}
+          height={p.height}
+          onCell={p.mode === 'write' && p.mouse ? (x, y) => onCell(p.address, x, y) : undefined}
           testId="cell-screen"
         />
       </div>
@@ -294,7 +297,7 @@ export function WindowPage() {
     refit,
   ]);
 
-  const send = async (body: { text: string } | { key: Key }) => {
+  const send = async (body: { text: string } | { key: Key } | { mouse: Mouse }) => {
     if (!focusedPane) return;
     try {
       await input.mutateAsync(body);
@@ -311,6 +314,20 @@ export function WindowPage() {
     setText('');
     if (t) await send({ text: t });
     await send({ key: 'Enter' });
+  };
+  // A click lands in the pane clicked, focused or not.
+  const click = async (address: string, mouse: Mouse) => {
+    try {
+      await api<void>(`/v1/panes/${address}/input`, {
+        method: 'POST',
+        body: JSON.stringify({ mouse }),
+      });
+    } catch (err) {
+      toast.push({
+        kind: 'refused',
+        title: err instanceof ApiError ? err.code : 'hub unreachable',
+      });
+    }
   };
 
   if (data.isError) {
@@ -402,6 +419,7 @@ export function WindowPage() {
             setArr={setArr}
             onFocus={setFocused}
             onZoom={toggleZoom}
+            onCell={(address, x, y) => void click(address, { button: 'left', x, y })}
           />
         )}
       </div>

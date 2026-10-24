@@ -6,6 +6,7 @@ import type {
   Host,
   Key,
   Me,
+  Mouse,
   Pane,
   PaneContent,
   Resize,
@@ -95,7 +96,7 @@ export function usePaneCached(address: string) {
 export function useInput(address: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { text: string } | { key: Key }) =>
+    mutationFn: (body: { text: string } | { key: Key } | { mouse: Mouse }) =>
       api<void>(`/v1/panes/${address}/input`, { method: 'POST', body: JSON.stringify(body) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.pane(address) });
