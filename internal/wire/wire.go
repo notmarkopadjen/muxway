@@ -19,6 +19,7 @@ const (
 	OpNewSession = "new-session" // a session named Name, marked writable
 	OpKillPane   = "kill-pane"   // the hub's undo of a split it may not grant
 	OpClosePane  = "close-pane"  // a client closes a writable pane, where the owner allows it
+	OpFile       = "file"        // a file for the pane's program, into the agent's inbox
 )
 
 // Request from hub to agent. Actor is the id of the client token the hub
@@ -46,6 +47,9 @@ type Request struct {
 	Direction string `json:"direction,omitempty"`
 	// Name of the session to start.
 	Name string `json:"name,omitempty"`
+	// Type and Data of a file for the inbox; the agent names it.
+	Type string `json:"type,omitempty"`
+	Data []byte `json:"data,omitempty"`
 }
 
 // Mouse is one click or wheel notch at a cell, 1-based.
@@ -78,6 +82,9 @@ type Response struct {
 	// Sessions, with a list, says the agent starts sessions for clients.
 	Sessions bool `json:"sessions,omitempty"`
 	Close    bool `json:"close,omitempty"`
+	// Inbox, with a list, says the agent takes files; Path is where one went.
+	Inbox bool   `json:"inbox,omitempty"`
+	Path  string `json:"path,omitempty"`
 }
 
 // Errors an agent returns. They are codes, never details.
@@ -91,6 +98,7 @@ const (
 	ErrNotAllowed = "not_allowed" // the agent does not start sessions
 	ErrExists     = "exists"
 	ErrTooMany    = "too_many"
+	ErrInboxFull  = "inbox_full"
 )
 
 // Limits shared by hub and agent.
@@ -104,6 +112,11 @@ const (
 	// clients, over its lifetime's live ones.
 	MaxPanesPerWindow = 8
 	MaxClientSessions = 32
+	// A file for the inbox, and the largest message that may carry one;
+	// every other message stays under MaxMessage.
+	MaxFile        = 8 << 20
+	MaxFileMessage = 12 << 20
+	MaxMessage     = 1 << 20
 )
 
 // A session a client starts has a short name of its own.

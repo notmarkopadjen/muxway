@@ -483,7 +483,7 @@ func statusFor(code string) (int, string) {
 	return http.StatusBadGateway, "host_error"
 }
 
-// handlePost routes the actions on a pane: /input, /resize and /close.
+// handlePost routes the actions on a pane: /input, /resize, /close and /files.
 func (h *Hub) handlePost(w http.ResponseWriter, r *http.Request, t Principal) {
 	if strings.HasSuffix(r.PathValue("path"), "/resize") {
 		h.handleResize(w, r, t)
@@ -491,6 +491,10 @@ func (h *Hub) handlePost(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	if strings.HasSuffix(r.PathValue("path"), "/close") {
 		h.handleClose(w, r, t)
+		return
+	}
+	if strings.HasSuffix(r.PathValue("path"), "/files") {
+		h.handleFile(w, r, t)
 		return
 	}
 	h.handleInput(w, r, t)
@@ -523,6 +527,10 @@ func charsetParam(r *http.Request) (string, bool) {
 }
 
 func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
+	if path, ok := strings.CutSuffix(r.PathValue("path"), "/files"); ok {
+		h.handleFilesProbe(w, r, t, path)
+		return
+	}
 	lines, ok1 := intParam(r, "lines", 100, 1, wire.MaxLines)
 	width, ok2 := intParam(r, "width", 80, 8, 400)
 	ansi := r.URL.Query().Get("ansi") == "1"

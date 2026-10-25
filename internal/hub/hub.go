@@ -164,6 +164,7 @@ type agentConn struct {
 	listAt  time.Time
 	starts  bool // the agent starts sessions for clients
 	closes  bool // the agent closes panes for clients
+	inbox   bool // the agent takes files for its panes
 	evts    bucket
 	warned  time.Time
 }
@@ -222,9 +223,19 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 		return nil, errors.New(r.Error)
 	}
 	a.mu.Lock()
-	a.list, a.listAt, a.starts, a.closes = r.Panes, time.Now(), r.Sessions, r.Close
+	a.list, a.listAt, a.starts, a.closes, a.inbox = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox
 	a.mu.Unlock()
 	return r.Panes, nil
+}
+
+// takesFiles says, from the agent's listing, whether it has an inbox.
+func (a *agentConn) takesFiles(ctx context.Context) bool {
+	if _, err := a.panes(ctx); err != nil {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.inbox
 }
 
 // closesPanes says, from the agent's listing, whether clients may close panes there.

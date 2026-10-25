@@ -43,6 +43,9 @@ type Config struct {
 	AllowSessions bool `json:"-"`
 	// AllowClose lets clients close writable panes, whatever runs in them.
 	AllowClose bool `json:"-"`
+	// Inbox is where files clients send are written; empty, none are taken.
+	Inbox         string `json:"-"`
+	InboxMaxFiles int    `json:"-"`
 }
 
 func configPath(dir string) string { return filepath.Join(dir, "agent.json") }
@@ -188,6 +191,12 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 // Run keeps a connection to the hub until ctx ends, and listens for
 // notifications from processes in the panes meanwhile.
 func (a *Agent) Run(ctx context.Context) error {
+	if a.cfg.Inbox != "" {
+		if err := a.openInbox(); err != nil {
+			return err
+		}
+		go a.sweepInbox(ctx)
+	}
 	if a.cfg.Dir != "" {
 		ln, err := a.listenNotify()
 		if err != nil {
@@ -237,7 +246,7 @@ func (a *Agent) connect(ctx context.Context) error {
 		return err
 	}
 	defer c.CloseNow()
-	c.SetReadLimit(1 << 20)
+	c.SetReadLimit(wire.MaxFileMessage)
 	sess, err := secure.AgentHandshake(dctx, wire.WS{C: c}, a.key, a.cfg.Host, a.hubPub)
 	if err != nil {
 		return err
@@ -260,7 +269,12 @@ func (a *Agent) connect(ctx context.Context) error {
 		if err := json.Unmarshal(raw, &req); err != nil {
 			return errors.New("malformed request from hub")
 		}
-		out, _ := json.Marshal(wire.Notice{Response: a.Handle(ctx, req)})
+		resp := wire.Response{ID: req.ID, Error: wire.ErrBadInput}
+		// Only a file may be larger than any other message.
+		if len(raw) <= wire.MaxMessage || req.Op == wire.OpFile {
+			resp = a.Handle(ctx, req)
+		}
+		out, _ := json.Marshal(wire.Notice{Response: resp})
 		if err := sess.Write(ctx, out); err != nil {
 			return err
 		}
@@ -284,6 +298,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		}
 		resp.Sessions = a.cfg.AllowSessions
 		resp.Close = a.cfg.AllowClose
+		resp.Inbox = a.cfg.Inbox != ""
 	case wire.OpRead:
 		p, code := a.find(ctx, req.Pane)
 		if code != "" {
@@ -351,6 +366,9 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 	case wire.OpClosePane:
 		resp.Error = a.closePane(ctx, req.Pane)
 		a.audit(req, resp.Error)
+	case wire.OpFile:
+		resp.Path, resp.Error = a.file(ctx, req)
+		a.audit(req, resp.Error, "type", req.Type, "bytes", len(req.Data), "path", resp.Path)
 	default:
 		resp.Error = wire.ErrUnknownOp
 		a.audit(req, wire.ErrUnknownOp)
@@ -549,6 +567,31 @@ func (a *Agent) listed(ctx context.Context, id string) (*tmux.Pane, string) {
 		}
 	}
 	return nil, wire.ErrTmux
+}
+
+// file writes a file for the program in a writable exposed pane, when
+// the owner runs the agent with an inbox.
+func (a *Agent) file(ctx context.Context, req wire.Request) (string, string) {
+	if a.cfg.Inbox == "" {
+		return "", wire.ErrNotAllowed
+	}
+	p, code := a.find(ctx, req.Pane)
+	if code != "" {
+		return "", code
+	}
+	if p.Mode != tmux.ModeWrite {
+		return "", wire.ErrReadOnly
+	}
+	path, err := a.saveFile(req.Type, req.Data)
+	switch {
+	case errors.Is(err, errInboxFull):
+		return "", wire.ErrInboxFull
+	case errors.Is(err, errBadFile):
+		return "", wire.ErrBadInput
+	case err != nil:
+		return "", wire.ErrTmux
+	}
+	return path, ""
 }
 
 // closePane closes a writable exposed pane for a client, when the owner

@@ -53,6 +53,12 @@ refuses a pane whose process changed under the same pane id.
   --allow-sessions`, a client with a write grant on the name may also
   **start a session**, which the agent marks writable in the open; the
   default is off. See [new panes and sessions](new-panes.md).
+- **Files.** With `muxway agent run --inbox <dir>` (or `--inbox default`:
+  `inbox/` in the agent's directory), a client with a write grant may
+  hand a writable pane's program a file: an image, a PDF or a text, up
+  to 8 MiB, written into that one directory under a name the agent
+  chooses and kept a day. The default is off. See
+  [attachments](attachments.md).
 - `Escape` is among the keys a client may send, because AI command-line
   tools use it to interrupt. In editors it opens command mode, so a pane
   running an editor is as powerful as a shell.

@@ -393,6 +393,8 @@ func runAgent(cmd string, args []string) error {
 		socket, name := tmuxFlags(fs)
 		sessions := fs.Bool("allow-sessions", false, "let clients with a write grant start new sessions, marked writable")
 		closes := fs.Bool("allow-close", false, "let clients with a write grant close writable panes, ending what runs in them")
+		inbox := fs.String("inbox", "", `directory for files clients send a writable pane ("default": inbox/ in --dir); off when empty`)
+		inboxMax := fs.Int("inbox-max-files", 0, "files the inbox holds at most (default 500)")
 		if err := fs.Parse(args); err != nil {
 			return err
 		}
@@ -402,6 +404,16 @@ func runAgent(cmd string, args []string) error {
 		}
 		cfg.AllowSessions = *sessions
 		cfg.AllowClose = *closes
+		if *inbox != "" {
+			path := *inbox
+			if path == "default" {
+				path = filepath.Join(*dir, "inbox")
+			}
+			if cfg.Inbox, err = filepath.Abs(path); err != nil {
+				return err
+			}
+			cfg.InboxMaxFiles = *inboxMax
+		}
 		a, err := agent.New(cfg, key, tmux.Server{Socket: *socket, Name: *name}, logger())
 		if err != nil {
 			return err
