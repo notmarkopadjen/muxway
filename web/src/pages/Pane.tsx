@@ -35,8 +35,11 @@ import {
   swap,
   tilesLayout,
   tree,
+  across,
   dropOn,
   fromHost,
+  rects,
+  rootKey,
   nearWeights,
   prune,
   sameTree,
@@ -122,7 +125,15 @@ interface TileProps {
   onDrop: (zone: Zone) => void;
   onZoom: (p: Pane) => void;
   refused: (why: string) => void;
+  // The tile's edges inside the area; a click on the strip along one lays
+  // the tile across the whole view, its width or its height.
+  edges?: Edges;
+  onSpread?: (axis: 'w' | 'h') => void;
 }
+
+type Edge = 'left' | 'right' | 'top' | 'bottom';
+type Edges = Record<Edge, boolean>;
+const EDGE_GLYPH: Record<Edge, string> = { left: '«', right: '»', top: '˄', bottom: '˅' };
 
 function Tile(props: TileProps) {
   const { address, focused, several, refitTick, dragging, alone, zoomable, windowFit } = props;
@@ -328,28 +339,55 @@ function Tile(props: TileProps) {
           )
         )}
       </div>
-      <Screen
-        content={shown?.content ?? ''}
-        burn={!pane.isPlaceholderData}
-        cols={fitting || windowFit ? undefined : sp?.width}
-        rows={fitting || windowFit ? undefined : sp?.height}
-        boxRef={box}
-        focused={several && focused}
-        onClick={props.onFocus}
-        height={sp?.height}
-        onCell={
-          writable && p?.mouse
-            ? (x, y) => void click(address, { button: 'left', x, y }, props.refused)
-            : undefined
-        }
-        onWheel={
-          writable && p?.mouse
-            ? (up, x, y) =>
-                click(address, { button: up ? 'wheelup' : 'wheeldown', x, y }, props.refused)
-            : undefined
-        }
-        testId={focused ? 'screen' : 'cell-screen'}
-      />
+      <div className="mx-tile-body">
+        <Screen
+          content={shown?.content ?? ''}
+          burn={!pane.isPlaceholderData}
+          cols={fitting || windowFit ? undefined : sp?.width}
+          rows={fitting || windowFit ? undefined : sp?.height}
+          boxRef={box}
+          focused={several && focused}
+          onClick={props.onFocus}
+          height={sp?.height}
+          onCell={
+            writable && p?.mouse
+              ? (x, y) => void click(address, { button: 'left', x, y }, props.refused)
+              : undefined
+          }
+          onWheel={
+            writable && p?.mouse
+              ? (up, x, y) =>
+                  click(address, { button: up ? 'wheelup' : 'wheeldown', x, y }, props.refused)
+              : undefined
+          }
+          testId={focused ? 'screen' : 'cell-screen'}
+        />
+        {props.onSpread &&
+          (Object.keys(EDGE_GLYPH) as Edge[])
+            .filter((e) => props.edges?.[e])
+            .map((e) => {
+              const wide = e === 'left' || e === 'right';
+              return (
+                <div
+                  key={e}
+                  className={`mx-edge mx-edge-${e}`}
+                  data-testid={`edge-${e}`}
+                  data-label={wide ? 'across' : 'full height'}
+                  title={
+                    wide
+                      ? 'lay this tile across the whole width (e)'
+                      : 'lay this tile down the whole height (E)'
+                  }
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    props.onSpread!(wide ? 'w' : 'h');
+                  }}
+                >
+                  <span aria-hidden>{EDGE_GLYPH[e].repeat(wide ? 1 : 3)}</span>
+                </div>
+              );
+            })}
+      </div>
     </div>
   );
 }
@@ -359,12 +397,20 @@ interface TreeProps {
   weights: Weights;
   setWeights: (f: (w: Weights) => Weights) => void;
   tile: (index: number) => React.ReactNode;
+  // A header is being dragged: the dividers take it, laying the pane across
+  // their split, first or last.
+  dragging: boolean;
+  onAcross?: (key: string, wrap: 'h' | 'v', first: boolean) => void;
 }
 
 function Tree(props: TreeProps) {
-  const { node, weights, setWeights, tile } = props;
+  const { node, weights, setWeights, tile, dragging, onAcross } = props;
   const box = useRef<HTMLDivElement>(null);
+  const [over, setOver] = useState<boolean | null>(null);
   if (typeof node === 'number') return <>{tile(node)}</>;
+  // Across a split side by side the pane is stacked over or under it, and
+  // the other way round.
+  const wrap = node.kind === 'h' ? 'v' : 'h';
   const n = node.children.length;
   const w = weights[node.key] ?? equal(n);
   const onDrag = (k: number) => (dx: number, dy: number) => {
@@ -375,7 +421,20 @@ function Tree(props: TreeProps) {
     setWeights((ws) => ({ ...ws, [node.key]: drag(ws[node.key] ?? equal(n), k, delta) }));
   };
   return (
-    <div className={`mx-split mx-split-${node.kind}`} ref={box} data-testid="split">
+    <div
+      className={`mx-split mx-split-${node.kind}`}
+      ref={box}
+      data-testid="split"
+      data-key={node.key}
+    >
+      {dragging && over !== null && (
+        <div
+          className={`mx-across mx-across-${wrap}-${over ? 'first' : 'last'}`}
+          data-testid="across"
+        >
+          <span>{wrap === 'v' ? '══ across ══' : '║ full height ║'}</span>
+        </div>
+      )}
       {node.children.map((c, i) => (
         <div
           key={i}
@@ -384,7 +443,15 @@ function Tree(props: TreeProps) {
           data-fraction={w[i].toFixed(3)}
         >
           <Tree {...props} node={c} />
-          {i < n - 1 && <Divider kind={node.kind} onDrag={onDrag(i)} />}
+          {i < n - 1 && (
+            <Divider
+              kind={node.kind}
+              onDrag={onDrag(i)}
+              dropping={dragging}
+              onOver={setOver}
+              onDropHere={onAcross && ((first) => onAcross(node.key, wrap, first))}
+            />
+          )}
         </div>
       ))}
     </div>
@@ -661,6 +728,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
       } else if (asking && (ev.key === 'y' || ev.key === 'n')) void answer(asking, ev.key === 'y');
       else if (ev.key === 'x' && hostCloses(focused) && writable) setAsking(focused);
       else if (ev.key === 'x' && several) closeTile(focused);
+      else if ((ev.key === 'e' || ev.key === 'E') && several)
+        spread(index, ev.key === 'e' ? 'w' : 'h');
       else if (ev.key === 'f' && writable) toggleFit(focused);
       else if (ev.key === 'F') {
         const on = !addresses.some((a) => fit[a] ?? true);
@@ -730,6 +799,37 @@ function Tiles({ addresses }: { addresses: string[] }) {
     [several, addresses, layout, weights, all.data, go, navigate],
   );
   const focusedFit = fit[focused] ?? writable;
+  // Laying a tile across: onto a divider, its split; from an edge strip or
+  // e / E, the whole view, on the side the tile's middle is.
+  const rearrangeable = several && (!oneWindow || movable);
+  const places = rects(shape, weights);
+  const lay = (i: number, key: string, wrap: 'h' | 'v', first: boolean) => {
+    if (!rearrangeable) {
+      refused('moving these panes needs every pane of the window writable');
+      return;
+    }
+    touch();
+    setCustom(across(shape, i, key, wrap, first));
+    setLayout('custom');
+    setWeights({});
+  };
+  const spread = (i: number, axis: 'w' | 'h') => {
+    const r = places.get(i);
+    const key = rootKey(shape);
+    if (!r || !key || (axis === 'w' ? r.w : r.h) > 0.999) return;
+    if (axis === 'w') lay(i, key, 'v', r.y + r.h / 2 < 0.5);
+    else lay(i, key, 'h', r.x + r.w / 2 < 0.5);
+  };
+  const edgesOf = (i: number): Edges | undefined => {
+    const r = places.get(i);
+    if (!r) return undefined;
+    return {
+      left: r.x > 0.001,
+      right: r.x + r.w < 0.999,
+      top: r.y > 0.001,
+      bottom: r.y + r.h < 0.999,
+    };
+  };
   const tile = (i: number) => {
     const a = addresses[i];
     return (
@@ -774,6 +874,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
         }}
         onZoom={zoom}
         refused={refused}
+        edges={edgesOf(i)}
+        onSpread={rearrangeable ? (axis) => spread(i, axis) : undefined}
       />
     );
   };
@@ -884,6 +986,15 @@ function Tiles({ addresses }: { addresses: string[] }) {
             setWeights(f);
           }}
           tile={tile}
+          dragging={!!dragging}
+          onAcross={
+            dragging
+              ? (key, wrap, first) => {
+                  lay(addresses.indexOf(dragging), key, wrap, first);
+                  setDragging(null);
+                }
+              : undefined
+          }
         />
       </div>
       <InputPanel

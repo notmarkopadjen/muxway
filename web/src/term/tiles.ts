@@ -281,3 +281,68 @@ export function nearWeights(node: TileNode, a: Weights, b: Weights, by: number):
     node.children.every((c) => nearWeights(c, a, b, by))
   );
 }
+
+// Lays tile `at` across the place of the split keyed `key`: its old place
+// closes up, and the split's place is wrapped in a split of kind `wrap`
+// with the tile first or last. Wrapped stacked ('v'), the tile takes the
+// place's whole width; side by side ('h'), its whole height.
+export function across(
+  node: TileNode,
+  at: number,
+  key: string,
+  wrap: 'h' | 'v',
+  first: boolean,
+): TileNode {
+  const gone = -1;
+  const mark = (n: TileNode): TileNode =>
+    typeof n === 'number' ? (n === at ? gone : n) : { ...n, children: n.children.map(mark) };
+  let found = false;
+  const put = (n: TileNode): TileNode => {
+    if (typeof n === 'number') return n;
+    if (n.key === key && !found) {
+      found = true;
+      const rest = without(n, gone) ?? n;
+      return { kind: wrap, key: '', children: first ? [at, rest] : [rest, at] };
+    }
+    return { ...n, children: n.children.map(put) };
+  };
+  const made = put(mark(node));
+  if (!found) return node;
+  return relabel(flatten(without(made, gone) ?? at));
+}
+
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+// Where each tile is in the area, in fractions of it.
+export function rects(node: TileNode, weights: Weights): Map<number, Rect> {
+  const out = new Map<number, Rect>();
+  const walk = (n: TileNode, r: Rect) => {
+    if (typeof n === 'number') {
+      out.set(n, r);
+      return;
+    }
+    const f = weights[n.key] ?? equal(n.children.length);
+    let at = 0;
+    n.children.forEach((c, i) => {
+      walk(
+        c,
+        n.kind === 'h'
+          ? { x: r.x + at * r.w, y: r.y, w: f[i] * r.w, h: r.h }
+          : { x: r.x, y: r.y + at * r.h, w: r.w, h: f[i] * r.h },
+      );
+      at += f[i];
+    });
+  };
+  walk(node, { x: 0, y: 0, w: 1, h: 1 });
+  return out;
+}
+
+// The root split's key, for laying a tile across the whole view.
+export function rootKey(node: TileNode): string | null {
+  return typeof node === 'number' ? null : node.key;
+}

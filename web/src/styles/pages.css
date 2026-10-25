@@ -470,6 +470,7 @@
   display: flex;
 }
 .mx-split {
+  position: relative;
   display: flex;
   flex: 1;
   min-width: 0;
@@ -970,6 +971,131 @@ button.mx-window:focus-visible {
 }
 .mx-tile.mx-drop-right::after {
   inset: 0 0 0 50%;
+}
+/* While a header is dragged a divider widens to take it; the half of its
+   split the pane will span is outlined. */
+.mx-divider-drop {
+  z-index: 6;
+  background: color-mix(in srgb, var(--mx-ink) 10%, transparent);
+}
+.mx-divider-h.mx-divider-drop {
+  right: -8px;
+  width: 16px;
+}
+.mx-divider-v.mx-divider-drop {
+  bottom: -8px;
+  height: 16px;
+}
+.mx-divider-drop:hover {
+  background: var(--mx-glow-soft);
+}
+.mx-across {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--mx-ink);
+  background: color-mix(in srgb, var(--mx-ink) 14%, transparent);
+  box-shadow: var(--mx-glow-box-strong);
+  animation: mx-drop-in var(--mx-motion-fast) var(--mx-ease-out);
+}
+.mx-across span {
+  background: var(--mx-bg);
+  padding: 0 6px;
+  color: var(--mx-ink);
+}
+.mx-across-v-first {
+  inset: 0 0 50% 0;
+}
+.mx-across-v-last {
+  inset: 50% 0 0 0;
+}
+.mx-across-h-first {
+  inset: 0 50% 0 0;
+}
+.mx-across-h-last {
+  inset: 0 0 0 50%;
+}
+/* The screen and, along each edge inside the area, a strip a click on
+   which lays the tile across the view. It sits just inside the divider's
+   grip, and shows itself only under the pointer. */
+.mx-tile-body {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+}
+.mx-edge {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  color: var(--mx-ink);
+  background: color-mix(in srgb, var(--mx-ink) 12%, transparent);
+  transition: opacity var(--mx-motion-fast) var(--mx-ease-out);
+  overflow: visible;
+}
+.mx-edge:hover {
+  opacity: 1;
+  box-shadow: var(--mx-glow-box);
+}
+.mx-edge span {
+  white-space: pre;
+  line-height: 1;
+  text-shadow: 0 0 3px var(--mx-glow-soft);
+}
+.mx-edge-left,
+.mx-edge-right {
+  top: 0;
+  bottom: 0;
+  width: 12px;
+}
+.mx-edge-left {
+  left: 4px;
+  cursor: w-resize;
+}
+.mx-edge-right {
+  right: 4px;
+  cursor: e-resize;
+}
+.mx-edge-top,
+.mx-edge-bottom {
+  left: 18px;
+  right: 18px;
+  height: 12px;
+}
+.mx-edge-top {
+  top: 4px;
+  cursor: n-resize;
+}
+.mx-edge-bottom {
+  bottom: 4px;
+  cursor: s-resize;
+}
+.mx-edge::after {
+  content: attr(data-label);
+  position: absolute;
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 0 4px;
+  background: var(--mx-bg);
+  border: 1px solid var(--mx-ink);
+  color: var(--mx-ink);
+  pointer-events: none;
+}
+.mx-edge-right::after {
+  right: 16px;
+}
+.mx-edge-left::after {
+  left: 16px;
+}
+.mx-edge-top::after {
+  top: 16px;
+}
+.mx-edge-bottom::after {
+  bottom: 16px;
 }
 @keyframes mx-drop-in {
   from {

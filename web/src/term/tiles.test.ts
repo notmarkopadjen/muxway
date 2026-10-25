@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  across,
   close,
   fromHost,
+  rects,
   nearWeights,
   sameTree,
   dropOn,
   prune,
   zoneAt,
+  type TileNode,
   drag,
   next,
   options,
@@ -157,5 +160,41 @@ describe('fromHost', () => {
     const swapped = fromHost(layout, ['%25', '%14', '%26'])!;
     expect(sameTree(h.node, swapped.node)).toBe(false);
     expect(nearWeights(h.node, h.weights, { r: [0.6, 0.4] }, 0.03)).toBe(false);
+  });
+});
+
+describe('across', () => {
+  // .1 over .2 on the left, .0 down the right.
+  const t: TileNode = {
+    kind: 'h',
+    key: 'r',
+    children: [{ kind: 'v', key: 'r.0', children: [1, 2] }, 0],
+  };
+  it('lays a tile across the whole view, at the bottom or the top', () => {
+    expect(across(t, 2, 'r', 'v', false)).toEqual({
+      kind: 'v',
+      key: 'r',
+      children: [{ kind: 'h', key: 'r.0', children: [1, 0] }, 2],
+    });
+    expect(across(t, 0, 'r', 'v', true)).toEqual({ kind: 'v', key: 'r', children: [0, 1, 2] });
+  });
+  it('lays a tile across an inner split only', () => {
+    expect(across(t, 1, 'r.0', 'h', false)).toEqual({ kind: 'h', key: 'r', children: [2, 1, 0] });
+  });
+  it('leaves the tree as it is for a key not in it', () => {
+    expect(across(t, 0, 'nope', 'v', true)).toBe(t);
+  });
+});
+
+describe('rects', () => {
+  it('places each tile in fractions of the area', () => {
+    const t: TileNode = {
+      kind: 'h',
+      key: 'r',
+      children: [{ kind: 'v', key: 'r.0', children: [1, 2] }, 0],
+    };
+    const r = rects(t, { r: [0.6, 0.4] });
+    expect(r.get(0)).toEqual({ x: 0.6, y: 0, w: 0.4, h: 1 });
+    expect(r.get(2)).toEqual({ x: 0, y: 0.5, w: 0.6, h: 0.5 });
   });
 });

@@ -212,7 +212,19 @@ view, each live and typable. The page is the Android client's pane view:
   left or right part splits that tile's place that way, the dragged pane
   on that side, and the half it will take lights up while you hover. The
   dragged pane's old place closes up, every share is equal again, and
-  `▦` goes back to the presets; `×` in a header, or `x`, closes
+  `▦` goes back to the presets. Dropped on a **divider** instead, the
+  pane goes across that divider's split: a divider between columns lays
+  it across the split's whole width, as a row on top or at the bottom by
+  the divider's half you drop on; one between rows, down its whole
+  height, left or right. While a header is dragged the dividers widen
+  and the half the pane will span lights up with *across* or *full
+  height*. Along each **inner edge** of a tile, just inside the divider's
+  grip, is a strip: under the pointer it shows `»` (`«` `˄` `˅`), the
+  pointer becomes a one-way arrow and a label says what a click does,
+  which is laying the tile across the whole view, its width from a side
+  edge, its height from a top or bottom one, on the side its middle is;
+  `e` and `E` do the same for the focused tile. A tile already across has
+  no strips on that axis; `×` in a header, or `x`, closes
   the pane on its host after asking `y` / `n` on the header, where the
   agent allows it and the pane is writable (see
   [new panes and sessions](new-panes.md#closing-a-pane)), and otherwise
@@ -473,6 +485,7 @@ else sees no entry, and `/admin` says *not yours to see*. See
 | `r` | fit again: this client's size, after another client sized the window |
 | `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view: pane), coming round at either end |
 | `1`–`4`, `l`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
+| `e` / `E` | tiles: lay the focused tile across the whole view's width / height, on the side its middle is |
 | `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, this pane alone (or `Enter`, double-click), host layout, equal shares, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
 | `t` | next theme: green, amber, paper |
