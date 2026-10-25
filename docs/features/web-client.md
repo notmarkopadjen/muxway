@@ -68,6 +68,8 @@ nothing but the hub to talk to.
    nothing of it, even when its program has the mouse. The punctuation
    after an address stays text, a bracket the address opened stays in,
    and an address wrapped onto a second row opens up to the row's end.
+   In a pane whose program has the mouse, a numbered choice (Claude
+   Code's `❯ 1. Yes`, `2. No`) shows the hand, since a click picks it.
    When the hub has a transcriber (see [transcription](transcription.md))
    and the pane is writable, a `◉` button sits between the field and
    *send*: a click or `v` records a clip, a level meter and the seconds

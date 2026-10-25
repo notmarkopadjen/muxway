@@ -63,3 +63,33 @@ test('82 a click on a pane whose program asked for the mouse is a click at that 
     .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 5000 })
     .toBe('100x30');
 });
+
+test('82 a numbered choice in a pane that takes the mouse shows the hand', async ({
+  page,
+  request,
+}) => {
+  const LOGS = `${SHELL0.split('/')[0]}/work/1.0`;
+  await control(request, '/send', {
+    target: 'work:1.0',
+    text: `clear; printf '\\033[?1000h\\033[?1006h\\xe2\\x9d\\xaf 1. Yes\\n  2. No, keep going\\nplain line\\n'; cat -v`,
+  });
+  await expect.poll(() => control(request, '/command', { target: 'work:1.0' })).toBe('cat');
+  await signIn(page);
+  await openPane(page, LOGS);
+  const lines = page.locator('[data-testid="screen"] .ln');
+  const cursor = (text: string) =>
+    lines
+      .filter({ hasText: text })
+      .first()
+      .evaluate((el) => getComputedStyle(el).cursor);
+  await expect.poll(() => cursor('1. Yes'), { timeout: 8000 }).toBe('pointer');
+  expect(await cursor('2. No, keep going')).toBe('pointer');
+  expect(await cursor('plain line')).not.toBe('pointer');
+  // Back to a plain shell for the specs after this one.
+  await control(request, '/key', { target: 'work:1.0', key: 'C-c' });
+  await control(request, '/send', {
+    target: 'work:1.0',
+    text: `printf '\\033[?1000l\\033[?1006l'; clear`,
+  });
+  await expect.poll(() => control(request, '/command', { target: 'work:1.0' })).toBe('bash');
+});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findLinks } from './links';
+import { findLinks, isChoice } from './links';
 
 describe('findLinks', () => {
   it('finds http and https runs with their positions', () => {
@@ -51,5 +51,30 @@ describe('findLinks', () => {
     );
     expect(findLinks('https://example.com/a\tb')[0][2]).toBe('https://example.com/a');
     expect(findLinks('https://example.com/a b')[0][2]).toBe('https://example.com/a');
+  });
+});
+
+describe('isChoice', () => {
+  it('knows a numbered choice, with or without the pointer', () => {
+    for (const s of [
+      '❯ 1. Yes',
+      '  2. Yes, and don’t ask again',
+      '› 3) No',
+      '1. first',
+      '  10. tenth',
+    ])
+      expect(isChoice(s), s).toBe(true);
+  });
+  it('leaves other lines alone', () => {
+    for (const s of [
+      '',
+      'Yes',
+      '2026. a year',
+      'v1.2.3 released',
+      '  1.5 seconds',
+      '$ ls',
+      '123 apples',
+    ])
+      expect(isChoice(s), s).toBe(false);
   });
 });

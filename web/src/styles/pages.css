@@ -182,6 +182,10 @@
   text-decoration-style: solid;
   outline: none;
 }
+/* a numbered choice in a pane that takes the mouse: a click picks it */
+.mx-screen .ln.mx-choice {
+  cursor: pointer;
+}
 .mx-input {
   display: flex;
   gap: var(--mx-gap);

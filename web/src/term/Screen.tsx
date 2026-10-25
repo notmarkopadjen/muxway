@@ -1,5 +1,5 @@
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { findLinks, type Link } from './links';
+import { findLinks, isChoice, type Link } from './links';
 import { fontFor, inner, measureCell } from './measure';
 import { classes, parse, type Span } from './sgr';
 
@@ -238,7 +238,16 @@ export const Screen = memo(function Screen({
     >
       <pre>
         {linked.map((ps, i) => (
-          <div key={i} className={fresh.has(i) ? 'ln mx-burn' : 'ln'}>
+          <div
+            key={i}
+            className={
+              'ln' +
+              (fresh.has(i) ? ' mx-burn' : '') +
+              (onCell && height && i >= lines.length - height && isChoice(plain[i])
+                ? ' mx-choice'
+                : '')
+            }
+          >
             <LineView pieces={ps} />
           </div>
         ))}

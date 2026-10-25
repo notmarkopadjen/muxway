@@ -36,3 +36,12 @@ export function findLinks(line: string): Link[] {
   }
   return out;
 }
+
+// A numbered choice as Claude Code and similar menus print them, with or
+// without the pointer: "❯ 1. Yes", "  2. No". In a pane that takes the
+// mouse, a click on one picks it, so it shows the hand.
+const CHOICE = /^\s*(?:[❯›>▶→]\s*)?\d{1,2}[.)]\s+\S/;
+
+export function isChoice(line: string): boolean {
+  return CHOICE.test(line);
+}
