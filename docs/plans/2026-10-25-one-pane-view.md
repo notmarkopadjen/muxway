@@ -183,3 +183,14 @@ without the flag, and spec 88 (a waiting tab and header in the theme's
 ink, inverted, in green, amber and paper; screenshot `88-waiting-green`).
 Android: muxway-android c79898e, 0.9.1 (25), to be run and pushed with
 the Android session's release.
+
+Steps 4 and 5, the tiles' free layout with the board removed and the
+one-row header, with the theme-coloured tab icon asked for on the way:
+[run 20261025-100322-0fbebe8](https://github.com/notmarkopadjen/muxway/issues/110), passed, 106 tests, with spec 97 (a
+header dropped on a tile's lower part splits it, the middle swaps, a
+closed tile keeps the made layout, ▦ back to the presets, a bookmarked
+board opens as tiles once; screenshot `97-drop`), spec 90 (one row,
++ after the tabs splitting the focused pane, 32 px buttons with labels,
+the profile menu; screenshots `90-header`, `90-profile`, `90-add`),
+spec 88 (the icon follows the theme) and the specs the header moved
+(43, 48, 51, 65, 74, 84, 85, 91, 94, 95).
