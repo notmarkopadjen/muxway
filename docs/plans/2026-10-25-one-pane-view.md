@@ -170,3 +170,16 @@ actions, §2 boards removed), then `docs/features/web-client.md`,
 ## Review (after implementation)
 
 ## Test run
+
+Step 1, background work: [run 20261025-081419-b6f509e](https://github.com/notmarkopadjen/muxway/issues/105), passed, 103 tests, with
+TestFlow110 (working with a count text, idle dropped, done, idle passes,
+"next wake scheduled") and TestSec111 (no description, command or
+prompt reaches a client or a log).
+
+Steps 2 and 3, closing and colours: [run 20261025-082542-743ebeb](https://github.com/notmarkopadjen/muxway/issues/106), passed, 106
+tests, with TestSec112 and TestFlow113 (the flag, grants, the read-only
+pane, the rate limit, audit lines), spec 89 in the close environment and
+without the flag, and spec 88 (a waiting tab and header in the theme's
+ink, inverted, in green, amber and paper; screenshot `88-waiting-green`).
+Android: muxway-android c79898e, 0.9.1 (25), to be run and pushed with
+the Android session's release.
