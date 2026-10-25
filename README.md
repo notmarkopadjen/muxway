@@ -4,6 +4,20 @@
 
 Your tmux, from anywhere. A hub, a small agent per machine, and clients from the browser to smart glasses to a 2002 feature phone. Security first: a tmux pane is a shell.
 
+**One screen, every machine.** Put up to four panes side by side from any
+mix of hosts, sessions and windows: the build on your workstation, the
+logs on a server, an AI agent on your laptop, all in one view, each live
+and typable. Drag a header to rearrange them however you like.
+
+```
+┌─ alice-laptop/work/0.0 ───────┬─ build-server/ci/1.0 ─────────┐
+│ ✻ Claude: waiting for you     │ $ make test                   │
+│                               │ ok   ./...  4.2s              │
+├─ bob-desktop/logs/0.1 ────────┴───────────────────────────────┤
+│ $ tail -f app.log                                             │
+└───────────────────────────────────────────────────────────────┘
+```
+
 > Early development. The hub, the agent, the protocol, notifications from AI CLIs, sign-in with OpenID Connect and the web client work; native clients are next.
 
 ## Quick start
