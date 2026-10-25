@@ -30,9 +30,10 @@ test('75 double-click shows a pane alone and brings the others back', async ({ p
   await page.waitForTimeout(700);
   await tiles.dblclick();
   await expect(tiles).toHaveCount(2);
-  // Tiles swapped by hand come back as they were after a zoom in and out,
-  // by the tile's header or by the strip's tab.
-  await page.getByTestId('arrange').click();
+  // The tiles come back as they were after a zoom in and out, by the
+  // tile's header or by the strip's tab. They are every pane of a window
+  // with a read-only one, so they follow the host and ▦ is off.
+  await expect(page.getByTestId('arrange')).toBeDisabled();
   const arranged = await page.getByTestId('pane').getAttribute('data-layout');
   await page.locator('.mx-tile-head').nth(1).dblclick();
   await expect(tiles).toHaveCount(1);

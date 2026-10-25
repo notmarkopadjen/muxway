@@ -1,5 +1,5 @@
-import { expect, test, type Locator } from '@playwright/test';
-import { HOST, settled, shot, signIn, SHELL0 } from './fixtures';
+import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
+import { control, HOST, settled, shot, signIn, SHELL0 } from './fixtures';
 
 // Laying a tile across: a header dropped on a divider spans that split, on
 // the side of the divider's half it was dropped on; a click on the strip
@@ -9,7 +9,20 @@ const RO = `${HOST}/work/0.1`;
 const LOGS = `${HOST}/work/1.0`;
 const box = async (l: Locator) => (await l.boundingBox())!;
 
-test('101 a header dropped on a divider lays the pane across the split', async ({ page }, info) => {
+// Leaving gives the windows back, so the next spec finds them at rest.
+async function leave(page: Page, request: APIRequestContext) {
+  await page.waitForTimeout(1500);
+  await page.goto('/');
+  for (const target of ['work:0', 'work:1'])
+    await expect
+      .poll(() => control(request, '/window-size', { target }), { timeout: 8000 })
+      .toBe('100x30');
+}
+
+test('101 a header dropped on a divider lays the pane across the split', async ({
+  page,
+  request,
+}, info) => {
   await page.setViewportSize({ width: 1400, height: 900 });
   await signIn(page);
   await page.goto(`/p/${SHELL0},${RO},${LOGS}`);
@@ -43,10 +56,12 @@ test('101 a header dropped on a divider lays the pane across the split', async (
   expect(c.width).toBeGreaterThan(area.width - 12);
   await expect(page.getByTestId('across')).toHaveCount(0);
   await shot(page, info, '101-across');
+  await leave(page, request);
 });
 
 test('101 the strip inside a tile edge and e / E lay it across the whole view', async ({
   page,
+  request,
 }, info) => {
   await page.setViewportSize({ width: 1400, height: 900 });
   await signIn(page);
@@ -84,4 +99,5 @@ test('101 the strip inside a tile edge and e / E lay it across the whole view', 
   // e brings it across again.
   await page.keyboard.press('e');
   expect((await box(tile(SHELL0))).width).toBeGreaterThan(area.width - 12);
+  await leave(page, request);
 });
