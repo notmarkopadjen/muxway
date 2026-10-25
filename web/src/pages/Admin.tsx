@@ -297,142 +297,144 @@ function TokensBox({ o }: { o: AdminOverview }) {
 
   return (
     <Box title="tokens & users" className="mx-admin-tokens" testId="admin-tokens">
-      <ul className="mx-admin-list">
-        {o.tokens.map((t) => (
-          <li key={t.id} data-testid="token-row" data-name={t.name}>
-            <span className="mx-admin-name">{t.name}</span>
-            {t.admin && <span className="mx-warn">admin</span>}
-            <span className="mx-dim mx-admin-grants" title={grants(t)}>
-              {grants(t)}
-            </span>
-            <span className="mx-dim">until {day(t.expires)}</span>
-            {confirm === t.id ? (
-              <span className="mx-admin-confirm">
-                revoke?{' '}
-                <button
-                  type="button"
-                  data-testid="token-revoke-yes"
-                  onClick={() => remove(`/v1/admin/tokens/${t.id}`)}
-                >
-                  yes
-                </button>{' '}
-                <button type="button" onClick={() => setConfirm(null)}>
-                  no
-                </button>
+      <div className="mx-admin-body">
+        <ul className="mx-admin-list">
+          {o.tokens.map((t) => (
+            <li key={t.id} data-testid="token-row" data-name={t.name}>
+              <span className="mx-admin-name">{t.name}</span>
+              {t.admin && <span className="mx-warn">admin</span>}
+              <span className="mx-dim mx-admin-grants" title={grants(t)}>
+                {grants(t)}
               </span>
-            ) : (
-              <button type="button" data-testid="token-revoke" onClick={() => setConfirm(t.id)}>
-                revoke
-              </button>
-            )}
-          </li>
-        ))}
-        {o.users.map((u) => (
-          <li key={u.id} data-testid="user-row">
-            <span className="mx-admin-name">{u.email}</span>
-            {u.admin && <span className="mx-warn">admin</span>}
-            <span className="mx-dim mx-admin-grants" title={grants(u)}>
-              {grants(u)}
-            </span>
-            <span className="mx-dim">until {day(u.expires)}</span>
-            {confirm === u.id ? (
-              <span className="mx-admin-confirm">
-                remove?{' '}
-                <button type="button" onClick={() => remove(`/v1/admin/users/${u.id}`)}>
-                  yes
-                </button>{' '}
-                <button type="button" onClick={() => setConfirm(null)}>
-                  no
+              <span className="mx-dim">until {day(t.expires)}</span>
+              {confirm === t.id ? (
+                <span className="mx-admin-confirm">
+                  revoke?{' '}
+                  <button
+                    type="button"
+                    data-testid="token-revoke-yes"
+                    onClick={() => remove(`/v1/admin/tokens/${t.id}`)}
+                  >
+                    yes
+                  </button>{' '}
+                  <button type="button" onClick={() => setConfirm(null)}>
+                    no
+                  </button>
+                </span>
+              ) : (
+                <button type="button" data-testid="token-revoke" onClick={() => setConfirm(t.id)}>
+                  revoke
                 </button>
+              )}
+            </li>
+          ))}
+          {o.users.map((u) => (
+            <li key={u.id} data-testid="user-row">
+              <span className="mx-admin-name">{u.email}</span>
+              {u.admin && <span className="mx-warn">admin</span>}
+              <span className="mx-dim mx-admin-grants" title={grants(u)}>
+                {grants(u)}
               </span>
-            ) : (
-              <button type="button" onClick={() => setConfirm(u.id)}>
-                remove
+              <span className="mx-dim">until {day(u.expires)}</span>
+              {confirm === u.id ? (
+                <span className="mx-admin-confirm">
+                  remove?{' '}
+                  <button type="button" onClick={() => remove(`/v1/admin/users/${u.id}`)}>
+                    yes
+                  </button>{' '}
+                  <button type="button" onClick={() => setConfirm(null)}>
+                    no
+                  </button>
+                </span>
+              ) : (
+                <button type="button" onClick={() => setConfirm(u.id)}>
+                  remove
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {secret ? (
+          <div className="mx-admin-secret" data-testid="token-secret" role="status">
+            <div>
+              token <b>{secret.token.name}</b>, until {day(secret.token.expires)}. it is shown only
+              now, never again:
+            </div>
+            <code data-testid="token-secret-value">{secret.secret}</code>
+            <div className="mx-toggles">
+              <button
+                type="button"
+                data-testid="token-copy"
+                onClick={() =>
+                  navigator.clipboard.writeText(secret.secret).then(
+                    () => setCopied(true),
+                    () => setError('the browser refused the clipboard: select and copy it'),
+                  )
+                }
+              >
+                {copied ? 'copied' : 'copy'}
               </button>
-            )}
-          </li>
-        ))}
-      </ul>
-      {secret ? (
-        <div className="mx-admin-secret" data-testid="token-secret" role="status">
-          <div>
-            token <b>{secret.token.name}</b>, until {day(secret.token.expires)}. it is shown only
-            now, never again:
+              <button type="button" data-testid="token-secret-done" onClick={() => setSecret(null)}>
+                done
+              </button>
+            </div>
           </div>
-          <code data-testid="token-secret-value">{secret.secret}</code>
-          <div className="mx-toggles">
-            <button
-              type="button"
-              data-testid="token-copy"
-              onClick={() =>
-                navigator.clipboard.writeText(secret.secret).then(
-                  () => setCopied(true),
-                  () => setError('the browser refused the clipboard: select and copy it'),
-                )
-              }
-            >
-              {copied ? 'copied' : 'copy'}
-            </button>
-            <button type="button" data-testid="token-secret-done" onClick={() => setSecret(null)}>
-              done
-            </button>
-          </div>
-        </div>
-      ) : (
-        <form className="mx-admin-form" onSubmit={create} data-testid="token-form">
-          <input
-            value={name}
-            placeholder="name"
-            aria-label="token name"
-            maxLength={64}
-            data-testid="token-name"
-            onChange={(e) => setName(e.target.value)}
-          />
-          <input
-            value={read}
-            placeholder="read: alice-laptop/*"
-            aria-label="read grants"
-            data-testid="token-read"
-            onChange={(e) => setRead(e.target.value)}
-          />
-          <input
-            value={write}
-            placeholder="write: alice-laptop/work/*"
-            aria-label="write grants"
-            data-testid="token-write"
-            onChange={(e) => setWrite(e.target.value)}
-          />
-          <select
-            value={ttl}
-            aria-label="lifetime"
-            data-testid="token-ttl"
-            onChange={(e) => setTtl(Number(e.target.value))}
-          >
-            {TTLS.map(([l, v]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
-          <label className="mx-admin-check">
+        ) : (
+          <form className="mx-admin-form" onSubmit={create} data-testid="token-form">
             <input
-              type="checkbox"
-              checked={admin}
-              data-testid="token-admin"
-              onChange={(e) => setAdmin(e.target.checked)}
-            />{' '}
-            admin
-          </label>
-          <button type="submit" data-testid="token-create">
-            create
-          </button>
-        </form>
-      )}
-      {error && (
-        <div className="mx-error" role="alert" data-testid="token-error">
-          {error}
-        </div>
-      )}
+              value={name}
+              placeholder="name"
+              aria-label="token name"
+              maxLength={64}
+              data-testid="token-name"
+              onChange={(e) => setName(e.target.value)}
+            />
+            <input
+              value={read}
+              placeholder="read: alice-laptop/*"
+              aria-label="read grants"
+              data-testid="token-read"
+              onChange={(e) => setRead(e.target.value)}
+            />
+            <input
+              value={write}
+              placeholder="write: alice-laptop/work/*"
+              aria-label="write grants"
+              data-testid="token-write"
+              onChange={(e) => setWrite(e.target.value)}
+            />
+            <select
+              value={ttl}
+              aria-label="lifetime"
+              data-testid="token-ttl"
+              onChange={(e) => setTtl(Number(e.target.value))}
+            >
+              {TTLS.map(([l, v]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </select>
+            <label className="mx-admin-check">
+              <input
+                type="checkbox"
+                checked={admin}
+                data-testid="token-admin"
+                onChange={(e) => setAdmin(e.target.checked)}
+              />{' '}
+              admin
+            </label>
+            <button type="submit" data-testid="token-create">
+              create
+            </button>
+          </form>
+        )}
+        {error && (
+          <div className="mx-error" role="alert" data-testid="token-error">
+            {error}
+          </div>
+        )}
+      </div>
     </Box>
   );
 }
@@ -448,44 +450,46 @@ function ClientsBox({ o }: { o: AdminOverview }) {
   };
   return (
     <Box title="clients" className="mx-admin-clients" testId="admin-clients">
-      <ul className="mx-admin-list">
-        {o.clients.map((c) => (
-          <li
-            key={`${c.kind}-${c.id ?? ''}-${c.principal}-${c.client}-${c.addr}`}
-            data-testid="client-row"
-          >
-            <span className="mx-admin-name">{c.client}</span>
-            <span>{names.get(c.principal) ?? c.principal}</span>
-            <span className="mx-dim">{c.addr}</span>
-            <span className="mx-dim" title="since · last seen">
-              {age(c.since)} · {age(c.seen)}
-            </span>
-            {c.kind === 'session' && c.id ? (
-              <button type="button" data-testid="client-end" onClick={() => end(c.id!)}>
-                end
-              </button>
-            ) : (
-              <span className="mx-faint" title="a bearer token: revoke it to end this">
-                token
+      <div className="mx-admin-body">
+        <ul className="mx-admin-list">
+          {o.clients.map((c) => (
+            <li
+              key={`${c.kind}-${c.id ?? ''}-${c.principal}-${c.client}-${c.addr}`}
+              data-testid="client-row"
+            >
+              <span className="mx-admin-name">{c.client}</span>
+              <span>{names.get(c.principal) ?? c.principal}</span>
+              <span className="mx-dim">{c.addr}</span>
+              <span className="mx-dim" title="since · last seen">
+                {age(c.since)} · {age(c.seen)}
               </span>
-            )}
-          </li>
-        ))}
-        {o.clients.length === 0 && <li className="mx-dim">no one.</li>}
-      </ul>
-      <div className="mx-admin-sub">agents</div>
-      <ul className="mx-admin-list">
-        {o.agents.map((a) => (
-          <li key={a.host} data-testid="agent-row">
-            <span className={a.online ? '' : 'mx-dim'}>{a.online ? '●' : '○'}</span>
-            <span className="mx-admin-name">{a.host}</span>
-            <span className="mx-dim">{a.addr ?? 'offline'}</span>
-            <span className="mx-dim">
-              {a.connected ? `up ${age(a.connected)}` : `paired ${day(a.paired)}`}
-            </span>
-          </li>
-        ))}
-      </ul>
+              {c.kind === 'session' && c.id ? (
+                <button type="button" data-testid="client-end" onClick={() => end(c.id!)}>
+                  end
+                </button>
+              ) : (
+                <span className="mx-faint" title="a bearer token: revoke it to end this">
+                  token
+                </span>
+              )}
+            </li>
+          ))}
+          {o.clients.length === 0 && <li className="mx-dim">no one.</li>}
+        </ul>
+        <div className="mx-admin-sub">agents</div>
+        <ul className="mx-admin-list">
+          {o.agents.map((a) => (
+            <li key={a.host} data-testid="agent-row">
+              <span className={a.online ? '' : 'mx-dim'}>{a.online ? '●' : '○'}</span>
+              <span className="mx-admin-name">{a.host}</span>
+              <span className="mx-dim">{a.addr ?? 'offline'}</span>
+              <span className="mx-dim">
+                {a.connected ? `up ${age(a.connected)}` : `paired ${day(a.paired)}`}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </Box>
   );
 }
@@ -534,80 +538,82 @@ function AccessBox({
 
   return (
     <Box title="access" className="mx-admin-access" testId="admin-access">
-      <label className="mx-admin-label">
-        allow <span className="mx-dim">(empty: everyone not denied)</span>
-        <textarea
-          rows={3}
-          value={allowText}
-          spellCheck={false}
-          placeholder="one address or CIDR a line"
-          data-testid="access-allow"
-          onChange={(e) => setAllow(e.target.value)}
-        />
-      </label>
-      <label className="mx-admin-label">
-        deny
-        <textarea
-          rows={3}
-          value={denyText}
-          spellCheck={false}
-          placeholder="one address or CIDR a line"
-          data-testid="access-deny"
-          onChange={(e) => setDraft(e.target.value)}
-        />
-      </label>
-      <div className="mx-admin-sub">locked out</div>
-      <ul className="mx-admin-list">
-        {o.locked.map((l) => (
-          <li key={l.addr} data-testid="locked-row">
-            <span className="mx-bad">{l.addr}</span>
-            <span className="mx-dim">until {clock(l.until)}</span>
-            <button type="button" onClick={() => unlock(l.addr)}>
-              unlock
-            </button>
-          </li>
-        ))}
-        {o.locked.length === 0 && <li className="mx-dim">no one.</li>}
-      </ul>
-      <div className="mx-toggles">
-        <button
-          type="button"
-          disabled={!changed}
-          data-testid="access-save"
-          onClick={() => save(false)}
-        >
-          save
-        </button>
-        {changed && (
+      <div className="mx-admin-body">
+        <label className="mx-admin-label">
+          allow <span className="mx-dim">(empty: everyone not denied)</span>
+          <textarea
+            rows={3}
+            value={allowText}
+            spellCheck={false}
+            placeholder="one address or CIDR a line"
+            data-testid="access-allow"
+            onChange={(e) => setAllow(e.target.value)}
+          />
+        </label>
+        <label className="mx-admin-label">
+          deny
+          <textarea
+            rows={3}
+            value={denyText}
+            spellCheck={false}
+            placeholder="one address or CIDR a line"
+            data-testid="access-deny"
+            onChange={(e) => setDraft(e.target.value)}
+          />
+        </label>
+        <div className="mx-admin-sub">locked out</div>
+        <ul className="mx-admin-list">
+          {o.locked.map((l) => (
+            <li key={l.addr} data-testid="locked-row">
+              <span className="mx-bad">{l.addr}</span>
+              <span className="mx-dim">until {clock(l.until)}</span>
+              <button type="button" onClick={() => unlock(l.addr)}>
+                unlock
+              </button>
+            </li>
+          ))}
+          {o.locked.length === 0 && <li className="mx-dim">no one.</li>}
+        </ul>
+        <div className="mx-toggles">
           <button
             type="button"
-            onClick={() => {
-              setAllow(null);
-              setDraft(null);
-              setLockout(false);
-            }}
+            disabled={!changed}
+            data-testid="access-save"
+            onClick={() => save(false)}
           >
-            undo
+            save
           </button>
+          {changed && (
+            <button
+              type="button"
+              onClick={() => {
+                setAllow(null);
+                setDraft(null);
+                setLockout(false);
+              }}
+            >
+              undo
+            </button>
+          )}
+        </div>
+        {lockout && (
+          <div className="mx-error" role="alert" data-testid="access-lockout">
+            that would shut you out: the hub sees you as {o.you.addr}.{' '}
+            <button type="button" data-testid="access-force" onClick={() => save(true)}>
+              save anyway
+            </button>
+          </div>
         )}
+        {error && (
+          <div className="mx-error" role="alert" data-testid="access-error">
+            {error}
+          </div>
+        )}
+        <p className="mx-dim mx-admin-note">
+          agents are behind these lists too. locked out of the page? on the hub&apos;s machine:{' '}
+          <code>muxway hub access clear</code>
+        </p>
       </div>
-      {lockout && (
-        <div className="mx-error" role="alert" data-testid="access-lockout">
-          that would shut you out: the hub sees you as {o.you.addr}.{' '}
-          <button type="button" data-testid="access-force" onClick={() => save(true)}>
-            save anyway
-          </button>
-        </div>
-      )}
-      {error && (
-        <div className="mx-error" role="alert" data-testid="access-error">
-          {error}
-        </div>
-      )}
-      <p className="mx-dim mx-admin-note">
-        agents are behind these lists too. locked out of the page? on the hub&apos;s machine:{' '}
-        <code>muxway hub access clear</code>
-      </p>
     </Box>
   );
 }

@@ -34,4 +34,9 @@ test('79 a pane that exits leaves the tiles by itself', async ({ page, request }
   await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', LOGS, { timeout: 4000 });
   await expect(page.getByTestId('gap')).toHaveCount(0);
   await expect(page.getByTestId('tile')).toHaveCount(1);
+  // Leaving gives the window back, so the next spec finds it at rest.
+  await page.goto('/');
+  await expect
+    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
+    .toBe('100x30');
 });

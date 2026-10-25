@@ -1017,7 +1017,7 @@ button.mx-window:focus-visible {
 /* The page is the window's height: the log takes what the boxes under it leave. */
 .mx-admin {
   display: grid;
-  grid-template-rows: auto minmax(180px, 1fr) auto;
+  grid-template-rows: auto minmax(180px, 1fr) fit-content(60%);
   gap: var(--mx-gap);
   height: 100%;
 }
@@ -1073,6 +1073,7 @@ button.mx-window:focus-visible {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--mx-gap-2);
   align-items: stretch;
+  min-height: 0;
 }
 .mx-admin-list {
   list-style: none;
@@ -1081,8 +1082,17 @@ button.mx-window:focus-visible {
   display: grid;
   gap: 4px;
 }
-.mx-admin-row > * {
+/* A box keeps its title on its edge; its body scrolls when the window is short. */
+.mx-admin-row > .mx-box {
   min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.mx-admin-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 .mx-admin-list li {
   display: flex;

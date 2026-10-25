@@ -71,7 +71,20 @@ test('95 the admin page: four boxes, a refusal in the alert colour', async ({ pa
     })
     .toBe(true);
   await shot(page, test.info(), '95-admin-tall');
-  // At any of these sizes the page fits the window: no scrollbar.
+  // At any of these sizes the page fits the window, however many tokens
+  // there are: the boxes scroll inside, the page does not.
+  const auth = { Authorization: `Bearer ${ADMIN}` };
+  const made: string[] = [];
+  for (let i = 0; i < 12; i++) {
+    const r = await request.post('/v1/admin/tokens', {
+      headers: auth,
+      data: { name: `filler-${i}`, read: [`${HOST}/*`], ttl: 600 },
+    });
+    made.push(((await r.json()) as { token: { id: string } }).token.id);
+  }
+  await expect(page.getByTestId('token-row').filter({ hasText: 'filler-' })).toHaveCount(12, {
+    timeout: 8000,
+  });
   for (const [width, height] of [
     [1400, 1400],
     [1200, 800],
@@ -82,6 +95,8 @@ test('95 the admin page: four boxes, a refusal in the alert colour', async ({ pa
       .poll(() => page.locator('main').evaluate((m) => m.scrollHeight - m.clientHeight))
       .toBeLessThanOrEqual(0);
   }
+  await expect(page.getByTestId('admin-tokens').locator('.mx-box-title')).toBeVisible();
+  for (const id of made) await request.delete(`/v1/admin/tokens/${id}`, { headers: auth });
 });
 
 test('95 a created token is shown once, copies, and revokes', async ({ page, context }) => {
