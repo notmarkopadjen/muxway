@@ -41,3 +41,45 @@ test('48 keyboard: j k Enter Esc / i t m ?', async ({ page }, info) => {
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('help')).toHaveCount(0);
 });
+
+// An overlay's title sits on its box's top edge: nothing may clip or cover it.
+async function titleShows(page: import('@playwright/test').Page, overlay: string) {
+  const title = page.getByTestId(overlay).locator('.mx-box-title').first();
+  await expect(title).toBeVisible();
+  const ok = await title.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return r.top >= 0 && !!hit && el.contains(hit);
+  });
+  expect(ok, `${overlay} title`).toBe(true);
+}
+
+test('48 overlays show their titles; help is two columns on a wide window', async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1600, height: 700 });
+  await signIn(page);
+  await page.keyboard.press('?');
+  await titleShows(page, 'help');
+  const xs = await page
+    .getByTestId('help')
+    .locator('dt')
+    .evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().left)))]);
+  expect(xs.length).toBe(2);
+  await shot(page, info, '48-help-columns');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('H');
+  await titleShows(page, 'hubs');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('p');
+  await titleShows(page, 'palette');
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 420, height: 700 });
+  await page.keyboard.press('?');
+  await titleShows(page, 'help');
+  const narrow = await page
+    .getByTestId('help')
+    .locator('dt')
+    .evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().left))).size);
+  expect(narrow).toBe(1);
+});

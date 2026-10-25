@@ -263,16 +263,28 @@ button:disabled {
   place-items: center;
   background: rgba(0, 0, 0, 0.6);
 }
-.mx-help .mx-box {
-  width: min(560px, calc(100vw - 32px));
-  max-height: 90vh;
+/* the wrapper scrolls, not the box, so the box's title on its top edge stays */
+.mx-help > div {
+  max-height: 92vh;
   overflow: auto;
 }
+.mx-help .mx-box {
+  width: min(560px, calc(100vw - 32px));
+}
+.mx-help .mx-box.mx-help-keys {
+  width: min(1120px, calc(100vw - 32px));
+}
 .mx-help dl {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 16px;
+  columns: 2 420px;
+  column-gap: 32px;
   margin: 0;
+}
+.mx-help dl > div {
+  display: grid;
+  grid-template-columns: 15ch 1fr;
+  gap: 0 16px;
+  padding: 2px 0;
+  break-inside: avoid;
 }
 .mx-help dt {
   color: var(--mx-accent);

@@ -62,13 +62,13 @@ export function Help({ onClose, onHubs }: { onClose: () => void; onHubs: () => v
   return (
     <div className="mx-help" onClick={onClose} data-testid="help">
       <div onClick={(e) => e.stopPropagation()}>
-        <Box title="help">
+        <Box title="help" className="mx-help-keys">
           <dl>
             {KEYS.map(([k, d]) => (
-              <>
-                <dt key={k + 'k'}>{k}</dt>
-                <dd key={k + 'd'}>{d}</dd>
-              </>
+              <div key={k}>
+                <dt>{k}</dt>
+                <dd>{d}</dd>
+              </div>
             ))}
           </dl>
           <div className="mx-toggles">
