@@ -387,7 +387,9 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 		return wire.ErrReadOnly
 	}
 	release := req.Fit == "auto" && req.Cols == 0 && req.Rows == 0
-	if !release && (req.Fit != "" || !wire.ValidSize(req.Cols, req.Rows)) {
+	// A layout without a size arranges the window at the size it has.
+	arrangeOnly := req.Layout != "" && req.Fit == "" && req.Cols == 0 && req.Rows == 0
+	if !release && !arrangeOnly && (req.Fit != "" || !wire.ValidSize(req.Cols, req.Rows)) {
 		return wire.ErrBadInput
 	}
 	if req.Scope != "" && req.Scope != "pane" && req.Scope != "window" {
@@ -419,6 +421,12 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 		if !slices.Equal(ids, mine) {
 			return wire.ErrBadInput
 		}
+		// Moving panes, not only sizing them, needs the grant on all of them.
+		if live, err := a.tmux.WindowLayout(ctx, p.PaneID); err != nil {
+			return wire.ErrTmux
+		} else if !req.Arrange && !tmux.SameShape(req.Layout, live) {
+			return wire.ErrReadOnly
+		}
 	}
 	// One resize per second per window; a release is always taken, so a
 	// client leaving right after a resize can still hand the window back.
@@ -433,7 +441,18 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	if release {
 		delete(a.layouts, p.WindowID)
 	}
+	// An arrangement stays: a release later gives the size back, not the
+	// old places.
+	if req.Arrange && (kept || !arrangeOnly) {
+		a.layouts[p.WindowID] = req.Layout
+	}
 	a.mu.Unlock()
+	if arrangeOnly {
+		if a.tmux.ArrangeWindow(ctx, p.PaneID, req.Layout) != nil {
+			return wire.ErrTmux
+		}
+		return ""
+	}
 	if release {
 		if a.tmux.ReleaseWindow(ctx, p.PaneID, saved) != nil {
 			return wire.ErrTmux
@@ -719,6 +738,9 @@ func (a *Agent) audit(req wire.Request, code string, extra ...any) {
 			}
 			if req.Layout != "" {
 				attrs = append(attrs, "layout", true)
+			}
+			if req.Arrange {
+				attrs = append(attrs, "arrange", true)
 			}
 			if req.Zoom {
 				attrs = append(attrs, "zoom", true)

@@ -43,7 +43,8 @@ test('99 every pane of a window as tiles: the window fits as one, laid out as th
   const tiles = page.getByTestId('tile');
   await expect(tiles).toHaveCount(2);
   await settled(page);
-  await expect(page.getByTestId('pane')).toHaveAttribute('data-layout', 'row');
+  // The tiles open as the host has the window: side by side.
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-layout', 'custom');
   await expect(page.locator('.mx-area')).toHaveAttribute('data-window-fit', '');
   await expect(tiles.nth(1)).not.toHaveAttribute('data-held', '');
   await expect(page.getByTestId('held')).toHaveCount(0);
@@ -51,7 +52,7 @@ test('99 every pane of a window as tiles: the window fits as one, laid out as th
   const fit = fitsOf(resizes, LOGS)[0].body;
   expect(fit.scope).toBe('window');
   expect(String(fit.layout)).toMatch(
-    /^[0-9a-f]{4},1000x1000,0,0\{500x1000,0,0,\d+,500x1000,0,0,\d+\}$/,
+    /^[0-9a-f]{4},1000x1000,0,0\{\d+x1000,0,0,\d+,\d+x1000,0,0,\d+\}$/,
   );
   await expect.poll(size, { timeout: 5000 }).toBe(`${fit.cols}x${fit.rows}`);
   await page.waitForTimeout(1500);

@@ -1,7 +1,17 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
-import { closePane, useAllPanes, useHosts, useInput, usePane, usePaneCached } from '../api/queries';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  closePane,
+  keys,
+  resizePane,
+  useAllPanes,
+  useHosts,
+  useInput,
+  usePane,
+  usePaneCached,
+} from '../api/queries';
 import type { Key, Mouse, Pane, PaneContent } from '../api/types';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
@@ -26,7 +36,10 @@ import {
   tilesLayout,
   tree,
   dropOn,
+  fromHost,
+  nearWeights,
   prune,
+  sameTree,
   zoneAt,
   type Layout,
   type TileNode,
@@ -506,12 +519,87 @@ function Tiles({ addresses }: { addresses: string[] }) {
       return null;
     return addresses.map((a) => mates.find((q) => q.address === a)!.pane_id);
   }, [several, all.data, addresses, n, windowOf]);
+  // Such tiles and their window are kept the same both ways: the tiles take
+  // the host's layout when it changes there, and what is changed here is
+  // sent as the window's layout, which moves the panes on the host. Moving
+  // them needs every one writable; without, the tiles only follow.
+  const hostLayout = oneWindow
+    ? (all.data ?? []).find((q) => q.address === addresses[0])?.window_layout
+    : undefined;
+  const movable =
+    !!oneWindow &&
+    addresses.every((a) => (all.data ?? []).find((q) => q.address === a)?.mode === 'write');
+  const [synced, setSynced] = useState(false);
+  // When the tiles were last changed here: the host's layout is not taken
+  // over a change it has not caught up with.
+  const touched = useRef(0);
+  const touch = () => {
+    touched.current = Date.now();
+  };
+  const idsKey = oneWindow?.join() ?? '';
+  const adopt = useCallback(
+    (always: boolean) => {
+      if (!oneWindow || !hostLayout) return;
+      const h = fromHost(hostLayout, oneWindow);
+      if (!h) return;
+      const settled = Date.now() - touched.current > 3000;
+      if (
+        always ||
+        (settled && (!sameTree(h.node, shape) || !nearWeights(h.node, h.weights, weights, 0.03)))
+      ) {
+        setCustom(h.node);
+        setLayout('custom');
+        setWeights(h.weights);
+      }
+      setSynced(true);
+    },
+    [oneWindow, hostLayout, shape, weights],
+  );
+  useEffect(() => {
+    if (!oneWindow) setSynced(false);
+    else adopt(!synced);
+  }, [hostLayout, idsKey]);
+  const qc = useQueryClient();
+  // After a layout the panes may have new indexes: the listing takes the
+  // answer at once, and the route follows the tiles' panes by id.
+  const follow = (r: { panes?: Pane[] }) => {
+    if (!r.panes || !oneWindow) return;
+    const by = new Map(r.panes.map((p) => [p.pane_id, p]));
+    qc.setQueryData<Pane[]>(keys.panes, (old) =>
+      old?.map((p) => (p.host === r.panes![0].host ? (by.get(p.pane_id) ?? p) : p)),
+    );
+    qc.invalidateQueries({ queryKey: ['pane'] });
+    const next = oneWindow.map((id, i) => by.get(id)?.address ?? addresses[i]);
+    if (next.join() !== addresses.join())
+      navigate({ to: '/p/$', params: { _splat: routeFor(next) }, replace: true });
+  };
   const area = useRef<HTMLDivElement>(null);
-  const windowFit = !!oneWindow && (fit[focused] ?? true) && !!writable;
-  const windowLayout = oneWindow ? tilesLayout(shape, weights, oneWindow) : undefined;
+  const windowFit = !!oneWindow && synced && (fit[focused] ?? true) && !!writable;
+  const windowLayout = oneWindow && synced ? tilesLayout(shape, weights, oneWindow) : undefined;
   const { refit: refitWindow } = useFit(focused, windowFit, area, 'window', windowLayout, false, {
     keep: true,
+    onDone: follow,
   });
+  // With fit off the arrangement still goes to the host, without a size.
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    if (!movable || !synced || windowFit || !windowLayout || !hostLayout || !oneWindow) return;
+    const h = fromHost(hostLayout, oneWindow);
+    if (h && sameTree(h.node, shape) && nearWeights(shape, h.weights, weights, 0.01)) return;
+    const t = window.setTimeout(() => {
+      resizePane(focused, { scope: 'window', layout: windowLayout })
+        .then(follow)
+        .catch((err) => {
+          if (err instanceof ApiError && err.status === 429)
+            window.setTimeout(() => setRetry((n) => n + 1), 1100);
+          else {
+            refused(err instanceof ApiError ? err.code : 'hub unreachable');
+            adopt(true);
+          }
+        });
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [movable, synced, windowFit, windowLayout, retry]);
   useEffect(() => {
     if (refitTick && windowFit) refitWindow();
   }, [refitTick, windowFit, refitWindow]);
@@ -567,8 +655,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
         if (several) setFocusedIndex((index + d + n) % n);
         else neighbour(d);
       } else if (/^[1-4]$/.test(ev.key) && Number(ev.key) <= n) setFocusedIndex(Number(ev.key) - 1);
-      else if (ev.key === 'l' && several) setLayout((l) => next(l, n));
-      else if (asking && (ev.key === 'y' || ev.key === 'n')) void answer(asking, ev.key === 'y');
+      else if (ev.key === 'l' && several && (!oneWindow || movable)) {
+        touch();
+        setLayout((l) => next(l, n));
+      } else if (asking && (ev.key === 'y' || ev.key === 'n')) void answer(asking, ev.key === 'y');
       else if (ev.key === 'x' && hostCloses(focused) && writable) setAsking(focused);
       else if (ev.key === 'x' && several) closeTile(focused);
       else if (ev.key === 'f' && writable) toggleFit(focused);
@@ -666,6 +756,12 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onDragStart={() => setDragging(a)}
         onDragEnd={() => setDragging(null)}
         onDrop={(zone) => {
+          if (oneWindow && !movable && dragging && dragging !== a) {
+            refused('moving these panes needs every pane of the window writable');
+            setDragging(null);
+            return;
+          }
+          touch();
           if (dragging && dragging !== a && zone !== 'swap') {
             setCustom(dropOn(shape, addresses.indexOf(dragging), i, zone));
             setLayout('custom');
@@ -711,8 +807,16 @@ function Tiles({ addresses }: { addresses: string[] }) {
           {several && (
             <button
               type="button"
-              onClick={() => setLayout((l) => next(l, n))}
-              title={`next arrangement (l): ${options(n).join(', ')}`}
+              onClick={() => {
+                touch();
+                setLayout((l) => next(l, n));
+              }}
+              disabled={!!oneWindow && !movable}
+              title={
+                oneWindow && !movable
+                  ? 'the panes of this window move only when every one is writable'
+                  : `next arrangement (l): ${options(n).join(', ')}`
+              }
               data-testid="arrange"
               data-label="arrange"
             >
@@ -772,7 +876,15 @@ function Tiles({ addresses }: { addresses: string[] }) {
         </span>
       </InHeader>
       <div className="mx-area" ref={area} data-window-fit={windowFit ? '' : undefined}>
-        <Tree node={shape} weights={weights} setWeights={setWeights} tile={tile} />
+        <Tree
+          node={shape}
+          weights={weights}
+          setWeights={(f) => {
+            touch();
+            setWeights(f);
+          }}
+          tile={tile}
+        />
       </div>
       <InputPanel
         pane={focusedPane}

@@ -1,4 +1,4 @@
-import { checksum } from './layout';
+import { checksum, fractions, parseLayout, type Node } from './layout';
 
 // Tiles: one to four panes on one screen in the arrangements the Android
 // client has. The arrangement is the browser's own and never reaches the
@@ -231,4 +231,53 @@ export function tilesLayout(node: TileNode, weights: Weights, ids: string[]): st
   };
   const body = cell(node, 1000, 1000);
   return `${checksum(body)},${body}`;
+}
+
+// The host's layout of a window as the tiles' tree, when the tiles are
+// its panes: `ids` are the tiles' pane ids. Null when it names another pane.
+export function fromHost(
+  layout: string,
+  ids: string[],
+): { node: TileNode; weights: Weights } | null {
+  let root: Node;
+  try {
+    root = parseLayout(layout);
+  } catch {
+    return null;
+  }
+  const weights: Weights = {};
+  const walk = (n: Node, key: string): TileNode | null => {
+    if (n.kind === 'pane') {
+      const at = ids.indexOf(n.id);
+      return at < 0 ? null : at;
+    }
+    const children = n.children.map((c, i) => walk(c, `${key}.${i}`));
+    if (children.some((c) => c === null)) return null;
+    weights[key] = fractions(n);
+    return { kind: n.kind, key, children: children as TileNode[] };
+  };
+  const node = walk(root, 'r');
+  return node === null ? null : { node, weights };
+}
+
+// Same splits with the same tiles in the same places, shares aside.
+export function sameTree(a: TileNode, b: TileNode): boolean {
+  if (typeof a === 'number' || typeof b === 'number') return a === b;
+  return (
+    a.kind === b.kind &&
+    a.children.length === b.children.length &&
+    a.children.every((c, i) => sameTree(c, b.children[i]))
+  );
+}
+
+// Whether every split of `node` has shares within `by` of the other's.
+export function nearWeights(node: TileNode, a: Weights, b: Weights, by: number): boolean {
+  if (typeof node === 'number') return true;
+  const n = node.children.length;
+  const wa = a[node.key] ?? equal(n);
+  const wb = b[node.key] ?? equal(n);
+  return (
+    wa.every((w, i) => Math.abs(w - (wb[i] ?? 0)) <= by) &&
+    node.children.every((c) => nearWeights(c, a, b, by))
+  );
 }

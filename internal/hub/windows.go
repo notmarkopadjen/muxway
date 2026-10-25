@@ -46,7 +46,8 @@ func (h *Hub) handleResize(w http.ResponseWriter, r *http.Request, t Principal) 
 		return
 	}
 	release := in.Fit == "auto" && in.Cols == 0 && in.Rows == 0
-	if !release && (in.Fit != "" || !wire.ValidSize(in.Cols, in.Rows)) {
+	arrangeOnly := in.Layout != "" && in.Fit == "" && in.Cols == 0 && in.Rows == 0
+	if !release && !arrangeOnly && (in.Fit != "" || !wire.ValidSize(in.Cols, in.Rows)) {
 		fail(w, http.StatusBadRequest, "bad_parameter")
 		return
 	}
@@ -54,7 +55,7 @@ func (h *Hub) handleResize(w http.ResponseWriter, r *http.Request, t Principal) 
 		fail(w, http.StatusBadRequest, "bad_parameter")
 		return
 	}
-	if in.Zoom && in.Scope != "window" {
+	if in.Zoom && (in.Scope != "window" || arrangeOnly) {
 		fail(w, http.StatusBadRequest, "bad_parameter")
 		return
 	}
@@ -63,7 +64,7 @@ func (h *Hub) handleResize(w http.ResponseWriter, r *http.Request, t Principal) 
 			fail(w, http.StatusBadRequest, "bad_parameter")
 			return
 		}
-		if _, err := tmux.ScaleLayout(in.Layout, in.Cols, in.Rows); err != nil {
+		if _, err := tmux.LayoutPanes(in.Layout); err != nil {
 			fail(w, http.StatusBadRequest, "bad_parameter")
 			return
 		}
@@ -82,13 +83,44 @@ func (h *Hub) handleResize(w http.ResponseWriter, r *http.Request, t Principal) 
 		fail(w, http.StatusForbidden, "read_only")
 		return
 	}
-	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpResize, Actor: t.ID, Pane: p.PaneID, Cols: in.Cols, Rows: in.Rows, Fit: in.Fit, Scope: in.Scope, Layout: in.Layout, Zoom: in.Zoom})
+	// A layout that moves panes, not only sizes them, needs a write grant
+	// on every pane of the window; the agent checks the shape against the
+	// live window and refuses a move without this.
+	arrange := false
+	var mates []tmux.Pane
+	if in.Layout != "" {
+		panes, _, err := h.readable(r.Context(), t, host)
+		if err != nil {
+			fail(w, http.StatusServiceUnavailable, "host_offline")
+			return
+		}
+		for _, q := range panes {
+			if q.WindowID == p.WindowID {
+				mates = append(mates, q)
+			}
+		}
+		if !tmux.SameShape(in.Layout, p.WindowLayout) {
+			ids, _ := tmux.LayoutPanes(in.Layout)
+			if len(ids) != len(mates) {
+				fail(w, http.StatusForbidden, "read_only")
+				return
+			}
+			for _, q := range mates {
+				if !t.canWrite(host, q) || q.Mode != tmux.ModeWrite {
+					fail(w, http.StatusForbidden, "read_only")
+					return
+				}
+			}
+			arrange = true
+		}
+	}
+	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpResize, Actor: t.ID, Pane: p.PaneID, Cols: in.Cols, Rows: in.Rows, Fit: in.Fit, Scope: in.Scope, Layout: in.Layout, Arrange: arrange, Zoom: in.Zoom})
 	if err != nil {
 		fail(w, http.StatusServiceUnavailable, "host_offline")
 		return
 	}
 	a.forget()
-	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID, "cols", in.Cols, "rows", in.Rows, "fit", in.Fit, "scope", in.Scope, "layout", in.Layout != "", "zoom", in.Zoom}
+	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID, "cols", in.Cols, "rows", in.Rows, "fit", in.Fit, "scope", in.Scope, "layout", in.Layout != "", "arrange", arrange, "zoom", in.Zoom}
 	if resp.Error != "" {
 		h.log.Info("audit resize", append(attrs, "result", resp.Error)...)
 		status, code := statusFor(resp.Error)
@@ -105,7 +137,19 @@ func (h *Hub) handleResize(w http.ResponseWriter, r *http.Request, t Principal) 
 			}
 		}
 	}
-	reply(w, map[string]any{"pane": view(host, t, p)})
+	out := map[string]any{"pane": view(host, t, p)}
+	// After a layout the window's panes may have new indexes, so new
+	// addresses: the answer lists them all.
+	if in.Layout != "" && err == nil {
+		var list []any
+		for _, q := range panes {
+			if q.WindowID == p.WindowID {
+				list = append(list, view(host, t, q))
+			}
+		}
+		out["panes"] = list
+	}
+	reply(w, out)
 }
 
 type paneContent struct {

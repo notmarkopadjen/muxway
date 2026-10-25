@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -266,9 +267,7 @@ func (s Server) ResizeWindow(ctx context.Context, paneID string, cols, rows int,
 	if _, err := s.run(ctx, "resize-window", "-t", paneID, "-x", strconv.Itoa(cols), "-y", strconv.Itoa(rows)); err != nil {
 		return err
 	}
-	if scaled, err := ScaleLayout(layout, cols, rows); err == nil {
-		s.run(ctx, "select-layout", "-t", paneID, scaled)
-	}
+	s.lay(ctx, paneID, layout, cols, rows)
 	if zoom {
 		_, err := s.run(ctx, "resize-pane", "-Z", "-t", paneID)
 		return err
@@ -370,8 +369,8 @@ func (s Server) WindowLayout(ctx context.Context, paneID string) (string, error)
 // ReleaseWindow gives the window holding paneID back to automatic sizing:
 // first to the largest session's size, then the manual mark is removed.
 // The other way round, resize-window would set the mark again. With a
-// layout, the panes are put back as they were; tmux refuses a layout
-// whose panes are not the window's any more, which is then left as is.
+// layout, the panes get its proportions back, when the window still has
+// its shape.
 func (s Server) ReleaseWindow(ctx context.Context, paneID, layout string) error {
 	s.unzoom(ctx, paneID)
 	if _, err := s.run(ctx, "resize-window", "-A", "-t", paneID); err != nil {
@@ -380,10 +379,74 @@ func (s Server) ReleaseWindow(ctx context.Context, paneID, layout string) error 
 	if _, err := s.run(ctx, "set-option", "-w", "-u", "-t", paneID, "window-size"); err != nil {
 		return err
 	}
-	if layout != "" {
-		s.run(ctx, "select-layout", "-t", paneID, layout)
+	// Panes moved since, at the host or by a client, stay where they are.
+	live, _ := s.WindowLayout(ctx, paneID)
+	if layout != "" && SameShape(layout, live) {
+		if w, h, err := s.windowSize(ctx, paneID); err == nil {
+			s.lay(ctx, paneID, layout, w, h)
+		}
 	}
 	return nil
+}
+
+// ArrangeWindow lays the window holding paneID out as layout at the size
+// the window has, panes where the layout names them.
+func (s Server) ArrangeWindow(ctx context.Context, paneID, layout string) error {
+	s.unzoom(ctx, paneID)
+	w, h, err := s.windowSize(ctx, paneID)
+	if err != nil {
+		return err
+	}
+	return s.lay(ctx, paneID, layout, w, h)
+}
+
+func (s Server) windowSize(ctx context.Context, paneID string) (int, int, error) {
+	out, err := s.run(ctx, "display-message", "-p", "-t", paneID, "#{window_width} #{window_height}")
+	if err != nil {
+		return 0, 0, err
+	}
+	var w, h int
+	if _, err := fmt.Sscanf(strings.TrimSpace(string(out)), "%d %d", &w, &h); err != nil {
+		return 0, 0, err
+	}
+	return w, h, nil
+}
+
+// lay scales layout to w×h and selects it. tmux fills a layout's places
+// with the window's panes in its own order and ignores the ids written in
+// it, so the panes are first swapped into the layout's order.
+func (s Server) lay(ctx context.Context, paneID, layout string, w, h int) error {
+	root, err := parseLayout(layout)
+	if err != nil {
+		return err
+	}
+	if err := root.scale(w, h, 0, 0); err != nil {
+		return err
+	}
+	out, err := s.run(ctx, "list-panes", "-t", paneID, "-F", "#{pane_id}")
+	if err != nil {
+		return err
+	}
+	have := strings.Fields(string(out))
+	want := layoutOrder(root)
+	if len(have) != len(want) {
+		return fmt.Errorf("layout: %d panes for a window of %d", len(want), len(have))
+	}
+	for i := range want {
+		if have[i] == want[i] {
+			continue
+		}
+		j := slices.Index(have, want[i])
+		if j < 0 {
+			return fmt.Errorf("layout: %s is not in the window", want[i])
+		}
+		if _, err := s.run(ctx, "swap-pane", "-d", "-s", want[i], "-t", have[i]); err != nil {
+			return err
+		}
+		have[i], have[j] = have[j], have[i]
+	}
+	_, err = s.run(ctx, "select-layout", "-t", paneID, root.String())
+	return err
 }
 
 // Scope of a target: a session, a window or a pane.

@@ -274,3 +274,45 @@ func ScaleLayout(layout string, w, h int) (string, error) {
 	}
 	return root.String(), nil
 }
+
+// layoutOrder is the layout's pane ids, as "%<n>", in the order tmux fills
+// its places: depth first.
+func layoutOrder(root *layoutCell) []string {
+	if root.kind == 0 {
+		return []string{"%" + strconv.Itoa(root.id)}
+	}
+	var ids []string
+	for _, child := range root.children {
+		ids = append(ids, layoutOrder(child)...)
+	}
+	return ids
+}
+
+func sameShape(a, b *layoutCell) bool {
+	if a.kind != b.kind || len(a.children) != len(b.children) {
+		return false
+	}
+	if a.kind == 0 {
+		return a.id == b.id
+	}
+	for i := range a.children {
+		if !sameShape(a.children[i], b.children[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// SameShape is whether two layouts have the same splits with the same panes
+// in the same places, sizes aside. A layout that does not parse has no shape.
+func SameShape(a, b string) bool {
+	ra, err := parseLayout(a)
+	if err != nil {
+		return false
+	}
+	rb, err := parseLayout(b)
+	if err != nil {
+		return false
+	}
+	return sameShape(ra, rb)
+}

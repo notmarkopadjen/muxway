@@ -7,7 +7,8 @@ Your tmux, from anywhere. A hub, a small agent per machine, and clients from the
 **One screen, every machine.** Put up to four panes side by side from any
 mix of hosts, sessions and windows: the build on your workstation, the
 logs on a server, an AI agent on your laptop, all in one view, each live
-and typable. Drag a header to rearrange them however you like.
+and typable. Drag a header to rearrange them however you like; tiles
+that are one window's panes stay in step with that window on its host.
 
 ```
 ┌─ alice-laptop/work/0.0 ───────┬─ build-server/ci/1.0 ─────────┐

@@ -41,6 +41,9 @@ type Request struct {
 	// Layout, with scope "window", is a tmux layout string whose
 	// proportions the window takes at the new size.
 	Layout string `json:"layout,omitempty"`
+	// Arrange: the hub found the principal may write to every pane of the
+	// window, so the layout may move panes, not only size them.
+	Arrange bool `json:"arrange,omitempty"`
 	// Zoom, with scope "window", shows the pane alone in its window.
 	Zoom bool `json:"zoom,omitempty"`
 	// Direction of a split: "h" puts the new pane beside Pane, "v" below.

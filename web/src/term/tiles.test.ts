@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   close,
+  fromHost,
+  nearWeights,
+  sameTree,
   dropOn,
   prune,
   zoneAt,
@@ -123,5 +126,36 @@ describe('dropping a header on a tile', () => {
     expect(tilesLayout(t, {}, ['%1', '%2'])).toMatch(
       /1000x1000,0,0\[1000x500,0,0,1,1000x500,0,0,2\]$/,
     );
+  });
+});
+
+describe('fromHost', () => {
+  // .1 over .2 on the left, .0 down the right: tiles open as .0, .1, .2.
+  const layout = 'abcd,197x41,0,0{98x41,0,0[98x20,0,0,25,98x20,0,21,26],98x41,99,0,14}';
+  it('builds the tiles tree from the host, panes by id', () => {
+    const h = fromHost(layout, ['%14', '%25', '%26'])!;
+    expect(h.node).toEqual({
+      kind: 'h',
+      key: 'r',
+      children: [{ kind: 'v', key: 'r.0', children: [1, 2] }, 0],
+    });
+    expect(h.weights.r).toEqual([0.5, 0.5]);
+  });
+  it('is null for a layout naming a pane not open', () => {
+    expect(fromHost(layout, ['%14', '%25'])).toBeNull();
+    expect(fromHost('junk', ['%14'])).toBeNull();
+  });
+  it('round-trips through tilesLayout with the ids where the tiles are', () => {
+    const ids = ['%14', '%25', '%26'];
+    const h = fromHost(layout, ids)!;
+    const back = fromHost(tilesLayout(h.node, h.weights, ids), ids)!;
+    expect(sameTree(back.node, h.node)).toBe(true);
+    expect(nearWeights(h.node, back.weights, h.weights, 0.01)).toBe(true);
+  });
+  it('tells a moved tile from new shares', () => {
+    const h = fromHost(layout, ['%14', '%25', '%26'])!;
+    const swapped = fromHost(layout, ['%25', '%14', '%26'])!;
+    expect(sameTree(h.node, swapped.node)).toBe(false);
+    expect(nearWeights(h.node, h.weights, { r: [0.6, 0.4] }, 0.03)).toBe(false);
   });
 });

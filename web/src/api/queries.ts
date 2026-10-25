@@ -189,9 +189,11 @@ export function closePane(address: string): Promise<void> {
 
 // resize asks the host to size the pane's window; the answer is the pane
 // as tmux has it now. 429 means another resize landed within the second.
-export function resizePane(address: string, body: Resize): Promise<{ pane: Pane }> {
+// After a layout the answer lists the window's panes, which may have new
+// addresses.
+export function resizePane(address: string, body: Resize): Promise<{ pane: Pane; panes?: Pane[] }> {
   noteOwn(address);
-  return api<{ pane: Pane }>(`/v1/panes/${address}/resize`, {
+  return api<{ pane: Pane; panes?: Pane[] }>(`/v1/panes/${address}/resize`, {
     method: 'POST',
     body: JSON.stringify(body),
   }).then((r) => {

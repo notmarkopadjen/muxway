@@ -111,6 +111,27 @@ func TestUI_Close(t *testing.T) {
 	runPlaywright(t, e, npx, webDir, "89-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_CLOSE=1")
 }
 
+// One window's tiles kept in step with the window need a window whose
+// panes are all writable; spec 100 runs here with MX_ARRANGE set, its
+// read-only case in the main environment.
+func TestUI_Arrange(t *testing.T) {
+	npx, webDir := uiTools(t)
+	if g := os.Getenv("MX_GREP"); g != "" {
+		if ok, _ := regexp.MatchString(g, "100-"); !ok {
+			t.Skip("MX_GREP leaves spec 100 out")
+		}
+	}
+	e := newEnv(t)
+	ts := newTmux(t)
+	a := e.pairAgent(host, ts)
+	ts.split("work:0.0")
+	ts.split("work:0.0")
+	e.expose(ts, "work", "--write")
+	full := e.token("browser", []string{"*"}, []string{"*"})
+	control := e.startControl(t, ts, a)
+	runPlaywright(t, e, npx, webDir, "100-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_ARRANGE=1")
+}
+
 func uiTools(t *testing.T) (npx, webDir string) {
 	if os.Getenv("MUXWAY_SKIP_UI") != "" {
 		t.Skip("MUXWAY_SKIP_UI set")
@@ -255,6 +276,14 @@ func (e *env) startControl(t *testing.T, ts *tmuxServer, a *agentProc) string {
 		id, _ := ts.run(append(args, shell())...)
 		ts.run("select-pane", "-t", id, "-T", "test-pane")
 		text(w, id)
+	})
+	mux.HandleFunc("/places", func(w http.ResponseWriter, r *http.Request) {
+		out, _ := ts.run("list-panes", "-t", r.URL.Query().Get("target"), "-F", "#{pane_id} #{pane_left} #{pane_top} #{pane_width} #{pane_height}")
+		text(w, out)
+	})
+	mux.HandleFunc("/select-layout", func(w http.ResponseWriter, r *http.Request) {
+		_, err := ts.run("select-layout", "-t", r.URL.Query().Get("target"), r.URL.Query().Get("layout"))
+		text(w, fmt.Sprint(err))
 	})
 	mux.HandleFunc("/kill-pane", func(w http.ResponseWriter, r *http.Request) {
 		_, err := ts.run("kill-pane", "-t", r.URL.Query().Get("target"))

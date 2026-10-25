@@ -146,7 +146,8 @@ read at the font you chose (the help overlay, `?`, cycles it from 11 to
 every pane is shown one to one. Fit is on by default wherever you may
 write: in the pane view and the window view.
 Leaving a fitted view gives the window back to tmux's automatic sizing,
-unzoomed, and the panes back to the layout they had. Moving between
+unzoomed, and the panes back to the proportions they had, unless they
+were moved since: an arrangement stays. Moving between
 panes inside the pane view (`]` `[`, a tab, a swap) is not leaving: a
 pane shown in a tile stays at the size it was given, and when it comes
 back at that size nothing is sent, so switching back and forth does not
@@ -165,7 +166,9 @@ fit, or `r`, sends this client's size once more.
 ## Tiles: the Android view
 
 `/p/<address>` opens one pane; `/p/<a>,<b>,<c>` opens up to four, side
-by side. The page is the Android client's pane view:
+by side, **from any hosts, sessions and windows**: the build on your
+workstation, the logs on a server and an AI agent on your laptop in one
+view, each live and typable. The page is the Android client's pane view:
 
 ```
 ┌─ muxway ─┐ [⟳ fixing the build][! review][bash][tail · build.log] [+]   [▦][⤢][⟳][⊡][≡]  [alice ▾]
@@ -213,7 +216,36 @@ by side. The page is the Android client's pane view:
   the pane on its host after asking `y` / `n` on the header, where the
   agent allows it and the pane is writable (see
   [new panes and sessions](new-panes.md#closing-a-pane)), and otherwise
-  closes the tile. The arrangement is the browser's own and never reaches the host.
+  closes the tile. The arrangement is the browser's own, except for one
+  window's panes (below).
+- **One window's panes stay in step with it.** When the tiles are every
+  pane of one window, they open as the host has the window, and a change
+  there (a split resized at the host, another client's arrangement)
+  shows here within a few seconds. What you change here goes to the host
+  as the window's layout: a divider dragged, a swap, a drop, `▦`. The
+  agent swaps the panes into the order you made, because tmux fills a
+  layout's places in its own pane order, and lays the window out; with
+  fit on it is also sized to the view, with fit off it keeps its size.
+  Moving panes changes their indexes, so their addresses: the view
+  follows its panes by id and rewrites its address. Moving them needs a
+  write grant on every pane of the window; with a read-only one among
+  them the tiles follow the host, `▦` is off and a drop says why.
+
+```mermaid
+sequenceDiagram
+    participant V as View
+    participant H as Hub
+    participant A as Agent
+    participant T as tmux
+    V->>H: GET /v1/panes (window_layout)
+    Note over V: every pane of one window: the tiles take the host's layout
+    V->>H: POST resize {scope: window, layout by pane id}
+    H->>A: resize, arrange (write on every pane of the window)
+    A->>T: swap-pane into the layout's order, select-layout
+    A-->>H: ok, audit line
+    H-->>V: 200, the window's panes at their new addresses
+    Note over V: the route follows the panes by id
+```
 - A tile's **header** is painted like its tab and names the pane, its
   address, its size, its mode and the lens's word; the focused tile has
   the thick border and the bold name. The controls sit in the top row,
@@ -501,10 +533,14 @@ and fails if the committed output differs from the sources.
   names and drops everything else. Lint forbids injecting markup.
 - A resize is a write on the host: it needs the write grant and the write
   mark, is audited with its size, and is limited to one per second per
-  window. A browser arrangement reaches the host only with fit on, as the
-  proportions and the zoom of a window resize; the hub parses the layout
-  and the agent accepts one that names exactly the window's panes,
-  nothing else.
+  window. A browser arrangement reaches the host as a window's layout:
+  with fit on, as the proportions and the zoom of a window resize, and
+  for tiles that are every pane of one window also with fit off. The hub
+  parses the layout and the agent accepts one that names exactly the
+  window's panes, nothing else. A layout that moves panes, not only
+  sizes them, needs the write grant on every pane of the window, checked
+  by the hub and, against the live window, by the agent; both audit it
+  with `arrange=true`.
 - The cookie is `SameSite=Strict` and useless without the client header,
   so a page on another origin can neither read nor use the session. The
   suite proves it from a second origin.

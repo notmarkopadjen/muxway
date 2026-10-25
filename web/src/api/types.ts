@@ -71,6 +71,7 @@ export interface WindowContent {
 
 export type Resize =
   | { cols: number; rows: number; scope?: 'pane' | 'window'; layout?: string; zoom?: boolean }
+  | { scope: 'window'; layout: string }
   | { fit: 'auto' };
 
 export interface Event {

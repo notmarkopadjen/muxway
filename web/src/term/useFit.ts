@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { resizePane } from '../api/queries';
+import type { Pane } from '../api/types';
 import { cellsFor, inner } from './measure';
 
 // Fit: the host follows the box. Measures the box, debounces, sends a
@@ -38,6 +39,8 @@ export interface FitOptions {
   known?: () => { cols: number; rows: number; zoomed?: boolean } | undefined;
   // Window scope takes a cell off for the window view's cell chrome.
   inset?: boolean;
+  // The host's answer, which after a layout lists the window's panes.
+  onDone?: (r: { panes?: Pane[] }) => void;
 }
 
 // Panes fitted and not yet released, across tiles that came and went.
@@ -69,6 +72,8 @@ export function useFit(
   const { keep = false, inset = scope === 'window' } = opts;
   const known = useRef(opts.known);
   known.current = opts.known;
+  const done = useRef(opts.onDone);
+  done.current = opts.onDone;
 
   useEffect(() => {
     if (!enabled || !box.current) return;
@@ -85,7 +90,10 @@ export function useFit(
         return;
       }
       resizePane(address, { cols, rows, scope, layout, zoom: zoom || undefined })
-        .then((r) => setSize({ cols: r.pane.width, rows: r.pane.height }))
+        .then((r) => {
+          setSize({ cols: r.pane.width, rows: r.pane.height });
+          done.current?.(r);
+        })
         .catch((err) => {
           if (err instanceof ApiError && err.status === 429) {
             last.current = '';
