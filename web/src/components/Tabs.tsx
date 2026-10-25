@@ -14,6 +14,7 @@ export function Tabs({
   hidden = [],
   addable = false,
   onTab,
+  onZoom,
 }: {
   panes: Pane[];
   open: string[];
@@ -21,6 +22,7 @@ export function Tabs({
   hidden?: string[];
   addable?: boolean;
   onTab: (address: string, add: boolean) => void;
+  onZoom?: (address: string) => void;
 }) {
   const lens = useLens();
   const strip = useRef<HTMLDivElement>(null);
@@ -92,6 +94,7 @@ export function Tabs({
               data-hidden={isHidden ? '' : undefined}
               data-state={st === 'quiet' ? undefined : st}
               onClick={(e) => onTab(address, e.shiftKey)}
+              onDoubleClick={onZoom && (() => onZoom(address))}
               title={
                 isHidden
                   ? `${address} · hidden here, click brings it back`

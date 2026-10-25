@@ -250,15 +250,7 @@ export function Shell() {
           <kbd>?</kbd> help · <kbd>t</kbd> theme · <kbd>/</kbd> filter
         </span>
       </footer>
-      {help && (
-        <Help
-          onClose={() => setHelp(false)}
-          onHubs={() => {
-            setHelp(false);
-            setHubsOpen(true);
-          }}
-        />
-      )}
+      {help && <Help onClose={() => setHelp(false)} />}
       {hubsOpen && <Hubs onClose={() => setHubsOpen(false)} />}
       {palette && <Palette onClose={() => setPalette(false)} />}
     </>

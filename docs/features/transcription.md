@@ -66,7 +66,8 @@ line has a `◉` button between the field and *send* (`v` from outside the
 line). It opens the microphone, after the browser's own permission
 prompt, and the field's place shows a level meter in block characters
 and the seconds; `■`, a click on the meter, `v` again or sixty seconds
-stops the clip, *cancel* or `Esc` drops it.
+stops the clip, *cancel* or `Esc` drops it. Held instead of tapped, the
+button or `v` records until released, for a quick reply.
 
 ```
 > ______________________________________ ◉ [send]       idle

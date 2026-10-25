@@ -245,24 +245,42 @@ export function InputPanel({
       field.current?.focus();
     }
   }, [mic, text]);
-  // v starts and stops a clip from outside the line; Esc drops one. Seen
-  // before the page's own keys, so Esc does not leave the view mid-clip.
+  // v works like the button: held, it records until released; tapped, it
+  // starts a clip and the next tap stops it. Esc drops one. Seen before the
+  // page's own keys, so Esc does not leave the view mid-clip.
+  const vDown = useRef(0);
   useEffect(() => {
     const onKey = (ev: globalThis.KeyboardEvent) => {
       if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
       const target = ev.target as HTMLElement | null;
       const typing = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
-      if (mic === 'recording') {
-        if (ev.key === 'Escape') cancelMic();
-        else if (ev.key === 'v' && !typing) void hear();
+      if (ev.key === 'v' && ev.repeat && vDown.current) {
+        // the key's own repeat while held
+      } else if (mic === 'recording') {
+        if (ev.key === 'Escape') {
+          vDown.current = 0;
+          cancelMic();
+        } else if (ev.key === 'v' && !typing) void hear();
         else return;
-      } else if (mic === 'idle' && ev.key === 'v' && !typing && canMic) void record();
-      else return;
+      } else if (mic === 'idle' && ev.key === 'v' && !ev.repeat && !typing && canMic) {
+        vDown.current = Date.now();
+        void record();
+      } else return;
       ev.preventDefault();
       ev.stopImmediatePropagation();
     };
+    const onUp = (ev: globalThis.KeyboardEvent) => {
+      if (ev.key !== 'v' || !vDown.current) return;
+      const held = Date.now() - vDown.current >= HOLD_MS;
+      vDown.current = 0;
+      if (held && mic === 'recording') void hear();
+    };
     window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
+    window.addEventListener('keyup', onUp, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('keyup', onUp, true);
+    };
   });
   const line = async (t: string) => {
     if (t) {

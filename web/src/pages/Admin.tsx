@@ -109,6 +109,7 @@ export function AdminPage() {
 
   return (
     <div className="mx-admin" data-testid="admin">
+      {!o && <div />}
       {o && (
         <div className="mx-admin-facts mx-dim" data-testid="admin-facts">
           hub {o.hub.version} · {o.hub.tls ? 'tls' : 'behind a proxy'}
@@ -536,7 +537,7 @@ function AccessBox({
       <label className="mx-admin-label">
         allow <span className="mx-dim">(empty: everyone not denied)</span>
         <textarea
-          rows={4}
+          rows={3}
           value={allowText}
           spellCheck={false}
           placeholder="one address or CIDR a line"
@@ -547,7 +548,7 @@ function AccessBox({
       <label className="mx-admin-label">
         deny
         <textarea
-          rows={4}
+          rows={3}
           value={denyText}
           spellCheck={false}
           placeholder="one address or CIDR a line"

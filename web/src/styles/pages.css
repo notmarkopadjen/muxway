@@ -1014,18 +1014,24 @@ button.mx-window:focus-visible {
 }
 
 /* admin: the log across the top, three boxes under it */
+/* The page is the window's height: the log takes what the boxes under it leave. */
 .mx-admin {
   display: grid;
-  grid-template-rows: auto auto 1fr;
-  gap: var(--mx-gap-2);
-  min-height: 100%;
+  grid-template-rows: auto minmax(180px, 1fr) auto;
+  gap: var(--mx-gap);
+  height: 100%;
+}
+.mx-admin-log {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 .mx-admin-facts {
   font-size: 12px;
 }
 .mx-admin-log .mx-log-lines {
-  height: 40vh;
-  min-height: 160px;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   white-space: nowrap;
 }

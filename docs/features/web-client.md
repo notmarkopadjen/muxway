@@ -206,15 +206,20 @@ by side. The page is the Android client's pane view:
   every tile, `⟳` or `r` sends the size once more. The header shows the
   pane's size, which with fit on is the tile's.
 - **Zoom** is one view at two distances, not two views: `⊡`, `z` or a
-  double-click on a tile open the focused pane alone, and the same from
-  a single tile bring the window's panes back side by side, up to four,
-  the pane that was alone first (a window of one pane shows its mirror
-  layout instead). `w` opens the window's mirror layout.
+  double-click on a tile, its header or its tab open that pane alone,
+  and the same again bring back the tiles it came from, in their places,
+  arrangement and shares, focused on it. A pane opened alone brings the
+  window's panes side by side in the window's order, up to four (a
+  window of one pane shows its mirror layout instead). `w` opens the
+  window's mirror layout.
+- A pane that exits leaves the tiles by itself within a second; the
+  others close up.
 - While a fit is on its way to the host, a tile keeps the last frame it
   had instead of the host's answers at the old size, for three seconds
   at most, so switching panes does not flash a smaller screen.
 - `]` and `[` go to the next or previous pane: the next tile, or with
-  one tile open the strip's neighbour shown in it (the phone's swipe);
+  one tile open the strip's neighbour shown in it (the phone's swipe),
+  coming round at either end;
   `1` to `4` focus a tile by number; `b` puts the focused pane on the
   board, `Enter` opens it alone.
 - The **command row** under the key bar is for the program in the
@@ -365,8 +370,8 @@ because several host windows changing at once is a decision for you.
 
 A hub gathers hosts; a person with a hub at home and one at work has two
 addresses and two sign-ins. The browser remembers the other hubs as
-**links**, nothing more. `H`, the `⇄` button in the header, or *hubs* in
-the help opens the **hubs** box:
+**links**, nothing more. `H` or the `⇄` button in the header opens the
+**hubs** box:
 
 ```
 ┌ hubs ────────────────────────────────────┐
@@ -425,7 +430,7 @@ else sees no entry, and `/admin` says *not yours to see*. See
 | `Tab` | input line: take the highlighted completion; from an empty line, `Tab` goes to the pane |
 | `↑` `↓` | input line: pick a completion; from an empty line, the key goes to the pane, as do `←` `→` `PageUp` `PageDown` `Home` `End` |
 | `Shift+Esc` | input line: send `Escape` to the pane and keep typing |
-| `v` | speak: record a clip for the hub's transcriber, onto the input line; `v` again stops, `Esc` drops it |
+| `v` | speak: record a clip for the hub's transcriber, onto the input line; held, it records until released; tapped, `v` again stops; `Esc` drops it |
 | `p` | selector: go to a pane or window, or start a session on a host |
 | `+` | one more pane in the selected row's window; it opens |
 | `S` | a new session on the selected row's host (or the first that allows it): a one-line form, `Enter` starts, `Esc` cancels |

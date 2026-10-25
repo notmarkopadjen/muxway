@@ -18,7 +18,8 @@ test('75 double-click shows a pane alone and brings the others back, in a window
   await expect(tiles).toHaveCount(1);
   await expect(page.getByTestId('zoom')).toHaveAttribute('data-on', '1');
   await page.getByTestId('zoom').click();
-  await expect(page).toHaveURL(new RegExp(`/p/${HOST}/work/0.1,${HOST}/work/0.0$`));
+  // Back in the window's order: the pane that was alone keeps its place.
+  await expect(page).toHaveURL(new RegExp(`/p/${HOST}/work/0.0,${HOST}/work/0.1$`));
   await expect(tiles).toHaveCount(2);
   await expect(page.locator('[data-testid="tile"][data-focused]')).toHaveAttribute(
     'data-pane',
@@ -32,6 +33,21 @@ test('75 double-click shows a pane alone and brings the others back, in a window
   await page.waitForTimeout(700);
   await tiles.dblclick();
   await expect(tiles).toHaveCount(2);
+  // Tiles swapped by hand come back as they were after a zoom in and out,
+  // by the tile's header or by the strip's tab.
+  await page.getByTestId('arrange').click();
+  const arranged = await page.getByTestId('pane').getAttribute('data-layout');
+  await page.locator('.mx-tile-head').nth(1).dblclick();
+  await expect(tiles).toHaveCount(1);
+  await page.waitForTimeout(700);
+  await page.locator(`[data-testid="tab"][data-address="${HOST}/work/0.1"]`).dblclick();
+  await expect(tiles).toHaveCount(2);
+  await expect(page).toHaveURL(new RegExp(`/p/${HOST}/work/0.0,${HOST}/work/0.1$`));
+  await expect(page.locator('[data-testid="tile"][data-focused]')).toHaveAttribute(
+    'data-pane',
+    `${HOST}/work/0.1`,
+  );
+  expect(await page.getByTestId('pane').getAttribute('data-layout')).toBe(arranged);
   // w is the mirror layout; its header double-click opens the pane alone.
   await page.keyboard.press('w');
   await expect(page).toHaveURL(new RegExp(`/w/${HOST}/work/0$`));

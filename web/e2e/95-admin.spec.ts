@@ -71,6 +71,17 @@ test('95 the admin page: four boxes, a refusal in the alert colour', async ({ pa
     })
     .toBe(true);
   await shot(page, test.info(), '95-admin-tall');
+  // At any of these sizes the page fits the window: no scrollbar.
+  for (const [width, height] of [
+    [1400, 1400],
+    [1200, 800],
+    [1710, 985],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await expect
+      .poll(() => page.locator('main').evaluate((m) => m.scrollHeight - m.clientHeight))
+      .toBeLessThanOrEqual(0);
+  }
 });
 
 test('95 a created token is shown once, copies, and revokes', async ({ page, context }) => {

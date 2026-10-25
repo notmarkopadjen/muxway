@@ -204,3 +204,26 @@ test('93 hold: the button records while held and stops on release', async ({ pag
   await expect(input).toHaveValue(HEARD, { timeout: 10_000 });
   await expect(mic).toHaveText('◉');
 });
+
+test('93 hold v: it records while held, repeats and all, and stops on release', async ({
+  page,
+  request,
+}) => {
+  test.skip(!STT, 'needs the transcriber environment');
+  await signIn(page);
+  await openPane(page, SHELL0);
+  await page.waitForTimeout(5200);
+  const before = await calls(request);
+  const input = page.getByTestId('input');
+  const line = page.getByTestId('mic-line');
+  await page.keyboard.down('v');
+  await expect(line).toHaveAttribute('data-state', 'recording');
+  await page.waitForTimeout(300);
+  // A held key repeats; a repeat does not stop the clip.
+  await page.keyboard.down('v');
+  await page.waitForTimeout(600);
+  await expect(line).toHaveAttribute('data-state', 'recording');
+  await page.keyboard.up('v');
+  await expect(input).toHaveValue(HEARD, { timeout: 10_000 });
+  expect(await calls(request)).toBe(before + 1);
+});

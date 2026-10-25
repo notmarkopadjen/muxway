@@ -32,6 +32,12 @@ import {
 import { releaseKept, useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
 
+// The tiles a zoom came from, to go back to: kept across the navigation
+// the zoom makes.
+let unzoomed: { panes: string[]; layout: Arrangement; weights: Weights } | null = null;
+// The pane to focus once the tiles of a new count are up.
+let focusNext: string | null = null;
+
 // How long a tile shows its last frame while the host catches up with a fit.
 const HOLD_FRAME_MS = 3000;
 
@@ -148,6 +154,13 @@ function Tile(props: TileProps) {
   const lens = useLens();
   const st = p ? lens.status(p) : 'quiet';
   const [over, setOver] = useState(false);
+  // A pane that exited leaves the tiles at once; tmux has renumbered the
+  // rest, so the window's last address is the one that is gone.
+  const gone = several && pane.error instanceof ApiError && pane.error.status === 404;
+  const { onClose } = props;
+  useEffect(() => {
+    if (gone) onClose();
+  }, [gone, onClose]);
 
   if (pane.isError) {
     const err = pane.error;
@@ -326,7 +339,11 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const navigate = useNavigate();
   const toast = useToast();
   const all = useAllPanes(true);
-  const [focusedIndex, setFocusedIndex] = useState(0);
+  const [focusedIndex, setFocusedIndex] = useState(() => {
+    const at = focusNext ? addresses.indexOf(focusNext) : -1;
+    focusNext = null;
+    return Math.max(at, 0);
+  });
   const index = Math.min(focusedIndex, n - 1);
   const focused = addresses[index];
   const focusedPane = usePaneCached(focused).data?.pane;
@@ -344,8 +361,14 @@ function Tiles({ addresses }: { addresses: string[] }) {
     [toast],
   );
 
-  // A new count resets the arrangement to one that fits it.
+  // A new count resets the arrangement to one that fits it, unless zooming
+  // out brings back the tiles as they were.
   useEffect(() => {
+    if (unzoomed && unzoomed.panes.length === n && unzoomed.panes.join() === addresses.join()) {
+      setLayout(unzoomed.layout);
+      setWeights(unzoomed.weights);
+      return;
+    }
     setLayout((l) =>
       options(n).includes(l) ? l : defaultFor(window.innerWidth > window.innerHeight),
     );
@@ -435,9 +458,14 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const neighbour = (step: number) => {
     const at = strip.indexOf(focused);
     if (at < 0) return;
-    let k = at + step;
-    while (k >= 0 && k < strip.length && addresses.includes(strip[k])) k += step;
-    if (k >= 0 && k < strip.length) go(replace(addresses, index, strip[k]));
+    // Past either end it comes round to the other.
+    for (let i = 1; i < strip.length; i++) {
+      const k = (((at + step * i) % strip.length) + strip.length) % strip.length;
+      if (!addresses.includes(strip[k])) {
+        go(replace(addresses, index, strip[k]));
+        return;
+      }
+    }
   };
   const toggleFit = (address: string, on?: boolean) =>
     setFit((f) => ({ ...f, [address]: on ?? !(f[address] ?? writable) }));
@@ -491,13 +519,21 @@ function Tiles({ addresses }: { addresses: string[] }) {
     }
   };
 
-  // Zoom: the focused pane alone, or the window's panes side by side
-  // again, up to four, the one that was alone first; a window of one pane
-  // shows its mirror layout instead.
+  // Zoom: the focused pane alone, and back to the tiles it came from, in
+  // their places and arrangement; from a pane opened alone, the window's
+  // panes side by side in the window's order, up to four; a window of one
+  // pane shows its mirror layout instead.
   const zoom = useCallback(
     (p: Pane) => {
       if (several) {
+        unzoomed = { panes: addresses, layout, weights };
         go([p.address]);
+        return;
+      }
+      if (unzoomed && unzoomed.panes.includes(p.address)) {
+        const back = unzoomed.panes;
+        focusNext = p.address;
+        go(back);
         return;
       }
       const mates = (all.data ?? [])
@@ -505,15 +541,16 @@ function Tiles({ addresses }: { addresses: string[] }) {
           (q) => q.host === p.host && q.session === p.session && q.window_index === p.window_index,
         )
         .map((q) => q.address);
-      const rest = mates.filter((a) => a !== p.address).slice(0, MAX_TILES - 1);
-      if (!rest.length) {
+      if (mates.length < 2) {
         navigate({ to: `/w/${p.host}/${p.session}/${p.window_index}` });
         return;
       }
-      go([p.address, ...rest]);
-      setFocusedIndex(0);
+      const others = mates.filter((a) => a !== p.address).slice(0, MAX_TILES - 1);
+      const back = mates.filter((a) => a === p.address || others.includes(a));
+      focusNext = p.address;
+      go(back);
     },
-    [several, all.data, go, navigate],
+    [several, addresses, layout, weights, all.data, go, navigate],
   );
   const focusedFit = fit[focused] ?? writable;
   const tile = (i: number) => {
@@ -557,7 +594,17 @@ function Tiles({ addresses }: { addresses: string[] }) {
         <Link to="/" className="mx-back" title="back to the panes (Esc)" data-testid="back">
           ‹
         </Link>
-        <Tabs panes={all.data ?? []} open={addresses} focused={focused} onTab={onTab} addable />
+        <Tabs
+          panes={all.data ?? []}
+          open={addresses}
+          focused={focused}
+          onTab={onTab}
+          onZoom={(a) => {
+            const p = (all.data ?? []).find((q) => q.address === a);
+            if (p) zoom(p);
+          }}
+          addable
+        />
         <span className="mx-tools">
           {several && (
             <button

@@ -138,14 +138,14 @@ The same action on every client, triggered the way the device does it.
 | back to the list | `Esc` | `‹`, system back | back |
 | open the selected pane | `Enter` | tap | select |
 | pick several | `space`, `[ ]`; Shift+click a tab opens it beside | hold | — |
-| next / previous pane: the tile, or with one tile open the strip's neighbour shown in it | `]` / `[` | tap the tile, swipe | D-pad left / right |
+| next / previous pane: the tile, or with one tile open the strip's neighbour shown in it, coming round at either end | `]` / `[` | tap the tile, swipe | D-pad left / right |
 | move the strip | wheel over it, `‹ ›` | drag | — |
 | scroll a program that has the mouse | wheel over it | drag | — |
 | next arrangement | `l`, `▦` | `▦` | — |
 | close a tile | `x`, `×` | `×` | — |
 | fit on / off, again | `f`, `r`, button | `⤢` tap, hold | — |
 | fit every tile | `F` | — | — |
-| zoom: one pane alone, or the window's panes side by side | `z`, `⊡`, double-click a tile | — | — |
+| zoom: one pane alone, then back to the tiles it came from, in their places and arrangement (or, opened alone, the window's panes side by side in the window's order) | `z`, `⊡`, double-click a tile, its header or its tab | — | — |
 | the window view (mirror layout) | `w` | — | — |
 | the board | `b` | — | — |
 | go to a pane | `p`, `≡` | the strip | — |
@@ -158,9 +158,9 @@ The same action on every client, triggered the way the device does it.
 | focus the input line, leave it | `i`, `Esc` | tap, back | — |
 | a console key from an empty input line | `↑` `↓` `←` `→` `PageUp` `PageDown` `Home` `End` `Tab` | the key row | D-pad |
 | Escape to the pane while typing | `Shift+Esc` | `Esc` in the key row | — |
-| speak: record a clip, stop it, drop it | `v`, `◉` / `■` / the meter; `Esc` drops | tap `◉` / `■`; back drops | the glasses' own mic |
+| speak: record a clip, stop it, drop it | `v` or `◉`: held, records until released; tapped, the next tap, `■` or the meter stops; `Esc` drops | tap `◉` / `■`; back drops | the glasses' own mic |
 | answer from the watch: a key of its pane screen, or a spoken line confirmed there | — | a tap on the watch's pane screen; the phone validates and sends | — |
-| another hub | `H`, `⇄`, the help's *hubs*: a link to its own page and sign-in | the hubs list on the connect screen: *use* | — |
+| another hub | `H`, `⇄`: a link to its own page and sign-in | the hubs list on the connect screen: *use* | — |
 | the admin page (an admin principal only) | `admin` in the header | Settings → *admin* | — |
 | deny the address of a log line | `deny` on the row | — | — |
 | end a client's session | `end` on the row | `end` on the row | — |

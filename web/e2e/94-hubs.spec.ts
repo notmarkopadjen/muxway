@@ -144,12 +144,10 @@ test('94 two hubs: go, sign in there, come back; each page keeps its own session
   expect(sa?.value).not.toBe(sb?.value);
 });
 
-test('94 rename and remove follow in the list; the help reaches the hubs', async ({ page }) => {
+test('94 rename and remove follow in the list', async ({ page }) => {
   await signIn(page);
   await settled(page);
-  await page.keyboard.press('?');
-  await page.getByTestId('help-hubs').click();
-  await expect(page.getByTestId('help')).toHaveCount(0);
+  await page.keyboard.press('H');
   await expect(page.getByTestId('hubs')).toBeVisible();
   await addHub(page, 'work', WORK + '/');
   await expect(page.getByTestId('hub-row').nth(1)).toContainText(WORK);

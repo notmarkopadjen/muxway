@@ -57,7 +57,7 @@ const KEYS: [string, string][] = [
   ['?', 'this help'],
 ];
 
-export function Help({ onClose, onHubs }: { onClose: () => void; onHubs: () => void }) {
+export function Help({ onClose }: { onClose: () => void }) {
   useSettings();
   return (
     <div className="mx-help" onClick={onClose} data-testid="help">
@@ -83,9 +83,6 @@ export function Help({ onClose, onHubs }: { onClose: () => void; onHubs: () => v
             </button>
             <button type="button" onClick={() => void toggleNotify()}>
               notifications: {getNotify() ? 'on' : 'off'}
-            </button>
-            <button type="button" onClick={onHubs} data-testid="help-hubs">
-              hubs
             </button>
             <button type="button" onClick={onClose}>
               close
