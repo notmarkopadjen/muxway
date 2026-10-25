@@ -54,6 +54,23 @@ test('95 the admin page: four boxes, a refusal in the alert colour', async ({ pa
   await expect(page.getByTestId('log-line').first()).toContainText('admin refused');
   await page.getByTestId('log-filter').fill('');
   await shot(page, test.info(), '95-admin');
+
+  // On a tall window the boxes under the log reach down to the status line, level.
+  await page.setViewportSize({ width: 1400, height: 1400 });
+  await expect
+    .poll(async () => {
+      const main = await page.locator('main').boundingBox();
+      const bottoms = await Promise.all(
+        ['admin-tokens', 'admin-clients', 'admin-access'].map(async (id) => {
+          const b = await page.getByTestId(id).boundingBox();
+          return Math.round((b?.y ?? 0) + (b?.height ?? 0));
+        }),
+      );
+      const end = Math.round((main?.y ?? 0) + (main?.height ?? 0));
+      return new Set(bottoms).size === 1 && end - bottoms[0] <= 24;
+    })
+    .toBe(true);
+  await shot(page, test.info(), '95-admin-tall');
 });
 
 test('95 a created token is shown once, copies, and revokes', async ({ page, context }) => {

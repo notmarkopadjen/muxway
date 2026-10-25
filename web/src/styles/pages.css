@@ -1016,7 +1016,9 @@ button.mx-window:focus-visible {
 /* admin: the log across the top, three boxes under it */
 .mx-admin {
   display: grid;
+  grid-template-rows: auto auto 1fr;
   gap: var(--mx-gap-2);
+  min-height: 100%;
 }
 .mx-admin-facts {
   font-size: 12px;
@@ -1064,7 +1066,7 @@ button.mx-window:focus-visible {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--mx-gap-2);
-  align-items: start;
+  align-items: stretch;
 }
 .mx-admin-list {
   list-style: none;
