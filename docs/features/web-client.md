@@ -70,6 +70,10 @@ nothing but the hub to talk to.
    and an address wrapped onto a second row opens up to the row's end.
    In a pane whose program has the mouse, a numbered choice (Claude
    Code's `❯ 1. Yes`, `2. No`) shows the hand, since a click picks it.
+   Where the host's agent has an inbox and the pane is writable, `⇪` sits
+   on the line too: a file picked with it, pasted (a screenshot) or
+   dropped anywhere on the view goes to the host, and its path lands on
+   the line, focused and unsent (see [attachments](attachments.md)).
    When the hub has a transcriber (see [transcription](transcription.md))
    and the pane is writable, a `◉` button sits between the field and
    *send*: a click or `v` records a clip, a level meter and the seconds

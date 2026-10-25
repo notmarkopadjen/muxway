@@ -38,7 +38,7 @@ func TestUI_WebClient(t *testing.T) {
 		"--oidc-client-secret-file", secret, "--oidc-label", "Sign in with Test")
 	defer remember(idp.Secrets...)
 	ts := newTmux(t)
-	a := e.pairAgent(host, ts, "--allow-sessions")
+	a := e.pairAgent(host, ts, "--allow-sessions", "--inbox", "default")
 	ts.split("work:0.0")
 	ts.must("new-window", "-t", "work:1", "-n", "logs", shell())
 	ts.title("work:1.0")
@@ -219,6 +219,14 @@ func (e *env) startControl(t *testing.T, ts *tmuxServer, a *agentProc) string {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprint(w, s)
 	}
+	mux.HandleFunc("/inbox", func(w http.ResponseWriter, r *http.Request) {
+		entries, _ := os.ReadDir(filepath.Join(a.dir, "inbox"))
+		var names []string
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		text(w, strings.Join(names, "\n"))
+	})
 	mux.HandleFunc("/pane-id", func(w http.ResponseWriter, r *http.Request) {
 		out, _ := ts.run("display-message", "-p", "-t", r.URL.Query().Get("target"), "#{pane_id}")
 		text(w, out)

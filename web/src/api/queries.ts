@@ -26,6 +26,7 @@ export const keys = {
   panes: ['panes'] as const,
   transcriber: ['transcriber'] as const,
   admin: ['admin'] as const,
+  files: (address: string) => ['files', address] as const,
 };
 
 function useVisible(): boolean {
@@ -138,6 +139,47 @@ export function useAllPanes(enabled: boolean) {
     enabled,
     refetchInterval: 5_000,
   });
+}
+
+// Whether the pane's host takes files for it: 204 yes, anything else no.
+export function useFiles(address: string | undefined, writable: boolean) {
+  return useQuery({
+    queryKey: keys.files(address ?? ''),
+    queryFn: () =>
+      api<void>(`/v1/panes/${address}/files`).then(
+        () => true,
+        () => false,
+      ),
+    enabled: !!address && writable,
+    staleTime: 60_000,
+  });
+}
+
+// The types the host's inbox takes, by the browser's type or the name's end.
+export const FILE_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  pdf: 'application/pdf',
+  txt: 'text/plain',
+  md: 'text/markdown',
+  json: 'application/json',
+};
+
+export function fileType(f: File): string | null {
+  const known = Object.values(FILE_TYPES);
+  if (known.includes(f.type)) return f.type;
+  return FILE_TYPES[f.name.split('.').pop()?.toLowerCase() ?? ''] ?? null;
+}
+
+// sendFile hands a file to the pane's host; the answer is where it went.
+// The browser's name for the file is not sent.
+export function sendFile(address: string, f: File, type: string): Promise<{ path: string }> {
+  const form = new FormData();
+  form.append('file', new Blob([f], { type }), 'file');
+  return api<{ path: string }>(`/v1/panes/${address}/files`, { method: 'POST', body: form });
 }
 
 // closePane asks the host to close the pane, ending what runs in it.

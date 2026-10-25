@@ -9,7 +9,7 @@ import {
   type SyntheticEvent,
 } from 'react';
 import { ApiError } from '../api/client';
-import { transcribe, useTranscriber } from '../api/queries';
+import { fileType, sendFile, transcribe, useFiles, useTranscriber } from '../api/queries';
 import type { Key, Pane } from '../api/types';
 import { commandsFor, isShell, remember, useRecent, type Command } from '../term/commands';
 import { complete, completions } from '../term/complete';
@@ -67,6 +67,12 @@ const CONSOLE_KEYS: Record<string, Key> = {
   Tab: 'Tab',
 };
 
+function size(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1 << 20) return `${(n / 1024).toFixed(1)} KiB`;
+  return `${(n / (1 << 20)).toFixed(1)} MiB`;
+}
+
 export function InputPanel({
   pane,
   writable,
@@ -99,6 +105,9 @@ export function InputPanel({
   });
   const rec = useRef<Recorder | null>(null);
   const canMic = transcriber && writable && !!pane;
+  const canFile = useFiles(pane?.address, writable).data === true && writable && !!pane;
+  const [sending, setSending] = useState<string | null>(null);
+  const picker = useRef<HTMLInputElement>(null);
   const row = pane ? commandsFor(pane, recent) : null;
   const list = pane && writable && !closed ? completions(pane, text, caret, recent) : [];
   const picked = Math.min(pick, Math.max(list.length - 1, 0));
@@ -129,6 +138,63 @@ export function InputPanel({
     setPick(0);
     setClosed(false);
   };
+
+  // Files for the pane's program: each goes to the host's inbox, and its
+  // path lands on the line with a space after it, for the person to finish
+  // the sentence. One after another; nothing is sent to the pane.
+  const sendFiles = async (files: File[]) => {
+    if (!pane || !canFile || sending) return;
+    for (const f of files) {
+      const type = fileType(f);
+      if (!type) {
+        toast.push({ kind: 'file', title: `${f.name}: not a type the host takes` });
+        continue;
+      }
+      setSending(`⇪ ${f.name} · ${size(f.size)}…`);
+      try {
+        const { path } = await sendFile(pane.address, f, type);
+        const t = textNow.current;
+        const next = `${t && !t.endsWith(' ') ? `${t} ` : t}${path} `;
+        textNow.current = next;
+        wantCaret.current = next.length;
+        change(next, next.length);
+      } catch (err) {
+        toast.push({
+          kind: 'file',
+          title: `${f.name}: ${err instanceof ApiError ? err.code.replace('_', ' ') : 'failed'}`,
+        });
+      }
+    }
+    setSending(null);
+    wantFocus.current = true;
+  };
+  // A paste with a file in it, or a file dropped anywhere on the view.
+  useEffect(() => {
+    if (!canFile) return;
+    const hasFiles = (dt: DataTransfer | null) => !!dt && [...dt.types].includes('Files');
+    const onPaste = (e: ClipboardEvent) => {
+      const files = [...(e.clipboardData?.files ?? [])];
+      if (!files.length) return;
+      e.preventDefault();
+      void sendFiles(files);
+    };
+    const onOver = (e: DragEvent) => {
+      if (hasFiles(e.dataTransfer)) e.preventDefault();
+    };
+    const onDrop = (e: DragEvent) => {
+      if (!hasFiles(e.dataTransfer)) return;
+      e.preventDefault();
+      void sendFiles([...(e.dataTransfer?.files ?? [])]);
+    };
+    window.addEventListener('paste', onPaste);
+    window.addEventListener('dragover', onOver);
+    window.addEventListener('drop', onDrop);
+    return () => {
+      window.removeEventListener('paste', onPaste);
+      window.removeEventListener('dragover', onOver);
+      window.removeEventListener('drop', onDrop);
+    };
+  });
 
   // The microphone. The clip stays in memory until the hub has answered;
   // the words land on the line, after a space when something is there,
@@ -350,7 +416,11 @@ export function InputPanel({
         <span className={`mx-prompt${mic === 'recording' ? ' mx-rec' : ''}`}>
           {mic === 'recording' ? '●' : writable ? '>' : '○'}
         </span>
-        {mic === 'idle' ? (
+        {sending ? (
+          <div className="mx-mic-line mx-hearing" data-testid="file-line">
+            {sending}
+          </div>
+        ) : mic === 'idle' ? (
           <textarea
             ref={field}
             rows={1}
@@ -376,6 +446,34 @@ export function InputPanel({
               ? `${meter(level.levels)} ${Math.floor(level.seconds)} s · click to stop`
               : '⟳ hearing…'}
           </div>
+        )}
+        {canFile && (
+          <>
+            <button
+              type="button"
+              className="mx-mic mx-file"
+              disabled={!!sending}
+              onClick={() => picker.current?.click()}
+              title="send a file to the host: its path lands on the line (or paste, or drop one)"
+              aria-label="send a file"
+              data-testid="file"
+            >
+              ⇪
+            </button>
+            <input
+              ref={picker}
+              type="file"
+              multiple
+              hidden
+              accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.md,.json,image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain,text/markdown,application/json"
+              data-testid="file-picker"
+              onChange={(e) => {
+                const files = [...(e.target.files ?? [])];
+                e.target.value = '';
+                void sendFiles(files);
+              }}
+            />
+          </>
         )}
         {canMic && (
           <button
@@ -404,7 +502,11 @@ export function InputPanel({
             cancel
           </button>
         ) : (
-          <button type="submit" className="mx-send" disabled={!writable || mic === 'hearing'}>
+          <button
+            type="submit"
+            className="mx-send"
+            disabled={!writable || mic === 'hearing' || !!sending}
+          >
             send
           </button>
         )}
