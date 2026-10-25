@@ -131,6 +131,16 @@ ink drawn inverted, working is dim, quiet is plain (decided by the owner
 on 2026-10-25). The alert colour is for errors only; the key and command
 rows keep their group tints.
 
+**The watch is the exception** (decided by the owner on 2026-10-25): its
+face, its complications and its app draw a waiting pane in an attention
+hue — `#ffb000` in green, `#ffd36b` in amber, `#9a5b00` on paper — and
+not inverted. A watch face is always on, where a filled ink bar is
+burn-in and battery, and a complication is drawn by whatever face it sits
+in, which muxway does not own and which honours no inversion of ours. The
+glyph carries the state there; the hue follows it. Working stays dim and
+quiet plain, so the three states stay apart. The exception is the watch's
+alone: every screen that is looked at on purpose inverts.
+
 Pixel font (Press Start 2P) for the brand and panel titles, monospace
 for everything else. Effects, on by default and off by a setting: glow,
 scanlines, vignette, power-on, pulsing marks, inverted selection. Sharp
