@@ -228,3 +228,5 @@ edge strip, `e` / `E`, web only), `docs/features/web-client.md`,
   `protocol/v1.md` (resize with a layout).
 
 ## Test run
+
+[Run 20261025-142757-6336c68](https://github.com/notmarkopadjen/muxway/issues/115), passed, 124 tests, with Sec123, Flow124 (the agent puts panes where the layout says, the grants, the release keeping an arrangement), spec 100 (sync both ways, each pane its tile; `100-order`) and spec 101 (the divider, the edge strip, `e` / `E`; `101-divider-hover`, `101-across`, `101-edge`).
