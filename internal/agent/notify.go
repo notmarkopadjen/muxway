@@ -83,6 +83,14 @@ func (a *Agent) Notify(ctx context.Context, req NotifyRequest) string {
 		return code
 	}
 	a.mu.Lock()
+	// Claude Code's idle notice does not know about background work; while
+	// that runs, the pane is not waiting for its owner.
+	if req.Kind == wire.KindIdle && a.background[p.PaneID] {
+		a.mu.Unlock()
+		a.log.Info("notify dropped, background work running", "pane", p.PaneID, "kind", req.Kind)
+		return ""
+	}
+	a.background[p.PaneID] = req.Kind == wire.KindWorking && req.Text != ""
 	if req.Kind == wire.KindWorking {
 		delete(a.attention, p.PaneID)
 		p.Attention = nil

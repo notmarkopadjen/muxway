@@ -31,8 +31,35 @@ for it:
 | `Notification`, type `permission_prompt` | `permission`: Claude wants to run a tool |
 | `Notification`, type `elicitation_dialog` or `agent_needs_input` | `question`: Claude asks you something |
 | `Notification`, type `idle_prompt` | `idle`: Claude has been waiting a while |
-| `Stop` | `done`: Claude finished its turn |
+| `Stop` | `done`: Claude finished its turn; `done` with the text `next wake scheduled` when only scheduled wake-ups are left |
+| `Stop` while background work runs | `working`, with counts only: `1 shell still running`, `2 shells, 1 agent still running` |
 | `UserPromptSubmit` | `working`: you typed, nothing is needed |
+
+**Background work.** Claude Code ends a turn with `Stop` even while a
+shell, a subagent, a workflow or a monitor it started keeps running; it
+takes the turn up again when that work finishes, and that next turn ends
+with its own `Stop`. Since Claude Code 2.1, `Stop` lists that work in
+`background_tasks` (and scheduled wake-ups in `session_crons`). While any
+of it runs the pane is reported as **working**, and Claude Code's `idle`
+notice for that pane is dropped until the pane's next event. A long-lived
+background task (a dev server, a monitor) keeps the pane working until a
+turn ends without it, as Claude Code's own status line says. The text is
+built from counts by kind only: a task's description, command or a
+wake-up's prompt never leaves the host, since they can hold anything
+typed into a shell. An older Claude Code without these fields reports
+`done` as before.
+
+```mermaid
+stateDiagram-v2
+    [*] --> working: UserPromptSubmit
+    working --> background: Stop with background_tasks
+    background --> background: idle notice (dropped)
+    background --> working_again: task done, Claude resumes (no hook)
+    working_again --> done: Stop, nothing left running
+    working_again --> background: Stop, more still running
+    done --> idle: idle notice
+    working --> done: Stop, nothing running
+```
 
 Other notification types are ignored. The hook finds its pane through the
 `TMUX_PANE` variable tmux gives every pane, so Claude Code must run inside

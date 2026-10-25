@@ -160,6 +160,8 @@ type Agent struct {
 	mu        sync.Mutex
 	seen      map[string]int // pane id -> process id when first seen exposed
 	attention map[string]tmux.Attention
+	// panes whose last turn ended with work still running in the background
+	background map[string]bool
 	resized   map[string]time.Time // window id -> last resize applied
 	layouts   map[string]string    // window id -> layout before its first resize, put back on release
 	made      map[string]time.Time // pane id -> when a split made it, while the hub may still undo it
@@ -177,7 +179,7 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 		return nil, err
 	}
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
-		seen: map[string]int{}, attention: map[string]tmux.Attention{}, resized: map[string]time.Time{}, layouts: map[string]string{},
+		seen: map[string]int{}, attention: map[string]tmux.Attention{}, background: map[string]bool{}, resized: map[string]time.Time{}, layouts: map[string]string{},
 		made: map[string]time.Time{}, sessions: map[string]bool{}}, nil
 }
 

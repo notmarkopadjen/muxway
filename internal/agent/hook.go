@@ -2,6 +2,8 @@ package agent
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/notmarkopadjen/muxway/internal/wire"
 )
@@ -10,15 +12,31 @@ import (
 // a text. ok is false for events that do not concern the owner.
 func ClaudeHook(raw []byte) (kind, text string, ok bool) {
 	var in struct {
-		Event   string `json:"hook_event_name"`
-		Type    string `json:"notification_type"`
-		Message string `json:"message"`
+		Event      string `json:"hook_event_name"`
+		Type       string `json:"notification_type"`
+		Message    string `json:"message"`
+		Background []struct {
+			Type string `json:"type"`
+		} `json:"background_tasks"`
+		Crons []json.RawMessage `json:"session_crons"`
 	}
 	if json.Unmarshal(raw, &in) != nil {
 		return "", "", false
 	}
 	switch in.Event {
 	case "Stop":
+		// A turn that ends with work still running in the background is not
+		// done: Claude takes it up again when that work finishes.
+		if len(in.Background) > 0 {
+			var types []string
+			for _, t := range in.Background {
+				types = append(types, t.Type)
+			}
+			return wire.KindWorking, stillRunning(types), true
+		}
+		if len(in.Crons) > 0 {
+			return wire.KindDone, "next wake scheduled", true
+		}
 		return wire.KindDone, "", true
 	case "UserPromptSubmit":
 		return wire.KindWorking, "", true
@@ -52,4 +70,29 @@ func ClaudeHooks(command string) []byte {
 		"Notification": withMatcher, "Stop": hook, "UserPromptSubmit": hook,
 	}}, "", "  ")
 	return append(raw, '\n')
+}
+
+// stillRunning says how much runs in the background by kind, counts only:
+// a task's description or command can hold anything typed into a shell.
+func stillRunning(types []string) string {
+	nouns := map[string]string{"shell": "shell", "local_bash": "shell", "subagent": "agent", "local_agent": "agent",
+		"workflow": "workflow", "local_workflow": "workflow", "monitor": "monitor", "monitor_mcp": "monitor", "monitor_ws": "monitor"}
+	order := []string{"shell", "agent", "workflow", "monitor", "task"}
+	count := map[string]int{}
+	for _, t := range types {
+		n, ok := nouns[t]
+		if !ok {
+			n = "task"
+		}
+		count[n]++
+	}
+	var parts []string
+	for _, n := range order {
+		if c := count[n]; c == 1 {
+			parts = append(parts, "1 "+n)
+		} else if c > 1 {
+			parts = append(parts, fmt.Sprintf("%d %ss", c, n))
+		}
+	}
+	return strings.Join(parts, ", ") + " still running"
 }
