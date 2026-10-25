@@ -37,6 +37,7 @@ export interface Host {
   online: boolean;
   sessions?: boolean; // the agent starts sessions for clients
   close?: boolean; // the agent closes writable panes for clients
+  keys?: number; // 2: the agent takes the whole key grammar
 }
 
 export interface Window {

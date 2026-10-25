@@ -2,7 +2,7 @@ import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useInput, useWindow } from '../api/queries';
-import type { Key, Mouse, PaneContent } from '../api/types';
+import type { Mouse, PaneContent } from '../api/types';
 import { LensMark } from '../components/Lens';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
@@ -324,15 +324,17 @@ export function WindowPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [visible, focus, focusedPane, layout, navigate, setArr, writable, open, fit, refit]);
 
-  const send = async (body: { text: string } | { key: Key } | { mouse: Mouse }) => {
-    if (!focusedPane) return;
+  const send = async (body: { text: string } | { key: string } | { mouse: Mouse }) => {
+    if (!focusedPane) return false;
     try {
       await input.mutateAsync(body);
+      return true;
     } catch (err) {
       toast.push({
         kind: 'refused',
         title: err instanceof ApiError ? err.code : 'hub unreachable',
       });
+      return false;
     }
   };
   // A click or a wheel notch lands in the pane under the pointer, focused or not.

@@ -12,7 +12,7 @@ import {
   usePane,
   usePaneCached,
 } from '../api/queries';
-import type { Key, Mouse, Pane, PaneContent } from '../api/types';
+import type { Mouse, Pane, PaneContent } from '../api/types';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
 import { LensMark } from '../components/Lens';
@@ -751,9 +751,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  const send = async (body: { text: string } | { key: Key } | { mouse: Mouse }) => {
+  const send = async (body: { text: string } | { key: string } | { mouse: Mouse }) => {
     try {
       await input.mutateAsync(body);
+      return true;
     } catch (err) {
       refused(
         err instanceof ApiError
@@ -762,6 +763,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
             : err.code
           : 'hub unreachable',
       );
+      return false;
     }
   };
 

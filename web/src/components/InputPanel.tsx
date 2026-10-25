@@ -9,7 +9,7 @@ import {
   type SyntheticEvent,
 } from 'react';
 import { ApiError } from '../api/client';
-import { fileType, sendFile, transcribe, useFiles, useTranscriber } from '../api/queries';
+import { fileType, sendFile, transcribe, useFiles, useHosts, useTranscriber } from '../api/queries';
 import type { Key, Pane } from '../api/types';
 import { commandsFor, isShell, remember, useRecent, type Command } from '../term/commands';
 import { complete, completions } from '../term/complete';
@@ -17,6 +17,7 @@ import { meter, Recorder, RecorderError } from '../term/recorder';
 import { CommandBar } from './CommandBar';
 import { Completions } from './Completions';
 import { KeyBar } from './KeyBar';
+import { Keyboard } from './Keyboard';
 import { useToast } from './Toast';
 
 // The input line, the key bar and the command row for the focused pane,
@@ -83,7 +84,7 @@ export function InputPanel({
   pane: Pane | undefined;
   writable: boolean;
   placeholder: string;
-  send: (body: { text: string } | { key: Key }) => Promise<void>;
+  send: (body: { text: string } | { key: string }) => Promise<boolean | void>;
   children?: ReactNode;
 }) {
   const [text, setText] = useState('');
@@ -98,6 +99,12 @@ export function InputPanel({
   const recent = useRecent();
   const toast = useToast();
   const transcriber = useTranscriber().data === true;
+  // The keyboard window, for the focused pane; the host says whether its
+  // agent takes the whole key grammar.
+  const [board, setBoard] = useState(false);
+  const hosts = useHosts();
+  const grammar = hosts.data?.find((h) => h.name === pane?.host)?.keys === 2;
+  const boardOpen = board && writable && !!pane;
   const [mic, setMic] = useState<Mic>('idle');
   const [level, setLevel] = useState<{ levels: number[]; seconds: number }>({
     levels: [],
@@ -331,7 +338,9 @@ export function InputPanel({
       } else if (mic === 'idle' && ev.key === 'v' && !ev.repeat && !typing && canMic) {
         vDown.current = Date.now();
         void record();
-      } else return;
+      } else if (ev.key === 'K' && !typing && writable) setBoard((b) => !b);
+      else if (ev.key === 'Escape' && boardOpen && !typing) setBoard(false);
+      else return;
       ev.preventDefault();
       ev.stopImmediatePropagation();
     };
@@ -447,6 +456,22 @@ export function InputPanel({
               : '⟳ hearing…'}
           </div>
         )}
+        <button
+          type="button"
+          className={`mx-mic mx-kbd${boardOpen ? ' on' : ''}`}
+          disabled={!writable}
+          onClick={() => setBoard((b) => !b)}
+          title={
+            writable
+              ? 'keyboard (K): every key, sent as you click it'
+              : 'keyboard: this pane is read-only'
+          }
+          aria-label="keyboard"
+          aria-pressed={boardOpen}
+          data-testid="keyboard-open"
+        >
+          {'⌨\uFE0E'}
+        </button>
         {canFile && (
           <>
             <button
@@ -504,14 +529,26 @@ export function InputPanel({
         ) : (
           <button
             type="submit"
-            className="mx-send"
+            className="mx-mic mx-send-icon"
             disabled={!writable || mic === 'hearing' || !!sending}
+            title="send (Enter)"
+            aria-label="send"
+            data-testid="send"
           >
-            send
+            ⏎
           </button>
         )}
         {list.length > 0 && <Completions items={list} picked={picked} onTake={take} />}
       </form>
+      {boardOpen && (
+        <Keyboard
+          target={pane.address}
+          grammar={grammar}
+          send={async (body) => (await send(body)) !== false}
+          onRefused={(why) => toast.push({ kind: 'refused', title: why })}
+          onClose={() => setBoard(false)}
+        />
+      )}
       <div className="mx-below" ref={below}>
         <KeyBar onKey={(k) => void send({ key: k })} disabled={!writable} />
         {row && <CommandBar row={row} disabled={!writable} onRun={run} />}

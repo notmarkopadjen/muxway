@@ -477,6 +477,7 @@ else sees no entry, and `/admin` says *not yours to see*. See
 | `Tab` | input line: take the highlighted completion; from an empty line, `Tab` goes to the pane |
 | `↑` `↓` | input line: pick a completion; from an empty line, the key goes to the pane, as do `←` `→` `PageUp` `PageDown` `Home` `End` |
 | `Shift+Esc` | input line: send `Escape` to the pane and keep typing |
+| `K` | the keyboard: a window with a full terminal board for the focused pane (see [the keyboard](keyboard.md)); `Esc` closes it |
 | `v` | speak: record a clip for the hub's transcriber, onto the input line; held, it records until released; tapped, `v` again stops; `Esc` drops it |
 | `p` | selector: go to a pane or window, or start a session on a host |
 | `+` | one more pane in the selected row's window; it opens |

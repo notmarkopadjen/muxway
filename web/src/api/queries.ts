@@ -5,7 +5,6 @@ import { noteOwn } from '../term/lens';
 import type {
   AuthMethods,
   Host,
-  Key,
   Me,
   Mouse,
   Pane,
@@ -100,7 +99,7 @@ export function usePaneCached(address: string) {
 export function useInput(address: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { text: string } | { key: Key } | { mouse: Mouse }) => {
+    mutationFn: (body: { text: string } | { key: string } | { mouse: Mouse }) => {
       noteOwn(address);
       return api<void>(`/v1/panes/${address}/input`, {
         method: 'POST',

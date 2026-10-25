@@ -132,6 +132,29 @@ func TestUI_Arrange(t *testing.T) {
 	runPlaywright(t, e, npx, webDir, "100-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_ARRANGE=1")
 }
 
+// The keyboard needs a pane whose program shows each byte it reads; spec
+// 102 runs here with MX_KEYS set, its read-only case in the main
+// environment.
+func TestUI_Keyboard(t *testing.T) {
+	npx, webDir := uiTools(t)
+	if g := os.Getenv("MX_GREP"); g != "" {
+		if ok, _ := regexp.MatchString(g, "102-"); !ok {
+			t.Skip("MX_GREP leaves spec 102 out")
+		}
+	}
+	e := newEnv(t)
+	ts := newTmux(t)
+	a := e.pairAgent(host, ts)
+	script := filepath.Join(t.TempDir(), "echo.py")
+	os.WriteFile(script, []byte("import os,sys,tty\ntty.setraw(0)\nwhile True:\n  b=os.read(0,64)\n  os.write(1,(repr(b)+'\\r\\n').encode())\n"), 0o600)
+	ts.must("respawn-pane", "-k", "-t", "work:0.0", "python3", script)
+	ts.title("work:0.0")
+	e.expose(ts, "work:0.0", "--write")
+	full := e.token("browser", []string{"*"}, []string{"*"})
+	control := e.startControl(t, ts, a)
+	runPlaywright(t, e, npx, webDir, "102-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_KEYS=1")
+}
+
 func uiTools(t *testing.T) (npx, webDir string) {
 	if os.Getenv("MUXWAY_SKIP_UI") != "" {
 		t.Skip("MUXWAY_SKIP_UI set")
