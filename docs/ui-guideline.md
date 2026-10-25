@@ -216,7 +216,7 @@ Feature page: `docs/features/web-client.md`.
 | reflow with fit off | small screens |
 | hardware keys and D-pad | glasses touchpads and keyboards reaching the phone |
 | watch and background notifications | the phone's own channels |
-| the watch's pane screen: the pane's tail and a row of answers (`Enter` `Esc` `y` `n` `^C`, speak, phone), every request through the phone. On a round watch every band is inset to the chord of the glass and the answers take two centred rows; the reply menu and the pane list centre the row they are on, take the bezel and the crown, and show a position indicator, so every answer can be reached | the wrist has no keyboard and holds no token; the phone checks each request against its listing and the key whitelist, and a phone-side setting, off by default, allows writes at all |
+| the watch's pane screen: the pane's tail, with *reply* and the microphone above it and nothing below, every request through the phone. The reply menu holds every answer (Claude's own choices, `Enter`, `y`, `n`, `Esc`, `Ctrl-C`, `Tab`, `Shift-Tab`, `Up`, `Down`, the watch's keyboard, and the way to the phone). On a round watch every band is inset to the chord of the glass; the menu and the pane list centre the row they are on, take the bezel and the crown, and show a position indicator, so every answer can be reached | the wrist has no keyboard and holds no token; the phone checks each request against its listing and the key whitelist, and a phone-side setting, off by default, allows writes at all |
 | `FLAG_SECURE` | the platform's screenshot block |
 | the admin section is read and end only: the log tail (last 200, pull to refresh) and the clients with *end* | tokens and address lists are made on the web or with the CLI (§2) |
 
