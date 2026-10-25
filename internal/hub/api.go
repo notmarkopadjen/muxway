@@ -228,11 +228,16 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		Online   bool   `json:"online"`
 		Sessions bool   `json:"sessions,omitempty"`
 		Close    bool   `json:"close,omitempty"`
+		Keys     int    `json:"keys,omitempty"`
 	}
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
 		a := h.agent(host)
-		out = append(out, hostView{host, a != nil, a != nil && a.startsSessions(r.Context()), a != nil && a.closesPanes(r.Context())})
+		v := hostView{Name: host, Online: a != nil}
+		if a != nil {
+			v.Sessions, v.Close, v.Keys = a.startsSessions(r.Context()), a.closesPanes(r.Context()), a.keyGrammar()
+		}
+		out = append(out, v)
 	}
 	if wantsText(r) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -613,7 +618,7 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 			return
 		}
 	case in.Text == nil && in.Key != "" && in.Mouse == nil:
-		if _, known := tmux.Keys[in.Key]; !known {
+		if _, known := tmux.KeyName(in.Key); !known {
 			fail(w, http.StatusBadRequest, "bad_input")
 			return
 		}

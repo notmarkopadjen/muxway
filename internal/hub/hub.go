@@ -164,6 +164,7 @@ type agentConn struct {
 	listAt  time.Time
 	starts  bool // the agent starts sessions for clients
 	closes  bool // the agent closes panes for clients
+	keys    int  // the key names the agent takes, 0 before the grammar
 	inbox   bool // the agent takes files for its panes
 	evts    bucket
 	warned  time.Time
@@ -223,7 +224,7 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 		return nil, errors.New(r.Error)
 	}
 	a.mu.Lock()
-	a.list, a.listAt, a.starts, a.closes, a.inbox = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox
+	a.list, a.listAt, a.starts, a.closes, a.inbox, a.keys = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Keys
 	a.mu.Unlock()
 	return r.Panes, nil
 }
@@ -246,6 +247,13 @@ func (a *agentConn) closesPanes(ctx context.Context) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.closes
+}
+
+// keyGrammar is the key names the agent takes, from its last listing.
+func (a *agentConn) keyGrammar() int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.keys
 }
 
 // startsSessions asks the agent, through its listing, whether clients may

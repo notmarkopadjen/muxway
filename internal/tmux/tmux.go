@@ -231,22 +231,55 @@ func (s Server) SendMouse(ctx context.Context, paneID string, button, x, y int) 
 	return err
 }
 
-// Keys a client may send by name. Anything else is refused.
-var Keys = map[string]string{
+// Keys a client may send by name: a named key, a keypad key, or a
+// character with Ctrl or Alt, after modifiers C-, M-, S- in that order,
+// each once. KeyName gives tmux's own name for one, or false. Anything
+// else is refused: tmux types a name it does not know as text, and reads
+// `;` as the end of a command, so the grammar is all that stands between
+// a client and tmux's command line.
+var named = map[string]string{
 	"Enter": "Enter", "Tab": "Tab", "BTab": "BTab", "BSpace": "BSpace", "Escape": "Escape", "Space": "Space",
 	"Up": "Up", "Down": "Down", "Left": "Left", "Right": "Right",
 	"PageUp": "PageUp", "PageDown": "PageDown", "Home": "Home", "End": "End",
 	"Insert": "IC", "Delete": "DC",
-	"C-c": "C-c", "C-d": "C-d", "C-z": "C-z", "C-l": "C-l",
-	"C-a": "C-a", "C-e": "C-e", "C-u": "C-u", "C-k": "C-k", "C-w": "C-w",
-	"C-r": "C-r", "C-x": "C-x", "C-n": "C-n", "C-p": "C-p", "C-f": "C-f",
 	"F1": "F1", "F2": "F2", "F3": "F3", "F4": "F4", "F5": "F5", "F6": "F6",
 	"F7": "F7", "F8": "F8", "F9": "F9", "F10": "F10", "F11": "F11", "F12": "F12",
+	"KP0": "KP0", "KP1": "KP1", "KP2": "KP2", "KP3": "KP3", "KP4": "KP4",
+	"KP5": "KP5", "KP6": "KP6", "KP7": "KP7", "KP8": "KP8", "KP9": "KP9",
+	"KP/": "KP/", "KP*": "KP*", "KP-": "KP-", "KP+": "KP+", "KP.": "KP.", "KPEnter": "KPEnter",
 }
 
-// SendKey sends one named key from Keys.
+// Characters that go with Ctrl or Alt: unshifted, no `;`.
+const chordChars = "abcdefghijklmnopqrstuvwxyz0123456789`-=[]\\',./"
+
+func KeyName(key string) (string, bool) {
+	if len(key) > 16 {
+		return "", false
+	}
+	rest := key
+	ctrl, meta, shift := false, false, false
+	if strings.HasPrefix(rest, "C-") {
+		ctrl, rest = true, rest[2:]
+	}
+	if strings.HasPrefix(rest, "M-") {
+		meta, rest = true, rest[2:]
+	}
+	if strings.HasPrefix(rest, "S-") {
+		shift, rest = true, rest[2:]
+	}
+	mods := key[:len(key)-len(rest)]
+	if name, ok := named[rest]; ok {
+		return mods + name, true
+	}
+	if len(rest) == 1 && strings.IndexByte(chordChars, rest[0]) >= 0 && (ctrl || meta) && !shift {
+		return mods + rest, true
+	}
+	return "", false
+}
+
+// SendKey sends one key a client named; KeyName says which.
 func (s Server) SendKey(ctx context.Context, paneID, key string) error {
-	k, ok := Keys[key]
+	k, ok := KeyName(key)
 	if !ok {
 		return fmt.Errorf("unknown key")
 	}

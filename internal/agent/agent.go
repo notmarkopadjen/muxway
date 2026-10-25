@@ -298,6 +298,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		}
 		resp.Sessions = a.cfg.AllowSessions
 		resp.Close = a.cfg.AllowClose
+		resp.Keys = wire.KeyGrammar
 		resp.Inbox = a.cfg.Inbox != ""
 	case wire.OpRead:
 		p, code := a.find(ctx, req.Pane)
@@ -329,7 +330,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 					code = wire.ErrTmux
 				}
 			case req.Text == nil && req.Key != "" && req.Mouse == nil:
-				if _, ok := tmux.Keys[req.Key]; !ok {
+				if _, ok := tmux.KeyName(req.Key); !ok {
 					code = wire.ErrBadInput
 				} else if err := a.tmux.SendKey(ctx, p.PaneID, req.Key); err != nil {
 					code = wire.ErrTmux

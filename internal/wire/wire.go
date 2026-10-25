@@ -85,10 +85,16 @@ type Response struct {
 	// Sessions, with a list, says the agent starts sessions for clients.
 	Sessions bool `json:"sessions,omitempty"`
 	Close    bool `json:"close,omitempty"`
+	// Keys, with a list, is the version of key names the agent takes:
+	// 2 for modifiers on any key, the keypad and chords (tmux.KeyName).
+	Keys int `json:"keys,omitempty"`
 	// Inbox, with a list, says the agent takes files; Path is where one went.
 	Inbox bool   `json:"inbox,omitempty"`
 	Path  string `json:"path,omitempty"`
 }
+
+// KeyGrammar is the key names this build takes, as Response.Keys says.
+const KeyGrammar = 2
 
 // Errors an agent returns. They are codes, never details.
 const (
