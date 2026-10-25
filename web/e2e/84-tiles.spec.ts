@@ -53,7 +53,7 @@ test('84 pick two panes, open them side by side, arrange, drag, swap, close', as
   const f = Number(await slot.getAttribute('data-fraction'));
   expect(f).toBeGreaterThan(0.6);
   // A header dropped on the other tile swaps the two.
-  await tiles.nth(0).locator('.mx-tile-head').dragTo(tiles.nth(1).locator('.mx-tile-head'));
+  await tiles.nth(0).locator('.mx-tile-head').dragTo(tiles.nth(1));
   await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', `${LOGS} ${SHELL0}`);
   await expect(page).toHaveURL(new RegExp(`/p/${LOGS},${SHELL0}$`.replace(/\//g, '\\/')));
   // x closes the focused tile; one remains, fit still on.

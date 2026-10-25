@@ -23,8 +23,9 @@ test('74 a pane running Claude is named Claude with its status; tmux names step 
   await expect(page.getByTestId('pane').getByTestId('pane-title')).toHaveText(
     'Claude · fixing the build',
   );
-  await expect(page.getByTestId('crumb')).toContainText('Claude · fixing the build');
-  await expect(page.getByTestId('crumb')).toContainText(SHELL0);
+  // The header row names the pane by its tab; the tile's header says where it is.
+  await expect(page.locator('[data-testid="tab"][data-focused]')).toContainText('fixing the build');
+  await expect(page.locator('.mx-tile-head').first()).toContainText(SHELL0);
   await expect(page).toHaveTitle('Claude · fixing the build · muxway');
   await shot(page, info, '74-pane');
   await page.keyboard.press('p');

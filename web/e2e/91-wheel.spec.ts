@@ -193,8 +193,13 @@ test('91 the strip: the wheel and ‹ › move it when the tabs overflow', async
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.wheel(0, 200);
     await expect.poll(left).toBeGreaterThan(100);
-    await page.getByTestId('tabs-prev').click();
-    await expect.poll(left).toBe(0);
+    // ‹ moves half a strip at a time, back to the start.
+    await expect
+      .poll(async () => {
+        if ((await left()) > 0) await page.getByTestId('tabs-prev').click();
+        return left();
+      })
+      .toBe(0);
     await page.getByTestId('tabs-next').click();
     await expect.poll(left).toBeGreaterThan(100);
     await shot(page, info, '91-strip');

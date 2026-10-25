@@ -17,7 +17,9 @@ import { Help } from './Help';
 import { Hubs } from './Hubs';
 import { shownName, useHubs } from '../hubs';
 import { Palette } from '../components/Palette';
-import { addPane, loadBoard, saveBoard } from '../term/board';
+import { HeaderSlot } from './HeaderSlot';
+import { Profile } from './Profile';
+import { onPaletteRequest } from '../term/intent';
 import { changedRecently, noteEvent } from '../term/lens';
 
 const ATTENTION = new Set(['question', 'permission', 'idle', 'done']);
@@ -63,6 +65,8 @@ export function Shell() {
   const location = useLocation();
   const [help, setHelp] = useState(false);
   const [palette, setPalette] = useState(false);
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => onPaletteRequest(() => setPalette(true)), []);
   const [hubsOpen, setHubsOpen] = useState(false);
   const hubs = useHubs();
   const [resync, setResync] = useState(false);
@@ -155,13 +159,6 @@ export function Shell() {
       } else if (ev.key === 'H') {
         setHubsOpen((h) => !h);
         ev.preventDefault();
-      } else if (ev.key === 'b' && signedIn) {
-        // From a pane, b puts the focused one on the main board; from
-        // anywhere, b opens the board.
-        if (location.pathname.startsWith('/p/') && heading.pane)
-          saveBoard('main', addPane(loadBoard('main'), heading.pane.address, null, 'h'));
-        navigate({ to: '/b/$name', params: { name: 'main' } });
-        ev.preventDefault();
       } else if (ev.key === 't') {
         const theme = cycleTheme();
         setResync(true);
@@ -183,63 +180,44 @@ export function Shell() {
   return (
     <>
       <header className="mx-header">
-        <span className="mx-brand">
-          <Link to="/">┌─ muxway ─┐</Link>
-        </span>
+        <Link to="/" className="mx-brand" title="back to the panes (Esc)" data-testid="back">
+          ┌─ muxway ─┐
+        </Link>
         {hubs.length > 1 && (
           <span className="mx-hub" data-testid="hub-here">
             {shownName(hubs[0])}
           </span>
         )}
+        <div className="mx-header-slot" ref={setSlot} />
         <span className="mx-crumb" data-testid="crumb">
-          {heading.pane && <PaneTitle pane={heading.pane} />}
-          {heading.place && <span className="mx-place">{heading.place}</span>}
+          {heading.place && !heading.pane && <span className="mx-place">{heading.place}</span>}
         </span>
-        <span className="mx-spacer" />
-        <button
-          type="button"
-          onClick={() => setHubsOpen(true)}
-          title="hubs (H)"
-          data-testid="open-hubs"
-        >
-          ⇄
-        </button>
-        {signedIn && (
-          <>
-            <span className="mx-who" data-testid="who">
-              {me?.name}
-            </span>
-            <button
-              type="button"
-              onClick={() => setPalette(true)}
-              title="go to a pane (p)"
-              data-testid="open-palette"
-            >
-              ≡
-            </button>
-            <button type="button" onClick={() => setHelp(true)} title="help (?)">
-              ?
-            </button>
-            {me?.admin && (
-              <Link to="/admin" className="mx-header-link" data-testid="open-admin">
-                admin
-              </Link>
-            )}
-            <button
-              type="button"
-              onClick={() => logout().then(() => navigate({ to: '/signin' }))}
-              data-testid="logout"
-            >
-              logout
-            </button>
-          </>
+        {signedIn ? (
+          <Profile
+            name={me?.name ?? ''}
+            admin={!!me?.admin}
+            onHubs={() => setHubsOpen(true)}
+            onHelp={() => setHelp(true)}
+            onLogout={() => void logout().then(() => navigate({ to: '/signin' }))}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setHubsOpen(true)}
+            title="hubs (H)"
+            data-testid="open-hubs"
+          >
+            ⇄
+          </button>
         )}
       </header>
       <main
         className={`mx-main${resync ? ' mx-resync' : ''}`}
         onAnimationEnd={() => setResync(false)}
       >
-        <Outlet />
+        <HeaderSlot.Provider value={slot}>
+          <Outlet />
+        </HeaderSlot.Provider>
       </main>
       <footer className="mx-status" data-testid="status">
         <span className={online ? '' : 'mx-offline mx-noise'} data-testid="online">

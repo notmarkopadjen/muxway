@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   close,
+  dropOn,
+  prune,
+  zoneAt,
   drag,
   next,
   options,
@@ -82,6 +85,43 @@ describe('tilesLayout', () => {
     );
     expect(tilesLayout(tree(3, 'main-left'), {}, ids)).toMatch(
       /^[0-9a-f]{4},1000x1000,0,0\{500x1000,0,0,3,500x1000,0,0\[500x500,0,0,4,500x500,0,0,5\]\}$/,
+    );
+  });
+});
+
+describe('dropping a header on a tile', () => {
+  const row = tree(3, 'row');
+  it('knows the middle from the edges', () => {
+    expect(zoneAt(0.5, 0.5)).toBe('swap');
+    expect(zoneAt(0.5, 0.9)).toBe('bottom');
+    expect(zoneAt(0.5, 0.05)).toBe('top');
+    expect(zoneAt(0.1, 0.5)).toBe('left');
+    expect(zoneAt(0.95, 0.6)).toBe('right');
+  });
+  it('splits the target down, the dragged pane below, and closes its old place', () => {
+    expect(dropOn(row, 2, 0, 'bottom')).toEqual({
+      kind: 'h',
+      key: 'r',
+      children: [{ kind: 'v', key: 'r.0', children: [0, 2] }, 1],
+    });
+    expect(dropOn(row, 2, 0, 'top')).toEqual({
+      kind: 'h',
+      key: 'r',
+      children: [{ kind: 'v', key: 'r.0', children: [2, 0] }, 1],
+    });
+  });
+  it('splits across, and a split left with one child gives way', () => {
+    const t = dropOn(row, 2, 0, 'bottom');
+    expect(dropOn(t, 2, 1, 'right')).toEqual({ kind: 'h', key: 'r', children: [0, 1, 2] });
+  });
+  it('prunes a closed tile and renumbers the rest', () => {
+    const t = dropOn(row, 2, 0, 'bottom');
+    expect(prune(t, 0)).toEqual({ kind: 'h', key: 'r', children: [1, 0] });
+  });
+  it('lays out a made tree for the window as well', () => {
+    const t = dropOn(tree(2, 'row'), 1, 0, 'bottom');
+    expect(tilesLayout(t, {}, ['%1', '%2'])).toMatch(
+      /1000x1000,0,0\[1000x500,0,0,1,1000x500,0,0,2\]$/,
     );
   });
 });

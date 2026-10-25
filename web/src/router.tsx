@@ -12,10 +12,10 @@ import { Shell } from './shell/Shell';
 import { PanePage } from './pages/Pane';
 import { PanesPage } from './pages/Panes';
 import { WindowPage } from './pages/Window';
-import { BoardPage } from './pages/Board';
 import { SignInPage } from './pages/SignIn';
 import { AdminPage } from './pages/Admin';
 import { queryClient } from './query';
+import { boardPanes, routeFor } from './term/tiles';
 import { keys } from './api/queries';
 
 // Signed-in routes ask the hub who we are once per load; a 401 goes to sign-in.
@@ -57,11 +57,17 @@ const window = createRoute({
   beforeLoad: requireSession,
   component: WindowPage,
 });
+// Boards are gone: a bookmark of one opens its panes as tiles, once.
 const board = createRoute({
   getParentRoute: () => root,
   path: '/b/$name',
-  beforeLoad: requireSession,
-  component: BoardPage,
+  beforeLoad: async ({ params }) => {
+    await requireSession();
+    const panes = boardPanes(params.name);
+    throw panes.length
+      ? redirect({ to: '/p/$', params: { _splat: routeFor(panes) } })
+      : redirect({ to: '/' });
+  },
 });
 const admin = createRoute({
   getParentRoute: () => root,

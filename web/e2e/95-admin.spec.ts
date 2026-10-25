@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { HOST, RO_TOKEN, settled, shot, signIn } from './fixtures';
+import { HOST, RO_TOKEN, settled, shot, signIn, profile } from './fixtures';
 
 // The admin page: only an admin principal sees it; the log tails live,
 // a created token's secret is shown once, and the address lists refuse to
@@ -9,14 +9,15 @@ const ADMIN = process.env.MX_ADMIN_TOKEN ?? '';
 
 async function signInAdmin(page: import('@playwright/test').Page) {
   await signIn(page, ADMIN);
-  await page.getByTestId('open-admin').click();
+  await profile(page, 'open-admin');
   await expect(page.getByTestId('admin')).toBeVisible();
   await settled(page);
 }
 
 test('95 security: no admin entry and nothing to see without the flag', async ({ page }) => {
   await signIn(page);
-  await expect(page.getByTestId('who')).toBeVisible();
+  await page.getByTestId('who').click();
+  await expect(page.getByTestId('profile-menu')).toBeVisible();
   await expect(page.getByTestId('open-admin')).toHaveCount(0);
   await page.goto('/admin');
   await expect(page.getByTestId('admin-refused')).toHaveText('not yours to see.');

@@ -19,6 +19,11 @@ whose agent runs with `--allow-sessions`. It opens a one-line form for the
 name (`Enter` creates, `Esc` cancels); the session's first pane then opens.
 Keyboard: `S`. The selector (`p`) lists `+ session on <host>` as well.
 
+**From the pane view.** `+` right after the last tab (or the `+` key)
+offers *split here*, a new pane beside the focused one, and *new
+session* on its host, where each is allowed; the new pane opens beside
+the others.
+
 On the host:
 
 ```sh

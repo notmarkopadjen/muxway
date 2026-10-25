@@ -1,4 +1,3 @@
-import { ADDRESS } from './board';
 import { checksum } from './layout';
 
 // Tiles: one to four panes on one screen in the arrangements the Android
@@ -7,7 +6,34 @@ import { checksum } from './layout';
 
 export const MAX_TILES = 4;
 
+export const ADDRESS = /^[A-Za-z0-9][A-Za-z0-9_-]*(\/[A-Za-z0-9._@-]+){2,3}$/;
+
+// What a board kept in this browser held, for a bookmark of one: its
+// panes, up to four, as tiles. The board itself is gone with this read.
+export function boardPanes(name: string): string[] {
+  const key = `mx-board:${name}`;
+  let out: string[] = [];
+  try {
+    const walk = (n: unknown): string[] => {
+      if (!n || typeof n !== 'object') return [];
+      const o = n as { id?: unknown; children?: unknown };
+      if (typeof o.id === 'string') return [o.id];
+      return Array.isArray(o.children) ? o.children.flatMap(walk) : [];
+    };
+    const raw = localStorage.getItem(key);
+    const ids = raw ? walk((JSON.parse(raw) as { layout?: unknown }).layout) : [];
+    out = [...new Set(ids)].filter((a) => ADDRESS.test(a) && !a.includes('..')).slice(0, MAX_TILES);
+    localStorage.removeItem(key);
+  } catch {
+    /* storage off */
+  }
+  return out;
+}
+
 export type Arrangement = 'row' | 'column' | 'grid' | 'main-left' | 'main-top';
+// What the tiles are laid out by: a preset, or a tree the person made by
+// dropping a header onto a tile's edge.
+export type Layout = Arrangement | 'custom';
 
 // Two panes split one way or the other; three and four add a main pane
 // and, for four, a grid.
@@ -17,8 +43,9 @@ export function options(n: number): Arrangement[] {
   return ['row', 'column', 'grid', 'main-left', 'main-top'];
 }
 
-export function next(a: Arrangement, n: number): Arrangement {
+export function next(a: Layout, n: number): Arrangement {
   const all = options(n);
+  if (a === 'custom') return all[0];
   return all[(all.indexOf(a) + 1) % all.length] ?? all[0];
 }
 
@@ -28,8 +55,7 @@ export function defaultFor(wide: boolean): Arrangement {
 
 // The tree of splits for an arrangement; leaves are tile indexes. Each
 // split has a key its weights are kept under.
-export type TileNode =
-  number | { kind: 'h' | 'v'; key: 'main' | 'rest' | 'top'; children: TileNode[] };
+export type TileNode = number | { kind: 'h' | 'v'; key: string; children: TileNode[] };
 
 export function tree(n: number, a: Arrangement): TileNode {
   const all = Array.from({ length: n }, (_, i) => i);
@@ -65,7 +91,77 @@ export function tree(n: number, a: Arrangement): TileNode {
   }
 }
 
-export type Weights = Partial<Record<'main' | 'rest' | 'top', number[]>>;
+export type Weights = Record<string, number[]>;
+
+export type Zone = 'swap' | 'top' | 'bottom' | 'left' | 'right';
+
+// Where on a tile a dragged header lands: its middle swaps the two, a part
+// near an edge splits the tile's place that way.
+export function zoneAt(x: number, y: number): Zone {
+  if (x > 1 / 3 && x < 2 / 3 && y > 1 / 3 && y < 2 / 3) return 'swap';
+  const edges: [Zone, number][] = [
+    ['top', y],
+    ['bottom', 1 - y],
+    ['left', x],
+    ['right', 1 - x],
+  ];
+  return edges.reduce((a, b) => (b[1] < a[1] ? b : a))[0];
+}
+
+// Keys by place in the tree, so a made tree's weights have names.
+function relabel(node: TileNode, key = 'r'): TileNode {
+  if (typeof node === 'number') return node;
+  return { ...node, key, children: node.children.map((c, i) => relabel(c, `${key}.${i}`)) };
+}
+
+// Takes leaf `at` out; a split left with one child gives way to it, and one
+// that runs the same way as its parent joins it.
+function without(node: TileNode, at: number): TileNode | null {
+  if (typeof node === 'number') return node === at ? null : node;
+  const kept = node.children.map((c) => without(c, at)).filter((c): c is TileNode => c !== null);
+  if (!kept.length) return null;
+  if (kept.length === 1) return kept[0];
+  const flat = kept.flatMap((c) =>
+    typeof c !== 'number' && c.kind === node.kind ? c.children : [c],
+  );
+  return { ...node, children: flat };
+}
+
+// Drops tile `from` onto an edge of tile `to`: `to`'s place splits, the
+// dragged tile on the side of that edge; its old place closes up.
+export function dropOn(
+  node: TileNode,
+  from: number,
+  to: number,
+  zone: Exclude<Zone, 'swap'>,
+): TileNode {
+  if (from === to) return node;
+  const rest = without(node, from) ?? to;
+  const kind = zone === 'top' || zone === 'bottom' ? 'v' : 'h';
+  const first = zone === 'top' || zone === 'left';
+  const put = (n: TileNode): TileNode => {
+    if (typeof n === 'number')
+      return n === to ? { kind, key: '', children: first ? [from, to] : [to, from] } : n;
+    return { ...n, children: n.children.map(put) };
+  };
+  return relabel(flatten(put(rest)));
+}
+
+// A split inside one that runs the same way joins it.
+function flatten(node: TileNode): TileNode {
+  if (typeof node === 'number') return node;
+  const children = node.children
+    .map(flatten)
+    .flatMap((c) => (typeof c !== 'number' && c.kind === node.kind ? c.children : [c]));
+  return { ...node, children };
+}
+
+// Takes tile `at` out of a tree for good: the tiles after it move up one.
+export function prune(node: TileNode, at: number): TileNode {
+  const shift = (n: TileNode): TileNode =>
+    typeof n === 'number' ? (n > at ? n - 1 : n) : { ...n, children: n.children.map(shift) };
+  return relabel(shift(without(node, at) ?? 0));
+}
 
 export const FLOOR = 0.15;
 

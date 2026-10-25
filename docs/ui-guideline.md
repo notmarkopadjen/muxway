@@ -48,8 +48,8 @@ Selection is never a colour: an open or focused element has a border
 (thick when focused) and its name in bold, so the state shows on the
 pane you are looking at. tmux's own activity flag is not used.
 
-Wherever a pane is shown in a cell among others (tiles, the window view,
-a board), its header is painted with the state, and a **waiting** pane's
+Wherever a pane is shown in a cell among others (tiles, the window
+view), its header is painted with the state, and a **waiting** pane's
 cell glows in the theme's ink: a shadow around it, pulsing with
 effects on, drawn outside the layout so no neighbour moves or resizes.
 
@@ -82,7 +82,7 @@ opens the window view; see §2.
 ### 1.4 The pane view: strip, tiles, input
 
 ```
-[‹] [⟳ build][! review][logs]              ▦ ⤢ …
+┌─ muxway ─┐ [⟳ build][! review][logs] [+]   [▦][⤢][⟳][⊡][≡]  [alice ▾]
 ┌ header: glyph name · command · mode   word  size ┐
 │ content                                          │
 └──────────────────────────────────────────────────┘
@@ -93,10 +93,11 @@ $ [exit][htop][claude][codex]…  │ [make test]
 
 | Element | Shared behaviour |
 |---|---|
-| back | `‹` at the top left returns to the list |
+| back | the brand at the left of the header row returns to the list (web); `‹` (Android) |
+| header row | web: one row, the brand, the strip, `+` right after the last tab (*split here*: a new pane beside the focused one on its host, where the token may type there; *new session*: where the agent starts sessions), the pane buttons at the right as 32 px squares with a label under the pointer (`▦` `⤢` `⟳` `⊡` `≡`), and the profile button with the principal's name (*hubs*, *help*, *admin* for an admin, *logout*); nothing in it repeats the pane's name. Android keeps its own top row |
 | strip | every readable pane in listing order, named as §1.1 says, painted as §1.2 says, Claude's mark on every Claude pane with the state glyph beside it; open tabs bordered, the focused one thick and bold; a closed tab tapped swaps into the focused tile; tabs keep their width, the strip scrolls sideways and keeps the focused tab in view; on the web the wheel over it moves it and `‹ ›` at its ends appear while there is more than fits |
-| tiles | one to four panes; arrangements by count: 2 → row, column; 3 → + main-left, main-top; 4 → + grid; `▦` cycles; wide screens start with row, tall with column; splits drag with a 15 % floor; a header dragged onto another tile swaps the two; the arrangement never reaches the host |
-| header | painted like its tab: glyph, name, command, mode, the word, the size; the focused tile has the thick border and bold name. Controls live in the top row, not in headers: `▦` arrangement, `⤢` fit (web: for the focused tile), `⟳` fit again, `⊡` zoom |
+| tiles | one to four panes; arrangements by count: 2 → row, column; 3 → + main-left, main-top; 4 → + grid; `▦` cycles; wide screens start with row, tall with column; splits drag with a 15 % floor; a header dragged onto another tile's middle swaps the two, onto its upper, lower, left or right part splits that tile's place that way with the dragged pane on that side (web), its old place closing up and every share equal again; `▦` goes back to the presets; the arrangement never reaches the host |
+| header | painted like its tab: glyph, name, command, mode, the word, the size; the focused tile has the thick border and bold name. Controls live in the header row (web) or the top row (Android), not in tile headers: `▦` arrangement, `⤢` fit (web: for the focused tile), `⟳` fit again, `⊡` zoom |
 | fit | per tile; every writable tile opens with fit on, one or several; `⤢` or `f` toggles, `⟳` or `r` sends the size again; leaving the view releases. The host never lets a fit take a neighbour under 20 columns or 5 rows: the window grows instead. **One fit per window:** open tiles that are every pane of one tmux window fit the window as one, with the arrangement as its layout, as the window view does, so each pane is its tile (web; muxway-android#19). Where only some of a window's panes are open as tiles, only one of them fits its pane (the focused tile's, or the first of them when the focus is elsewhere); the others keep fit off, say *held* in their header and are drawn scaled to their box, so tiles do not fight over one row; focus moving to another tile of the window moves the fit, releasing the previous pane first. **Web only for now** (muxway-android#19): a pane alone in the view fits its *window* with the pane zoomed over its siblings (tmux's own zoom), so no neighbour is squeezed; a pane left for another in the view stays at size and is not sent again when it comes back at that size |
 | input | a text line and one key row for the focused tile; `Esc` pinned left and `Enter` right on a phone; *type* sends text, *send* sends text then Enter; read-only panes show `read-only` and no way to type. The line is a small editor: text wraps and the field grows upward, to six rows, then scrolls inside; Enter (web) or the keyboard's send key (Android) sends, Shift+Enter starts a new line; a text with several lines reaches the pane as one paste, bracketed when the program asked. **Web only for now** (muxway-android#12): while the first word is typed, a list above the line offers Claude Code's slash commands or a shell's starters and recent lines; `↑` `↓` pick, `Tab` or a click takes, `Esc` closes, Enter sends the highlighted one. **Microphone**: when the hub has a transcriber (`GET /v1/transcribe` is 204, asked once per sign-in) and the focused pane is writable, a `◉` button sits between the field and *send*; without a transcriber, or on a read-only pane, there is nothing. A press opens the mic and the field's place shows a level meter in block characters and the seconds; `■`, a press on the meter, or sixty seconds stops the clip, which goes to the hub as a WAV and comes back as words on the line, after a space when something is typed there, with the caret at the end and the line focused: nothing is sent until Enter. *cancel* or `Esc` drops the clip. The mic is closed the moment recording stops. Refusals are toasts: `microphone refused`, `no microphone`, `too short`, `one clip every five seconds`, `transcriber unavailable` |
 | key row | one row, scrolling sideways, never wrapping, no scrollbar; keys tinted by group, discreetly (border and ground, never the ink): editing, direction, control, function |
@@ -124,6 +125,7 @@ Tokens are shared; the values are in the core at
 | attention · alert | the ink, inverted · `#ff3b3b` | the ink, inverted · `#ff3b3b` | the ink, inverted · `#a3161b` |
 | Claude | `#d97757` | same | same |
 
+The browser tab's icon is drawn in the theme's colours.
 No theme has a second hue for states: a waiting pane is the theme's own
 ink drawn inverted, working is dim, quiet is plain (decided by the owner
 on 2026-10-25). The alert colour is for errors only; the key and command
@@ -140,7 +142,7 @@ The same action on every client, triggered the way the device does it.
 
 | Action | Web key | Android | Glasses / MIDP |
 |---|---|---|---|
-| back to the list | `Esc` | `‹`, system back | back |
+| back to the list | `Esc`, the brand | `‹`, system back | back |
 | open the selected pane | `Enter` | tap | select |
 | pick several | `space`, `[ ]`; Shift+click a tab opens it beside | hold | — |
 | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it, coming round at either end | `]` / `[` | tap the tile, swipe | D-pad left / right |
@@ -152,8 +154,10 @@ The same action on every client, triggered the way the device does it.
 | fit every tile | `F` | — | — |
 | zoom: one pane alone, then back to the tiles it came from, in their places and arrangement (or, opened alone, the window's panes side by side in the window's order) | `z`, `⊡`, double-click a tile, its header or its tab | — | — |
 | the window view (mirror layout) | `w` | — | — |
-| the board | `b` | — | — |
-| go to a pane | `p`, `≡` | the strip | — |
+| go to a pane | `p`, `≡` among the pane buttons | the strip | — |
+| one more pane beside the focused one, or a new session | `+` after the tabs (and the `+` key) | `+ pane`, `+ session` in the list | — |
+| swap two tiles, or split a tile's place | drag a header onto a tile's middle, or its edge | drag a header onto a tile: swap | — |
+| hubs, help, admin, logout | the profile button | Settings | — |
 | one more pane in a window | `+ pane` row, `+` on the selected row | `+ pane` row | — |
 | a new session on a host | `+ session`, `S`; the selector lists it | `+ session` | — |
 | a command of the row | click | tap | — |
@@ -179,8 +183,7 @@ A new action gets a row here before it gets a key anywhere.
 
 | Feature | Why only here |
 |---|---|
-| window view (`/w/…`, "mirror layout") | the host's own arrangement needs the room of a screen; the list's window buttons and `w` open it; zoom out from a single tile goes to the window's tiles instead, so the one pane view keeps its controls. Its row is the pane view's (§1.4): `‹`, a tab per pane of the window, and icons at the right: `⤢` fit, `⟳` fit again, `⊡` the pane alone in the pane view (zoom in; `z`, `Enter`, a double-click on the cell or its header), `⊞` equal shares (on the host too with fit on), `↺` the host's layout; a hidden pane's tab stays, dimmed, and brings it back |
-| boards (`/b/…`) | long-lived arrangements across hosts, kept per browser |
+| window view (`/w/…`, "mirror layout") | the host's own arrangement needs the room of a screen; the list's window buttons and `w` open it; zoom out from a single tile goes to the window's tiles instead, so the one pane view keeps its controls. Its row is the pane view's (§1.4): the brand, a tab per pane of the window, and icons at the right: `⤢` fit, `⟳` fit again, `⊡` the pane alone in the pane view (zoom in; `z`, `Enter`, a double-click on the cell or its header), `⊞` equal shares (on the host too with fit on), `↺` the host's layout; a hidden pane's tab stays, dimmed, and brings it back |
 | selector (`p`) | a keyboard is at hand |
 | sign-in with an identity provider | a browser has the flow |
 | browser notifications, tab title flash | the browser's own channels |

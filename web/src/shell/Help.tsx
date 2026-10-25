@@ -21,22 +21,17 @@ const KEYS: [string, string][] = [
   ['/', 'filter panes'],
   ['f', 'fit: the host pane (window view: the window) follows this box, at the chosen font'],
   ['r', 'fit again, after another client sized the window'],
-  ['b', 'the main board; from a pane: put it on the board'],
   [
     '] / [',
-    "next / previous pane: the tile, or with one tile open the strip's neighbour (window view and board: pane)",
+    "next / previous pane: the tile, or with one tile open the strip's neighbour, round at the ends (window view: pane)",
   ],
   [
     '1 – 4 / l / x / F / z / w',
-    "tiles: focus one, next arrangement, close, fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout; Shift+click a tab to open it beside",
+    "tiles: focus one, next arrangement, close the pane on its host (asks y / n; elsewhere the tile), fit all, zoom (one pane alone and back; or double-click a tile, its header or tab), the mirror layout; Shift+click a tab to open it beside; drag a header onto a tile's middle to swap, onto its edge to split",
   ],
   [
     'x / z / 0 / = / + / -',
     'window view: hide, this pane alone (or Enter, double-click), host layout, equal shares, bigger, smaller',
-  ],
-  [
-    'a / A / x / s / z / = / F / w',
-    'board: add beside / below, remove, swap, zoom (or double-click), equalise, fit all, its window',
   ],
   ['i', 'focus the input line; Esc leaves it'],
   [
@@ -47,7 +42,7 @@ const KEYS: [string, string][] = [
   ['Shift+Esc', 'input line: send Escape to the pane and keep typing'],
   [
     'v',
-    'speak: record a clip for the hub to transcribe onto the line; again stops, Esc drops it. The ◉ button: hold and release, or click and click again',
+    'speak: held, records until released; tapped, again stops; Esc drops it. The ◉ button the same',
   ],
   ['g then a letter', 'jump to the first host starting with it'],
   ['H', 'hubs: the other hubs this browser knows, as links; each signs you in on its own page'],

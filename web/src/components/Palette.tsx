@@ -6,17 +6,16 @@ import { Badge } from './Badge';
 import { Box } from './Box';
 import { PaneTitle } from './PaneTitle';
 import { label } from '../term/describe';
-import { BOARD_NAME, boardNames } from '../term/board';
 import { mayWriteOn } from '../term/grants';
 import { requestSession } from '../term/intent';
 
-// The pane selector: every pane, window and board the person may reach,
+// The pane selector: every pane and window the person may reach,
 // and a new session on each host that starts them, filtered as they type,
 // attention first. With `pick`, it offers panes only, except those
 // excluded, and hands the chosen one back.
 interface Row {
   key: string;
-  kind: 'pane' | 'window' | 'board' | 'session';
+  kind: 'pane' | 'window' | 'session';
   label: string;
   meta: string;
   sort: string;
@@ -61,30 +60,6 @@ export function Palette({
         to: () => (pick ? pick(p) : navigate({ to: '/p/$', params: { _splat: p.address } })),
       });
     }
-    const f = q.trim().toLowerCase();
-    if (!pick) {
-      const names = boardNames();
-      for (const n of names)
-        out.push({
-          key: 'b:' + n,
-          kind: 'board',
-          label: n,
-          meta: 'board',
-          sort: n,
-          to: () => navigate({ to: '/b/$name', params: { name: n } }),
-        });
-      // "board <name>" makes a new board.
-      const wanted = f.startsWith('board ') ? f.slice(6).trim() : '';
-      if (wanted && BOARD_NAME.test(wanted) && !names.includes(wanted))
-        out.push({
-          key: 'b:new',
-          kind: 'board',
-          label: `board ${wanted} (new)`,
-          meta: 'board',
-          sort: wanted,
-          to: () => navigate({ to: '/b/$name', params: { name: wanted } }),
-        });
-    }
     if (!pick)
       for (const h of hosts.data ?? []) {
         if (!h.online || !h.sessions || !mayWriteOn(me.data?.write ?? [], h.name)) continue;
@@ -112,6 +87,7 @@ export function Palette({
         to: () => navigate({ to: `/w/${p.host}/${p.session}/${p.window_index}` }),
       });
     }
+    const f = q.trim().toLowerCase();
     const rank = (r: Row) => (r.pane?.attention ? 0 : 1);
     return out
       .filter((r) => !f || `${r.label} ${r.meta} ${r.pane?.title ?? ''}`.toLowerCase().includes(f))
@@ -157,9 +133,7 @@ export function Palette({
                 {r.kind === 'pane' ? (
                   <Badge attention={r.pane?.attention} />
                 ) : (
-                  <span className="mx-badge mx-win">
-                    {r.kind === 'window' ? '▦' : r.kind === 'board' ? '▤' : '+'}
-                  </span>
+                  <span className="mx-badge mx-win">{r.kind === 'window' ? '▦' : '+'}</span>
                 )}
                 <span className="mx-addr">{r.pane ? <PaneTitle pane={r.pane} /> : r.label}</span>
                 <span className="mx-meta">{r.meta}</span>

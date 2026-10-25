@@ -11,7 +11,10 @@ test('65 the selector jumps to a pane or a window', async ({ page }, info) => {
   await shot(page, info, '65-selector');
   await page.keyboard.press('Enter');
   await paneLoaded(page);
-  await expect(page.getByTestId('crumb')).toContainText(`${HOST}/work/1.0`);
+  await expect(page.locator('[data-testid="tab"][data-focused]')).toHaveAttribute(
+    'data-address',
+    `${HOST}/work/1.0`,
+  );
   await page.getByTestId('open-palette').click();
   await page.getByTestId('palette-filter').fill('2 panes');
   await expect(page.getByTestId('palette-row')).toHaveCount(1);

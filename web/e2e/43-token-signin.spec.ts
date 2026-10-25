@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { shot, TOKEN } from './fixtures';
+import { shot, TOKEN, profile } from './fixtures';
 
 test('43 token sign-in, session survives a reload, logout', async ({ page }, info) => {
   await page.goto('/');
@@ -21,7 +21,7 @@ test('43 token sign-in, session survives a reload, logout', async ({ page }, inf
   expect(session?.httpOnly).toBe(true);
   expect(session?.secure).toBe(true);
   expect(session?.sameSite).toBe('Strict');
-  await page.getByTestId('logout').click();
+  await profile(page, 'logout');
   await expect(page).toHaveURL(/\/signin$/);
   await page.goto('/');
   await expect(page).toHaveURL(/\/signin$/);

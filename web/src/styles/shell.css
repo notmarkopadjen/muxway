@@ -85,22 +85,41 @@ button:disabled {
 }
 
 .mx-header {
+  position: relative;
+  z-index: 40;
   display: flex;
   align-items: center;
   gap: var(--mx-gap-2);
   padding: var(--mx-gap) var(--mx-gap-2);
   border-bottom: 1px solid var(--mx-ink-faint);
   white-space: nowrap;
-  overflow: hidden;
+  min-height: 48px;
+  min-width: 0;
+}
+/* What the view puts in the header row: the pane view's tabs, + and buttons. */
+.mx-header-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.mx-header-slot:empty {
+  display: none;
+}
+.mx-header-slot:not(:empty) + .mx-crumb {
+  display: none;
+}
+.mx-header-slot:empty + .mx-crumb {
+  flex: 1;
 }
 .mx-brand {
+  flex: none;
+  color: var(--mx-ink);
   font-family: var(--mx-pixel);
   font-size: 12px;
   letter-spacing: 1px;
   text-shadow: var(--mx-glow-text-strong);
-}
-.mx-brand a {
-  color: inherit;
 }
 .mx-crumb {
   display: inline-flex;
@@ -125,9 +144,110 @@ button:disabled {
   color: var(--mx-accent);
   font-size: 12px;
 }
-.mx-header button {
-  border-color: transparent;
-  padding: 0 6px;
+/* The profile button and the menus that drop from the header row. */
+.mx-profile,
+.mx-add {
+  position: relative;
+  flex: none;
+}
+.mx-profile-button {
+  height: 32px;
+  border-color: var(--mx-ink-faint);
+  color: var(--mx-ink-dim);
+}
+.mx-profile-button.on,
+.mx-profile-button:hover {
+  color: var(--mx-ink);
+}
+.mx-caret {
+  display: inline-block;
+  transition: transform var(--mx-motion-fast) var(--mx-ease-out);
+}
+.mx-profile-button.on .mx-caret {
+  transform: rotate(180deg);
+}
+.mx-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  display: grid;
+  min-width: 14em;
+  padding: 4px;
+  background: var(--mx-bg-raised);
+  border: 1px solid var(--mx-ink);
+  box-shadow: var(--mx-glow-box-strong);
+  animation: mx-menu-in var(--mx-motion-fast) var(--mx-ease-out);
+}
+.mx-add .mx-menu {
+  left: 0;
+  right: auto;
+  min-width: 20em;
+}
+.mx-menu > button,
+.mx-menu > a {
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+  text-align: left;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  color: var(--mx-ink);
+}
+.mx-menu > button:hover,
+.mx-menu > a:hover,
+.mx-menu > button:focus-visible {
+  border-color: var(--mx-ink);
+  box-shadow: none;
+  background: color-mix(in srgb, var(--mx-ink) 10%, transparent);
+}
+.mx-menu kbd {
+  color: var(--mx-ink-dim);
+}
+.mx-menu .mx-session-form {
+  padding: 6px 10px;
+}
+@keyframes mx-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+/* + after the tabs: a dashed square that lights up when it appears and
+   turns into × while its menu is open. */
+.mx-add-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  border: 1px dashed var(--mx-ink-dim);
+  color: var(--mx-ink);
+  animation: mx-add-in var(--mx-motion-slow) var(--mx-ease-out);
+}
+.mx-add-button:hover,
+.mx-add-button.on {
+  border-style: solid;
+  border-color: var(--mx-ink);
+  box-shadow: var(--mx-glow-box-strong);
+}
+.mx-add-button.on {
+  transform: rotate(45deg);
+  transition: transform var(--mx-motion-fast) var(--mx-ease-out);
+}
+@keyframes mx-add-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    box-shadow: var(--mx-glow-box-strong);
+  }
+}
+:root[data-motion='off'] .mx-add-button,
+:root[data-motion='off'] .mx-menu {
+  animation: none;
 }
 
 .mx-main {
@@ -418,4 +538,12 @@ button:disabled {
 .mx-mark-claude {
   color: var(--mx-claude);
   filter: drop-shadow(0 0 3px var(--mx-claude));
+}
+/* In the header the strip is as wide as its tabs, so + follows the last
+   one; the pane buttons keep to the right. */
+.mx-header-slot .mx-strip {
+  flex: 0 1 auto;
+}
+.mx-header-slot .mx-tools {
+  margin-left: auto;
 }

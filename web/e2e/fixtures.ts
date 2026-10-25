@@ -76,20 +76,11 @@ export async function alerts(page: Page) {
   return page.evaluate(() => (window as unknown as { __csp: string[]; __alerts: number }).__alerts);
 }
 
-// Stores a board in the page's browser, as the board page would.
-export async function seedBoard(page: Page, name: string, panes: string[], kind: 'h' | 'v' = 'h') {
-  await page.evaluate(
-    ([n, ids, k]) => {
-      const layout =
-        ids.length === 1
-          ? { kind: 'pane', id: ids[0] }
-          : {
-              kind: k,
-              children: ids.map((id) => ({ kind: 'pane', id })),
-              shares: ids.map(() => 1 / ids.length),
-            };
-      localStorage.setItem(`mx-board:${n}`, JSON.stringify({ layout, scale: {}, fit: {} }));
-    },
-    [name, panes, kind] as [string, string[], 'h' | 'v'],
-  );
+// Opens the profile menu and picks an item: hubs, help, admin, logout.
+export async function profile(
+  page: Page,
+  item: 'open-hubs' | 'open-help' | 'open-admin' | 'logout',
+) {
+  await page.getByTestId('who').click();
+  await page.getByTestId(item).click();
 }

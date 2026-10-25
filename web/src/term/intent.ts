@@ -20,3 +20,17 @@ export function onSessionRequest(fn: Listener): () => void {
     listeners.delete(fn);
   };
 }
+
+// A request that the shell open the pane selector, from a button outside it.
+const paletteListeners = new Set<() => void>();
+
+export function requestPalette() {
+  paletteListeners.forEach((fn) => fn());
+}
+
+export function onPaletteRequest(fn: () => void): () => void {
+  paletteListeners.add(fn);
+  return () => {
+    paletteListeners.delete(fn);
+  };
+}

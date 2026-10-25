@@ -13,6 +13,7 @@ const WORK = 'https://work.example.com';
 const stored = (page: Page) => page.evaluate(() => localStorage.getItem('mx-hubs') ?? '');
 
 async function openHubs(page: Page) {
+  if (await page.getByTestId('who').isVisible()) await page.getByTestId('who').click();
   await page.getByTestId('open-hubs').click();
   await expect(page.getByTestId('hubs')).toBeVisible();
 }

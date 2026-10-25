@@ -91,11 +91,10 @@ Amber and paper, and the phone layout:
 ## What a pane is called
 
 Everywhere a pane is named, in the list, the pane header, the tab title,
-the window view, boards and the selector, it is named by what runs in
+the window view and the selector, it is named by what runs in
 it, not by tmux: the command, and after it what the program says about
 itself in the pane title when that adds something (`vim · notes.md`).
-The header names the pane a view is about, the focused one where several
-are shown, and a notification names the pane the same way: the mark,
+A tile's header names its pane, and a notification names the pane the same way: the mark,
 the name upright, what the program says about itself in italics, and
 the place dimmed after it, all on one line.
 A pane running **Claude Code** is named *Claude*, with its mark, and the
@@ -141,8 +140,7 @@ with tmux's own zoom, so it gets the whole window. With fit on a pane is
 read at the font you chose (the help overlay, `?`, cycles it from 11 to
 20 px, remembered by the browser) and the host is sized by that cell, so
 every pane is shown one to one. Fit is on by default wherever you may
-write: in the pane view and the window view; on a board it is off,
-because several host windows changing at once is a decision for you.
+write: in the pane view and the window view.
 Leaving a fitted view gives the window back to tmux's automatic sizing,
 unzoomed, and the panes back to the layout they had. Moving between
 panes inside the pane view (`]` `[`, a tab, a swap) is not leaving: a
@@ -166,7 +164,7 @@ fit, or `r`, sends this client's size once more.
 by side. The page is the Android client's pane view:
 
 ```
-[‹] [⟳ fixing the build][! review][bash][tail · build.log]      [▦][⤢][⟳][⊡]
+┌─ muxway ─┐ [⟳ fixing the build][! review][bash][tail · build.log] [+]   [▦][⤢][⟳][⊡][≡]  [alice ▾]
 ┌─ ✳ Claude · fixing the build · work/0.0 · 96×28 · write · ⟳ working ──────┐
 │ $ make test                                                                   │
 │ ok                                                                            │
@@ -176,7 +174,16 @@ by side. The page is the Android client's pane view:
 ✳ [/clear][/exit][/compact][/rename][/model][/resume][/usage][/context][/help]…
 ```
 
-- `‹` goes back to the list.
+- The **header** is one row. The brand at its left goes back to the
+  list. After it the tab strip, and right after the last tab `+`: *split
+  here* makes one more pane beside the focused one on its host (where
+  you may type there) and opens it beside the others; *new session*
+  starts one where the host's agent allows it (the `+` key opens it
+  too). At the right the pane buttons, 32 px squares with a label under
+  the pointer: `▦` arrangement, `⤢` fit, `⟳` fit again, `⊡` zoom, `≡` go
+  to a pane. Last, the profile button with who you are, holding
+  *hubs*, *help*, *admin* (for an admin) and *logout*. The browser tab's
+  icon is drawn in the theme's colours.
 - The **tab strip** lists every pane you may read, in listing order,
   named by what Claude wrote into the title or by what runs there. Each
   tab is **painted with its state** from the lens: the theme's ink,
@@ -194,7 +201,11 @@ by side. The page is the Android client's pane view:
   or `l`, cycles the ones that make sense for the count. A wide window
   starts with the row, a tall one with the column. The bar between two
   tiles drags, and no tile goes under fifteen percent. Drag a tile's
-  header onto another to swap the two; `×` in a header, or `x`, closes
+  header onto another tile: its middle swaps the two; its upper, lower,
+  left or right part splits that tile's place that way, the dragged pane
+  on that side, and the half it will take lights up while you hover. The
+  dragged pane's old place closes up, every share is equal again, and
+  `▦` goes back to the presets; `×` in a header, or `x`, closes
   the pane on its host after asking `y` / `n` on the header, where the
   agent allows it and the pane is writable (see
   [new panes and sessions](new-panes.md#closing-a-pane)), and otherwise
@@ -225,8 +236,7 @@ by side. The page is the Android client's pane view:
 - `]` and `[` go to the next or previous pane: the next tile, or with
   one tile open the strip's neighbour shown in it (the phone's swipe),
   coming round at either end;
-  `1` to `4` focus a tile by number; `b` puts the focused pane on the
-  board, `Enter` opens it alone.
+  `1` to `4` focus a tile by number, `Enter` opens it alone.
 - The **command row** under the key bar is for the program in the
   focused pane, one row that scrolls sideways. When the pane is Claude
   Code's it carries the slash commands typed most: `/clear`, `/compact`,
@@ -237,8 +247,7 @@ by side. The page is the Android client's pane view:
   shell from this browser, newest first, kept by the browser. A button
   sends its command and `Enter`, as the input line does; `/rename` fills
   the input line and leaves the name to you. Any other program gets no
-  row. The window view and the board have the same row for their
-  focused pane.
+  row. The window view has the same row for its focused pane.
 
 ![the command row for a shell](images/web-command-row-shell.png)
 ![the command row for Claude Code](images/web-command-row-claude.png)
@@ -327,7 +336,7 @@ on, a dragged divider reaches the host, see above):
 Each cell's header is painted with the pane's state as a tab is, with
 the lens word after the size (`⟳ working`, `! permission: run it?`), and
 a pane that waits for you glows in the theme's ink, a shadow around
-its cell that moves nothing else. Boards do the same.
+its cell that moves nothing else.
 
 The arrangement is remembered per window in your browser, and dropped
 whenever tmux's own layout changes, so the view never shows a stale
@@ -346,36 +355,21 @@ of an address, alias, command or title; panes that need you come first;
 
 ![selector](images/web-selector.png)
 
-## Boards: your own arrangement of panes from anywhere
+## One view, no boards
 
-The window view is the host's arrangement. A **board** is yours: panes
-from any window, session or host, side by side as you like, kept in this
-browser only. `b` opens the main board (`/b/main`); from a pane, `b` puts
-that pane on it first. The selector lists every board with `▤`, and
-`board <name>` typed there makes a new one.
+Until 2026-10-25 a **board** (`/b/…`) kept a free arrangement of panes
+in the browser. The owner chose one view: the tiles took the board's
+free arrangement (drag a header onto a tile's edge) and the board went.
+A bookmark of a board opens its panes as tiles once, up to four, and the
+board kept in the browser is forgotten with it.
 
-On a board, `a` adds a pane beside the focused one and `A` below it,
-through the selector, which offers only panes not yet on the board. `x`
-takes the focused pane off (the pane itself goes on), `s` swaps it with
-the next, and dragging a cell's header onto another cell swaps the two.
-Dividers drag, `+` and `-` scale the focused pane, `=` gives every split
-equal shares, `z` or a double-click shows a pane alone and back, `Enter`
-opens the focused one on its own, `w` opens its window view. `]` and `[` move focus; the input
-line and the key bar go to the focused pane. A pane that is gone, or not
-yours to see, shows a gap with a `remove` button.
-
-Fit on a board is per pane: `f` sizes the focused host pane to its cell,
-`F` turns fit on or off for every writable pane. It is off by default,
-because several host windows changing at once is a decision for you.
-
-![board](images/web-board.png)
-![board, rearranged](images/web-board-arranged.png)
+![tiles: one dropped below another](images/web-drop.png)
 
 ## Several hubs
 
 A hub gathers hosts; a person with a hub at home and one at work has two
 addresses and two sign-ins. The browser remembers the other hubs as
-**links**, nothing more. `H` or the `⇄` button in the header opens the
+**links**, nothing more. `H`, or *hubs* in the profile menu, opens the
 **hubs** box:
 
 ```
@@ -441,10 +435,7 @@ else sees no entry, and `/admin` says *not yours to see*. See
 | `S` | a new session on the selected row's host (or the first that allows it): a one-line form, `Enter` starts, `Esc` cancels |
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |
-| `b` | the main board; from a pane: put it on the board first |
-| `a` / `A` | board: add a pane beside / below the focused one |
-| `x` / `s` / `z` / `=` / `F` / `w` | board: remove, swap, zoom, equal shares, fit all, the pane's window |
-| `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view, board: pane) |
+| `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view: pane), coming round at either end |
 | `1`–`4`, `l`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
 | `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, this pane alone (or `Enter`, double-click), host layout, equal shares, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |

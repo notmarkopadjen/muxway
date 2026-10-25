@@ -48,6 +48,11 @@ test('88 a waiting tab and header are the theme ink, inverted, in every theme', 
     );
     await inverted(page, tab);
     await inverted(page, head);
+    // The tab's icon follows the theme.
+    await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
+      'href',
+      theme === 'green' ? '/icon.svg' : `/icon-${theme}.svg`,
+    );
     if (theme === 'green') {
       const amber = await colour(page, '#ffb000');
       expect(await tab.evaluate((e) => getComputedStyle(e).backgroundColor)).not.toBe(amber);

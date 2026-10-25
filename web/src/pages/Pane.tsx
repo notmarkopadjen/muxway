@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { closePane, useAllPanes, useHosts, useInput, usePane, usePaneCached } from '../api/queries';
@@ -25,16 +25,30 @@ import {
   swap,
   tilesLayout,
   tree,
-  type Arrangement,
+  dropOn,
+  prune,
+  zoneAt,
+  type Layout,
   type TileNode,
   type Weights,
+  type Zone,
 } from '../term/tiles';
 import { releaseKept, useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
+import { InHeader } from '../shell/HeaderSlot';
+import { AddMenu } from '../components/AddMenu';
+import { requestPalette } from '../term/intent';
 
-// The tiles a zoom came from, to go back to: kept across the navigation
-// the zoom makes.
-let unzoomed: { panes: string[]; layout: Arrangement; weights: Weights } | null = null;
+// Tiles as they were, kept across the navigation a change of count makes:
+// the tiles a zoom came from, to go back to, and what a closed tile left.
+interface Kept {
+  panes: string[];
+  layout: Layout;
+  custom: TileNode | null;
+  weights: Weights;
+}
+let unzoomed: Kept | null = null;
+let carried: Kept | null = null;
 // The pane to focus once the tiles of a new count are up.
 let focusNext: string | null = null;
 
@@ -92,7 +106,7 @@ interface TileProps {
   onFit: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
-  onDrop: () => void;
+  onDrop: (zone: Zone) => void;
   onZoom: (p: Pane) => void;
   refused: (why: string) => void;
 }
@@ -158,7 +172,7 @@ function Tile(props: TileProps) {
   }, [content, size, address]);
   const lens = useLens();
   const st = p ? lens.status(p) : 'quiet';
-  const [over, setOver] = useState(false);
+  const [over, setOver] = useState<Zone | null>(null);
   // A pane that exited leaves the tiles at once; tmux has renumbered the
   // rest, so the window's last address is the one that is gone.
   const gone = several && pane.error instanceof ApiError && pane.error.status === 404;
@@ -196,7 +210,8 @@ function Tile(props: TileProps) {
   }
   return (
     <div
-      className={`mx-tile${over ? ' mx-drop' : ''}`}
+      className={`mx-tile${over ? ` mx-drop mx-drop-${over}` : ''}`}
+      data-drop={over ?? undefined}
       data-testid="tile"
       data-pane={address}
       data-several={several ? '' : undefined}
@@ -206,14 +221,18 @@ function Tile(props: TileProps) {
       onDragOver={(e) => {
         if (dragging && dragging !== address) {
           e.preventDefault();
-          setOver(true);
+          const r = e.currentTarget.getBoundingClientRect();
+          setOver(zoneAt((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height));
         }
       }}
-      onDragLeave={() => setOver(false)}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
+      }}
       onDrop={(e) => {
         e.preventDefault();
-        setOver(false);
-        props.onDrop();
+        const zone = over ?? 'swap';
+        setOver(null);
+        props.onDrop(zone);
       }}
       onDoubleClick={() => p && props.onZoom(p)}
     >
@@ -228,7 +247,11 @@ function Tile(props: TileProps) {
           props.onDragStart();
         }}
         onDragEnd={props.onDragEnd}
-        title={several ? 'drag onto another tile to swap' : undefined}
+        title={
+          several
+            ? 'drag onto another tile: its middle swaps the two, an edge splits its place'
+            : undefined
+        }
       >
         {p ? <PaneTitle pane={p} /> : <span>{address}</span>}
         {p && (
@@ -371,10 +394,13 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const focusedPane = usePaneCached(focused).data?.pane;
   const writable = focusedPane?.mode === 'write';
   const input = useInput(focused);
-  const [layout, setLayout] = useState<Arrangement>(() =>
+  const [custom, setCustom] = useState<TileNode | null>(null);
+  const [layout, setLayout] = useState<Layout>(() =>
     defaultFor(window.innerWidth > window.innerHeight),
   );
   const [weights, setWeights] = useState<Weights>({});
+  const shape: TileNode =
+    layout === 'custom' ? (custom ?? tree(n, defaultFor(true))) : tree(n, layout);
   const [fit, setFit] = useState<Record<string, boolean>>({});
   const [refitTick, setRefitTick] = useState(0);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -383,8 +409,16 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const hosts = useHosts();
   const hostCloses = (a: string) => !!hosts.data?.find((h) => h.name === a.split('/')[0])?.close;
   // A tile closed in the view; the last one goes back to the list.
-  const closeTile = (a: string) =>
-    addresses.length > 1 ? go(close(addresses, a)) : navigate({ to: '/' });
+  const closeTile = (a: string) => {
+    if (addresses.length <= 1) {
+      navigate({ to: '/' });
+      return;
+    }
+    const rest = close(addresses, a);
+    if (layout === 'custom' && rest.length > 1)
+      carried = { panes: rest, layout, custom: prune(shape, addresses.indexOf(a)), weights: {} };
+    go(rest);
+  };
   const answer = async (a: string, yes: boolean) => {
     setAsking(null);
     if (!yes) return;
@@ -407,16 +441,22 @@ function Tiles({ addresses }: { addresses: string[] }) {
   );
 
   // A new count resets the arrangement to one that fits it, unless zooming
-  // out brings back the tiles as they were.
+  // out or closing a tile brings back the tiles as they were.
   useEffect(() => {
-    if (unzoomed && unzoomed.panes.length === n && unzoomed.panes.join() === addresses.join()) {
-      setLayout(unzoomed.layout);
-      setWeights(unzoomed.weights);
-      return;
-    }
+    for (const k of [carried, unzoomed])
+      if (k && k.panes.join() === addresses.join()) {
+        carried = null;
+        setLayout(k.layout);
+        setCustom(k.custom);
+        setWeights(k.weights);
+        return;
+      }
     setLayout((l) =>
-      options(n).includes(l) ? l : defaultFor(window.innerWidth > window.innerHeight),
+      l !== 'custom' && options(n).includes(l)
+        ? l
+        : defaultFor(window.innerWidth > window.innerHeight),
     );
+    setCustom(null);
     setWeights({});
   }, [n]);
   useEffect(() => {
@@ -468,7 +508,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
   }, [several, all.data, addresses, n, windowOf]);
   const area = useRef<HTMLDivElement>(null);
   const windowFit = !!oneWindow && (fit[focused] ?? true) && !!writable;
-  const windowLayout = oneWindow ? tilesLayout(tree(n, layout), weights, oneWindow) : undefined;
+  const windowLayout = oneWindow ? tilesLayout(shape, weights, oneWindow) : undefined;
   const { refit: refitWindow } = useFit(focused, windowFit, area, 'window', windowLayout, false, {
     keep: true,
   });
@@ -530,7 +570,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
       else if (ev.key === 'l' && several) setLayout((l) => next(l, n));
       else if (asking && (ev.key === 'y' || ev.key === 'n')) void answer(asking, ev.key === 'y');
       else if (ev.key === 'x' && hostCloses(focused) && writable) setAsking(focused);
-      else if (ev.key === 'x' && several) go(close(addresses, focused));
+      else if (ev.key === 'x' && several) closeTile(focused);
       else if (ev.key === 'f' && writable) toggleFit(focused);
       else if (ev.key === 'F') {
         const on = !addresses.some((a) => fit[a] ?? true);
@@ -573,7 +613,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const zoom = useCallback(
     (p: Pane) => {
       if (several) {
-        unzoomed = { panes: addresses, layout, weights };
+        unzoomed = { panes: addresses, layout, custom, weights };
         go([p.address]);
         return;
       }
@@ -625,7 +665,14 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onFit={() => toggleFit(a)}
         onDragStart={() => setDragging(a)}
         onDragEnd={() => setDragging(null)}
-        onDrop={() => {
+        onDrop={(zone) => {
+          if (dragging && dragging !== a && zone !== 'swap') {
+            setCustom(dropOn(shape, addresses.indexOf(dragging), i, zone));
+            setLayout('custom');
+            setWeights({});
+            setDragging(null);
+            return;
+          }
           if (dragging && dragging !== a) go(swap(addresses, dragging, a));
           setDragging(null);
         }}
@@ -641,10 +688,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
       data-layout={several ? layout : undefined}
       data-panes={addresses.join(' ')}
     >
-      <div className="mx-top">
-        <Link to="/" className="mx-back" title="back to the panes (Esc)" data-testid="back">
-          ‹
-        </Link>
+      <InHeader>
         <Tabs
           panes={all.data ?? []}
           open={addresses}
@@ -656,6 +700,13 @@ function Tiles({ addresses }: { addresses: string[] }) {
           }}
           addable
         />
+        <AddMenu
+          pane={focusedPane}
+          onMade={(a) =>
+            go(addresses.length < MAX_TILES ? [...addresses, a] : replace(addresses, index, a))
+          }
+          onRefused={refused}
+        />
         <span className="mx-tools">
           {several && (
             <button
@@ -663,6 +714,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
               onClick={() => setLayout((l) => next(l, n))}
               title={`next arrangement (l): ${options(n).join(', ')}`}
               data-testid="arrange"
+              data-label="arrange"
             >
               ▦
             </button>
@@ -674,6 +726,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
               onClick={() => toggleFit(focused)}
               title={`fit: the host pane follows this tile (f), ${focusedFit ? 'on' : 'off'}; F: every tile`}
               data-testid="fit"
+              data-label="fit"
               data-on={focusedFit ? '1' : '0'}
             >
               ⤢
@@ -685,6 +738,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
               onClick={() => setRefitTick((t) => t + 1)}
               title="fit again: this client's size (r)"
               data-testid="refit"
+              data-label="fit again"
             >
               ⟳
             </button>
@@ -700,15 +754,25 @@ function Tiles({ addresses }: { addresses: string[] }) {
                   : "the window's panes side by side (z, or double-click); w: the mirror layout"
               }
               data-testid="zoom"
+              data-label="zoom"
               data-on={several ? '0' : '1'}
             >
               ⊡
             </button>
           )}
+          <button
+            type="button"
+            onClick={requestPalette}
+            title="go to a pane (p)"
+            data-testid="open-palette"
+            data-label="go to"
+          >
+            ≡
+          </button>
         </span>
-      </div>
+      </InHeader>
       <div className="mx-area" ref={area} data-window-fit={windowFit ? '' : undefined}>
-        <Tree node={tree(n, layout)} weights={weights} setWeights={setWeights} tile={tile} />
+        <Tree node={shape} weights={weights} setWeights={setWeights} tile={tile} />
       </div>
       <InputPanel
         pane={focusedPane}

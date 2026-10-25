@@ -20,8 +20,9 @@ test('51 motion: power-on, burn-in, reduced motion', async ({ page, request }, i
     );
   await page.goto('/signin');
   await page
-    .getByTestId('logout')
-    .click()
+    .getByTestId('who')
+    .click({ timeout: 2000 })
+    .then(() => page.getByTestId('logout').click())
     .catch(() => {});
   await page.goto('/signin');
   expect(

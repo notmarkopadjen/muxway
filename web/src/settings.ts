@@ -32,6 +32,9 @@ export function applyRoot() {
   document.documentElement.dataset.theme = theme === 'green' ? '' : theme;
   document.documentElement.dataset.motion = getMotion() ? '' : 'off';
   document.documentElement.style.setProperty('--mx-screen-size', `${getFont()}px`);
+  // The tab's icon in the theme's colours.
+  const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+  if (icon) icon.href = theme === 'green' ? '/icon.svg' : `/icon-${theme}.svg`;
 }
 
 // The font size a pane is read at, and the cell the host is sized by.

@@ -33,7 +33,13 @@ export function splitDirection(p: Pane): 'h' | 'v' {
   return p.width > 2 * p.height ? 'h' : 'v';
 }
 
-function SessionForm({ host, onDone }: { host: string; onDone: (address: string | null) => void }) {
+export function SessionForm({
+  host,
+  onDone,
+}: {
+  host: string;
+  onDone: (address: string | null) => void;
+}) {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);

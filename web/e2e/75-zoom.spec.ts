@@ -1,10 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { control, HOST, seedBoard, signIn } from './fixtures';
+import { control, HOST, signIn } from './fixtures';
 
-test('75 double-click shows a pane alone and brings the others back, in a window and on a board', async ({
-  page,
-  request,
-}) => {
+test('75 double-click shows a pane alone and brings the others back', async ({ page, request }) => {
   await signIn(page);
   await page.goto(`/w/${HOST}/work/0`);
   await expect(page.getByTestId('cell')).toHaveCount(2);
@@ -64,25 +61,9 @@ test('75 double-click shows a pane alone and brings the others back, in a window
   );
   await page.keyboard.press('z');
   await expect(page).toHaveURL(new RegExp(`/p/${HOST}/work/0.1$`));
-  // Let the fits and releases of all that settle before the board.
+  // Let the fits and releases of all that settle.
   await page.waitForTimeout(2500);
 
-  const A = `${HOST}/work/0.0`;
-  const B = `${HOST}/work/1.0`;
-  await seedBoard(page, 'main', [A, B]);
-  await page.goto('/b/main');
-  await expect(page.getByTestId('cell')).toHaveCount(2);
-  await page.waitForTimeout(700);
-  await page.locator(`[data-pane="${B}"]`).getByTestId('cell-screen').dblclick();
-  await expect(page.getByTestId('cell')).toHaveCount(1);
-  await expect(page.getByTestId('unzoom')).toBeVisible();
-  await expect(page.getByTestId('focus')).toContainText(B);
-  const board = (await page.locator('.mx-area').boundingBox())!;
-  const alone = (await page.getByTestId('cell').boundingBox())!;
-  expect(alone.width).toBeGreaterThan(board.width * 0.95);
-  await page.getByTestId('cell-screen').dblclick();
-  await expect(page.getByTestId('cell')).toHaveCount(2);
-  await expect(page).toHaveURL(/\/b\/main$/);
   // Leaving gave the window back, so the next spec finds it at rest.
   await page.goto('/');
   await expect

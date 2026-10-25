@@ -460,7 +460,7 @@
 /* window view */
 .mx-winview {
   display: grid;
-  grid-template-rows: auto 1fr auto auto;
+  grid-template-rows: 1fr auto auto;
   gap: var(--mx-gap);
   height: 100%;
   min-height: 0;
@@ -778,26 +778,12 @@ button.mx-window:focus-visible {
 /* tiles: the Android pane view */
 .mx-tiles {
   display: grid;
-  grid-template-rows: auto 1fr auto auto;
+  grid-template-rows: 1fr auto auto;
   gap: var(--mx-gap);
   height: 100%;
   min-height: 0;
 }
-.mx-top {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  /* The strip fills in after the panes load; the row keeps its height so the tiles do not jump. */
-  min-height: 32px;
-}
-.mx-top .mx-back {
-  color: var(--mx-ink);
-  padding: 0 8px;
-  font-size: 18px;
-  line-height: 1;
-}
-.mx-top .mx-tools {
+.mx-tools {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -821,9 +807,36 @@ button.mx-window:focus-visible {
 .mx-strip-end:hover {
   color: var(--mx-ink);
 }
-.mx-top .mx-tools button {
+/* The pane buttons: squares a finger or a glance finds, the label under
+   the pointer. */
+.mx-tools button {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  border-color: var(--mx-ink-faint);
+}
+.mx-tools button::after {
+  content: attr(data-label);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
   padding: 2px 6px;
-  line-height: 1.2;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--mx-ink);
+  background: var(--mx-bg-raised);
+  border: 1px solid var(--mx-ink-dim);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--mx-motion-fast) var(--mx-ease-out);
+}
+.mx-tools button:hover::after,
+.mx-tools button:focus-visible::after {
+  opacity: 1;
 }
 .mx-tabs {
   display: flex;
@@ -927,8 +940,41 @@ button.mx-window:focus-visible {
   box-shadow: var(--mx-glow-box-strong);
 }
 .mx-tile.mx-drop {
+  position: relative;
   outline: 1px dashed var(--mx-warn);
   outline-offset: -2px;
+}
+/* Where a dragged header lands: the whole tile to swap, or the half that
+   the dragged pane will take when the tile's place splits. */
+.mx-tile.mx-drop::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  z-index: 5;
+  border: 2px solid var(--mx-ink);
+  background: color-mix(in srgb, var(--mx-ink) 14%, transparent);
+  box-shadow: var(--mx-glow-box-strong);
+  animation: mx-drop-in var(--mx-motion-fast) var(--mx-ease-out);
+}
+.mx-tile.mx-drop-swap::after {
+  inset: 25%;
+}
+.mx-tile.mx-drop-top::after {
+  inset: 0 0 50% 0;
+}
+.mx-tile.mx-drop-bottom::after {
+  inset: 50% 0 0 0;
+}
+.mx-tile.mx-drop-left::after {
+  inset: 0 50% 0 0;
+}
+.mx-tile.mx-drop-right::after {
+  inset: 0 0 0 50%;
+}
+@keyframes mx-drop-in {
+  from {
+    opacity: 0;
+  }
 }
 .mx-tile-head {
   display: flex;

@@ -14,7 +14,10 @@ test('48 keyboard: j k Enter Esc / i t m ?', async ({ page }, info) => {
   expect(await page.locator('.mx-pane-row.mx-selected').getAttribute('data-address')).toBe(first);
   await page.keyboard.press('Enter');
   await paneLoaded(page);
-  await expect(page.getByTestId('crumb')).toContainText(first!);
+  await expect(page.locator('[data-testid="tab"][data-focused]')).toHaveAttribute(
+    'data-address',
+    first!,
+  );
   await page.keyboard.press('i');
   await expect(page.getByTestId('input')).toBeFocused();
   await page.keyboard.press('Escape');

@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useInput, useWindow } from '../api/queries';
@@ -9,7 +9,6 @@ import { InputPanel } from '../components/InputPanel';
 import { PaneTitle } from '../components/PaneTitle';
 import { Tabs } from '../components/Tabs';
 import { useToast } from '../components/Toast';
-import { addPane, loadBoard, saveBoard } from '../term/board';
 import {
   fractions,
   fresh,
@@ -24,6 +23,7 @@ import { noteOwn, useLens } from '../term/lens';
 import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
+import { InHeader } from '../shell/HeaderSlot';
 
 // Equal shares in every split, in the browser; with fit on the host follows.
 function equalised(a: Arrangement, tree: Node): Arrangement {
@@ -316,10 +316,7 @@ export function WindowPage() {
         }));
       } else if (ev.key === 'f' && writable) setFit((f) => !f);
       else if (ev.key === 'r' && fit && writable) refit();
-      else if (ev.key === 'b' && focusedPane) {
-        saveBoard('main', addPane(loadBoard('main'), focusedPane.address, null, 'h'));
-        navigate({ to: '/b/$name', params: { name: 'main' } });
-      } else return;
+      else return;
       ev.preventDefault();
       ev.stopImmediatePropagation();
     };
@@ -366,10 +363,7 @@ export function WindowPage() {
   }
   return (
     <div className="mx-winview" data-testid="window" data-layout={layout}>
-      <div className="mx-top">
-        <Link to="/" className="mx-back" title="back to the panes (Esc)" data-testid="back">
-          ‹
-        </Link>
+      <InHeader>
         <Tabs
           panes={stripPanes}
           open={stripPanes.filter((p) => !arr.hidden.includes(p.pane_id)).map((p) => p.address)}
@@ -427,7 +421,7 @@ export function WindowPage() {
             ↺
           </button>
         </span>
-      </div>
+      </InHeader>
       <div className="mx-area" ref={area}>
         {tree && (
           <Tree

@@ -61,8 +61,11 @@ test('85 the tab strip: every pane, a tab swaps into the focused tile, keys move
   await page.keyboard.press('x');
   await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', other);
   await shot(page, info, '85-tabs');
-  // The header names the focused pane, and the way back leads to the list.
-  await expect(page.getByTestId('crumb')).toContainText(other);
+  // The focused tab names the pane, and the brand leads back to the list.
+  await expect(page.locator('[data-testid="tab"][data-focused]')).toHaveAttribute(
+    'data-address',
+    other,
+  );
   await page.getByTestId('back').click();
   await expect(page.getByTestId('panes')).toBeVisible();
   // The window row is a button and opens the window view.
