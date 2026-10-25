@@ -204,4 +204,27 @@ edge strip, `e` / `E`, web only), `docs/features/web-client.md`,
 
 ## Review (after implementation)
 
+- [x] Diff matches the plan, with these deviations:
+  - The listing already carried `window_layout` for every pane, so the
+    view builds its tree from that; no `left` / `top` fields were added.
+  - A release now gives back the saved proportions only when the window
+    still has the shape it had; an arrangement made since, here or at
+    the host, stays (found by spec 100: a fit turned off put back an
+    older arrangement over one made at the host).
+  - Shape changes and the grant: a layout of the window's own shape (a
+    divider dragged) still needs only the write grant on the pane, as
+    before; one that moves panes needs every pane, and the agent checks
+    the shape against the live window itself.
+  - Specs are 100 (sync) and 101 (across), screenshots `100-order`,
+    `101-divider-hover`, `101-across`, `101-edge`; 98 and 99 were taken.
+  - One recorded run after all steps instead of one per step.
+- [x] Security rules hold: moving panes needs write on every pane of the
+  window, hub and agent both check, one per second per window, audited
+  `arrange=true`; drags and drops stay browser-only otherwise.
+- [x] Privacy: fixtures `alice-laptop`, throwaway tmux; the reported
+  screenshot is not committed.
+- [x] Docs: README, `web-client.md` (tiles from anywhere, the sync, the
+  divider and edge, `e` / `E`, security), `ui-guideline.md`,
+  `protocol/v1.md` (resize with a layout).
+
 ## Test run

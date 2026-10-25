@@ -523,8 +523,15 @@ export function InputPanel({
           </button>
         )}
         {mic === 'recording' ? (
-          <button type="button" className="mx-send" onClick={cancelMic} data-testid="mic-cancel">
-            cancel
+          <button
+            type="button"
+            className="mx-mic"
+            onClick={cancelMic}
+            title="cancel: drop the clip (Esc)"
+            aria-label="cancel"
+            data-testid="mic-cancel"
+          >
+            ✕
           </button>
         ) : (
           <button
