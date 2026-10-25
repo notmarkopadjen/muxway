@@ -177,8 +177,8 @@ by side. The page is the Android client's pane view:
 - `‹` goes back to the list.
 - The **tab strip** lists every pane you may read, in listing order,
   named by what Claude wrote into the title or by what runs there. Each
-  tab is **painted with its state** from the lens: the attention colour
-  when the pane waits for you (`!` `?` `z` `✓`, pulsing), dim when it
+  tab is **painted with its state** from the lens: the theme's ink,
+  inverted, when the pane waits for you (`!` `?` `z` `✓`, pulsing), dim when it
   works (`⟳`), plain when quiet. Open panes have a border, the focused
   one a thick border and its name in bold; selection never changes the
   colour, so the state shows on the pane you are looking at. A click on
@@ -324,7 +324,7 @@ on, a dragged divider reaches the host, see above):
 
 Each cell's header is painted with the pane's state as a tab is, with
 the lens word after the size (`⟳ working`, `! permission: run it?`), and
-a pane that waits for you glows in the attention colour, a shadow around
+a pane that waits for you glows in the theme's ink, a shadow around
 its cell that moves nothing else. Boards do the same.
 
 The arrangement is remembered per window in your browser, and dropped

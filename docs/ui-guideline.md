@@ -40,7 +40,7 @@ paints with the same three states and the same marks.
 
 | State | When | Glyph | Word | Paint |
 |---|---|---|---|---|
-| waiting | the listing carries a notification, except an `idle` one while the screen still moves (then: working) | `!` permission, `?` question, `z` idle, `✓` done | the kind | attention colour, pulsing |
+| waiting | the listing carries a notification, except an `idle` one while the screen still moves (then: working) | `!` permission, `?` question, `z` idle, `✓` done | the kind | the theme's ink, inverted (ink ground, background letters), pulsing |
 | working | Claude Code: last event `working`, or the open pane's screen changed in the last 10 s; a change the client caused (first read, its own resize or input) does not count; on start the client reads the hub's recent events | `⟳`: a turning ring, drawn, the same in every font | `working` | dim |
 | quiet | otherwise | none | none | plain |
 
@@ -50,7 +50,7 @@ pane you are looking at. tmux's own activity flag is not used.
 
 Wherever a pane is shown in a cell among others (tiles, the window view,
 a board), its header is painted with the state, and a **waiting** pane's
-cell glows in the attention colour: a shadow around it, pulsing with
+cell glows in the theme's ink: a shadow around it, pulsing with
 effects on, drawn outside the layout so no neighbour moves or resizes.
 
 Web: `web/src/term/lens.ts`, `components/Lens.tsx`. Android:
@@ -121,8 +121,13 @@ Tokens are shared; the values are in the core at
 | panel | `#0a120c` | `#140b05` | `#e8dfc8` |
 | ink | `#39ff14` | `#ffb000` | `#1f2a1f` |
 | dim · faint | `#1f8f14` · `#0f4a0c` | `#a06c00` · `#4a3200` | `#5a6a5a` · `#b9b39f` |
-| attention · alert | `#ffb000` · `#ff3b3b` | `#39ff14` · `#ff3b3b` | `#9a5b00` · `#a3161b` |
+| attention · alert | the ink, inverted · `#ff3b3b` | the ink, inverted · `#ff3b3b` | the ink, inverted · `#a3161b` |
 | Claude | `#d97757` | same | same |
+
+No theme has a second hue for states: a waiting pane is the theme's own
+ink drawn inverted, working is dim, quiet is plain (decided by the owner
+on 2026-10-25). The alert colour is for errors only; the key and command
+rows keep their group tints.
 
 Pixel font (Press Start 2P) for the brand and panel titles, monospace
 for everything else. Effects, on by default and off by a setting: glow,

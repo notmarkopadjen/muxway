@@ -15,7 +15,8 @@
   --mx-glow: rgba(57, 255, 20, 0.85);
   --mx-glow-soft: rgba(57, 255, 20, 0.35);
   --mx-accent: #b6ff9e;
-  --mx-warn: #ffb000;
+  /* attention: the theme's own ink, drawn inverted; no second hue */
+  --mx-warn: var(--mx-ink);
   --mx-bad: #ff3b3b;
   --mx-claude: #d97757;
   --mx-ok: #39ff14;
