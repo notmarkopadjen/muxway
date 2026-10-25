@@ -36,6 +36,7 @@ export interface Host {
   name: string;
   online: boolean;
   sessions?: boolean; // the agent starts sessions for clients
+  close?: boolean; // the agent closes writable panes for clients
 }
 
 export interface Window {

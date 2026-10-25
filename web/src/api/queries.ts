@@ -140,6 +140,11 @@ export function useAllPanes(enabled: boolean) {
   });
 }
 
+// closePane asks the host to close the pane, ending what runs in it.
+export function closePane(address: string): Promise<void> {
+  return api<void>(`/v1/panes/${address}/close`, { method: 'POST' });
+}
+
 // resize asks the host to size the pane's window; the answer is the pane
 // as tmux has it now. 429 means another resize landed within the second.
 export function resizePane(address: string, body: Resize): Promise<{ pane: Pane }> {

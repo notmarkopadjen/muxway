@@ -142,7 +142,7 @@ The same action on every client, triggered the way the device does it.
 | move the strip | wheel over it, `‹ ›` | drag | — |
 | scroll a program that has the mouse | wheel over it | drag | — |
 | next arrangement | `l`, `▦` | `▦` | — |
-| close a tile | `x`, `×` | `×` | — |
+| close the pane on its host, asking on the header (`y` / `n`), where the agent allows it and the pane is writable; elsewhere close the tile | `x`, `×` | `×` | — |
 | fit on / off, again | `f`, `r`, button | `⤢` tap, hold | — |
 | fit every tile | `F` | — | — |
 | zoom: one pane alone, then back to the tiles it came from, in their places and arrangement (or, opened alone, the window's panes side by side in the window's order) | `z`, `⊡`, double-click a tile, its header or its tab | — | — |

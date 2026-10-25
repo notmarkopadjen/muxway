@@ -88,6 +88,29 @@ func TestUI_Microphone(t *testing.T) {
 		"MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_CONTROL="+control, "MX_STT=1")
 }
 
+// Closing panes needs an agent run with --allow-close; it gets its own
+// environment so no other spec's x reaches the host. Spec 89 runs here with
+// MX_CLOSE set; its without-the-flag case runs in the main environment.
+func TestUI_Close(t *testing.T) {
+	npx, webDir := uiTools(t)
+	if g := os.Getenv("MX_GREP"); g != "" {
+		if ok, _ := regexp.MatchString(g, "89-"); !ok {
+			t.Skip("MX_GREP leaves spec 89 out")
+		}
+	}
+	e := newEnv(t)
+	ts := newTmux(t)
+	a := e.pairAgent(host, ts, "--allow-close")
+	ts.split("work:0.0")
+	ts.split("work:0.0")
+	e.expose(ts, "work:0.0", "--write")
+	e.expose(ts, "work:0.1", "--write")
+	e.expose(ts, "work:0.2")
+	full := e.token("browser", []string{"*"}, []string{"*"})
+	control := e.startControl(t, ts, a)
+	runPlaywright(t, e, npx, webDir, "89-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_CLOSE=1")
+}
+
 func uiTools(t *testing.T) (npx, webDir string) {
 	if os.Getenv("MUXWAY_SKIP_UI") != "" {
 		t.Skip("MUXWAY_SKIP_UI set")

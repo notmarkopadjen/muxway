@@ -18,6 +18,7 @@ const (
 	OpSplit      = "split"       // one more pane beside or below Pane
 	OpNewSession = "new-session" // a session named Name, marked writable
 	OpKillPane   = "kill-pane"   // the hub's undo of a split it may not grant
+	OpClosePane  = "close-pane"  // a client closes a writable pane, where the owner allows it
 )
 
 // Request from hub to agent. Actor is the id of the client token the hub
@@ -76,6 +77,7 @@ type Response struct {
 	Pane *tmux.Pane `json:"pane,omitempty"`
 	// Sessions, with a list, says the agent starts sessions for clients.
 	Sessions bool `json:"sessions,omitempty"`
+	Close    bool `json:"close,omitempty"`
 }
 
 // Errors an agent returns. They are codes, never details.

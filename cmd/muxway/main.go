@@ -392,6 +392,7 @@ func runAgent(cmd string, args []string) error {
 	case "run":
 		socket, name := tmuxFlags(fs)
 		sessions := fs.Bool("allow-sessions", false, "let clients with a write grant start new sessions, marked writable")
+		closes := fs.Bool("allow-close", false, "let clients with a write grant close writable panes, ending what runs in them")
 		if err := fs.Parse(args); err != nil {
 			return err
 		}
@@ -400,6 +401,7 @@ func runAgent(cmd string, args []string) error {
 			return err
 		}
 		cfg.AllowSessions = *sessions
+		cfg.AllowClose = *closes
 		a, err := agent.New(cfg, key, tmux.Server{Socket: *socket, Name: *name}, logger())
 		if err != nil {
 			return err

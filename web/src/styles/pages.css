@@ -1170,3 +1170,24 @@ button.mx-window:focus-visible {
   border: 1px solid var(--mx-ink-dim);
   padding: 2px 8px;
 }
+
+/* a tile's header asking whether to close its pane on the host */
+.mx-ask {
+  color: var(--mx-ink);
+  font-weight: bold;
+  white-space: nowrap;
+  animation: mx-ask-in var(--mx-motion-medium) var(--mx-ease-out);
+}
+.mx-ask button {
+  padding: 0 6px;
+  margin-left: 4px;
+}
+@keyframes mx-ask-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+:root[data-motion='off'] .mx-ask {
+  animation: none;
+}

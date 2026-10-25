@@ -41,6 +41,8 @@ type Config struct {
 	Dir    string `json:"-"`
 	// AllowSessions lets clients start sessions; a flag, not a setting.
 	AllowSessions bool `json:"-"`
+	// AllowClose lets clients close writable panes, whatever runs in them.
+	AllowClose bool `json:"-"`
 }
 
 func configPath(dir string) string { return filepath.Join(dir, "agent.json") }
@@ -162,11 +164,11 @@ type Agent struct {
 	attention map[string]tmux.Attention
 	// panes whose last turn ended with work still running in the background
 	background map[string]bool
-	resized   map[string]time.Time // window id -> last resize applied
-	layouts   map[string]string    // window id -> layout before its first resize, put back on release
-	made      map[string]time.Time // pane id -> when a split made it, while the hub may still undo it
-	sessions  map[string]bool      // session ids started for clients
-	sess      *secure.Session      // current connection to the hub, nil while away
+	resized    map[string]time.Time // window id -> last resize applied
+	layouts    map[string]string    // window id -> layout before its first resize, put back on release
+	made       map[string]time.Time // pane id -> when a split made it, while the hub may still undo it
+	sessions   map[string]bool      // session ids started for clients
+	sess       *secure.Session      // current connection to the hub, nil while away
 }
 
 // New prepares an agent; Run connects it.
@@ -281,6 +283,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 			}
 		}
 		resp.Sessions = a.cfg.AllowSessions
+		resp.Close = a.cfg.AllowClose
 	case wire.OpRead:
 		p, code := a.find(ctx, req.Pane)
 		if code != "" {
@@ -344,6 +347,9 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		a.auditMade(req, resp)
 	case wire.OpKillPane:
 		resp.Error = a.killMade(ctx, req.Pane)
+		a.audit(req, resp.Error)
+	case wire.OpClosePane:
+		resp.Error = a.closePane(ctx, req.Pane)
 		a.audit(req, resp.Error)
 	default:
 		resp.Error = wire.ErrUnknownOp
@@ -543,6 +549,25 @@ func (a *Agent) listed(ctx context.Context, id string) (*tmux.Pane, string) {
 		}
 	}
 	return nil, wire.ErrTmux
+}
+
+// closePane closes a writable exposed pane for a client, when the owner
+// runs the agent with --allow-close.
+func (a *Agent) closePane(ctx context.Context, id string) string {
+	if !a.cfg.AllowClose {
+		return wire.ErrNotAllowed
+	}
+	p, code := a.find(ctx, id)
+	if code != "" {
+		return code
+	}
+	if p.Mode != tmux.ModeWrite {
+		return wire.ErrReadOnly
+	}
+	if a.tmux.KillPane(ctx, p.PaneID) != nil {
+		return wire.ErrTmux
+	}
+	return ""
 }
 
 // killMade closes a pane a split or a new session made moments ago; any

@@ -227,11 +227,12 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		Name     string `json:"name"`
 		Online   bool   `json:"online"`
 		Sessions bool   `json:"sessions,omitempty"`
+		Close    bool   `json:"close,omitempty"`
 	}
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
 		a := h.agent(host)
-		out = append(out, hostView{host, a != nil, a != nil && a.startsSessions(r.Context())})
+		out = append(out, hostView{host, a != nil, a != nil && a.startsSessions(r.Context()), a != nil && a.closesPanes(r.Context())})
 	}
 	if wantsText(r) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -482,10 +483,14 @@ func statusFor(code string) (int, string) {
 	return http.StatusBadGateway, "host_error"
 }
 
-// handlePost routes the two actions on a pane: /input and /resize.
+// handlePost routes the actions on a pane: /input, /resize and /close.
 func (h *Hub) handlePost(w http.ResponseWriter, r *http.Request, t Principal) {
 	if strings.HasSuffix(r.PathValue("path"), "/resize") {
 		h.handleResize(w, r, t)
+		return
+	}
+	if strings.HasSuffix(r.PathValue("path"), "/close") {
+		h.handleClose(w, r, t)
 		return
 	}
 	h.handleInput(w, r, t)

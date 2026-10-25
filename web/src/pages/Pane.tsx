@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
-import { useAllPanes, useInput, usePane, usePaneCached } from '../api/queries';
+import { closePane, useAllPanes, useHosts, useInput, usePane, usePaneCached } from '../api/queries';
 import type { Key, Mouse, Pane, PaneContent } from '../api/types';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
@@ -84,6 +84,11 @@ interface TileProps {
   dragging: string | null;
   onFocus: () => void;
   onClose: () => void;
+  // The host closes writable panes for clients; asking: the header asks.
+  hostCloses: boolean;
+  asking: boolean;
+  onAsk: () => void;
+  onAnswer: (yes: boolean) => void;
   onFit: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -256,18 +261,35 @@ function Tile(props: TileProps) {
           </>
         )}
         <span className="mx-spacer" />
-        {several && (
-          <button
-            type="button"
-            title="close this tile (x)"
-            data-testid="close-tile"
-            onClick={(e) => {
-              e.stopPropagation();
-              props.onClose();
-            }}
-          >
-            ×
-          </button>
+        {props.asking && p ? (
+          <span className="mx-ask" data-testid="close-ask" onClick={(e) => e.stopPropagation()}>
+            close the pane on {p.host}?{' '}
+            <button type="button" data-testid="close-yes" onClick={() => props.onAnswer(true)}>
+              y
+            </button>{' '}
+            <button type="button" data-testid="close-no" onClick={() => props.onAnswer(false)}>
+              n
+            </button>
+          </span>
+        ) : (
+          (several || (props.hostCloses && writable)) && (
+            <button
+              type="button"
+              title={
+                props.hostCloses && writable
+                  ? 'close the pane on its host (x)'
+                  : 'close this tile (x); the host does not let clients close panes'
+              }
+              data-testid="close-tile"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (props.hostCloses && writable) props.onAsk();
+                else props.onClose();
+              }}
+            >
+              ×
+            </button>
+          )
         )}
       </div>
       <Screen
@@ -356,6 +378,29 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const [fit, setFit] = useState<Record<string, boolean>>({});
   const [refitTick, setRefitTick] = useState(0);
   const [dragging, setDragging] = useState<string | null>(null);
+  // The tile whose header asks whether to close its pane on the host.
+  const [asking, setAsking] = useState<string | null>(null);
+  const hosts = useHosts();
+  const hostCloses = (a: string) => !!hosts.data?.find((h) => h.name === a.split('/')[0])?.close;
+  // A tile closed in the view; the last one goes back to the list.
+  const closeTile = (a: string) =>
+    addresses.length > 1 ? go(close(addresses, a)) : navigate({ to: '/' });
+  const answer = async (a: string, yes: boolean) => {
+    setAsking(null);
+    if (!yes) return;
+    try {
+      await closePane(a);
+      closeTile(a);
+    } catch (err) {
+      refused(
+        err instanceof ApiError
+          ? err.code === 'read_only'
+            ? 'this pane is read-only'
+            : err.code
+          : 'hub unreachable',
+      );
+    }
+  };
   const refused = useCallback(
     (why: string) => toast.push({ kind: 'refused', title: why }),
     [toast],
@@ -483,6 +528,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
         else neighbour(d);
       } else if (/^[1-4]$/.test(ev.key) && Number(ev.key) <= n) setFocusedIndex(Number(ev.key) - 1);
       else if (ev.key === 'l' && several) setLayout((l) => next(l, n));
+      else if (asking && (ev.key === 'y' || ev.key === 'n')) void answer(asking, ev.key === 'y');
+      else if (ev.key === 'x' && hostCloses(focused) && writable) setAsking(focused);
       else if (ev.key === 'x' && several) go(close(addresses, focused));
       else if (ev.key === 'f' && writable) toggleFit(focused);
       else if (ev.key === 'F') {
@@ -570,7 +617,11 @@ function Tiles({ addresses }: { addresses: string[] }) {
         refitTick={i === index ? refitTick : 0}
         dragging={dragging}
         onFocus={() => setFocusedIndex(i)}
-        onClose={() => go(close(addresses, a))}
+        onClose={() => closeTile(a)}
+        hostCloses={hostCloses(a)}
+        asking={asking === a}
+        onAsk={() => setAsking(a)}
+        onAnswer={(yes) => void answer(a, yes)}
         onFit={() => toggleFit(a)}
         onDragStart={() => setDragging(a)}
         onDragEnd={() => setDragging(null)}

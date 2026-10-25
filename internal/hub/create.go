@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/notmarkopadjen/muxway/internal/tmux"
 	"github.com/notmarkopadjen/muxway/internal/wire"
@@ -128,6 +129,53 @@ func (h *Hub) handleSplit(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	h.log.Info("audit split", append(attrs, "result", "ok")...)
 	created(w, map[string]any{"pane": view(host, t, p)})
+}
+
+// handleClose closes a pane on its host: the principal may type into it,
+// the pane is marked for writing and the agent runs with --allow-close.
+// Whatever runs in the pane ends; the client asked its person first.
+func (h *Hub) handleClose(w http.ResponseWriter, r *http.Request, t Principal) {
+	host := r.PathValue("host")
+	path, _ := strings.CutSuffix(r.PathValue("path"), "/close")
+	if r.ContentLength > 0 {
+		var in struct{}
+		if !decodeBody(w, r, &in) {
+			return
+		}
+	}
+	a, p, status := h.locate(r.Context(), t, host, path)
+	if status != 0 {
+		if status == http.StatusServiceUnavailable {
+			fail(w, status, "host_offline")
+		} else {
+			fail(w, status, "not_found")
+		}
+		return
+	}
+	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID}
+	if !t.canWrite(host, p) || p.Mode != tmux.ModeWrite {
+		h.log.Info("audit close", append(attrs, "result", "read_only")...)
+		fail(w, http.StatusForbidden, "read_only")
+		return
+	}
+	if !h.limits.allowCreate(t.ID) {
+		fail(w, http.StatusTooManyRequests, "rate_limited")
+		return
+	}
+	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpClosePane, Actor: t.ID, Pane: p.PaneID})
+	a.forget()
+	if err != nil {
+		fail(w, http.StatusServiceUnavailable, "host_offline")
+		return
+	}
+	if resp.Error != "" {
+		h.log.Info("audit close", append(attrs, "result", resp.Error)...)
+		status, code := statusFor(resp.Error)
+		fail(w, status, code)
+		return
+	}
+	h.log.Info("audit close", append(attrs, "result", "ok")...)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleNewSession starts a session on a host whose agent allows it, for a

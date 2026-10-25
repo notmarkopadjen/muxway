@@ -3,7 +3,7 @@
 A client can only type into panes that exist. This lets a client **split**
 a pane it may type into, so a second program runs next to the first, and
 **start a session** for a fresh piece of work, where the host's owner
-allowed it. Closing panes and sessions stays with the host: `exit` does it.
+allowed it, and **close a pane** where the owner allowed that too.
 
 ## Using it
 
@@ -61,8 +61,36 @@ other. The hub asks only when the principal has a write grant matching
 `host/<name>/*`.
 
 Protocol: [`POST /v1/windows/{host}/{session}/{window}/panes`,
-`POST /v1/hosts/{host}/sessions`](../protocol/v1.md) and the `sessions`
-field of `GET /v1/hosts`.
+`POST /v1/hosts/{host}/sessions`, `POST /v1/panes/{address}/close`](../protocol/v1.md)
+and the `sessions` and `close` fields of `GET /v1/hosts`.
+
+## Closing a pane
+
+```sh
+muxway agent run --allow-close        # let clients close writable panes (default: off)
+```
+
+In a tile's header `×`, or `x` on the focused tile, asks on the header
+itself: `close the pane on alice-laptop? y n`. `y` closes the pane on the
+host, ending what runs in it, and the tile leaves; `n` keeps it. A
+read-only pane, or a host whose agent runs without `--allow-close`, is
+never asked about: there `×` and `x` close the tile in this browser only,
+and the button's title says so.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant H as Hub
+    participant A as Agent
+    C->>C: x, then y on the header's question
+    C->>H: POST /v1/panes/{address}/close
+    H->>H: write grant? writable mark? one per 2 s?
+    H->>A: close-pane {pane}
+    A->>A: --allow-close? exposed and writable?
+    A->>A: tmux kill-pane
+    A-->>H: ok (audit on both sides)
+    H-->>C: 204
+```
 
 ## Security considerations
 
@@ -81,7 +109,11 @@ field of `GET /v1/hosts`.
 - Every creation is audited on both sides: who, host, window or name,
   result and the new pane's id; never a pane's content.
 - The undo, `kill-pane`, is the hub's alone and reaches only a pane the
-  agent made within the last 30 seconds. A client has no way to close a
-  pane.
+  agent made within the last 30 seconds.
+- Closing a pane ends whatever runs there, so it needs the owner's
+  `--allow-close` (off by default), a write grant and a writable mark, and
+  the client asks its person first. It shares the creation rate limit
+  and is audited on both sides like any write. Decided by the owner on
+  2026-10-25.
 - No new dependencies; no change to the web client's content security
   policy.

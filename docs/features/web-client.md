@@ -192,8 +192,11 @@ by side. The page is the Android client's pane view:
   or `l`, cycles the ones that make sense for the count. A wide window
   starts with the row, a tall one with the column. The bar between two
   tiles drags, and no tile goes under fifteen percent. Drag a tile's
-  header onto another to swap the two; `×` in a header, or `x`, closes a
-  tile. The arrangement is the browser's own and never reaches the host.
+  header onto another to swap the two; `×` in a header, or `x`, closes
+  the pane on its host after asking `y` / `n` on the header, where the
+  agent allows it and the pane is writable (see
+  [new panes and sessions](new-panes.md#closing-a-pane)), and otherwise
+  closes the tile. The arrangement is the browser's own and never reaches the host.
 - A tile's **header** is painted like its tab and names the pane, its
   address, its size, its mode and the lens's word; the focused tile has
   the thick border and the bold name. The controls sit in the top row,
@@ -440,7 +443,7 @@ else sees no entry, and `/admin` says *not yours to see*. See
 | `a` / `A` | board: add a pane beside / below the focused one |
 | `x` / `s` / `z` / `=` / `F` / `w` | board: remove, swap, zoom, equal shares, fit all, the pane's window |
 | `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view, board: pane) |
-| `1`–`4`, `l`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, close, fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
+| `1`–`4`, `l`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
 | `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, this pane alone (or `Enter`, double-click), host layout, equal shares, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
 | `t` | next theme: green, amber, paper |

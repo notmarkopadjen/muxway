@@ -163,6 +163,7 @@ type agentConn struct {
 	list    []tmux.Pane
 	listAt  time.Time
 	starts  bool // the agent starts sessions for clients
+	closes  bool // the agent closes panes for clients
 	evts    bucket
 	warned  time.Time
 }
@@ -221,9 +222,19 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 		return nil, errors.New(r.Error)
 	}
 	a.mu.Lock()
-	a.list, a.listAt, a.starts = r.Panes, time.Now(), r.Sessions
+	a.list, a.listAt, a.starts, a.closes = r.Panes, time.Now(), r.Sessions, r.Close
 	a.mu.Unlock()
 	return r.Panes, nil
+}
+
+// closesPanes says, from the agent's listing, whether clients may close panes there.
+func (a *agentConn) closesPanes(ctx context.Context) bool {
+	if _, err := a.panes(ctx); err != nil {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.closes
 }
 
 // startsSessions asks the agent, through its listing, whether clients may
