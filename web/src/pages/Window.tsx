@@ -22,6 +22,7 @@ import {
 } from '../term/layout';
 import { noteOwn, useLens } from '../term/lens';
 import { Screen } from '../term/Screen';
+import { AddMenu } from '../components/AddMenu';
 import { Closing } from '../components/Closing';
 import { FileWindow, type Shown } from '../components/FileWindow';
 import { useFit } from '../term/useFit';
@@ -421,6 +422,15 @@ export function WindowPage() {
           focused={focusedPane?.address ?? null}
           hidden={hiddenAddresses}
           onTab={onTab}
+        />
+        <AddMenu
+          pane={focusedPane}
+          onMade={(a) => {
+            // A split appears in this window by itself; a new session is elsewhere: open it.
+            if (!a.startsWith(`${host}/${session}/`))
+              navigate({ to: '/p/$', params: { _splat: a } });
+          }}
+          onRefused={(why) => toast.push({ kind: 'refused', title: why })}
         />
         <Tools
           tools={[

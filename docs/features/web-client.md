@@ -402,6 +402,7 @@ key:
 
 | Icon | Does | Key |
 |---|---|---|
+| `+` | one more pane: split here, or a new session on a host that starts them (as in the pane view) | `+` |
 | `⤢` | fit: the host window follows the box (selected when on) | `f` |
 | `⊡` | the focused pane alone, in the pane view with everything it has | `z`, `Enter`, double-click |
 | `⊞` | equal shares in every split (with fit on, the host follows: the way to put a squeezed window right) | `=` |

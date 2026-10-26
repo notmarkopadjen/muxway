@@ -139,3 +139,28 @@ test('98 new session: + session, a name, Enter opens its pane; a used name is re
     },
   );
 });
+
+test('98 the window view has + too: a split joins the window, a session opens its pane', async ({
+  page,
+  request,
+}) => {
+  await signIn(page);
+  await settled(page);
+  await page.goto(`/w/${HOST}/work/0`);
+  await expect(page.getByTestId('window')).toBeVisible();
+  const cells = page.getByTestId('cell');
+  const before = await cells.count();
+  await page.getByTestId('add').click();
+  const [res] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes('/v1/windows/') && r.request().method() === 'POST',
+    ),
+    page.getByTestId('add-split').click(),
+  ]);
+  expect(res.status()).toBe(201);
+  const made = ((await res.json()) as { pane: { pane_id: string } }).pane;
+  await expect(page.getByTestId('window')).toBeVisible();
+  await expect(cells).toHaveCount(before + 1, { timeout: 10_000 });
+  await control(request, '/kill-pane', { target: made.pane_id });
+  await expect(cells).toHaveCount(before, { timeout: 10_000 });
+});
