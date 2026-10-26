@@ -3,6 +3,7 @@ package hub
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -143,7 +144,7 @@ func presentedToken(r *http.Request) (string, bool) {
 	alt := r.Header.Get("X-Muxway-Token")
 	switch {
 	case hasBearer && alt != "":
-		return bearer, bearer != "" && bearer == alt
+		return bearer, bearer != "" && subtle.ConstantTimeCompare([]byte(bearer), []byte(alt)) == 1
 	case hasBearer:
 		return bearer, bearer != ""
 	case alt != "":

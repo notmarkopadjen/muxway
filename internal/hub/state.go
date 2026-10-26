@@ -3,6 +3,7 @@ package hub
 import (
 	"crypto/ed25519"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -154,7 +155,7 @@ func (st *Store) lookupToken(secret string) (Token, bool) {
 	st.mu.RLock()
 	defer st.mu.RUnlock()
 	for _, t := range st.s.Tokens {
-		if t.Hash == h {
+		if subtle.ConstantTimeCompare([]byte(t.Hash), []byte(h)) == 1 {
 			return t, time.Now().Before(t.Expires)
 		}
 	}
