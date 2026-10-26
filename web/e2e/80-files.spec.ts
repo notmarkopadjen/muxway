@@ -110,3 +110,17 @@ test('80 security: a read-only pane or token has no ⇪, and a paste there sends
   expect(await control(request, '/inbox', {})).toBe(before);
   await other.close();
 });
+
+test('80 a paste on a host without an inbox says so and sends nothing', async ({ page }) => {
+  await signIn(page);
+  // The host answers the inbox check as one started without --inbox would.
+  await page.route('**/v1/panes/**/files', (route) =>
+    route.request().method() === 'GET' ? route.fulfill({ status: 404 }) : route.continue(),
+  );
+  await openPane(page, SHELL0);
+  await expect(page.getByTestId('input')).toBeEditable();
+  await expect(page.getByTestId('file')).toHaveCount(0);
+  await deliver(page, 'paste', 'shot.png', 'image/png', PNG.toString('base64'));
+  await expect(page.getByTestId('toast').filter({ hasText: 'no inbox' })).toContainText('--inbox');
+  await expect(page.getByTestId('input')).toHaveValue('');
+});

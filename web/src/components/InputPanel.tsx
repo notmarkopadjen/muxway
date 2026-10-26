@@ -182,17 +182,22 @@ export function InputPanel({
     wantFocus.current = true;
   };
   // A paste with a file in it, or a file dropped on the pane view, the
-  // element around this panel; the rest of the page takes none.
+  // element around this panel; the rest of the page takes none. A host
+  // without an inbox says so, instead of swallowing the file.
   const form = useRef<HTMLFormElement>(null);
   useEffect(() => {
     const zone = form.current?.parentElement;
-    if (!canFile || !zone) return;
+    if (!pane || !writable || !zone) return;
     const hasFiles = (dt: DataTransfer | null) => !!dt && [...dt.types].includes('Files');
+    const take = (files: File[]) => {
+      if (canFile) void sendFiles(files);
+      else toast.push({ kind: 'file', title: `no inbox on ${pane.host}: its agent needs --inbox` });
+    };
     const onPaste = (e: ClipboardEvent) => {
       const files = [...(e.clipboardData?.files ?? [])];
       if (!files.length) return;
       e.preventDefault();
-      void sendFiles(files);
+      take(files);
     };
     const onOver = (e: DragEvent) => {
       if (hasFiles(e.dataTransfer)) e.preventDefault();
@@ -200,7 +205,7 @@ export function InputPanel({
     const onDrop = (e: DragEvent) => {
       if (!hasFiles(e.dataTransfer)) return;
       e.preventDefault();
-      void sendFiles([...(e.dataTransfer?.files ?? [])]);
+      take([...(e.dataTransfer?.files ?? [])]);
     };
     zone.addEventListener('paste', onPaste);
     zone.addEventListener('dragover', onOver);

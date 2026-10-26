@@ -30,9 +30,12 @@ Several files go one after another, each path appended.
 ![a pasted screenshot](images/web-pasted.png)
 
 The types: PNG, JPEG, GIF and WebP images, PDF, plain text, Markdown and
-JSON, up to 8 MiB each. Files are kept a day. On Android the same button
-opens the system picker, and *share* sends an image, a text or a PDF to a
-pane you pick ([muxway-android#11](https://github.com/notmarkopadjen/muxway-android/issues/11)).
+JSON, up to 8 MiB each. Files are kept a day. On a host whose agent runs
+without `--inbox` there is no `⇪`, and a paste or a drop answers with a
+toast, `no inbox on alice-laptop: its agent needs --inbox`, and sends
+nothing. The Android client does not take files yet
+([muxway-android#11](https://github.com/notmarkopadjen/muxway-android/issues/11)
+is the plan: the system picker, and *share* into a pane).
 
 ## How it works
 
