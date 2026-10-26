@@ -15,8 +15,11 @@ strip, a header, a key binding or a layout in one client, open this page
 and the matching table.
 
 Repositories: the web client lives in the core (`web/`); the Android
-client in `muxway-android`; glasses and MIDP clients in their own
-repositories. Each client's `AGENTS.md` points here.
+client in [muxway-android](https://github.com/notmarkopadjen/muxway-android);
+the glasses and MIDP clients in
+[muxway-glasses-even](https://github.com/notmarkopadjen/muxway-glasses-even)
+and [muxway-midp](https://github.com/notmarkopadjen/muxway-midp). Each
+client's `AGENTS.md` points here.
 
 ## 1. Shared: what every client shows
 
@@ -223,7 +226,7 @@ Feature page: `docs/features/web-client.md`.
 | `FLAG_SECURE` | the platform's screenshot block |
 | the admin section is read and end only: the log tail (last 200, pull to refresh) and the clients with *end* | tokens and address lists are made on the web or with the CLI (§2) |
 
-Feature pages: `muxway-android/docs/features/`.
+Feature pages: [muxway-android/docs/features/](https://github.com/notmarkopadjen/muxway-android/tree/main/docs/features).
 
 ## 4. Changing a shared feature
 

@@ -38,7 +38,11 @@ flowchart LR
 - **Clients**: anything that speaks [the protocol](protocol/v1.md). Rich
   clients use JSON; small ones use **text mode**, which returns plain lines
   rewrapped to the width the client asks for, in UTF-8, Latin-1 or ASCII
-  (see [text mode](features/text-mode.md)).
+  (see [text mode](features/text-mode.md)). The native clients live in
+  their own repositories:
+  [muxway-android](https://github.com/notmarkopadjen/muxway-android),
+  [muxway-glasses-even](https://github.com/notmarkopadjen/muxway-glasses-even)
+  and [muxway-midp](https://github.com/notmarkopadjen/muxway-midp).
 - **Web client**: served by the hub from embedded files at `/`; its
   tile arrangements and the lens that says what a pane is up to
   are browser state and never reach the hub; React, plain CSS, polling

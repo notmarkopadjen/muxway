@@ -468,7 +468,7 @@ One page talking to two hubs would need that page to hold the other
 hub's credentials; one list mixing several hubs' panes needs the same;
 so neither exists. One hub per page, one sign-in each. On Android the
 app holds a token per hub in its keystore and switches between them; see
-`muxway-android/docs/features/connect.md`.
+[muxway-android/docs/features/connect.md](https://github.com/notmarkopadjen/muxway-android/blob/main/docs/features/connect.md).
 
 ## Admin
 

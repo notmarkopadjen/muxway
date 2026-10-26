@@ -54,7 +54,7 @@ Signed in with it, the web client shows **admin** in the header. The page
 
 On Android an **admin** section in Settings shows the log tail and the
 clients with *end*; tokens and address lists stay on the web and the CLI
-(see `docs/ui-guideline.md` §3).
+(see [the UI guideline](../ui-guideline.md) §3).
 
 ## The address lists
 

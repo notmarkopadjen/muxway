@@ -24,7 +24,8 @@ Use placeholders instead: `hub.example.com`, `192.0.2.10` (RFC 5737),
 `2001:db8::1`, `alice`/`bob`, `+15555550100`, `<token>`. Test fixtures are
 synthetic. Screenshots are taken against the test environment only.
 
-**Before every push** run the pre-push check (`scripts/prepush-check.sh`):
+**Before every push** run the pre-push check (`scripts/prepush-check.sh`,
+which needs [gitleaks](https://github.com/gitleaks/gitleaks) installed):
 it runs a secret scanner over the outgoing commits and a grep for the
 project's deny-list (`.denylist`, not committed, one pattern per line for
 the owner's own host names, domains, numbers and names). Then read the full
@@ -124,7 +125,9 @@ limits; and that no secret appears in any response or log.
 
 The core of muxway: the **hub**, the **host agent**, the **web client** and
 the **protocol specification**. Native clients live in their own
-repositories (`muxway-android`, `muxway-glasses-even`, `muxway-midp`) and
+repositories ([muxway-android](https://github.com/notmarkopadjen/muxway-android),
+[muxway-glasses-even](https://github.com/notmarkopadjen/muxway-glasses-even),
+[muxway-midp](https://github.com/notmarkopadjen/muxway-midp)) and
 depend only on the published protocol.
 
 - Language: Go, one static binary per role, no cgo. The web client is
@@ -134,3 +137,19 @@ depend only on the published protocol.
   the public contract: version it and update the examples.
 - `docs/features/` has one page per feature.
 - `docs/plans/` holds approved feature plans.
+
+Building and testing:
+
+- `make build` builds the `muxway` binary; `make lint` runs `go vet` and
+  the web client's eslint and prettier.
+- `make test` runs the Go unit tests and vitest. `go test ./...` does
+  **not** run the end-to-end suite: it is behind the `e2e` build tag.
+- `make web` rebuilds the embedded web client into `web/dist`, which is
+  committed and must match the sources (the suite checks that).
+- `make e2e` runs `scripts/e2e.sh`: lint, unit tests, the dist check, then
+  the end-to-end suite with a run directory under `test-runs/`. It needs
+  tmux, Node 22 and Playwright's Chromium (`cd web && npx playwright
+  install chromium`). `MX_GREP=<pattern>` runs only the browser specs
+  whose title matches, for example `MX_GREP=94-hubs make e2e`.
+- `scripts/record-run.sh <run directory>` records a run as the GitHub
+  issue section 6 asks for; it needs `gh`, signed in.
