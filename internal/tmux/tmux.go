@@ -6,9 +6,12 @@ package tmux
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -27,9 +30,26 @@ const (
 const (
 	optMode  = "@muxway-mode"
 	optAlias = "@muxway-alias"
-	// Printable on purpose: some tmux versions escape control characters in
-	// format output. A name that contains it makes its pane unlistable.
-	sep = "|mxw|"
+)
+
+// listSep is the field separator of one listing. It is random each time:
+// a process can name itself anything, newline and all, and tmux prints
+// the name as is, so a fixed separator would let a program in one pane
+// forge a whole record for another pane. A name that happens to contain
+// the separator makes its pane unlistable, nothing more.
+func listSep() string {
+	var b [12]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic(err)
+	}
+	return "|" + hex.EncodeToString(b[:]) + "|"
+}
+
+// tmux's own ids: $1, @2, %3. Anything else in those fields is a forgery.
+var (
+	sessionIDShape = regexp.MustCompile(`^\$[0-9]+$`)
+	windowIDShape  = regexp.MustCompile(`^@[0-9]+$`)
+	paneIDShape    = regexp.MustCompile(`^%[0-9]+$`)
 )
 
 // ErrUnparsed counts list lines that could not be split into fields.
@@ -117,6 +137,7 @@ var fields = []string{
 // List returns every pane of the server, marked or not. Lines it cannot
 // parse are skipped and counted in skipped.
 func (s Server) List(ctx context.Context) (panes []Pane, skipped int, err error) {
+	sep := listSep()
 	out, err := s.run(ctx, "list-panes", "-a", "-F", strings.Join(fields, sep))
 	if err != nil {
 		if strings.Contains(err.Error(), "no server running") || strings.Contains(err.Error(), "No such file") ||
@@ -130,7 +151,8 @@ func (s Server) List(ctx context.Context) (panes []Pane, skipped int, err error)
 			continue
 		}
 		f := strings.Split(line, sep)
-		if len(f) != len(fields) {
+		if len(f) != len(fields) || !sessionIDShape.MatchString(f[0]) || !windowIDShape.MatchString(f[2]) ||
+			!paneIDShape.MatchString(f[7]) {
 			skipped++
 			continue
 		}

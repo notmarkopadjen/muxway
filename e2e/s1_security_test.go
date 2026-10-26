@@ -620,3 +620,37 @@ func TestSec08_MalformedOversizedAndTraversalRequests(t *testing.T) {
 		t.Fatal("pane changed")
 	}
 }
+
+// A process names itself: tmux prints argv[0] as the pane's command, raw.
+// A name with a newline and the listing's separator in it once forged a
+// whole record, inheriting the real pane's mode, for any pane id on the
+// host. The separator is random per listing now, and ids must look like
+// tmux's own.
+func TestSec14d_ForgedPaneRecordsAreNotListed(t *testing.T) {
+	e := newEnv(t)
+	ts := newTmux(t)
+	ts.must("new-session", "-d", "-s", "secret", shell())
+	ts.split("work:0")
+	e.pairAgent(host, ts)
+	e.expose(ts, "work", "--write")
+	tok := e.token("full", []string{"*"}, []string{"*"})
+	secretPane := ts.must("display", "-p", "-t", "secret:0.0", "#{pane_id}")
+	layout := ts.must("display", "-p", "-t", "secret:0.0", "#{window_layout}")
+	forged := strings.Join([]string{"x", "$9", "secret", "@9", "0", "w", layout, "1", secretPane, "0", "1", "80", "24", "t", "sh"}, "|mxw|")
+	forged = strings.Replace(forged, "x|mxw|", `x\n`, 1)
+	ts.must("send-keys", "-t", "work:0.0", "exec -a $'"+forged+"' sleep 600", "Enter")
+	waitFor(t, "renamed process", func() bool {
+		return strings.HasPrefix(ts.must("display", "-p", "-t", "work:0.0", "#{pane_current_command}"), "x")
+	})
+	time.Sleep(1500 * time.Millisecond)
+	r := e.get(tok, "/v1/panes")
+	expect(t, r, http.StatusOK, "list")
+	if strings.Contains(r.body, `"session":"secret"`) || strings.Contains(r.body, secretPane) {
+		t.Fatalf("forged record listed: %s", r.body)
+	}
+	if !strings.Contains(r.body, `"session":"work"`) {
+		t.Fatalf("the window's other pane vanished: %s", r.body)
+	}
+	expect(t, e.get(tok, "/v1/panes/"+host+"/secret/0.0"), http.StatusNotFound, "read through the forgery")
+	expect(t, e.input(tok, host+"/secret/0.0", map[string]string{"key": "Enter"}), http.StatusNotFound, "write through the forgery")
+}
