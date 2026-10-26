@@ -944,17 +944,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
                   },
                 ]
               : []),
-            ...(writable && focusedFit
-              ? [
-                  {
-                    id: 'refit',
-                    glyph: '⟳',
-                    label: 'fit again',
-                    onClick: () => setRefitTick((t) => t + 1),
-                    title: "fit again: this client's size (r)",
-                  },
-                ]
-              : []),
             ...(focusedPane
               ? [
                   {

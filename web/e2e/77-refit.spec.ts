@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { control, openPane, SHELL0, shot, signIn, TOKEN } from './fixtures';
 
-test("77 refit sends this client's size again after another client sized the window", async ({
+test("77 r sends this client's size again after another client sized the window", async ({
   page,
   request,
 }, info) => {
@@ -24,18 +24,6 @@ test("77 refit sends this client's size again after another client sized the win
   await expect.poll(size).toBe('60x20');
   await page.waitForTimeout(1100);
   await shot(page, info, '77-other-client');
-  await page.getByTestId('refit').click();
-  // The pane has this client's size again; the window its width.
-  await expect(page.getByTestId('pane-size')).toHaveText(fitted, { timeout: 5000 });
-  expect((await size()).split('x')[0]).toBe(width);
-  // The key does the same.
-  await page.waitForTimeout(1100);
-  await request.post(`/v1/panes/${SHELL0}/resize`, {
-    headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
-    data: { cols: 60, rows: 20, scope: 'window' },
-  });
-  await expect.poll(size).toBe('60x20');
-  await page.waitForTimeout(1100);
   await page.keyboard.press('r');
   await expect(page.getByTestId('pane-size')).toHaveText(fitted, { timeout: 5000 });
   expect((await size()).split('x')[0]).toBe(width);

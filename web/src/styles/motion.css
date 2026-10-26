@@ -176,6 +176,13 @@
   animation: mx-open var(--mx-motion-medium) var(--mx-ease-crt) both;
   transform-origin: top;
 }
+/* A window over the page (help, the hubs, go to a pane, the keyboard)
+   powers on the way the page does: a bright line that opens up. */
+.mx-help > *,
+.mx-keyboard {
+  animation: mx-power-on var(--mx-motion-slow) var(--mx-ease-crt) both;
+  transform-origin: center;
+}
 .mx-burn {
   animation: mx-burn var(--mx-motion-slow) var(--mx-ease-out) both;
 }
@@ -201,6 +208,8 @@
   .mx-cursor,
   .mx-typed,
   .mx-panel-enter,
+  .mx-help > *,
+  .mx-keyboard,
   .mx-burn,
   .mx-pulse,
   .mx-cell[data-state='waiting'],
@@ -219,6 +228,8 @@
 :root[data-motion='off'] .mx-cursor,
 :root[data-motion='off'] .mx-typed,
 :root[data-motion='off'] .mx-panel-enter,
+:root[data-motion='off'] .mx-help > *,
+:root[data-motion='off'] .mx-keyboard,
 :root[data-motion='off'] .mx-burn,
 :root[data-motion='off'] .mx-pulse,
 :root[data-motion='off'] .mx-cell[data-state='waiting'],

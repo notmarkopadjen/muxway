@@ -13,6 +13,22 @@ test('51 motion: power-on, burn-in, reduced motion', async ({ page, request }, i
   await control(request, '/send', { target: 'work:0.0', text: 'echo burn-me-in' });
   await expect(page.locator('.mx-screen .mx-burn')).not.toHaveCount(0, { timeout: 5000 });
   await shot(page, info, '51-burn');
+  // A window over the page powers on like the page did, unless motion is off.
+  const windowAnim = () =>
+    page.evaluate(
+      () => getComputedStyle(document.querySelector('[data-testid="help"] > *')!).animationName,
+    );
+  await page.keyboard.press('?');
+  await expect(page.getByTestId('help')).toBeVisible();
+  expect(await windowAnim()).toBe('mx-power-on');
+  await shot(page, info, '51-help-on');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('m');
+  await page.keyboard.press('?');
+  await expect(page.getByTestId('help')).toBeVisible();
+  expect(await windowAnim()).toBe('none');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('m');
   const cursorAnim = () =>
     page.evaluate(
       () =>

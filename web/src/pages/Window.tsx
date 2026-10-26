@@ -388,17 +388,6 @@ export function WindowPage() {
                   },
                 ]
               : []),
-            ...(writable && fit
-              ? [
-                  {
-                    id: 'refit',
-                    glyph: '⟳',
-                    label: 'fit again',
-                    onClick: refit,
-                    title: "fit again: this client's size (r)",
-                  },
-                ]
-              : []),
             ...(focus
               ? [
                   {

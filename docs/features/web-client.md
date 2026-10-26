@@ -157,8 +157,8 @@ scaled to the box instead.
 
 Several clients can fit the same window, and the last one to send a size
 wins; a client sends its size only when it changes, so after a phone has
-sized the window the browser shows it small. The `⟳` button next to
-fit, or `r`, sends this client's size once more.
+sized the window the browser shows it small. `r` sends this client's
+size once more, as does switching fit off and on.
 
 ![fit](images/web-fit.png)
 ![fit in the window view, a divider dragged](images/web-window-fit.png)
@@ -171,7 +171,7 @@ workstation, the logs on a server and an AI agent on your laptop in one
 view, each live and typable. The page is the Android client's pane view:
 
 ```
-┌─ muxway ─┐ [⟳ fixing the build][! review][bash][tail · build.log] [+]   [▦][⤢][⟳][⊡][≡]  [alice ▾]
+┌─ muxway ─┐ [⟳ fixing the build][! review][bash][tail · build.log] [+]   [▦][⤢][⊡][≡]  [alice ▾]
 ┌─ ✳ Claude · fixing the build · work/0.0 · 96×28 · write · ⟳ working ──────┐
 │ $ make test                                                                   │
 │ ok                                                                            │
@@ -187,7 +187,7 @@ view, each live and typable. The page is the Android client's pane view:
   you may type there) and opens it beside the others; *new session*
   starts one where the host's agent allows it (the `+` key opens it
   too). At the right the pane buttons, 32 px squares with a label under
-  the pointer: `▦` arrangement, `⤢` fit, `⟳` fit again, `⊡` zoom, `≡` go
+  the pointer: `▦` arrangement, `⤢` fit, `⊡` zoom, `≡` go
   to a pane; on a narrow screen (640 px and under) they fold into one
   `⋯` button that opens a menu with the same entries. Last, the profile
   button with who you are, holding *hubs*, *help*, *admin* (for an
@@ -264,12 +264,11 @@ sequenceDiagram
   address, its size, its mode and the lens's word; the focused tile has
   the thick border and the bold name. The controls sit in the top row,
   at the right, as icons: `▦` the next arrangement (with several tiles),
-  `⤢` fit for the focused tile (selected when on), `⟳` fit again, `⊡`
-  zoom.
+  `⤢` fit for the focused tile (selected when on), `⊡` zoom.
 - **Fit** is per tile, with the pane's own scope (see
   [fit](#fit-the-host-follows-the-browser)). Every writable tile opens
   with fit on, one or several. `⤢` or `f` toggles the focused tile, `F`
-  every tile, `⟳` or `r` sends the size once more. The header shows the
+  every tile, `r` sends the size once more. The header shows the
   pane's size, which with fit on is the tile's.
 - **Zoom** is one view at two distances, not two views: `⊡`, `z` or a
   double-click on a tile, its header or its tab open that pane alone,
@@ -358,14 +357,13 @@ controls sit at the right as icons, the tooltip naming each with its
 key:
 
 ```
-[‹] [✳ Claude · fixing the build][bash][! review][ logs ]      [⤢][⟳][⊡][⊞][↺]
+[‹] [✳ Claude · fixing the build][bash][! review][ logs ]      [⤢][⊡][⊞][↺]
 ┌ ✳ Claude · fixing the build · work/0.0 · 98×40 · ⟳ working              × ┐
 ```
 
 | Icon | Does | Key |
 |---|---|---|
 | `⤢` | fit: the host window follows the box (selected when on) | `f` |
-| `⟳` | fit again, after another client sized the window | `r` |
 | `⊡` | the focused pane alone, in the pane view with everything it has | `z`, `Enter`, double-click |
 | `⊞` | equal shares in every split (with fit on, the host follows: the way to put a squeezed window right) | `=` |
 | `↺` | the host's own layout again | `0` |
@@ -521,7 +519,8 @@ stack and the key bar wraps.
 
 Three themes, chosen with `t` and remembered by the browser: amber, the
 default, phosphor green, and paper for daylight. The page powers on like
-a tube, scanlines and a faint vignette stay, glow sits on borders,
+a tube, and so does every window over it (help, the hubs, go to a pane,
+the keyboard); scanlines and a faint vignette stay, glow sits on borders,
 headings and anything focused, new lines in a pane burn in, badges for
 questions and permissions pulse, and a theme switch re-syncs the
 picture. All of it is CSS driven by tokens in `web/src/styles/tokens.css`
