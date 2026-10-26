@@ -45,7 +45,7 @@ sequenceDiagram
     H->>A: read-path {pane, path}
     A->>A: roots? pane's cwd + path, symlinks followed, under a root? no dot component? regular, ≤ 8 MiB, a shown type?
     A-->>H: {type, data} or no_file
-    H-->>C: 200 the file, nosniff, no-store; or 404
+    H-->>C: 200 the file, nosniff, no-store, or 404
     C->>P: window: preview, size, ⤓ download
 ```
 

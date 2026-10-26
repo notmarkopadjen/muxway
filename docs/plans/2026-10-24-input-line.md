@@ -91,7 +91,7 @@ stateDiagram-v2
     [*] --> Typing
     Typing --> Listed: first word matches ≥1
     Listed --> Typing: Esc, or no match
-    Listed --> Typing: Tab / click: word := pick + " "
+    Listed --> Typing: Tab or click, the pick and a space replace the word
     Typing --> Sent: Enter (text, then Enter)
     Listed --> Sent: Enter (what is typed, never the pick)
     Typing --> Typing: Shift+Enter inserts a newline

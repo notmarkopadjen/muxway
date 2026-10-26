@@ -68,7 +68,7 @@ flowchart LR
     S -- yes --> T[$ · starters │ recent lines]
     S -- no --> N[key row only]
     R -->|/clear| G[text then Enter, as send does]
-    R -->|/rename| F[input line := "/rename ", focus]
+    R -->|/rename| F["input line := '/rename ', focus"]
     T -->|any| G
     G -->|to a shell| M[remember the line]
 ```
