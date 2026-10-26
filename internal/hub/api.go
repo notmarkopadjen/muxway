@@ -54,7 +54,7 @@ func (h *Hub) routes() http.Handler {
 		mux.Handle("/", h.webHandler())
 	}
 	h.adminRoutes(mux)
-	return securityHeaders(h.gate(cors(mux)))
+	return securityHeaders(h.cfg.TLSCert != "", h.gate(cors(mux)))
 }
 
 // handleRoot stands in for the web client on a hub that does not serve
@@ -70,18 +70,23 @@ func (h *Hub) handleRoot(w http.ResponseWriter, r *http.Request) {
 		if p, ok := h.sessionPrincipal(c.Value); ok {
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			w.Header().Set("Content-Security-Policy", "default-src 'none'")
-			fmt.Fprintf(w, "muxway: signed in as %s (%s, %s). The web client is on its way.\n", p.Name, p.ID, p.Method)
+			fmt.Fprintf(w, "muxway: signed in as %s (%s, %s). The web client is disabled on this hub.\n", p.Name, p.ID, p.Method)
 			return
 		}
 	}
 	http.Redirect(w, r, "/v1/auth/"+h.cfg.Providers[0].Name()+"/start", http.StatusFound)
 }
 
-func securityHeaders(next http.Handler) http.Handler {
+// securityHeaders go on every response. HSTS only when the hub ends TLS
+// itself; behind a proxy the proxy speaks for the host name.
+func securityHeaders(tls bool, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
+		if tls {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000")
+		}
 		next.ServeHTTP(w, r)
 	})
 }

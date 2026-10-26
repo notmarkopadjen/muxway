@@ -135,5 +135,5 @@ const signedInPage = `<!doctype html>
 <meta charset="utf-8">
 <meta http-equiv="refresh" content="0;url=/">
 <title>muxway</title>
-<p style="font-family:monospace">Signed in. <a href="/">Continue</a></p>
+<p>Signed in. <a href="/">Continue</a></p>
 `

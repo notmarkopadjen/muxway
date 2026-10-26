@@ -20,11 +20,16 @@ test('42 every response carries the headers and nothing leaves the origin', asyn
   expect(root['content-security-policy']).toContain("frame-ancestors 'none'");
   expect(root['x-content-type-options']).toBe('nosniff');
   expect(root['referrer-policy']).toBe('no-referrer');
+  // The hub ends TLS itself here, so it speaks for the host name.
+  expect(root['strict-transport-security']).toBe('max-age=31536000');
   const asset = Object.entries(headers).find(([p]) => p.startsWith('/assets/'));
   expect(asset).toBeTruthy();
   expect(asset![1]['cache-control']).toContain('immutable');
   expect(asset![1]['content-security-policy']).toContain("script-src 'self'");
   for (const [path, h] of Object.entries(headers)) {
-    if (path.startsWith('/v1/')) expect(h['x-content-type-options'], path).toBe('nosniff');
+    if (path.startsWith('/v1/')) {
+      expect(h['x-content-type-options'], path).toBe('nosniff');
+      expect(h['strict-transport-security'], path).toBe('max-age=31536000');
+    }
   }
 });
