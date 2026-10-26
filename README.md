@@ -21,34 +21,63 @@ phone. Security first: a tmux pane is a shell.
 What sets muxway apart from the other ways of reaching a terminal from
 a browser or a phone:
 
-- **Panes from several machines in one view.** Up to four tiles from
-  any mix of hosts, sessions and windows: the build on your workstation
-  beside the logs on a server and an AI agent on your laptop, all live
-  and typable. Drag a header to swap two tiles or split a place, drag a
-  divider to resize; tiles that are one window's panes move that window
-  on its host as you rearrange them here.
-- **Voice input.** Hold the microphone in the browser, on the phone, on
-  the watch or on the glasses. The hub transcribes, the words land on
-  the input line for you to read, and nothing is sent until you say so.
-- **Direct keyboard input.** Type as you would at the terminal. A key
-  bar covers what a phone keyboard lacks, the web adds a full terminal
-  keyboard (F1 to F24, Ctrl, Alt, the keypad) and the mouse for programs
-  that take it. Every key goes through a fixed grammar, never a raw
-  escape sequence.
-- **Your AI agent calls you.** An AI coding agent in a pane tells muxway,
-  through its hooks, when it asks a question, wants a permission, has
-  gone idle or has finished. The pane lights up in every client, the
-  phone and the watch buzz, the glasses show a banner, and you answer
-  from wherever you are: a tap, a key, a few typed words, a spoken
-  reply. Claude Code is the agent tested so far; another needs its hooks
-  to call `muxway notify` on the host, and a lens for its screen.
-- **A lens for tiny screens.** A lens knows an agent's screen and
-  reshapes it, so the conversation fits on a watch, on glasses, or on a
-  96 by 65 pixel Nokia.
-- **Clients down to a 2002 feature phone.** The API is small and text
-  mode is plain text, so a browser, an Android phone with a Wear OS
-  watch, Even Realities G2 glasses and a Java ME MIDlet in 30 KiB are
-  all clients, and yours can be too.
+<table>
+<tr>
+<td width="72" valign="top"><img src="docs/images/icons/tiles.png" width="54" alt=""></td>
+<td><strong>Panes from several machines in one view.</strong> Up to four tiles from
+any mix of hosts, sessions and windows: the build on your workstation
+beside the logs on a server and an AI agent on your laptop, all live
+and typable. Drag a header to swap two tiles or split a place, drag a
+divider to resize; tiles that are one window's panes move that window
+on its host as you rearrange them here.</td>
+</tr>
+<tr>
+<td valign="top"><img src="docs/images/icons/voice.png" width="54" alt=""></td>
+<td><strong>Voice input.</strong> Hold the microphone in the browser, on the phone, on
+the watch or on the glasses. The hub transcribes, the words land on
+the input line for you to read, and nothing is sent until you say so.</td>
+</tr>
+<tr>
+<td valign="top"><img src="docs/images/icons/files.png" width="54" alt=""></td>
+<td><strong>Files both ways.</strong> Paste a screenshot, drop a PDF, pick a zip, and
+it lands in an inbox on the host with its path on your line, for the
+program in the pane to read. The other way round, a path a pane prints
+is a link: a click shows the file over the page, an image, a PDF, a
+plan in Markdown, a CSV, with a download, from the inbox or from the
+directories the host's owner opened for it.</td>
+</tr>
+<tr>
+<td valign="top"><img src="docs/images/icons/notify.png" width="54" alt=""></td>
+<td><strong>Your AI agent calls you.</strong> An AI coding agent in a pane tells muxway,
+through its hooks, when it asks a question, wants a permission, has
+gone idle or has finished. The pane lights up in every client, the
+phone and the watch buzz, the glasses show a banner, and you answer
+from wherever you are: a tap, a key, a few typed words, a spoken
+reply. Claude Code is the agent tested so far; another needs its hooks
+to call <code>muxway notify</code> on the host, and a lens for its screen.</td>
+</tr>
+<tr>
+<td valign="top"><img src="docs/images/icons/clients.png" width="54" alt=""></td>
+<td><strong>Clients down to a 2002 feature phone.</strong> The API is small and text
+mode is plain text, so a browser, an Android phone with a Wear OS
+watch, Even Realities G2 glasses and a Java ME MIDlet in 30 KiB are
+all clients, and yours can be too.</td>
+</tr>
+<tr>
+<td valign="top"><img src="docs/images/icons/keys.png" width="54" alt=""></td>
+<td><strong>Direct keyboard input.</strong> Type as you would at the terminal. A key
+bar covers what a phone keyboard lacks, the web adds a full terminal
+keyboard (F1 to F24, Ctrl, Alt, the keypad) and the mouse for programs
+that take it. Every key goes through a fixed grammar, never a raw
+escape sequence.</td>
+</tr>
+<tr>
+<td valign="top"><img src="docs/images/icons/lens.png" width="54" alt=""></td>
+<td><strong>A lens for tiny screens.</strong> A lens knows an agent's screen and
+reshapes it, so the conversation fits on a watch, on glasses, or on a
+96 by 65 pixel Nokia.</td>
+</tr>
+</table>
 
 ## Why
 
@@ -150,6 +179,11 @@ behind one `⋯`.
 |---|---|
 | <img src="docs/images/phone.png" alt="The pane view on a phone-sized screen" width="300"> | <img src="docs/images/phone-tools.png" alt="The pane buttons as a menu on a phone" width="300"> |
 
+A path printed in a pane opens the file over the page, with a download;
+a plan here, a screenshot or a PDF the same way.
+
+![A Markdown plan previewed in a window over the pane](docs/images/preview.png)
+
 An admin sees the hub's live log, tokens and users, connected clients
 and agents, and the address allow and deny lists.
 
@@ -160,6 +194,7 @@ The features: [web client](docs/features/web-client.md),
 [notifications](docs/features/notifications.md),
 [sign-in](docs/features/sign-in.md),
 [attachments](docs/features/attachments.md),
+[preview](docs/features/preview.md),
 [transcription](docs/features/transcription.md),
 [new panes and sessions](docs/features/new-panes.md),
 [admin](docs/features/admin.md),
