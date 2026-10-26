@@ -10,8 +10,9 @@ import (
 
 // The web client: index.html for every path that is not a file or the
 // API, Vite's hashed assets with a long cache life, and a content security
-// policy that allows nothing but the client's own files.
-const webCSP = "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; " +
+// policy that allows nothing but the client's own files, and an image the
+// client fetched itself and shows from a blob.
+const webCSP = "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' blob:; " +
 	"connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 
 func (h *Hub) webHandler() http.Handler {

@@ -370,6 +370,9 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 	case wire.OpFile:
 		resp.Path, resp.Error = a.file(ctx, req)
 		a.audit(req, resp.Error, "type", req.Type, "bytes", len(req.Data), "path", resp.Path)
+	case wire.OpReadFile:
+		resp.Type, resp.Data, resp.Error = a.fileBack(ctx, req)
+		a.audit(req, resp.Error, "name", req.Name, "bytes", len(resp.Data))
 	default:
 		resp.Error = wire.ErrUnknownOp
 		a.audit(req, wire.ErrUnknownOp)
@@ -612,6 +615,24 @@ func (a *Agent) file(ctx context.Context, req wire.Request) (string, string) {
 		return "", wire.ErrTmux
 	}
 	return path, ""
+}
+
+// fileBack hands one inbox file back to a reader of the pane.
+func (a *Agent) fileBack(ctx context.Context, req wire.Request) (string, []byte, string) {
+	if a.cfg.Inbox == "" {
+		return "", nil, wire.ErrNotAllowed
+	}
+	if _, code := a.find(ctx, req.Pane); code != "" {
+		return "", nil, code
+	}
+	typ, data, err := a.readFile(req.Name)
+	switch {
+	case errors.Is(err, errBadFile):
+		return "", nil, wire.ErrBadInput
+	case err != nil:
+		return "", nil, wire.ErrNoFile
+	}
+	return typ, data, ""
 }
 
 // closePane closes a writable exposed pane for a client, when the owner

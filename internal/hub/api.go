@@ -490,6 +490,8 @@ func statusFor(code string) (int, string) {
 		return http.StatusConflict, "exists"
 	case wire.ErrTooMany:
 		return http.StatusConflict, "too_many"
+	case wire.ErrNoFile:
+		return http.StatusNotFound, "not_found"
 	}
 	return http.StatusBadGateway, "host_error"
 }
@@ -540,6 +542,10 @@ func charsetParam(r *http.Request) (string, bool) {
 func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 	if path, ok := strings.CutSuffix(r.PathValue("path"), "/files"); ok {
 		h.handleFilesProbe(w, r, t, path)
+		return
+	}
+	if i := strings.LastIndex(r.PathValue("path"), "/files/"); i >= 0 {
+		h.handleFileRead(w, r, t, r.PathValue("path")[:i], r.PathValue("path")[i+len("/files/"):])
 		return
 	}
 	lines, ok1 := intParam(r, "lines", 100, 1, wire.MaxLines)
@@ -694,7 +700,7 @@ func (h *Hub) handleAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer c.CloseNow()
-	c.SetReadLimit(4 << 20)
+	c.SetReadLimit(wire.MaxFileMessage)
 	hctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	host, sess, err := secure.HubHandshake(hctx, wire.WS{C: c}, h.key, h.store.agentKey)
 	cancel()

@@ -1,5 +1,5 @@
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { findLinks, isChoice, type Link } from './links';
+import { findFiles, findLinks, isChoice } from './links';
 import { fontFor, inner, measureCell } from './measure';
 import { classes, parse, type Span } from './sgr';
 
@@ -12,6 +12,8 @@ import { classes, parse, type Span } from './sgr';
 // up to three per event, one request at a time; over the history above
 // them, and without onWheel, the box scrolls as any box. A web address in
 // a line is a link that opens in a new tab; its click stays in the browser.
+// With onFile, a path of the host's inbox is a link too, and its click
+// names the file.
 function SpanView({ s }: { s: Span }) {
   const style: Record<string, string> = {};
   if (typeof s.fg === 'string') style.color = s.fg;
@@ -23,14 +25,33 @@ function SpanView({ s }: { s: Span }) {
   );
 }
 
-// A line's spans cut at the links' bounds and grouped: a piece is one link
+// What a run of a line links to: a web address, or a file of the inbox.
+interface Mark {
+  start: number;
+  end: number;
+  href?: string;
+  file?: string;
+}
+
+// The marks of a line in order; a file name inside a web address is the
+// address's.
+function marks(line: string, files: boolean): Mark[] {
+  const out: Mark[] = findLinks(line).map(([start, end, href]) => ({ start, end, href }));
+  if (files)
+    for (const [start, end, file] of findFiles(line))
+      if (!out.some((m) => m.start < end && start < m.end)) out.push({ start, end, file });
+  return out.sort((a, b) => a.start - b.start);
+}
+
+// A line's spans cut at the marks' bounds and grouped: a piece is one link
 // or plain text between links, with the spans' colours as they were.
 interface Piece {
   href?: string;
+  file?: string;
   spans: Span[];
 }
 
-function pieces(spans: Span[], links: Link[]): Piece[] {
+function pieces(spans: Span[], links: Mark[]): Piece[] {
   if (!links.length) return [{ spans }];
   const out: Piece[] = [];
   let at = 0;
@@ -38,15 +59,16 @@ function pieces(spans: Span[], links: Link[]): Piece[] {
   for (const s of spans) {
     let text = s.text;
     while (text) {
-      while (k < links.length && links[k][1] <= at) k++;
+      while (k < links.length && links[k].end <= at) k++;
       const l = links[k];
-      const inside = l !== undefined && l[0] <= at;
-      const take = Math.min(l ? (inside ? l[1] : l[0]) - at : text.length, text.length);
-      const href = inside ? l[2] : undefined;
+      const inside = l !== undefined && l.start <= at;
+      const take = Math.min(l ? (inside ? l.end : l.start) - at : text.length, text.length);
+      const href = inside ? l.href : undefined;
+      const file = inside ? l.file : undefined;
       const last = out[out.length - 1];
       const piece = { ...s, text: text.slice(0, take) };
-      if (last && last.href === href) last.spans.push(piece);
-      else out.push({ href, spans: [piece] });
+      if (last && last.href === href && last.file === file) last.spans.push(piece);
+      else out.push({ href, file, spans: [piece] });
       text = text.slice(take);
       at += take;
     }
@@ -57,9 +79,25 @@ function pieces(spans: Span[], links: Link[]): Piece[] {
 // The browser opens the tab; the pane hears nothing, mouse mode or not.
 const keep = (ev: React.MouseEvent) => ev.stopPropagation();
 
-function LineView({ pieces }: { pieces: Piece[] }) {
+function LineView({ pieces, onFile }: { pieces: Piece[]; onFile?: (name: string) => void }) {
   return pieces.map((p, j) =>
-    p.href ? (
+    p.file ? (
+      <a
+        key={j}
+        className="mx-link mx-file-link"
+        href="#"
+        data-file={p.file}
+        onClick={(ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          onFile?.(p.file!);
+        }}
+      >
+        {p.spans.map((s, k) => (
+          <SpanView key={k} s={s} />
+        ))}
+      </a>
+    ) : p.href ? (
       <a
         key={j}
         className="mx-link"
@@ -92,6 +130,7 @@ export const Screen = memo(function Screen({
   onClick,
   onCell,
   onWheel,
+  onFile,
   height,
   focused,
   testId = 'screen',
@@ -105,6 +144,7 @@ export const Screen = memo(function Screen({
   onClick?: () => void;
   onCell?: (x: number, y: number) => void;
   onWheel?: (up: boolean, x: number, y: number, count: number) => Promise<void> | void;
+  onFile?: (name: string) => void;
   height?: number;
   focused?: boolean;
   testId?: string;
@@ -115,9 +155,10 @@ export const Screen = memo(function Screen({
   const box = boxRef ?? own;
   const [font, setFont] = useState<number | null>(null);
   const plain = useMemo(() => lines.map((l) => l.map((s) => s.text).join('')), [lines]);
+  const files = !!onFile;
   const linked = useMemo(
-    () => lines.map((spans, i) => pieces(spans, findLinks(plain[i]))),
-    [lines, plain],
+    () => lines.map((spans, i) => pieces(spans, marks(plain[i], files))),
+    [lines, plain, files],
   );
   const fresh = new Set<number>();
   if (burn && prev.current.size) {
@@ -256,7 +297,7 @@ export const Screen = memo(function Screen({
                 : '')
             }
           >
-            <LineView pieces={ps} />
+            <LineView pieces={ps} onFile={onFile} />
           </div>
         ))}
       </pre>

@@ -154,6 +154,25 @@ export function useFiles(address: string | undefined, writable: boolean) {
   });
 }
 
+// One file of the host's inbox back, by the name the agent gave it.
+export async function readFile(address: string, name: string): Promise<Blob> {
+  const res = await fetch(`/v1/panes/${address}/files/${name}`, {
+    headers: { 'X-Muxway-Client': 'web' },
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    let code = 'error';
+    try {
+      code = ((await res.json()) as { error?: string }).error ?? code;
+    } catch {
+      /* not json */
+    }
+    throw new ApiError(res.status, code);
+  }
+  return res.blob();
+}
+
 // The types the host's inbox takes, by the browser's type or the name's end.
 export const FILE_TYPES: Record<string, string> = {
   png: 'image/png',

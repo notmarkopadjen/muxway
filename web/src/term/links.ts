@@ -37,6 +37,25 @@ export function findLinks(line: string): Link[] {
   return out;
 }
 
+// A file of a host's inbox, as the agent names one, at the end of a path:
+// a click shows it from the host. The name is the whole of what travels;
+// a longer extension, a dot or a word glued to it means something else.
+const file =
+  /\/(?:\S*?\/)?(\d{8}-\d{6}-[a-z0-9]{6}\.(?:png|jpg|gif|webp|pdf|txt|md|json))(?!\.?[A-Za-z0-9_])/g;
+
+export type FileLink = [start: number, end: number, name: string];
+
+export function findFiles(line: string): FileLink[] {
+  const out: FileLink[] = [];
+  for (const m of line.matchAll(file)) out.push([m.index, m.index + m[0].length, m[1]]);
+  return out;
+}
+
+// Images open in a window over the page; the rest in a tab of their own.
+export function isImage(name: string): boolean {
+  return /\.(png|jpg|gif|webp)$/.test(name);
+}
+
 // A numbered choice as Claude Code and similar menus print them, with or
 // without the pointer: "❯ 1. Yes", "  2. No". In a pane that takes the
 // mouse, a click on one picks it, so it shows the hand.

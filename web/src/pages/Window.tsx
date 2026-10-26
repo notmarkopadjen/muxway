@@ -22,6 +22,8 @@ import {
 } from '../term/layout';
 import { noteOwn, useLens } from '../term/lens';
 import { Screen } from '../term/Screen';
+import { Closing } from '../components/Closing';
+import { Picture, showFile, type Shown } from '../components/Picture';
 import { useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
@@ -80,11 +82,13 @@ interface TreeProps {
   onZoom: (id: string) => void;
   onCell: (address: string, x: number, y: number) => void;
   onWheel: (address: string, up: boolean, x: number, y: number, count: number) => Promise<void>;
+  onFile: (address: string, name: string) => void;
 }
 
 function Tree(props: TreeProps) {
   const { node, path, arr, panes, focused, burn, fit, setArr, onFocus, onZoom, onCell, onWheel } =
     props;
+  const { onFile } = props;
   const box = useRef<HTMLDivElement>(null);
   const lens = useLens();
   if (node.kind === 'pane') {
@@ -147,6 +151,7 @@ function Tree(props: TreeProps) {
               ? (up, x, y, count) => onWheel(p.address, up, x, y, count)
               : undefined
           }
+          onFile={(name) => onFile(p.address, name)}
           testId="cell-screen"
         />
       </div>
@@ -256,6 +261,14 @@ export function WindowPage() {
   const input = useInput(focusedPane?.address ?? '');
   const area = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(true);
+  // A file of the inbox shown over the page; kept while its window powers off.
+  const [shown, setShown] = useState<Shown | null>(null);
+  const [showing, setShowing] = useState(false);
+  const show = useCallback((s: Shown) => {
+    setShown(s);
+    setShowing(true);
+  }, []);
+  const hide = useCallback(() => setShowing(false), []);
   const fitting = fit && !!writable;
   // With fit on the host takes the browser's proportions too.
   const sent = fit && tree ? layoutFor(tree, arr) : undefined;
@@ -450,9 +463,17 @@ export function WindowPage() {
                 ...(count > 1 ? { count } : {}),
               })
             }
+            onFile={(address, name) =>
+              showFile({ address, name }, show, (why) =>
+                toast.push({ kind: 'refused', title: why }),
+              )
+            }
           />
         )}
       </div>
+      <Closing open={showing && !!shown}>
+        {shown && <Picture shown={shown} onClose={hide} />}
+      </Closing>
       <InputPanel
         pane={focusedPane}
         writable={writable}

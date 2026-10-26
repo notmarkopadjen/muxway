@@ -29,6 +29,19 @@ Several files go one after another, each path appended.
 
 ![a pasted screenshot](images/web-pasted.png)
 
+## Seeing it again
+
+Once the program has the path, so does everyone reading the pane: a
+path of the inbox's shape printed in a pane is a link. In the browser a
+click shows an image in a window over the page, with its name and size
+in the bar; `Escape`, the bar's `×` or a click outside closes it. A PDF
+or a text opens in a tab of its own, texts as plain text. A click on the
+link is not a click on the pane, mouse mode or not. The link is the
+name only: the host serves a file of its inbox by that name and nothing
+else, to a principal that may read the pane.
+
+![an inbox image shown over the page](images/web-file-window.png)
+
 The types: PNG, JPEG, GIF and WebP images, PDF, plain text, Markdown and
 JSON, up to 8 MiB each. Files are kept a day. On a host whose agent runs
 without `--inbox` there is no `⇪`, and a paste or a drop answers with a
@@ -64,6 +77,27 @@ or 256 MiB, and removes files older than 24 hours at start and every
 hour. Protocol: [`GET` and `POST
 /v1/panes/{address}/files`](../protocol/v1.md) and the agent op `file`.
 
+Reading one back:
+
+```mermaid
+sequenceDiagram
+    participant P as Person
+    participant C as Client
+    participant H as Hub
+    participant A as Agent
+    P->>C: click /…/inbox/20261025-102235-56fwge.png in the pane
+    C->>H: GET /v1/panes/{address}/files/20261025-102235-56fwge.png
+    H->>H: read grant on the pane? an inbox name? one a second?
+    H->>A: read-file {pane, name}
+    A->>A: inbox on? pane exposed? a regular file of the inbox by that name, ≤ 8 MiB?
+    A-->>H: {type, data}
+    H-->>C: 200, the type from the extension, nosniff, no-store
+    C->>P: the image in a window over the page
+```
+
+Protocol: [`GET /v1/panes/{address}/files/{name}`](../protocol/v1.md)
+and the agent op `read-file`.
+
 ## Security considerations
 
 Until now a client could send a host text, named keys and clicks. This
@@ -91,5 +125,14 @@ the owner on 2026-10-24):
   it to the pane on its own. A hostile image or PDF read by the program
   in the pane through its path is what pasting it locally does.
 - The hub holds the bytes for the request only. The message that carries
-  a file to the agent may be up to 12 MiB; every other message stays
-  under 1 MiB.
+  a file to the agent, or one back, may be up to 12 MiB; every other
+  message stays under 1 MiB.
+- **Reading back** needs the read grant on the pane, since the path is
+  on the screen for every reader anyway. The client sends the name and
+  the agent joins it to its inbox; a name of any other shape is refused
+  by the hub before the host hears of it, and a symlink or a directory
+  under a right-shaped name is not a file. The type is the extension's,
+  never sniffed, texts as plain text; the browser shows an image from a
+  blob of its own (`img-src 'self' blob:` in the policy) and never
+  renders a file as a page. One read a second per principal; an audit
+  line on hub and agent names who read which file and its size.

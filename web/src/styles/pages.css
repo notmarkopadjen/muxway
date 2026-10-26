@@ -1387,6 +1387,65 @@ button.mx-window:focus-visible {
 /* The keyboard window: a box-drawn bar over a big terminal board. Caps are
    square boxes, the shifted legend dim above the key's own, in the pixel
    font; a pressed cap lights for a moment, a refused one shakes. */
+/* a file of the inbox, over the page */
+.mx-picture-back {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.6);
+}
+.mx-picture {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  background: var(--mx-bg);
+  border: 1px solid var(--mx-ink);
+  box-shadow: var(--mx-glow-box-strong);
+}
+.mx-picture-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  user-select: none;
+  background: var(--mx-bg-raised);
+  border-bottom: 1px solid var(--mx-ink-dim);
+}
+.mx-picture-name {
+  color: var(--mx-accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mx-picture-bar .mx-spacer {
+  flex: 1;
+  min-width: 1ch;
+  overflow: hidden;
+  color: var(--mx-ink-dim);
+}
+.mx-picture-bar button {
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.mx-picture-body {
+  display: grid;
+  place-items: center;
+  min-width: 200px;
+  min-height: 80px;
+  padding: 8px;
+  overflow: auto;
+}
+.mx-picture-body img {
+  display: block;
+  max-width: calc(100vw - 34px);
+  max-height: calc(100vh - 64px);
+  object-fit: contain;
+}
 .mx-keyboard {
   --mx-k: 34px;
   position: fixed;

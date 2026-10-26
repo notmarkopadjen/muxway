@@ -6,6 +6,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +21,9 @@ import (
 const (
 	fileRate  = 0.5 // one file every two seconds per principal
 	fileBurst = 1
+	// Reading one back: a second apart, a few at once.
+	fileReadRate  = 1
+	fileReadBurst = 3
 )
 
 // paneForFiles finds a pane the principal may write and whose agent takes files.
@@ -53,6 +57,54 @@ func (h *Hub) handleFilesProbe(w http.ResponseWriter, r *http.Request, t Princip
 	if _, _, _, code := h.paneForFiles(w, r, t, path); code == "" {
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+// handleFileRead serves one inbox file back to a reader of the pane, by
+// the name the agent gave it and nothing else. The type is the name's,
+// never sniffed, so a file is shown as what the inbox took it as.
+func (h *Hub) handleFileRead(w http.ResponseWriter, r *http.Request, t Principal, path, name string) {
+	if !wire.ValidFileName(name) {
+		fail(w, http.StatusBadRequest, "bad_input")
+		return
+	}
+	host := r.PathValue("host")
+	a, p, status := h.locate(r.Context(), t, host, path)
+	if status == http.StatusServiceUnavailable {
+		fail(w, status, "host_offline")
+		return
+	}
+	if status != 0 {
+		fail(w, status, "not_found")
+		return
+	}
+	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID, "name", name}
+	if !a.takesFiles(r.Context()) {
+		h.log.Info("audit read-file", append(attrs, "result", "no_inbox")...)
+		fail(w, http.StatusNotFound, "not_found")
+		return
+	}
+	if !h.limits.allowNamed("read-file:"+t.ID, fileReadRate, fileReadBurst) {
+		fail(w, http.StatusTooManyRequests, "rate_limited")
+		return
+	}
+	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpReadFile, Actor: t.ID, Pane: p.PaneID, Name: name})
+	if err != nil {
+		fail(w, http.StatusServiceUnavailable, "host_offline")
+		return
+	}
+	if resp.Error != "" {
+		h.log.Info("audit read-file", append(attrs, "result", resp.Error)...)
+		status, code := statusFor(resp.Error)
+		fail(w, status, code)
+		return
+	}
+	h.log.Info("audit read-file", append(attrs, "result", "ok", "bytes", len(resp.Data))...)
+	w.Header().Set("Content-Type", resp.Type)
+	w.Header().Set("Content-Disposition", "inline")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.Header().Set("Content-Length", strconv.Itoa(len(resp.Data)))
+	w.Write(resp.Data)
 }
 
 func (h *Hub) handleFile(w http.ResponseWriter, r *http.Request, t Principal) {

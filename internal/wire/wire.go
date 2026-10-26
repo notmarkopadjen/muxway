@@ -20,6 +20,7 @@ const (
 	OpKillPane   = "kill-pane"   // the hub's undo of a split it may not grant
 	OpClosePane  = "close-pane"  // a client closes a writable pane, where the owner allows it
 	OpFile       = "file"        // a file for the pane's program, into the agent's inbox
+	OpReadFile   = "read-file"   // one file of the inbox back, by name
 )
 
 // Request from hub to agent. Actor is the id of the client token the hub
@@ -51,7 +52,7 @@ type Request struct {
 	Zoom bool `json:"zoom,omitempty"`
 	// Direction of a split: "h" puts the new pane beside Pane, "v" below.
 	Direction string `json:"direction,omitempty"`
-	// Name of the session to start.
+	// Name of the session to start, or of the inbox file to read.
 	Name string `json:"name,omitempty"`
 	// Type and Data of a file for the inbox; the agent names it.
 	Type string `json:"type,omitempty"`
@@ -102,6 +103,9 @@ type Response struct {
 	// Inbox, with a list, says the agent takes files; Path is where one went.
 	Inbox bool   `json:"inbox,omitempty"`
 	Path  string `json:"path,omitempty"`
+	// Type and Data of a file read back.
+	Type string `json:"type,omitempty"`
+	Data []byte `json:"data,omitempty"`
 }
 
 // KeyGrammar is the key names this build takes, as Response.Keys says.
@@ -119,6 +123,7 @@ const (
 	ErrExists     = "exists"
 	ErrTooMany    = "too_many"
 	ErrInboxFull  = "inbox_full"
+	ErrNoFile     = "no_file" // no such file in the inbox
 )
 
 // Limits shared by hub and agent.

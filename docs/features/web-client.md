@@ -75,6 +75,9 @@ nothing but the hub to talk to.
    on the line too: a file picked with it, pasted (a screenshot) or
    dropped anywhere on the view goes to the host, and its path lands on
    the line, focused and unsent (see [attachments](attachments.md)).
+   A path of the inbox printed in the pane is a link as well: a click
+   shows an image in a window over the page (`Escape`, `×` or a click
+   outside closes it) and opens any other type in a tab of its own.
    When the hub has a transcriber (see [transcription](transcription.md))
    and the pane is writable, a `◉` button sits between the field and
    *send*: a click or `v` records a clip, a level meter and the seconds

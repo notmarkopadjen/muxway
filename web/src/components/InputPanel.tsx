@@ -71,7 +71,7 @@ const CONSOLE_KEYS: Record<string, Key> = {
   Tab: 'Tab',
 };
 
-function size(n: number): string {
+export function size(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1 << 20) return `${(n / 1024).toFixed(1)} KiB`;
   return `${(n / (1 << 20)).toFixed(1)} MiB`;

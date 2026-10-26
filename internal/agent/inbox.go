@@ -107,6 +107,25 @@ func (a *Agent) saveFile(typ string, data []byte) (string, error) {
 	return path, f.Close()
 }
 
+// readFile answers one file of the inbox by name: the bytes and the
+// type they are served as. The name is a base name of the inbox's own
+// shape or nothing is looked at; a symlink is not a file.
+func (a *Agent) readFile(name string) (string, []byte, error) {
+	if !wire.ValidFileName(name) {
+		return "", nil, errBadFile
+	}
+	path := filepath.Join(a.cfg.Inbox, name)
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > wire.MaxFile {
+		return "", nil, os.ErrNotExist
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", nil, os.ErrNotExist
+	}
+	return wire.FileTypeOf(name), data, nil
+}
+
 func lowerRandom(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, n)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findLinks, isChoice } from './links';
+import { findFiles, findLinks, isChoice, isImage } from './links';
 
 describe('findLinks', () => {
   it('finds http and https runs with their positions', () => {
@@ -76,5 +76,37 @@ describe('isChoice', () => {
       '123 apples',
     ])
       expect(isChoice(s), s).toBe(false);
+  });
+});
+
+describe('findFiles', () => {
+  const name = '20261025-102235-56fwge.png';
+  it('finds an inbox path and names the file', () => {
+    const line = `what is wrong in /home/alice/.config/muxway/agent/inbox/${name} ?`;
+    expect(findFiles(line)).toEqual([[17, 17 + 39 + name.length, name]]);
+    expect(findFiles(`see /tmp/${name}.`)).toEqual([[4, 9 + name.length, name]]);
+    expect(findFiles(`(/tmp/${name})`)).toEqual([[1, 6 + name.length, name]]);
+    expect(
+      findFiles(`/a/20261025-102235-a1b2c3.json and /b/20261025-102235-d4e5f6.pdf`),
+    ).toHaveLength(2);
+  });
+  it('wants a path and the exact name', () => {
+    for (const s of [
+      name,
+      `/tmp/${name}.exe`,
+      `/tmp/${name}x`,
+      `/tmp/${name}_old`,
+      `/tmp/x${name}`,
+      '/tmp/20261025-102235-56fwg.png',
+      '/tmp/20261025-102235-56fwge.PNG',
+      '/tmp/20261025-102235-56fwge.svg',
+      '/tmp/20261025-102235-56fwge',
+    ])
+      expect(findFiles(s), s).toEqual([]);
+  });
+  it('knows an image from the rest', () => {
+    expect(isImage(name)).toBe(true);
+    expect(isImage('20261025-102235-56fwge.pdf')).toBe(false);
+    expect(isImage('20261025-102235-56fwge.json')).toBe(false);
   });
 });

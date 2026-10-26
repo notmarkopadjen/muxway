@@ -54,6 +54,8 @@ import { releaseKept, useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
 import { AddMenu } from '../components/AddMenu';
+import { Closing } from '../components/Closing';
+import { Picture, showFile, type Shown } from '../components/Picture';
 import { Tools } from '../components/Tools';
 import { requestPalette } from '../term/intent';
 
@@ -131,6 +133,7 @@ interface TileProps {
   onAsk: () => void;
   onAnswer: (yes: boolean) => void;
   onFit: () => void;
+  onFile: (name: string) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDrop: (zone: Zone) => void;
@@ -375,6 +378,7 @@ function Tile(props: TileProps) {
                   )
               : undefined
           }
+          onFile={props.onFile}
           testId={focused ? 'screen' : 'cell-screen'}
         />
         {props.onSpread &&
@@ -498,6 +502,14 @@ function Tiles({ addresses }: { addresses: string[] }) {
     layout === 'custom' ? (custom ?? tree(n, defaultFor(true))) : tree(n, layout);
   const [fit, setFit] = useState<Record<string, boolean>>({});
   const [refitTick, setRefitTick] = useState(0);
+  // A file of the inbox shown over the page; kept while its window powers off.
+  const [shown, setShown] = useState<Shown | null>(null);
+  const [showing, setShowing] = useState(false);
+  const show = useCallback((s: Shown) => {
+    setShown(s);
+    setShowing(true);
+  }, []);
+  const hide = useCallback(() => setShowing(false), []);
   const [dragging, setDragging] = useState<string | null>(null);
   // The tile whose header asks whether to close its pane on the host.
   const [asking, setAsking] = useState<string | null>(null);
@@ -870,6 +882,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onAsk={() => setAsking(a)}
         onAnswer={(yes) => void answer(a, yes)}
         onFit={() => toggleFit(a)}
+        onFile={(name) => showFile({ address: a, name }, show, refused)}
         onDragStart={() => setDragging(a)}
         onDragEnd={() => setDragging(null)}
         onDrop={(zone) => {
@@ -1018,6 +1031,9 @@ function Tiles({ addresses }: { addresses: string[] }) {
           </div>
         )}
       </InputPanel>
+      <Closing open={showing && !!shown}>
+        {shown && <Picture shown={shown} onClose={hide} />}
+      </Closing>
     </div>
   );
 }

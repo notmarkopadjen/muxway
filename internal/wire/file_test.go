@@ -48,3 +48,34 @@ func TestValidFile(t *testing.T) {
 		}
 	}
 }
+
+func TestFileNames(t *testing.T) {
+	good := []string{"20261025-102235-56fwge.png", "20261025-102235-a1b2c3.json", "20261025-102235-zzzzzz.jpg"}
+	for _, n := range good {
+		if !ValidFileName(n) {
+			t.Errorf("%q refused", n)
+		}
+	}
+	bad := []string{
+		"", "../agent.key", "a/20261025-102235-56fwge.png", "/20261025-102235-56fwge.png",
+		"20261025-102235-56fwge.png.exe", "20261025-102235-56fwge.PNG", "20261025-102235-56fwge.svg",
+		"20261025-102235-56fwg.png", "20261025-102235-56fwge.png\n", "20261025-102235-56fwge",
+	}
+	for _, n := range bad {
+		if ValidFileName(n) {
+			t.Errorf("%q taken", n)
+		}
+	}
+	for n, typ := range map[string]string{
+		"20261025-102235-56fwge.png":  "image/png",
+		"20261025-102235-56fwge.jpg":  "image/jpeg",
+		"20261025-102235-56fwge.pdf":  "application/pdf",
+		"20261025-102235-56fwge.json": "text/plain; charset=utf-8",
+		"20261025-102235-56fwge.md":   "text/plain; charset=utf-8",
+		"20261025-102235-56fwge.exe":  "",
+	} {
+		if got := FileTypeOf(n); got != typ {
+			t.Errorf("%s: %q, want %q", n, got, typ)
+		}
+	}
+}
