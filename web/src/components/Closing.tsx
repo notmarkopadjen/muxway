@@ -12,10 +12,13 @@ function still(): boolean {
 export function Closing({ open, children }: { open: boolean; children: ReactNode }) {
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
+  // Opened again while closing, the window starts afresh, not mid-fade.
+  const [gen, setGen] = useState(0);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (open) {
       setMounted(true);
+      if (closing) setGen((g) => g + 1);
       setClosing(false);
       return;
     }
@@ -32,10 +35,11 @@ export function Closing({ open, children }: { open: boolean; children: ReactNode
       still() ? 0 : 600,
     );
     return () => clearTimeout(t);
-  }, [open, mounted]);
+  }, [open, mounted, closing]);
   if (!mounted) return null;
   return (
     <div
+      key={gen}
       ref={box}
       className={closing ? 'mx-closing' : undefined}
       style={{ display: 'contents' }}
