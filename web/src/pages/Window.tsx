@@ -146,6 +146,7 @@ function Tree(props: TreeProps) {
           focused={focused === node.id}
           onClick={() => onFocus(node.id)}
           height={p.height}
+          bounds={{ cols: p.width, rows: p.height }}
           onCell={p.mode === 'write' && p.mouse ? (x, y) => onCell(p.address, x, y) : undefined}
           onWheel={
             p.mode === 'write' && p.mouse
@@ -276,7 +277,13 @@ export function WindowPage() {
   const fitting = fit && !!writable;
   // With fit on the host takes the browser's proportions too.
   const sent = fit && tree ? layoutFor(tree, arr) : undefined;
-  const { refit } = useFit(focusedPane?.address ?? '', fitting, area, 'window', sent);
+  // The input line grown while a message is written takes height from
+  // the area; the fit measures as if it had not.
+  const grown = useRef(0);
+  const slack = useCallback(() => grown.current, []);
+  const { refit } = useFit(focusedPane?.address ?? '', fitting, area, 'window', sent, false, {
+    slack,
+  });
   useEffect(() => {
     setHeading({ pane: focusedPane, place: `window ${host}/${session}/${win}` });
     return () => setHeading({ place: '' });
@@ -486,6 +493,9 @@ export function WindowPage() {
             : 'no pane'
         }
         send={send}
+        onGrow={(px) => {
+          grown.current = px;
+        }}
       />
     </div>
   );

@@ -176,20 +176,23 @@
   animation: mx-open var(--mx-motion-medium) var(--mx-ease-crt) both;
   transform-origin: top;
 }
-/* A window over the page (help, the hubs, go to a pane, the keyboard)
-   powers on the way the page does: a bright line that opens up; closed,
+/* A window over the page (help, the hubs, go to a pane, the keyboard,
+   a file) powers on the way the page does: a bright line that opens up; closed,
    it runs the same backwards (Closing.tsx keeps it until then). */
 .mx-help > *,
-.mx-keyboard {
+.mx-keyboard,
+.mx-picture {
   animation: mx-power-on var(--mx-motion-slow) var(--mx-ease-crt) both;
   transform-origin: center;
 }
 .mx-closing .mx-help > *,
-.mx-closing .mx-keyboard {
+.mx-closing .mx-keyboard,
+.mx-closing .mx-picture {
   animation: mx-power-on var(--mx-motion-slow) var(--mx-ease-crt) reverse both;
   pointer-events: none;
 }
-.mx-closing .mx-help {
+.mx-closing .mx-help,
+.mx-closing .mx-picture-back {
   animation: mx-fade-out var(--mx-motion-slow) linear both;
   pointer-events: none;
 }
@@ -225,7 +228,9 @@
   .mx-panel-enter,
   .mx-help > *,
   .mx-keyboard,
+  .mx-picture,
   .mx-closing .mx-help,
+  .mx-closing .mx-picture-back,
   .mx-burn,
   .mx-pulse,
   .mx-cell[data-state='waiting'],
@@ -246,7 +251,9 @@
 :root[data-motion='off'] .mx-panel-enter,
 :root[data-motion='off'] .mx-help > *,
 :root[data-motion='off'] .mx-keyboard,
+:root[data-motion='off'] .mx-picture,
 :root[data-motion='off'] .mx-closing .mx-help,
+:root[data-motion='off'] .mx-closing .mx-picture-back,
 :root[data-motion='off'] .mx-burn,
 :root[data-motion='off'] .mx-pulse,
 :root[data-motion='off'] .mx-cell[data-state='waiting'],

@@ -7,7 +7,10 @@ import { classes, parse, type Span } from './sgr';
 // in; the view follows the bottom while the person has not scrolled up.
 // With cols and rows given, the font is sized so the pane fills the box.
 // With onCell, a click on the pane's screen (its last `height` lines)
-// reports the cell under the pointer, 1-based. With onWheel, the wheel
+// reports the cell under the pointer, 1-based; `bounds` is the pane's
+// size as last listed: a click outside it, on a frame the host has since
+// shrunk, reports nothing, and a wheel notch there turns at the nearest
+// cell the pane has. With onWheel, the wheel
 // over the screen's rows reports a notch per row of travel at that cell,
 // up to three per event, one request at a time; over the history above
 // them, and without onWheel, the box scrolls as any box. A web address in
@@ -85,6 +88,20 @@ function pieces(spans: Span[], links: Mark[]): Piece[] {
   return out;
 }
 
+// Whether a cell is one the pane has, when its size is known.
+export function within(x: number, y: number, bounds?: { cols: number; rows: number }): boolean {
+  return !bounds || (x <= bounds.cols && y <= bounds.rows);
+}
+
+// The nearest cell the pane has.
+export function nearest(
+  x: number,
+  y: number,
+  bounds?: { cols: number; rows: number },
+): { x: number; y: number } {
+  return bounds ? { x: Math.min(x, bounds.cols), y: Math.min(y, bounds.rows) } : { x, y };
+}
+
 // The browser opens the tab; the pane hears nothing, mouse mode or not.
 const keep = (ev: React.MouseEvent) => ev.stopPropagation();
 
@@ -152,6 +169,7 @@ export const Screen = memo(function Screen({
   onFile,
   onPath,
   height,
+  bounds,
   focused,
   testId = 'screen',
 }: {
@@ -167,6 +185,7 @@ export const Screen = memo(function Screen({
   onFile?: (name: string) => void;
   onPath?: (path: string) => void;
   height?: number;
+  bounds?: { cols: number; rows: number };
   focused?: boolean;
   testId?: string;
 }) {
@@ -227,7 +246,7 @@ export const Screen = memo(function Screen({
     return () => ro.disconnect();
   }, [cols, rows, scale, box]);
   // The cell under a point of the screen, or null above it.
-  const cellAt = (target: EventTarget | null, clientX: number) => {
+  const cellAt = (target: EventTarget | null, clientX: number, clamp = false) => {
     if (!height) return null;
     const ln = (target as HTMLElement | null)?.closest?.('.ln');
     if (!ln || !ln.parentElement) return null;
@@ -237,7 +256,10 @@ export const Screen = memo(function Screen({
     const rect = ln.getBoundingClientRect();
     const c = measureCell();
     const x = Math.floor((clientX - rect.left) / (rect.height * (c.w / c.h))) + 1;
-    return x >= 1 ? { x, y, row: rect.height } : null;
+    if (x < 1) return null;
+    if (clamp) return { ...nearest(x, y, bounds), row: rect.height };
+    if (!within(x, y, bounds)) return null;
+    return { x, y, row: rect.height };
   };
   const click = (ev: React.MouseEvent<HTMLDivElement>) => {
     onClick?.();
@@ -267,7 +289,7 @@ export const Screen = memo(function Screen({
     const el = box.current;
     if (!el || !onWheel) return;
     const onEvent = (ev: WheelEvent) => {
-      const at = cellAt(ev.target, ev.clientX);
+      const at = cellAt(ev.target, ev.clientX, true);
       if (!at) return;
       ev.preventDefault();
       const dy =

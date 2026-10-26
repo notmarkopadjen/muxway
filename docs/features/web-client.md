@@ -35,7 +35,11 @@ nothing but the hub to talk to.
    new output; scroll up to read back, and it stays put until you scroll
    down again. The input line is a small editor: text wraps, `Enter`
    sends, `Shift+Enter` starts a new line, and the field grows upward to
-   six rows before it scrolls inside. A text with several lines is
+   six rows before it scrolls inside. The rows it takes are not a
+   resize: with fit on, the pane keeps its size while you write and the
+   screen scrolls under the line instead. What the line sends to one
+   pane goes one request after another, so keys pressed in a burst
+   arrive in the order pressed. A text with several lines is
    pasted into the pane as one block (bracketed, when the program asked
    for it), so Claude Code takes it as one message and a shell as one
    editable block; then `Enter` is sent. While the first word is typed a
@@ -141,7 +145,9 @@ each other: the focused tile's pane fits (or the first of them, when the
 focus is in another window), and the others say *held* in their header,
 keep fit off and are drawn scaled to their box, which leaves the width
 the host gave the pane unused; focus moving to another tile of the
-window moves the fit there, releasing the previous pane first. In the
+window moves the fit there, and the pane left behind keeps its size, so
+going back and forth sends nothing once both panes have their tiles'
+sizes; they are all released when the view is left. In the
 window view, fit sizes the whole
 *window* to the area and lays it out as the browser shows it: the panes
 keep their proportions until you drag a divider, and then the host's
@@ -275,7 +281,15 @@ sequenceDiagram
   [fit](#fit-the-host-follows-the-browser)). Every writable tile opens
   with fit on, one or several. `⤢` or `f` toggles the focused tile, `F`
   every tile, `r` sends the size once more. The header shows the
-  pane's size, which with fit on is the tile's.
+  pane's size, which with fit on is the tile's. `⊞` or `=` gives every
+  split equal shares; with the tiles every pane of one window and fit
+  on, the host follows.
+- A click on a cell the pane no longer has, right of or below its size
+  on a frame the host has since shrunk, is not sent; a wheel notch there
+  turns at the nearest cell the pane has.
+- The strip's `+` stays whenever a pane could be added anywhere: *split
+  here* needs the focused pane writable, *new session* a host that
+  starts them for you; what does not apply is disabled with its reason.
 - **Zoom** is one view at two distances, not two views: `⊡`, `z` or a
   double-click on a tile, its header or its tab open that pane alone,
   and the same again bring back the tiles it came from, in their places,

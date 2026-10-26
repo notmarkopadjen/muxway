@@ -96,15 +96,27 @@ export function usePaneCached(address: string) {
   });
 }
 
+// Sends to one pane go one after another, so what was pressed first
+// arrives first; a refused one does not hold the next.
+const queues = new Map<string, Promise<unknown>>();
+function inOrder<T>(address: string, go: () => Promise<T>): Promise<T> {
+  const prev = queues.get(address) ?? Promise.resolve();
+  const next = prev.then(go, go);
+  queues.set(address, next);
+  return next;
+}
+
 export function useInput(address: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: { text: string } | { key: string } | { mouse: Mouse }) => {
       noteOwn(address);
-      return api<void>(`/v1/panes/${address}/input`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
+      return inOrder(address, () =>
+        api<void>(`/v1/panes/${address}/input`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        }),
+      );
     },
     onSuccess: () => {
       noteOwn(address);

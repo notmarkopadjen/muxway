@@ -45,6 +45,11 @@ func TestSec80_MouseNeedsWriteAndMouseMode(t *testing.T) {
 	if !strings.Contains(string(logs), "mouse=left result=bad_input") {
 		t.Fatalf("agent audit:\n%s", logs)
 	}
+	// A click outside the pane is refused by the hub, and said so, with the cell.
+	hub, _ := os.ReadFile(filepath.Join(e.logs, "hub.log"))
+	if !strings.Contains(string(hub), "mouse=left x=5 y=999 result=bad_input") {
+		t.Fatal("the hub did not audit the click outside the pane")
+	}
 }
 
 // 81

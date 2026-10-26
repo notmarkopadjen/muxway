@@ -100,16 +100,27 @@ test('99 two tiles of a window not wholly open: the focused one fits, the other 
   // The held tile is scaled to its box, not cropped.
   await expect(tiles.nth(1).getByTestId('cell-screen')).toHaveAttribute('data-font', /\d/);
   await shot(page, info, '99-held');
-  // Focus on the other tile moves the fit: the first is released, the second fits.
+  // Focus on the other tile moves the fit: the second fits, the first keeps
+  // its size and is not released; back and forth then sends nothing.
   await page.keyboard.press(']');
   await expect(tiles.nth(1)).toHaveAttribute('data-focused', '');
   await expect(tiles.nth(0)).toHaveAttribute('data-held', '');
   await expect(tiles.nth(1)).not.toHaveAttribute('data-held', '');
-  await expect.poll(() => releasesOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
   await expect.poll(() => fitsOf(resizes, SPLIT).length, { timeout: 5000 }).toBe(1);
+  await page.waitForTimeout(1500);
+  expect(releasesOf(resizes, LOGS)).toHaveLength(0);
+  const sent = resizes.length;
+  await page.keyboard.press('[');
+  await expect(tiles.nth(0)).toHaveAttribute('data-focused', '');
+  await page.keyboard.press(']');
+  await expect(tiles.nth(1)).toHaveAttribute('data-focused', '');
+  await page.waitForTimeout(1500);
+  expect(resizes).toHaveLength(sent);
+  // Leaving the view releases both.
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();
   await expect.poll(() => releasesOf(resizes, SPLIT).length, { timeout: 5000 }).toBe(1);
+  await expect.poll(() => releasesOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
   await control(request, '/kill-pane', { target: id2 });
   await control(request, '/kill-pane', { target: id });
 });

@@ -82,12 +82,16 @@ export function InputPanel({
   writable,
   placeholder,
   send,
+  onGrow,
   children,
 }: {
   pane: Pane | undefined;
   writable: boolean;
   placeholder: string;
   send: (body: { text: string } | { key: string }) => Promise<boolean | void>;
+  // The height the field takes beyond one row, told before the view's
+  // boxes are measured again.
+  onGrow?: (px: number) => void;
   children?: ReactNode;
 }) {
   const [text, setText] = useState('');
@@ -135,7 +139,9 @@ export function InputPanel({
     const max = ROWS * parseFloat(cs.lineHeight) + pad;
     el.style.height = 'auto';
     const want = el.scrollHeight + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
-    el.style.height = `${Math.min(want, max)}px`;
+    const height = Math.min(want, max);
+    el.style.height = `${height}px`;
+    onGrow?.(Math.max(0, height - (parseFloat(cs.lineHeight) + pad)));
     if (wantCaret.current !== null) {
       el.setSelectionRange(wantCaret.current, wantCaret.current);
       wantCaret.current = null;

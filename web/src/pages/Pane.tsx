@@ -136,6 +136,8 @@ interface TileProps {
   onFile: (name: string) => void;
   // The host previews files a pane prints the paths of, for writers.
   onPath?: (path: string) => void;
+  // Height the input line takes beyond one row, which is not a resize.
+  slack: () => number;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDrop: (zone: Zone) => void;
@@ -162,7 +164,7 @@ function Tile(props: TileProps) {
   const fitting = fit && writable && !props.held && !windowFit;
   const { size: fitted, refit } = useFit(
     address,
-    fitting,
+    fit && writable && !windowFit,
     box,
     alone ? 'window' : 'pane',
     undefined,
@@ -170,6 +172,8 @@ function Tile(props: TileProps) {
     {
       keep: true,
       inset: false,
+      hold: props.held,
+      slack: props.slack,
       known: () => p && { cols: p.width, rows: p.height, zoomed: p.zoomed },
     },
   );
@@ -365,6 +369,7 @@ function Tile(props: TileProps) {
           focused={several && focused}
           onClick={props.onFocus}
           height={sp?.height}
+          bounds={p && { cols: p.width, rows: p.height }}
           onCell={
             writable && p?.mouse
               ? (x, y) => void click(address, { button: 'left', x, y }, props.refused)
@@ -673,11 +678,16 @@ function Tiles({ addresses }: { addresses: string[] }) {
       navigate({ to: '/p/$', params: { _splat: routeFor(next) }, replace: true });
   };
   const area = useRef<HTMLDivElement>(null);
+  // The input line grown while a message is written takes height from
+  // the tiles; the fits measure as if it had not.
+  const grown = useRef(0);
+  const slack = useCallback(() => grown.current, []);
   const windowFit = !!oneWindow && synced && (fit[focused] ?? true) && !!writable;
   const windowLayout = oneWindow && synced ? tilesLayout(shape, weights, oneWindow) : undefined;
   const { refit: refitWindow } = useFit(focused, windowFit, area, 'window', windowLayout, false, {
     keep: true,
     onDone: follow,
+    slack,
   });
   // With fit off the arrangement still goes to the host, without a size.
   const [retry, setRetry] = useState(0);
@@ -769,7 +779,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
         for (const a of addresses) f[a] = on;
         setFit(f);
       } else if (ev.key === 'r' && writable) setRefitTick((t) => t + 1);
-      else if (ev.key === 'z' && focusedPane) zoom(focusedPane);
+      else if (ev.key === '=' && several && (!oneWindow || movable)) {
+        touch();
+        setWeights({});
+      } else if (ev.key === 'z' && focusedPane) zoom(focusedPane);
       else if (ev.key === 'w' && focusedPane)
         navigate({
           to: `/w/${focusedPane.host}/${focusedPane.session}/${focusedPane.window_index}`,
@@ -889,6 +902,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onFit={() => toggleFit(a)}
         onFile={(name) => show({ address: a, name })}
         onPath={hostPreviews(a) ? (path) => show({ address: a, path }) : undefined}
+        slack={slack}
         onDragStart={() => setDragging(a)}
         onDragEnd={() => setDragging(null)}
         onDrop={(zone) => {
@@ -958,6 +972,20 @@ function Tiles({ addresses }: { addresses: string[] }) {
                       oneWindow && !movable
                         ? 'the panes of this window move only when every one is writable'
                         : `next arrangement (l): ${options(n).join(', ')}`,
+                  },
+                  {
+                    id: 'equal',
+                    glyph: '⊞',
+                    label: 'equal',
+                    onClick: () => {
+                      touch();
+                      setWeights({});
+                    },
+                    disabled: !!oneWindow && !movable,
+                    title:
+                      oneWindow && !movable
+                        ? 'the panes of this window move only when every one is writable'
+                        : 'equal shares in every split (=); with fit on, the host follows',
                   },
                 ]
               : []),
@@ -1030,6 +1058,9 @@ function Tiles({ addresses }: { addresses: string[] }) {
             : 'no pane'
         }
         send={send}
+        onGrow={(px) => {
+          grown.current = px;
+        }}
       >
         {focusedPane && !writable && (
           <div className="mx-readonly" data-testid="readonly">

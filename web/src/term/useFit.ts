@@ -14,7 +14,11 @@ import { cellsFor, inner } from './measure';
 // away leaves its pane fitted: the pane view keeps panes at size while
 // another is shown in their place and releases them all when it is left
 // (releaseKept); a kept pane found at the size asked for is not sent
-// again.
+// again. With `hold` the fit pauses without a release: another tile of
+// the window carries it meanwhile and the pane stays kept at its size.
+// `slack` is height the box has lost to something that is not a resize,
+// the input line grown while a message is written: the fit measures as
+// if it were not there, so the host is not resized a row at a time.
 // The release must survive the page going away, hence keepalive. It can
 // land within the second of the resize it undoes, so a 429 is tried again.
 function release(address: string, tries = 3) {
@@ -41,6 +45,8 @@ export interface FitOptions {
   inset?: boolean;
   // The host's answer, which after a layout lists the window's panes.
   onDone?: (r: { panes?: Pane[] }) => void;
+  hold?: boolean;
+  slack?: () => number;
 }
 
 // Panes fitted and not yet released, across tiles that came and went.
@@ -69,14 +75,16 @@ export function useFit(
   const timer = useRef<number | null>(null);
   const fitted = useRef(false);
   const again = useRef<(() => void) | null>(null);
-  const { keep = false, inset = scope === 'window' } = opts;
+  const { keep = false, inset = scope === 'window', hold = false } = opts;
   const known = useRef(opts.known);
   known.current = opts.known;
+  const slack = useRef(opts.slack);
+  slack.current = opts.slack;
   const done = useRef(opts.onDone);
   done.current = opts.onDone;
 
   useEffect(() => {
-    if (!enabled || !box.current) return;
+    if (!enabled || hold || !box.current) return;
     const el = box.current;
     const send = (cols: number, rows: number) => {
       const key = `${cols}x${rows} ${layout ?? ''} ${zoom}`;
@@ -104,7 +112,7 @@ export function useFit(
     const measure = () => {
       const { w, h } = inner(el);
       const off = inset ? CELL_INSET : 0;
-      const { cols, rows } = cellsFor(w - off, h - off);
+      const { cols, rows } = cellsFor(w - off, h - off + (slack.current?.() ?? 0));
       send(Math.min(500, Math.max(20, cols)), Math.min(300, Math.max(5, rows)));
     };
     const schedule = () => {
@@ -124,7 +132,7 @@ export function useFit(
       if (timer.current) window.clearTimeout(timer.current);
       last.current = '';
     };
-  }, [address, enabled, box, scope, layout, zoom, inset]);
+  }, [address, enabled, hold, box, scope, layout, zoom, inset]);
   const refit = useCallback(() => again.current?.(), []);
 
   // Release on the way out, if we ever fitted: on unmount, unless the

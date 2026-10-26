@@ -151,6 +151,7 @@
 .mx-screen {
   font-size: var(--mx-screen-size);
   overflow: auto;
+  scrollbar-gutter: stable;
   border: 1px solid var(--mx-ink-dim);
   box-shadow: var(--mx-glow-box);
   background: #000;

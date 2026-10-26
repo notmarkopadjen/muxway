@@ -664,6 +664,8 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		return
 	}
 	if in.Mouse != nil && !wire.ValidMouse(in.Mouse, p.Width, p.Height) {
+		h.log.Info("audit input", "token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID,
+			"mouse", in.Mouse.Button, "x", in.Mouse.X, "y", in.Mouse.Y, "result", "bad_input")
 		fail(w, http.StatusBadRequest, "bad_input")
 		return
 	}

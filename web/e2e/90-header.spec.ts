@@ -91,8 +91,10 @@ test('90 security: a read-only pane offers no split', async ({ page }) => {
   await page.goto(`/p/${HOST}/work/0.1`);
   await settled(page);
   await expect(page.getByTestId('readonly')).toBeVisible();
-  // The host starts sessions, so + is there, with a new session and no split.
+  // The host starts sessions, so + is there, with a new session; the
+  // split is there too, disabled, and says why.
   await page.getByTestId('add').click();
-  await expect(page.getByTestId('add-session')).toBeVisible();
-  await expect(page.getByTestId('add-split')).toHaveCount(0);
+  await expect(page.getByTestId('add-session')).toBeEnabled();
+  await expect(page.getByTestId('add-split')).toBeDisabled();
+  await expect(page.getByTestId('add-split')).toHaveAttribute('title', /read-only/);
 });

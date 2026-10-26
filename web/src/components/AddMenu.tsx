@@ -28,6 +28,11 @@ export function AddMenu({
   const canSplit = pane?.mode === 'write';
   const host = hosts.data?.find((h) => h.name === pane?.host);
   const canStart = !!host?.sessions && mayWriteOn(me.data?.write ?? [], host.name);
+  // The button stays whenever something could be added anywhere; what the
+  // focused pane does not allow is disabled with its reason.
+  const anyStart = !!hosts.data?.some(
+    (h) => h.sessions && mayWriteOn(me.data?.write ?? [], h.name),
+  );
   useEffect(() => {
     if (!open) return;
     const away = (e: MouseEvent) => {
@@ -55,7 +60,7 @@ export function AddMenu({
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   });
-  if (!pane || (!canSplit && !canStart)) return null;
+  if (!pane || (!canSplit && !canStart && !anyStart)) return null;
   const split = async () => {
     if (busy.current) return;
     busy.current = true;
@@ -90,18 +95,18 @@ export function AddMenu({
       </button>
       {open && (
         <div className="mx-menu" role="menu" data-testid="add-menu">
-          {canSplit && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => void split()}
-              data-testid="add-split"
-            >
-              split here <span className="mx-dim">a new pane beside this one on {pane.host}</span>
-            </button>
-          )}
-          {canStart &&
-            (naming ? (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => void split()}
+            disabled={!canSplit}
+            title={canSplit ? undefined : 'this pane is read-only for you'}
+            data-testid="add-split"
+          >
+            split here <span className="mx-dim">a new pane beside this one on {pane.host}</span>
+          </button>
+          {(canStart || anyStart) &&
+            (naming && canStart ? (
               <SessionForm
                 host={pane.host}
                 onDone={(address) => {
@@ -118,6 +123,8 @@ export function AddMenu({
                 type="button"
                 role="menuitem"
                 onClick={() => setNaming(true)}
+                disabled={!canStart}
+                title={canStart ? undefined : `${pane.host} does not start sessions for you`}
                 data-testid="add-session"
               >
                 new session <span className="mx-dim">on {pane.host}</span>

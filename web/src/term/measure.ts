@@ -13,6 +13,9 @@ export function measureCell(): { w: number; h: number; px: number } {
   probe.style.visibility = 'hidden';
   probe.style.padding = '0';
   probe.style.border = '0';
+  // The screen keeps room for its scrollbar; the glyph does not.
+  probe.style.overflow = 'visible';
+  probe.style.scrollbarGutter = 'auto';
   probe.textContent = Array(10).fill('MMMMMMMMMM').join('\n');
   document.body.appendChild(probe);
   const px = parseFloat(getComputedStyle(probe).fontSize) || 14;
