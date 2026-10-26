@@ -444,9 +444,24 @@ The list lives in the browser's storage under the origin of the hub
 whose page you added it on, so each hub's page has the links added
 there. To have the same list on both, leave *carry this list along when
 going* on: **go** then puts the names and addresses in the address's
-fragment (`#hubs=…`), and the other hub's page reads it once into its own
-storage, keeps what is well shaped, and strips it from the address bar.
-That is all that ever travels: no token, no cookie, no referrer.
+fragment (`#hubs=…`). The other hub's page reads it once, strips it from
+the address bar, and keeps what is well shaped and new to it **apart
+from the list**, in the tab, until you decide: once signed in there,
+the hubs box shows each carried entry with **add** and **ignore**, and
+nothing is a link until you add it. Before sign-in the box only says how
+many wait. That is all that ever travels: no token, no cookie, no
+referrer.
+
+```
+┌ hubs ────────────────────────────────────────────┐
+│ ▸ work   https://work.example.com   here          │
+│ ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ │
+│ carried in the link you opened, not in your list  │
+│ until you add them:                               │
+│ ? home   https://hub.example.com   [add] [ignore] │
+│ name: ______  url: https://______  [add]          │
+└──────────────────────────────────────────────────┘
+```
 
 The decision behind the design, taken on 2026-10-24: hubs stay separate.
 One page talking to two hubs would need that page to hold the other
@@ -539,6 +554,13 @@ and fails if the committed output differs from the sources.
   origin), no referrer (`Referrer-Policy: no-referrer`) and no token (the
   page never has one). The content security policy is unchanged: the
   page still connects to its own origin alone.
+- A list carried in a link is a list anyone can write: a crafted link
+  could plant a lookalike hub that you later **go** to and hand a token.
+  So a carried entry never enters the list by itself. It waits in the
+  tab (session storage, gone with the tab), is offered only to a
+  signed-in person, and becomes a link only through its own **add**,
+  under the same checks as a typed one; **ignore** drops it. Until then
+  it is not shown as a hub and has no **go**.
 - A click is sent as a button and a cell, never as bytes; the hub checks
   the cell against the pane's size and the agent refuses a pane whose
   program did not ask for the mouse, so nothing is typed by accident.

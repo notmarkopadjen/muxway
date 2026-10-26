@@ -31,6 +31,8 @@ import { useToast } from './Toast';
 const ROWS = 6;
 // A press on the microphone longer than this is a hold.
 const HOLD_MS = 400;
+// The hub takes a file up to this; a bigger one is refused before it is sent.
+const MAX_FILE = 8 << 20;
 
 type Mic = 'idle' | 'recording' | 'hearing';
 
@@ -157,6 +159,10 @@ export function InputPanel({
         toast.push({ kind: 'file', title: `${f.name}: not a type the host takes` });
         continue;
       }
+      if (f.size > MAX_FILE) {
+        toast.push({ kind: 'file', title: `${f.name}: too large, ${size(MAX_FILE)} at most` });
+        continue;
+      }
       setSending(`⇪ ${f.name} · ${size(f.size)}…`);
       try {
         const { path } = await sendFile(pane.address, f, type);
@@ -175,9 +181,12 @@ export function InputPanel({
     setSending(null);
     wantFocus.current = true;
   };
-  // A paste with a file in it, or a file dropped anywhere on the view.
+  // A paste with a file in it, or a file dropped on the pane view, the
+  // element around this panel; the rest of the page takes none.
+  const form = useRef<HTMLFormElement>(null);
   useEffect(() => {
-    if (!canFile) return;
+    const zone = form.current?.parentElement;
+    if (!canFile || !zone) return;
     const hasFiles = (dt: DataTransfer | null) => !!dt && [...dt.types].includes('Files');
     const onPaste = (e: ClipboardEvent) => {
       const files = [...(e.clipboardData?.files ?? [])];
@@ -193,13 +202,13 @@ export function InputPanel({
       e.preventDefault();
       void sendFiles([...(e.dataTransfer?.files ?? [])]);
     };
-    window.addEventListener('paste', onPaste);
-    window.addEventListener('dragover', onOver);
-    window.addEventListener('drop', onDrop);
+    zone.addEventListener('paste', onPaste);
+    zone.addEventListener('dragover', onOver);
+    zone.addEventListener('drop', onDrop);
     return () => {
-      window.removeEventListener('paste', onPaste);
-      window.removeEventListener('dragover', onOver);
-      window.removeEventListener('drop', onDrop);
+      zone.removeEventListener('paste', onPaste);
+      zone.removeEventListener('dragover', onOver);
+      zone.removeEventListener('drop', onDrop);
     };
   });
 
@@ -421,7 +430,7 @@ export function InputPanel({
 
   return (
     <>
-      <form className="mx-input" onSubmit={submit}>
+      <form className="mx-input" onSubmit={submit} ref={form}>
         <span className={`mx-prompt${mic === 'recording' ? ' mx-rec' : ''}`}>
           {mic === 'recording' ? '●' : writable ? '>' : '○'}
         </span>

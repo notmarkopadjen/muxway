@@ -38,6 +38,11 @@ export function onUnauthorized(fn: Unauthorized): () => void {
 
 const etags = new Map<string, { etag: string; body: string }>();
 
+// Drops the bodies kept for conditional requests, at sign-out.
+export function forgetCached() {
+  etags.clear();
+}
+
 export async function api<T>(
   path: string,
   init: RequestInit & { conditional?: boolean } = {},

@@ -130,9 +130,18 @@ function load(): string[] {
   }
 }
 
+// A line that looks like it carries a secret: a credential word, a muxway
+// token, or an upper-case NAME=value assignment, exported or not.
+const SECRET_WORDS = /authorization|token|passw(or)?d|secret|mxt_|api[_-]?key/i;
+const ASSIGNMENT = /(^|\s)(export\s+)?[A-Z_][A-Z0-9_]*=/;
+
+export function looksSecret(line: string): boolean {
+  return SECRET_WORDS.test(line) || ASSIGNMENT.test(line);
+}
+
 export function remember(line: string) {
   const t = line.trim();
-  if (!t || t.length > LINE_MAX) return;
+  if (!t || t.length > LINE_MAX || looksSecret(t)) return;
   recent = [t, ...recent.filter((r) => r !== t)].slice(0, RECENT_MAX);
   try {
     localStorage.setItem(KEY, JSON.stringify(recent));

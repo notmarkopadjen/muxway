@@ -15,6 +15,7 @@ import './styles/pages.css';
 
 applyRoot();
 takeFragment();
+window.addEventListener('hashchange', takeFragment);
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

@@ -76,23 +76,22 @@ describe('checkHub', () => {
 });
 
 describe('fragment', () => {
-  it('round-trips names and origins, drops a bad entry and keeps the rest', () => {
+  it('gives back only what is new and well shaped, never the list itself', () => {
     const hubs = [
       { name: 'home', url: HOME },
       { name: 'work', url: WORK },
     ];
     const got = fromFragment(fragment(hubs), [{ name: '', url: WORK }], WORK);
-    expect(got).toEqual([
-      { name: 'work', url: WORK },
+    expect(got).toEqual(hubs.slice().reverse());
+    expect(fromFragment(fragment(hubs), [{ name: 'office', url: WORK }], WORK)).toEqual([
       { name: 'home', url: HOME },
     ]);
     const bad =
       '#hubs=' +
       encodeURIComponent(JSON.stringify([...hubs, { name: 'x', url: 'javascript:alert(1)' }]));
     expect(fromFragment(bad, [{ name: '', url: WORK }], WORK)).toEqual(got);
-    expect(fromFragment('#hubs=%7Bnot', [{ name: '', url: WORK }], WORK)).toEqual([
-      { name: '', url: WORK },
-    ]);
+    expect(fromFragment(fragment(hubs), hubs, WORK)).toEqual([]);
+    expect(fromFragment('#hubs=%7Bnot', [{ name: '', url: WORK }], WORK)).toEqual([]);
     expect(fromFragment('#other', [], WORK)).toBeNull();
     expect(fromFragment('', [], WORK)).toBeNull();
   });

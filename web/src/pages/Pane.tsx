@@ -75,6 +75,10 @@ const HOLD_FRAME_MS = 3000;
 // back into a tile while the host catches up.
 const frames = new Map<string, PaneContent>();
 
+export function forgetFrames() {
+  frames.clear();
+}
+
 // Pane views open; the last one gone releases the panes kept fitted.
 let views = 0;
 

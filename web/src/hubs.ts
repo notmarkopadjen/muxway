@@ -56,20 +56,26 @@ export function shownName(h: Hub): string {
 }
 
 // A list is carried to another hub in the URL's fragment, names and
-// origins only, which that page reads once into its own storage.
+// origins only. That page never takes it as it is: the entries it does
+// not know wait in the tab until the person, signed in, adds or ignores
+// each one.
 export function fragment(hubs: Hub[]): string {
   return '#hubs=' + encodeURIComponent(JSON.stringify(hubs.filter((h) => h.name)));
 }
 
+// The well shaped, named entries of a carried list that are not in the
+// list already, this hub's own among them while it has no name; nothing
+// when the address carries none.
 export function fromFragment(hash: string, current: Hub[], origin: string): Hub[] | null {
   if (!hash.startsWith('#hubs=')) return null;
   let raw: unknown;
   try {
     raw = JSON.parse(decodeURIComponent(hash.slice(6)));
   } catch {
-    return current;
+    return [];
   }
-  return normalize([...current, ...(Array.isArray(raw) ? raw : [])], origin);
+  const known = new Set(current.filter((h) => h.name || h.url !== origin).map((h) => h.url));
+  return normalize(raw, origin).filter((h) => h.name && !known.has(h.url));
 }
 
 const listeners = new Set<() => void>();
@@ -132,12 +138,76 @@ export function removeHub(url: string) {
   saveHubs(loadHubs().filter((h) => h.url !== url));
 }
 
-// Reads a list carried in the address once, then strips it.
+// Reads a list carried in the address once, then strips it. What is new
+// in it is only held, in this tab, until it is added or ignored.
 export function takeFragment() {
-  const merged = fromFragment(location.hash, loadHubs(), location.origin);
-  if (merged === null) return;
-  saveHubs(merged);
+  const found = fromFragment(location.hash, loadHubs(), location.origin);
+  if (found === null) return;
   history.replaceState(null, '', location.pathname + location.search);
+  if (!found.length) return;
+  const have = loadPending();
+  const urls = new Set(have.map((h) => h.url));
+  savePending([...have, ...found.filter((h) => !urls.has(h.url))].slice(0, MAX));
+}
+
+const PENDING = 'mx-hubs-carried';
+let pendingCache: { raw: string | null; hubs: Hub[] } | null = null;
+
+export function loadPending(): Hub[] {
+  let raw: string | null = null;
+  try {
+    raw = sessionStorage.getItem(PENDING);
+  } catch {
+    raw = null;
+  }
+  if (pendingCache && pendingCache.raw === raw) return pendingCache.hubs;
+  let parsed: unknown = null;
+  try {
+    parsed = raw ? JSON.parse(raw) : null;
+  } catch {
+    parsed = null;
+  }
+  pendingCache = { raw, hubs: normalize(parsed, location.origin).filter((h) => h.name) };
+  return pendingCache.hubs;
+}
+
+function savePending(hubs: Hub[]) {
+  try {
+    if (hubs.length) sessionStorage.setItem(PENDING, JSON.stringify(hubs));
+    else sessionStorage.removeItem(PENDING);
+  } catch {
+    /* private mode */
+  }
+  pendingCache = null;
+  listeners.forEach((fn) => fn());
+}
+
+// A carried entry the person took goes into the list, or names this hub
+// when it is this hub's own; one ignored is gone.
+export function acceptPending(url: string): string | null {
+  const h = loadPending().find((p) => p.url === url);
+  if (!h) return null;
+  if (h.url === location.origin) {
+    if (loadHubs().some((x) => x.name === h.name)) return 'that name is taken';
+    renameHub(h.url, h.name);
+  } else {
+    const problem = checkHub(h.name, h.url, loadHubs());
+    if (problem) return problem;
+    addHub(h.name, h.url);
+  }
+  ignorePending(url);
+  return null;
+}
+
+export function ignorePending(url: string) {
+  savePending(loadPending().filter((h) => h.url !== url));
+}
+
+export function usePending(): Hub[] {
+  return useSyncExternalStore((fn) => {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
+  }, loadPending);
 }
 
 export function useHubs(): Hub[] {

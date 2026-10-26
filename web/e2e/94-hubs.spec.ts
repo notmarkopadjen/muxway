@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { settled, shot, signIn } from './fixtures';
+import { settled, shot, signIn, TOKEN } from './fixtures';
 
 // Several hubs: the browser keeps other hubs as links, each hub signs the
 // person in on its own page, and nothing but names and addresses is
@@ -50,7 +50,7 @@ test('94 security: a hub address must be an https origin; nothing else is stored
   expect(raw).not.toContain('work.example.com');
 });
 
-test('94 security: a carried list drops what is ill shaped and leaves the address bar', async ({
+test('94 security: a carried list is held apart until a signed-in person adds it', async ({
   page,
 }) => {
   const carried = encodeURIComponent(
@@ -65,16 +65,51 @@ test('94 security: a carried list drops what is ill shaped and leaves the addres
   await expect(page).toHaveURL(/\/signin$/);
   expect(page.url()).not.toContain('#');
   await settled(page);
+  // Before sign-in: nothing stored, nothing a link, only a count.
   await openHubs(page);
-  await expect(page.getByTestId('hub-row')).toHaveCount(2);
-  await expect(page.getByTestId('hub-row').nth(1)).toContainText('work');
+  await expect(page.getByTestId('hub-row')).toHaveCount(1);
+  await expect(page.getByTestId('hub-go')).toHaveCount(0);
+  await expect(page.getByTestId('hub-pending-list')).toContainText('1 carried');
+  await expect(page.getByTestId('hub-pending')).toHaveCount(0);
   await expect(page.getByTestId('hubs')).not.toContainText('evil');
   await expect(page.getByTestId('hubs')).not.toContainText('plain');
   await expect(page.getByTestId('hubs')).not.toContainText('lab.example.com');
+  expect(await stored(page)).not.toContain('work.example.com');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('hubs')).toHaveCount(0);
+  await page.getByTestId('token').fill(TOKEN);
+  await page.getByTestId('token-submit').click();
+  await expect(page.getByTestId('panes')).toBeVisible({ timeout: 10_000 });
+  // Signed in: the entry is offered, still not a link, until it is added.
+  await openHubs(page);
+  await expect(page.getByTestId('hub-pending')).toHaveCount(1);
+  await expect(page.getByTestId('hub-pending')).toContainText('work');
+  await expect(page.getByTestId('hub-row')).toHaveCount(1);
+  await expect(page.getByTestId('hub-go')).toHaveCount(0);
+  expect(await stored(page)).not.toContain('work.example.com');
+  await page.getByTestId('hub-pending-add').click();
+  await expect(page.getByTestId('hub-pending-list')).toHaveCount(0);
+  await expect(page.getByTestId('hub-row')).toHaveCount(2);
+  await expect(page.getByTestId('hub-row').nth(1)).toContainText('work');
   const raw = await stored(page);
+  expect(raw).toContain(WORK);
   expect(raw).not.toContain('javascript');
   expect(raw).not.toContain('http://');
   expect(raw).not.toContain('lab.example.com');
+});
+
+test('94 security: an ignored carried entry leaves nothing behind', async ({ page }) => {
+  await signIn(page);
+  await page.goto('/#hubs=' + encodeURIComponent(JSON.stringify([{ name: 'work', url: WORK }])));
+  await expect(page.getByTestId('panes')).toBeVisible();
+  expect(page.url()).not.toContain('#');
+  await openHubs(page);
+  await expect(page.getByTestId('hub-pending')).toHaveCount(1);
+  await page.getByTestId('hub-pending-ignore').click();
+  await expect(page.getByTestId('hub-pending-list')).toHaveCount(0);
+  await expect(page.getByTestId('hub-row')).toHaveCount(1);
+  expect(await stored(page)).not.toContain('work.example.com');
+  expect(await page.evaluate(() => sessionStorage.getItem('mx-hubs-carried'))).toBeNull();
 });
 
 test('94 security: going to another hub carries no cookie and no referrer', async ({ page }) => {
@@ -117,20 +152,24 @@ test('94 two hubs: go, sign in there, come back; each page keeps its own session
   await page.getByTestId('hub-go').click();
   await expect(page).toHaveURL(`${HUB2}/signin`);
   await settled(page);
+  await page.getByTestId('token').fill(HUB2_TOKEN);
+  await page.getByTestId('token-submit').click();
+  await expect(page.getByTestId('panes')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('who')).toContainText('work-browser');
+  // The carried list waits there until it is taken: this hub's own name
+  // and the link back.
   await openHubs(page);
+  await expect(page.getByTestId('hub-pending')).toHaveCount(2);
+  await expect(page.getByTestId('hub-pending').nth(0)).toContainText('work');
+  await expect(page.getByTestId('hub-pending').nth(1)).toContainText('home');
+  await page.getByTestId('hub-pending-add').first().click();
+  await page.getByTestId('hub-pending-add').click();
   const rows = page.getByTestId('hub-row');
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0)).toContainText('work');
   await expect(rows.nth(0)).toContainText('here');
   await expect(rows.nth(1)).toContainText('home');
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('hubs')).toHaveCount(0);
-  await page.getByTestId('token').fill(HUB2_TOKEN);
-  await page.getByTestId('token-submit').click();
-  await expect(page.getByTestId('panes')).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByTestId('who')).toContainText('work-browser');
   await expect(page.getByTestId('hub-here')).toHaveText('work');
-  await openHubs(page);
   await page.getByTestId('hub-go').click();
   await expect(page.getByTestId('panes')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByTestId('who')).toContainText('browser');

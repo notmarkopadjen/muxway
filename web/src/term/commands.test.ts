@@ -4,6 +4,7 @@ import {
   commandsFor,
   forgetRecent,
   isShell,
+  looksSecret,
   RECENT_MAX,
   recentLines,
   remember,
@@ -50,6 +51,27 @@ group('commands', () => {
     expect(last.text).toBe(long);
     expect(last.label.length).toBe(24);
     expect(last.label.endsWith('…')).toBe(true);
+  });
+
+  it('does not keep a line that looks like it carries a secret', () => {
+    for (const line of [
+      'curl -H "Authorization: Bearer abc" https://hub.example.com',
+      'muxway hub token create alice',
+      'echo mxt_abcdef',
+      'mysql -u root --password=hunter2',
+      'cat /etc/passwd',
+      'vault read secret/db',
+      'export API_KEY=abc',
+      'OPENAI_API_KEY=abc node x.js',
+      'FOO=bar make',
+      ' export  HOME_DIR=/tmp ls',
+    ])
+      expect(looksSecret(line), line).toBe(true);
+    for (const line of ['make test', 'git log --oneline', 'ls -la', 'echo a=b', 'cd notes'])
+      expect(looksSecret(line), line).toBe(false);
+    remember('export API_KEY=abc');
+    remember('make test');
+    expect(recentLines()).toEqual(['make test']);
   });
 
   it('keeps a bounded list and drops a line too long to be a command', () => {

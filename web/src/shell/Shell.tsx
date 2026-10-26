@@ -9,7 +9,7 @@ import { PaneTitle } from '../components/PaneTitle';
 import { label } from '../term/describe';
 import { useHeading } from './heading';
 import type { Event } from '../api/types';
-import { useSession } from '../auth/session';
+import { forgetLocal, useSession } from '../auth/session';
 import { GLYPH } from '../components/Badge';
 import { useToast } from '../components/Toast';
 import { cycleTheme, getNotify, toggleMotion, useSettings } from '../settings';
@@ -132,6 +132,7 @@ export function Shell() {
       onUnauthorized(() => {
         if (location.pathname === '/signin') return;
         qc.clear();
+        forgetLocal();
         navigate({ to: '/signin' });
       }),
     [location.pathname, navigate, qc],
@@ -229,7 +230,7 @@ export function Shell() {
         </span>
       </footer>
       {help && <Help onClose={() => setHelp(false)} />}
-      {hubsOpen && <Hubs onClose={() => setHubsOpen(false)} />}
+      {hubsOpen && <Hubs signedIn={signedIn} onClose={() => setHubsOpen(false)} />}
       {palette && <Palette onClose={() => setPalette(false)} />}
     </>
   );

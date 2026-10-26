@@ -1,7 +1,16 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
-import { api } from '../api/client';
+import { api, forgetCached } from '../api/client';
 import { keys, useMe } from '../api/queries';
+import { forgetFrames } from '../pages/Pane';
+import { forgetRecent } from '../term/commands';
+
+// What the browser kept of the session's content goes with it.
+export function forgetLocal() {
+  forgetCached();
+  forgetFrames();
+  forgetRecent();
+}
 
 // Who is signed in, from the hub; the token itself never stays in the page.
 export function useSession() {
@@ -17,6 +26,7 @@ export function useSession() {
   const logout = useCallback(async () => {
     await api<void>('/v1/auth/logout', { method: 'POST' });
     qc.clear();
+    forgetLocal();
   }, [qc]);
   return { me: me.data, loading: me.isPending, signedIn: !!me.data, signInWithToken, logout };
 }

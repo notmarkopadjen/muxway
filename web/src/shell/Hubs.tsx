@@ -1,22 +1,27 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Box } from '../components/Box';
 import {
+  acceptPending,
   addHub,
   checkHub,
   fragment,
+  ignorePending,
   removeHub,
   renameHub,
   shownName,
   useHubs,
+  usePending,
   HUB_NAME,
 } from '../hubs';
 
 // The hubs box: the hubs this browser knows, the current one marked, and
 // a plain link to each other one. Going there is a navigation to that
 // hub's own page and sign-in; the list goes along in the fragment when
-// asked, nothing else does.
-export function Hubs({ onClose }: { onClose: () => void }) {
+// asked, nothing else does. A list carried here in a link is shown apart
+// until the person, signed in, adds or ignores each entry.
+export function Hubs({ signedIn, onClose }: { signedIn: boolean; onClose: () => void }) {
   const hubs = useHubs();
+  const pending = usePending();
   const here = location.origin;
   const [name, setName] = useState('');
   const [url, setUrl] = useState('https://');
@@ -113,6 +118,41 @@ export function Hubs({ onClose }: { onClose: () => void }) {
               </li>
             ))}
           </ul>
+          {pending.length > 0 && (
+            <div className="mx-hub-pending" data-testid="hub-pending-list">
+              <p className="mx-dim mx-hub-note">
+                {signedIn
+                  ? 'carried in the link you opened, not in your list until you add them:'
+                  : `${pending.length} carried in the link you opened; sign in to add or ignore them.`}
+              </p>
+              {signedIn && (
+                <ul className="mx-hubs">
+                  {pending.map((h) => (
+                    <li key={h.url} data-testid="hub-pending" data-url={h.url}>
+                      <span className="mx-hub-mark">?</span>
+                      <span className="mx-hub-name">{h.name}</span>
+                      <span className="mx-hub-url">{h.url}</span>
+                      <button
+                        type="button"
+                        title={h.url === here ? 'take this name for this hub' : 'add as a link'}
+                        data-testid="hub-pending-add"
+                        onClick={() => setError(acceptPending(h.url) ?? '')}
+                      >
+                        {h.url === here ? 'name' : 'add'}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="hub-pending-ignore"
+                        onClick={() => ignorePending(h.url)}
+                      >
+                        ignore
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           <form className="mx-hub-add" onSubmit={add}>
             <input
               ref={field}
