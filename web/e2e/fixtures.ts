@@ -1,4 +1,10 @@
-import { expect, type APIRequestContext, type Page, type TestInfo } from '@playwright/test';
+import {
+  expect,
+  type APIRequestContext,
+  type Locator,
+  type Page,
+  type TestInfo,
+} from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -83,4 +89,16 @@ export async function profile(
 ) {
   await page.getByTestId('who').click();
   await page.getByTestId(item).click();
+}
+
+// A window over the page powers on; wait for that before measuring it.
+export async function opened(target: Locator) {
+  await expect(target).toBeVisible();
+  await target.evaluate((el) =>
+    Promise.all(
+      [el, ...el.querySelectorAll('*')]
+        .flatMap((e) => e.getAnimations())
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
 }

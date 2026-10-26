@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { control, HOST, settled, shot, signIn, SHELL0 } from './fixtures';
+import { control, HOST, opened, settled, SHELL0, shot, signIn } from './fixtures';
 
 // The keyboard: an icon right of the input line opens a window with a
 // full terminal board that sends each click to the focused pane. The pane
@@ -78,6 +78,7 @@ test('102 the keyboard sends every key as the terminal would', async ({ page, re
   await expect(page.getByText('Ctrl or Alt with ; cannot reach a pane')).toBeVisible();
 
   // The bar drags the window, _ folds it, Esc closes it.
+  await opened(board);
   const at = (await board.boundingBox())!;
   const bar = (await page.getByTestId('keyboard-bar').boundingBox())!;
   await page.mouse.move(bar.x + 60, bar.y + bar.height / 2);
@@ -107,6 +108,7 @@ test('102 on a phone the keyboard takes the bottom of the screen', async ({ page
   await page.goto(`/p/${SHELL0}`);
   await settled(page);
   await page.getByTestId('keyboard-open').click();
+  await opened(page.getByTestId('keyboard'));
   const b = (await page.getByTestId('keyboard').boundingBox())!;
   expect(Math.round(b.x)).toBe(0);
   expect(Math.round(b.width)).toBe(412);

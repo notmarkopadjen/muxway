@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { paneLoaded, shot, signIn } from './fixtures';
+import { opened, paneLoaded, shot, signIn } from './fixtures';
 
 test('48 keyboard: j k Enter Esc / i t m ?', async ({ page }, info) => {
   await signIn(page);
@@ -47,6 +47,7 @@ test('48 keyboard: j k Enter Esc / i t m ?', async ({ page }, info) => {
 
 // An overlay's title sits on its box's top edge: nothing may clip or cover it.
 async function titleShows(page: import('@playwright/test').Page, overlay: string) {
+  await opened(page.getByTestId(overlay));
   const title = page.getByTestId(overlay).locator('.mx-box-title').first();
   await expect(title).toBeVisible();
   const ok = await title.evaluate((el) => {
