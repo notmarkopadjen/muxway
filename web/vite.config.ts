@@ -12,5 +12,5 @@ export default defineConfig({
     port: 5173,
     proxy: { '/v1': { target: 'https://127.0.0.1:7600', secure: false } },
   },
-  test: { environment: 'node', include: ['src/**/*.test.ts'] },
+  test: { environment: 'node', include: ['src/**/*.test.{ts,tsx}'] },
 });

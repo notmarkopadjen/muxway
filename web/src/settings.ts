@@ -65,6 +65,18 @@ export function cycleTheme(): Theme {
   setTheme(next);
   return next;
 }
+// How a Markdown file is shown in the file window: rendered, or as its source.
+export type PreviewView = 'rendered' | 'plain';
+export function getPreview(): PreviewView {
+  return read('mx-preview') === 'plain' ? 'plain' : 'rendered';
+}
+export function setPreview(v: PreviewView) {
+  write('mx-preview', v);
+}
+export function usePreview(): PreviewView {
+  return useSyncExternalStore(subscribe, getPreview, getPreview);
+}
+
 export function getMotion(): boolean {
   return read('mx-motion') !== 'off';
 }

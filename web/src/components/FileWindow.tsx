@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '../api/client';
 import { previewFile, readFile } from '../api/queries';
+import { setPreview, usePreview } from '../settings';
+import { languageOf } from '../term/code';
+import { Code, render } from '../term/markdown';
 import { size } from './InputPanel';
 
 // A file of the host, shown in a window over the page: an image as
@@ -26,8 +29,22 @@ type Got =
   | { url: string; bytes: number; kind: 'text'; text: string; cut: boolean }
   | { error: string };
 
-export function FileWindow({ shown, onClose }: { shown: Shown; onClose: () => void }) {
+export function FileWindow({
+  shown,
+  onClose,
+  onFile,
+  onPath,
+}: {
+  shown: Shown;
+  onClose: () => void;
+  onFile?: (name: string) => void;
+  onPath?: (path: string) => void;
+}) {
   const [got, setGot] = useState<Got | null>(null);
+  const view = usePreview();
+  const name = fileNameOf(shown);
+  const markdown = /\.(md|markdown)$/i.test(name);
+  const lang = languageOf(name);
   const key = 'name' in shown ? `n:${shown.name}` : `p:${shown.path}`;
   useEffect(() => {
     let url: string | undefined;
@@ -95,6 +112,28 @@ export function FileWindow({ shown, onClose }: { shown: Shown; onClose: () => vo
               {lines ? ` · ${lines} lines` : ''}
             </span>
           )}
+          {markdown && got && 'kind' in got && got.kind === 'text' && (
+            <span className="mx-picture-view" data-testid="picture-view" data-view={view}>
+              <button
+                type="button"
+                className={view === 'rendered' ? 'on' : undefined}
+                onClick={() => setPreview('rendered')}
+                title="the file rendered"
+                data-testid="picture-rendered"
+              >
+                rendered
+              </button>
+              <button
+                type="button"
+                className={view === 'plain' ? 'on' : undefined}
+                onClick={() => setPreview('plain')}
+                title="the file as it is"
+                data-testid="picture-plain"
+              >
+                plain
+              </button>
+            </span>
+          )}
           {got && 'url' in got && (
             <a
               className="mx-picture-download"
@@ -129,6 +168,18 @@ export function FileWindow({ shown, onClose }: { shown: Shown; onClose: () => vo
             <span className="mx-dim" data-testid="picture-binary">
               no preview for this type; ⤓ downloads it
             </span>
+          ) : got.kind === 'text' && markdown && view === 'rendered' ? (
+            <div className="mx-picture-text mx-md" data-testid="picture-rendered-body">
+              {render(got.text, { onFile, onPath })}
+              {got.cut ? <p className="mx-dim">… cut at 1 MiB; the download has the rest</p> : null}
+            </div>
+          ) : got.kind === 'text' && lang ? (
+            <div className="mx-picture-text" data-testid="picture-text" data-lang={lang}>
+              <Code
+                lang={lang}
+                text={got.text + (got.cut ? '\n… cut at 1 MiB; the download has the rest\n' : '')}
+              />
+            </div>
           ) : got.kind === 'text' ? (
             <pre className="mx-picture-text" data-testid="picture-text">
               {got.text}

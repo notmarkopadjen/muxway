@@ -131,7 +131,7 @@ describe('findPaths', () => {
       'README.md',
       'notes.txt in the dir',
       'docs/plans/x.md.bak',
-      'bin/run.sh',
+      'bin/run.exe',
       'keys/agent.key',
       'a/b.mdx',
       'docs/plans/x.md5',

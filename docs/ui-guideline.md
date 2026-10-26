@@ -185,7 +185,7 @@ The same action on every client, triggered the way the device does it.
 | a new session on a host | `+ session`, `S`; the selector lists it | `+ session` | — |
 | a command of the row | click | tap | — |
 | open a link printed in a pane | click | tap | — |
-| see a file printed in a pane (inbox, or under the host's preview roots) | click: a window over the page with `⤓` download, `Esc` closes | tap: a sheet | — |
+| see a file printed in a pane (inbox, or under the host's preview roots) | click: a window over the page with `⤓` download, `Esc` closes; Markdown rendered with a `rendered` / `plain` switch, code with its colours (web) | tap: a sheet | — |
 | a new line in the input | `Shift+Enter` | `Shift+Enter` on a hardware keyboard | — |
 | take a completion | `Tab`, click | tap | — |
 | focus the input line, leave it | `i`, `Esc` | tap, back | — |

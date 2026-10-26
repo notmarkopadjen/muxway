@@ -512,7 +512,14 @@ export function WindowPage() {
         )}
       </div>
       <Closing open={showing && !!shown}>
-        {shown && <FileWindow shown={shown} onClose={hide} />}
+        {shown && (
+          <FileWindow
+            shown={shown}
+            onClose={hide}
+            onFile={(name) => show({ address: shown.address, name })}
+            onPath={previews ? (path) => show({ address: shown.address, path }) : undefined}
+          />
+        )}
       </Closing>
       <InputPanel
         pane={focusedPane}

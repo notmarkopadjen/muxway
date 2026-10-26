@@ -87,7 +87,7 @@ func TestSec141_OnlyAFileUnderARootIsServed(t *testing.T) {
 	e, root, _ := previewEnv(t, "ROOT")
 	full := e.token("full", []string{host + "/*"}, []string{host + "/*"})
 	for _, path := range []string{
-		"../../elsewhere/o.txt", "/etc/passwd", "../link.txt", "../.env", "../.git/config", "../run.sh",
+		"../../elsewhere/o.txt", "/etc/passwd", "../link.txt", "../.env", "../.git/config",
 		"../key.pem", "plans", "..", "nothere.md", "~/notes/todo.txt", filepath.Join(root, "..", "elsewhere", "o.txt"),
 	} {
 		r := e.preview(full, shell0, path)
@@ -142,6 +142,7 @@ func TestFlow143_PathsResolveFromThePaneAndHome(t *testing.T) {
 		{filepath.Join(root, "docs", "plans", "a.md"), "text/plain; charset=utf-8", "# plan a\n\nhello\n"},
 		{"shot.png", "image/png", string(png2)},
 		{"page.html", "text/plain; charset=utf-8", "<script>alert(1)</script>"},
+		{"../run.sh", "text/plain; charset=utf-8", "#!/bin/sh\n"},
 		{"~/notes/todo.txt", "text/plain; charset=utf-8", "todo"},
 	} {
 		r := e.preview(full, shell0, c.path)

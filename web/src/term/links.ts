@@ -55,7 +55,7 @@ export function findFiles(line: string): FileLink[] {
 // characters with a slash in it, or from ~, ending in one of the
 // extensions the host previews. Where it leads is the host's to say.
 const path =
-  /(?<![\w./~-])((?:~|\.{1,2})?(?:\/[\w.@+-]+)+|(?:[\w.@+-]+\/)+[\w.@+-]+)\.(?:txt|md|markdown|csv|tsv|json|log|ya?ml|toml|ini|xml|html|png|jpe?g|gif|webp|pdf)(?!\.?[\w/-])/gi;
+  /(?<![\w./~-])((?:~|\.{1,2})?(?:\/[\w.@+-]+)+|(?:[\w.@+-]+\/)+[\w.@+-]+)\.(?:txt|md|markdown|csv|tsv|json|log|ya?ml|toml|ini|xml|html|png|jpe?g|gif|webp|pdf|js|jsx|ts|tsx|cs|go|py|rb|rs|java|kt|kts|c|h|cpp|hpp|sh|bash|zsh|fish|sql|css|scss|less)(?!\.?[\w/-])/gi;
 
 export type PathLink = [start: number, end: number, path: string];
 

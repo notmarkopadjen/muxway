@@ -32,6 +32,8 @@ test('83 a printed path opens the file over the page; text, size, lines, downloa
   const picture = page.getByTestId('picture');
   await expect(picture).toBeVisible();
   await expect(page.getByTestId('picture-name')).toHaveText('plans/a.md');
+  // Markdown opens rendered (spec 86); the source is a click away.
+  await page.getByTestId('picture-plain').click();
   await expect(page.getByTestId('picture-text')).toContainText('# plan a');
   await expect(page.getByTestId('picture-text')).toContainText('- two');
   await expect(page.getByTestId('picture-size')).toContainText('6 lines');
@@ -100,10 +102,14 @@ test('83 security: what the host refuses says so; a click sends no input; reader
     text: `echo ../.env ../.secrets.json ../run.sh /etc/passwd ../../nothere.md end-of-list`,
   });
   await expect(screen).toContainText('end-of-list', { timeout: 5000 });
-  // A script and a file without a shown extension are never links; a hidden
-  // file and a path outside the root are, and the host says no to both.
-  await expect(screen.locator('a.mx-path-link[data-path="../run.sh"]')).toHaveCount(0);
+  // A file without a shown extension is never a link; a hidden file and a
+  // path outside the root are, and the host says no to both; a script is
+  // shown as text, never run.
   await expect(screen.locator('a.mx-path-link[data-path="/etc/passwd"]')).toHaveCount(0);
+  await screen.locator('a.mx-path-link[data-path="../run.sh"]').last().click();
+  await expect(page.getByTestId('picture-text')).toContainText('#!/bin/sh');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('picture')).toHaveCount(0, { timeout: 3000 });
   await expect(screen.locator('a.mx-path-link[data-path="../.env"]')).toHaveCount(0);
   for (const p of ['../.secrets.json', '../../nothere.md']) {
     await screen.locator(`a.mx-path-link[data-path="${p}"]`).last().click();
@@ -130,7 +136,7 @@ test('83 security: what the host refuses says so; a click sends no input; reader
   await page.waitForTimeout(1200);
   const inputs = watchInput(page);
   await screen.locator('a.mx-path-link[data-path="plans/a.md"]').last().click();
-  await expect(page.getByTestId('picture-text')).toContainText('# plan a');
+  await expect(page.getByTestId('picture-rendered-body')).toContainText('plan a');
   await page.waitForTimeout(800);
   expect(inputs).toEqual([]);
   await page.keyboard.press('Escape');

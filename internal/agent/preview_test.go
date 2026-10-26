@@ -36,6 +36,7 @@ func TestResolvePreview(t *testing.T) {
 		"../docs/plans/a.md":                   "text/plain; charset=utf-8",
 		filepath.Join(root, "docs/plans/a.md"): "text/plain; charset=utf-8",
 		"shot.PNG":                             "image/png",
+		"../run.sh":                            "text/plain; charset=utf-8",
 		"~/notes/todo.txt":                     "text/plain; charset=utf-8",
 	}
 	for path, typ := range good {
@@ -46,7 +47,7 @@ func TestResolvePreview(t *testing.T) {
 	}
 	bad := []string{
 		"", "../../elsewhere/o.txt", filepath.Join(other, "o.txt"), "../link.txt", "../dir/o.txt",
-		"../.env", "../.git/config", "../run.sh", "../key.pem", "plans", "..", "nothere.md",
+		"../.env", "../.git/config", "../key.pem", "plans", "..", "nothere.md",
 		"plans/a.md\n", strings.Repeat("a/", 600) + "a.md", "~/../elsewhere/o.txt", "/etc/passwd",
 	}
 	for _, path := range bad {

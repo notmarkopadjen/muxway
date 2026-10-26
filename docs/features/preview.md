@@ -19,12 +19,29 @@ muxway agent run --preview ~/work --preview ~/notes
 In the browser, on a writable pane of that host, a run of text that
 looks like a path, with a slash in it or from `~`, and ends in one of
 `txt md markdown csv tsv json log yaml yml toml ini xml html png jpg
-jpeg gif webp pdf`, is underlined. A click opens the window: the bar has
+jpeg gif webp pdf` or a source type (`js jsx ts tsx cs go py rb rs java
+kt kts c h cpp hpp sh bash zsh fish sql css scss less`, shown as text,
+never run), is underlined. A click opens the window: the bar has
 the path, the size, for a text its line count, `⤓` and `×`; `Escape`,
 `×` or a click outside closes it. A relative path is taken from the
 directory the pane's shell is in, `~` from the agent's home. What the
 host will not serve, a hidden file, a path outside the roots, a missing
-file, says `the host does not preview this file`. A click on the link
+file, says `the host does not preview this file`.
+
+A Markdown file opens **rendered**: headings, lists, quotes, tables,
+rules, emphasis, inline code, fenced code with its colours, web links
+and the host's file paths as links; `plain` in the bar shows the source
+instead, and the choice is remembered by the browser for every Markdown
+file. The rendering builds elements from the parsed text and never from
+HTML, so a tag or a script in a file is shown as the text it is. Code
+files show with their colours: comments dim, strings and numbers in the
+accent, keywords bold, keys and tags bright, from a small scanner per
+language (JSON, YAML, TOML, JavaScript, TypeScript, C#, Go, Python,
+shell, SQL, Rust, Java, Kotlin, C and C++, HTML and XML, CSS); a
+language it does not know is shown plain.
+
+![a plan rendered over the pane](images/web-preview-rendered.png)
+![code with its colours](images/web-preview-code.png) A click on the link
 is not a click on the pane, mouse mode or not. On a host without roots
 nothing is underlined but inbox paths and web addresses. Text beyond
 1 MiB is left to the download.
@@ -80,3 +97,9 @@ from panes to files, by the owner's explicit decision (2026-10-26):
   per principal.
 - **Audit** on hub and agent: who, pane, the path as asked and as
   resolved, the size, the result. Never the content.
+- **Rendering** is the only surface in the browser: the Markdown
+  renderer emits elements from its own parse, never raw HTML, and the
+  only links it makes are web addresses and the host's paths under the
+  rules above, with `rel="noopener noreferrer"`; the code scanner only
+  classifies runs of text. Scripts among the previewed types are read
+  and shown, never run.

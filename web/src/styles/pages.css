@@ -1485,6 +1485,128 @@ button.mx-window:focus-visible {
   tab-size: 4;
   justify-self: start;
 }
+.mx-picture-view button {
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--mx-ink-dim);
+}
+.mx-picture-view button.on {
+  color: var(--mx-ink);
+  border-color: var(--mx-ink);
+}
+/* code with its colours, in the window and in rendered Markdown */
+.mx-code {
+  margin: 0;
+  font: inherit;
+  white-space: pre;
+  tab-size: 4;
+}
+.mx-code .k-comment {
+  color: var(--mx-ink-dim);
+  font-style: italic;
+}
+.mx-code .k-string {
+  color: var(--mx-accent);
+}
+.mx-code .k-number {
+  color: var(--mx-accent);
+}
+.mx-code .k-keyword {
+  color: var(--mx-ink);
+  font-weight: bold;
+}
+.mx-code .k-name {
+  color: var(--mx-ink);
+  text-shadow: var(--mx-glow-text-strong);
+}
+.mx-code .k-punct {
+  color: var(--mx-ink-dim);
+}
+/* Markdown rendered: the terminal's type, headings in the pixel face */
+.mx-md {
+  white-space: normal;
+  line-height: 1.5;
+}
+.mx-md h1,
+.mx-md h2,
+.mx-md h3,
+.mx-md h4,
+.mx-md h5,
+.mx-md h6 {
+  margin: 1em 0 0.4em;
+  font-family: var(--mx-pixel);
+  font-weight: normal;
+  color: var(--mx-accent);
+  text-shadow: var(--mx-glow-text-strong);
+}
+.mx-md h1 {
+  font-size: 1.3em;
+}
+.mx-md h2 {
+  font-size: 1.15em;
+}
+.mx-md h3,
+.mx-md h4,
+.mx-md h5,
+.mx-md h6 {
+  font-size: 1em;
+}
+.mx-md h1:first-child,
+.mx-md h2:first-child {
+  margin-top: 0;
+}
+.mx-md p {
+  margin: 0 0 0.8em;
+}
+.mx-md ul,
+.mx-md ol {
+  margin: 0 0 0.8em;
+  padding-left: 2ch;
+}
+.mx-md li > ul,
+.mx-md li > ol {
+  margin-bottom: 0;
+}
+.mx-md blockquote {
+  margin: 0 0 0.8em;
+  padding-left: 1ch;
+  border-left: 2px solid var(--mx-ink-dim);
+  color: var(--mx-ink-dim);
+}
+.mx-md code {
+  padding: 0 0.3ch;
+  color: var(--mx-accent);
+  background: var(--mx-bg-raised);
+}
+.mx-md .mx-code {
+  margin: 0 0 0.8em;
+  padding: 4px 1ch;
+  border: 1px solid var(--mx-ink-faint);
+  overflow-x: auto;
+}
+.mx-md table {
+  margin: 0 0 0.8em;
+  border-collapse: collapse;
+}
+.mx-md th,
+.mx-md td {
+  padding: 1px 1ch;
+  border: 1px solid var(--mx-ink-faint);
+  text-align: left;
+}
+.mx-md th {
+  color: var(--mx-accent);
+}
+.mx-md hr {
+  margin: 0.8em 0;
+  border: 0;
+  border-top: 1px solid var(--mx-ink-dim);
+}
+.mx-md a {
+  color: var(--mx-accent);
+  text-decoration: underline dotted;
+}
 .mx-picture-download {
   padding: 0 6px;
   font-size: 12px;
