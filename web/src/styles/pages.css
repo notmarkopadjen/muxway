@@ -1136,6 +1136,22 @@ button.mx-window:focus-visible {
   color: var(--mx-warn);
   text-shadow: 0 0 8px var(--mx-warn);
 }
+/* When the head is too narrow the pane's name keeps its place: the
+   attention text goes first, then the address, then the status. */
+.mx-tile-head > .mx-title {
+  flex: 0 1 auto;
+  min-width: 7em;
+}
+.mx-tile-head > .mx-dim,
+.mx-tile-head > .mx-attention {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 4;
+}
+.mx-tile-head > .mx-attention {
+  flex-shrink: 8;
+}
 .mx-tile-head .mx-spacer {
   flex: 1;
 }
