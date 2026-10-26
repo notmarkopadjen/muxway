@@ -173,9 +173,9 @@ The features: [web client](docs/features/web-client.md),
 | [**muxway-glasses-even**](https://github.com/notmarkopadjen/muxway-glasses-even) | Even Realities G2: the pane list at a glance, a pane through the Claude Code lens, a banner when it needs you, and a reply from a fixed set or by voice. | On the Even Hub: to be provided. Until then, pack it yourself |
 | [**muxway-midp**](https://github.com/notmarkopadjen/muxway-midp) | Java ME, MIDP 1.0 and 2.0: list, read, reply and send keys from a Nokia 6310i over GPRS, through a small relay. | [Latest JARs](https://github.com/notmarkopadjen/muxway-midp/releases/latest): MIDP 2.0 and MIDP 1.0 |
 
-| Even Realities G2: Claude Code through the lens | Nokia 6310i, 96 by 65 pixels: the same pane |
+| Even Realities G2: Claude Code through the lens | Nokia 6310i, 96 by 65 pixels: the same lens |
 |---|---|
-| <img src="docs/images/glasses.png" alt="Claude Code through the lens on the glasses" width="576"> | <img src="docs/images/midp.png" alt="Claude Code through the lens on a 96 by 65 pixel phone" width="226"> |
+| <img src="docs/images/glasses.png" alt="Claude Code through the lens on the glasses" width="576"> | <img src="docs/images/midp.jpg" alt="A Nokia 6310i held in front of a laptop, Claude Code through the lens on its screen" width="226"> |
 
 The clients are one product: [docs/ui-guideline.md](docs/ui-guideline.md)
 says what every client shows and which key or gesture does what.
