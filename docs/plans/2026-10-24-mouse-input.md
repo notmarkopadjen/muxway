@@ -37,7 +37,7 @@ sequenceDiagram
     H->>H: write grant? mark? button known? cell within width×height?
     H->>A: input mouse left 39 9
     A->>A: mouse mode on? else bad_input
-    A->>T: send-keys -l ESC[<0;39;9M ESC[<0;39;9m
+    A->>T: send-keys -l, the SGR press and release reports for button 0 at 39, 9
     A-->>H: ok
     H-->>C: 204
 ```

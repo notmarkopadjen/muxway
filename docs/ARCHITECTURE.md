@@ -117,7 +117,7 @@ sequenceDiagram
     participant A as Agent
     O->>H: muxway hub pair-code --host alice-laptop
     H-->>O: code: hub URL, hub public key, code id, secret (10 min, single use)
-    O->>A: muxway agent pair <code>
+    O->>A: muxway agent pair CODE
     A->>A: create agent key
     A->>H: POST /v1/pair: alias, agent public key, HMAC(secret, alias + key)
     H->>H: check code, 3 attempts at most, then burn it

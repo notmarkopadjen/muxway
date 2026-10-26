@@ -78,10 +78,10 @@ sequenceDiagram
     participant E as scripts/e2e.sh
     participant GH as GitHub
     CI->>E: run suite
-    E-->>CI: test-runs/<id>/ (summary, results.xml, logs, screens, traces)
+    E-->>CI: test-runs/ID/ (summary, results.xml, logs, screens, traces)
     CI->>GH: upload run directory as artifact
     CI->>GH: check run from results.xml
-    CI->>GH: issue "Run <id>: result @ commit" (closed if passed)
+    CI->>GH: issue "Run ID: result @ commit" (closed if passed)
 ```
 
 ### The suite's contract

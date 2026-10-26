@@ -128,7 +128,7 @@ sequenceDiagram
     H-->>C: pane work/1.0 has attention {kind: permission}
     C->>H: POST /v1/panes/.../input {"text":"y"}
     H->>A: input %3
-    A->>A: typed; attention cleared
+    A->>A: typed, attention cleared
 ```
 
 **Dependencies.** None new.

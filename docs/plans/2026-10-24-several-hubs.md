@@ -62,10 +62,10 @@ as on the web; a single hub looks as it does today.
 ```mermaid
 flowchart LR
     L[hubs list] -->|go / use| S{page or app of that hub}
-    S -->|web| N[navigate to its URL; its own sign-in and cookie]
-    S -->|android| T[its own token from the vault; API rebuilt]
-    L -->|add| V[check the URL's shape; store name and URL]
-    L -->|remove| R[entry gone; android: token gone too]
+    S -->|web| N["navigate to its URL; its own sign-in and cookie"]
+    S -->|android| T["its own token from the vault; API rebuilt"]
+    L -->|add| V["check the URL's shape; store name and URL"]
+    L -->|remove| R["entry gone; android: token gone too"]
 ```
 
 ## 3. Protocol and API changes

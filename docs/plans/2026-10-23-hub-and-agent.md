@@ -42,7 +42,7 @@ sequenceDiagram
     participant A as Agent
     O->>H: muxway hub pair-code --host alice-laptop
     H-->>O: code (url, hub public key, secret), 10 min, single use
-    O->>A: muxway agent pair <code>
+    O->>A: muxway agent pair CODE
     A->>H: register(alias, agent public key, HMAC(secret, agent key))
     H-->>A: ok, signed by hub key
     A->>A: pin hub public key

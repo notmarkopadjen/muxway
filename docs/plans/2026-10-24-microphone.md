@@ -32,7 +32,7 @@ sequenceDiagram
     participant C as Client
     participant H as Hub
     C->>H: GET /v1/transcribe (once per sign-in)
-    H-->>C: 204 → the button shows; 404 → it does not
+    H-->>C: 204 → the button shows, 404 → it does not
     P->>C: ◉ (or v)
     C->>C: mic opens, 16 kHz mono PCM kept in memory, meter drawn
     P->>C: ■ (or v, or 60 s)

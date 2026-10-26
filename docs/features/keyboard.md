@@ -61,7 +61,7 @@ sequenceDiagram
     H->>A: input
     A->>A: the key grammar again, tmux's name for it
     A->>T: send-keys -t %3 C-M-DC
-    T-->>A: ESC [3;7~ to the program
+    T-->>A: ESC [3 (semicolon) 7~ to the program
     A-->>H: ok, audit line
     H-->>K: 204
 ```

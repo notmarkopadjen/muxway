@@ -46,7 +46,7 @@ sequenceDiagram
     C->>H: POST /v1/panes/{address}/files (multipart: file)
     H->>H: write grant? type allowed? ≤ 8 MiB? sniffed type agrees? one per 2 s?
     H->>A: file {pane, type, data}
-    A->>A: inbox enabled? writable pane? checks again; room? write 0600 as <stamp>-<random>.png
+    A->>A: inbox enabled? writable pane? checks again, room? write 0600 as stamp-random.png
     A-->>H: {path}
     H-->>C: 201 {"path", "bytes"}
     C->>C: path on the input line, a space after, focus

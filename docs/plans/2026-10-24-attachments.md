@@ -30,7 +30,7 @@ sequenceDiagram
     C->>H: POST /v1/panes/{address}/files (multipart: file)
     H->>H: write grant? type allowed? ≤ 8 MiB? sniffed type agrees? rate?
     H->>A: OpFile {pane, type, bytes (base64)}
-    A->>A: inbox enabled? room? write 0600 as <stamp>-<random>.png
+    A->>A: inbox enabled? room? write 0600 as stamp-random.png
     A-->>H: {path}
     H-->>C: {"path": "/home/alice/.local/share/muxway/inbox/20261024-k3j9xq.png", "bytes": 48213}
     C->>C: path on the input line, a space after, focus

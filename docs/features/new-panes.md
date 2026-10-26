@@ -44,7 +44,7 @@ sequenceDiagram
     C->>H: POST /v1/windows/{host}/{session}/{window}/panes {"direction": "v"}
     H->>H: a pane in the window the principal may type into?
     H->>A: split {pane, direction}
-    A->>A: split-window; copy a pane-level mark
+    A->>A: split-window, copy a pane-level mark
     A-->>H: the new pane as listed
     H->>H: write grant covers its address? else kill-pane
     H-->>C: 201 {"pane": {...}}
