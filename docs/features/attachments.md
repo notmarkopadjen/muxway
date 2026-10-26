@@ -33,9 +33,9 @@ The types: PNG, JPEG, GIF and WebP images, PDF, plain text, Markdown and
 JSON, up to 8 MiB each. Files are kept a day. On a host whose agent runs
 without `--inbox` there is no `⇪`, and a paste or a drop answers with a
 toast, `no inbox on alice-laptop: its agent needs --inbox`, and sends
-nothing. The Android client does not take files yet
-([muxway-android#11](https://github.com/notmarkopadjen/muxway-android/issues/11)
-is the plan: the system picker, and *share* into a pane).
+nothing. On Android an image pasted into the line, a file picked with
+`⇪` or one shared to muxway lands the same way; see [the Android
+page](https://github.com/notmarkopadjen/muxway-android/blob/main/docs/features/attachments.md).
 
 ## How it works
 

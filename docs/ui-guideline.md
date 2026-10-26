@@ -187,7 +187,7 @@ The same action on every client, triggered the way the device does it.
 | focus the input line, leave it | `i`, `Esc` | tap, back | — |
 | a console key from an empty input line | `↑` `↓` `←` `→` `PageUp` `PageDown` `Home` `End` `Tab` | the key row | D-pad |
 | Escape to the pane while typing | `Shift+Esc` | `Esc` in the key row | — |
-| a file for the pane's program: its path onto the input line | `⇪`, paste, drop anywhere on the view | `⇪` (system picker), share to muxway | — |
+| a file for the pane's program: its path onto the input line | `⇪`, paste, drop anywhere on the view | paste into the line, `⇪` (system picker), share to muxway | — |
 | the keyboard: open and close the window, a key | `K` or `⌨`, `Esc` or `×` on the window; a click on a cap | `⌨`, back; a tap on a cap | — |
 | speak: record a clip, stop it, drop it | `v` or `◉`: held, records until released; tapped, the next tap, `■` or the meter stops; `Esc` drops | `◉` the same: held records until the finger lifts, tapped the next tap or `■` stops; back drops | the glasses' own mic |
 | answer from the watch: a key of its pane screen, or a spoken line confirmed there | — | a tap on the watch's pane screen; the phone validates and sends | — |
