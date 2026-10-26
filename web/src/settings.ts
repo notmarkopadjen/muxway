@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 // Per-browser preferences: theme, effects, browser notifications, the
 // screen font size.
-export const THEMES = ['green', 'amber', 'paper'] as const;
+export const THEMES = ['amber', 'green', 'paper'] as const;
 export type Theme = (typeof THEMES)[number];
 export const FONTS = [11, 12, 13, 14, 16, 18, 20] as const;
 
@@ -29,12 +29,12 @@ function subscribe(fn: () => void) {
 
 export function applyRoot() {
   const theme = getTheme();
-  document.documentElement.dataset.theme = theme === 'green' ? '' : theme;
+  document.documentElement.dataset.theme = theme === 'amber' ? '' : theme;
   document.documentElement.dataset.motion = getMotion() ? '' : 'off';
   document.documentElement.style.setProperty('--mx-screen-size', `${getFont()}px`);
   // The tab's icon in the theme's colours.
   const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-  if (icon) icon.href = theme === 'green' ? '/icon.svg' : `/icon-${theme}.svg`;
+  if (icon) icon.href = theme === 'amber' ? '/icon.svg' : `/icon-${theme}.svg`;
 }
 
 // The font size a pane is read at, and the cell the host is sized by.
@@ -54,7 +54,7 @@ export function cycleFont(): number {
 
 export function getTheme(): Theme {
   const v = read('mx-theme');
-  return (THEMES as readonly string[]).includes(v ?? '') ? (v as Theme) : 'green';
+  return (THEMES as readonly string[]).includes(v ?? '') ? (v as Theme) : 'amber';
 }
 export function setTheme(t: Theme) {
   write('mx-theme', t);

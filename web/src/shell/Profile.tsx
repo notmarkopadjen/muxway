@@ -50,7 +50,8 @@ export function Profile({
         aria-expanded={open}
         data-testid="who"
       >
-        {name} <span className="mx-caret">▾</span>
+        <span className="mx-profile-name">{name} </span>
+        <span className="mx-caret">▾</span>
       </button>
       {open && (
         <div className="mx-menu" role="menu" data-testid="profile-menu">

@@ -1,13 +1,14 @@
-:root[data-theme='amber'] {
-  --mx-bg: #0a0603;
-  --mx-bg-raised: #140b05;
-  --mx-ink: #ffb000;
-  --mx-ink-dim: #a06c00;
-  --mx-ink-faint: #4a3200;
-  --mx-glow: rgba(255, 176, 0, 0.85);
-  --mx-glow-soft: rgba(255, 176, 0, 0.35);
-  --mx-accent: #ffd36b;
-  --mx-ok: #ffb000;
+/* phosphor green */
+:root[data-theme='green'] {
+  --mx-bg: #050806;
+  --mx-bg-raised: #0a120c;
+  --mx-ink: #39ff14;
+  --mx-ink-dim: #1f8f14;
+  --mx-ink-faint: #0f4a0c;
+  --mx-glow: rgba(57, 255, 20, 0.85);
+  --mx-glow-soft: rgba(57, 255, 20, 0.35);
+  --mx-accent: #b6ff9e;
+  --mx-ok: #39ff14;
 }
 
 /* paper: dark ink on a pale canvas; glow becomes a soft shadow */
@@ -35,19 +36,19 @@
    mixed into borders and grounds at a few percent, so they stay discreet
    and the ink stays the theme's. */
 :root {
-  --mx-tint-edit: #39ff14;
+  --mx-tint-edit: #ffb000;
   --mx-tint-nav: #3ad6ff;
-  --mx-tint-ctrl: #ffb000;
+  --mx-tint-ctrl: #ff7a1a;
   --mx-tint-fn: #c68cff;
   --mx-tint-danger: #ff3b3b;
   --mx-tint-start: #39ff14;
   --mx-tint-info: #3a9bff;
   --mx-tint-act: #ffb000;
 }
-:root[data-theme='amber'] {
-  --mx-tint-edit: #ffb000;
+:root[data-theme='green'] {
+  --mx-tint-edit: #39ff14;
   --mx-tint-nav: #3ad6ff;
-  --mx-tint-ctrl: #ff7a1a;
+  --mx-tint-ctrl: #ffb000;
   --mx-tint-fn: #c68cff;
   --mx-tint-danger: #ff3b3b;
   --mx-tint-start: #39ff14;

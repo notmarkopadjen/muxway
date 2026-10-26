@@ -53,6 +53,7 @@ import { releaseKept, useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
 import { AddMenu } from '../components/AddMenu';
+import { Tools } from '../components/Tools';
 import { requestPalette } from '../term/intent';
 
 // Tiles as they were, kept across the navigation a change of count makes:
@@ -911,77 +912,72 @@ function Tiles({ addresses }: { addresses: string[] }) {
           }
           onRefused={refused}
         />
-        <span className="mx-tools">
-          {several && (
-            <button
-              type="button"
-              onClick={() => {
-                touch();
-                setLayout((l) => next(l, n));
-              }}
-              disabled={!!oneWindow && !movable}
-              title={
-                oneWindow && !movable
-                  ? 'the panes of this window move only when every one is writable'
-                  : `next arrangement (l): ${options(n).join(', ')}`
-              }
-              data-testid="arrange"
-              data-label="arrange"
-            >
-              ▦
-            </button>
-          )}
-          {writable && (
-            <button
-              type="button"
-              className={`mx-toggle${focusedFit ? ' on' : ''}`}
-              onClick={() => toggleFit(focused)}
-              title={`fit: the host pane follows this tile (f), ${focusedFit ? 'on' : 'off'}; F: every tile`}
-              data-testid="fit"
-              data-label="fit"
-              data-on={focusedFit ? '1' : '0'}
-            >
-              ⤢
-            </button>
-          )}
-          {writable && focusedFit && (
-            <button
-              type="button"
-              onClick={() => setRefitTick((t) => t + 1)}
-              title="fit again: this client's size (r)"
-              data-testid="refit"
-              data-label="fit again"
-            >
-              ⟳
-            </button>
-          )}
-          {focusedPane && (
-            <button
-              type="button"
-              className={`mx-toggle${several ? '' : ' on'}`}
-              onClick={() => zoom(focusedPane)}
-              title={
-                several
-                  ? 'this pane alone (z, Enter, or double-click)'
-                  : "the window's panes side by side (z, or double-click); w: the mirror layout"
-              }
-              data-testid="zoom"
-              data-label="zoom"
-              data-on={several ? '0' : '1'}
-            >
-              ⊡
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={requestPalette}
-            title="go to a pane (p)"
-            data-testid="open-palette"
-            data-label="go to"
-          >
-            ≡
-          </button>
-        </span>
+        <Tools
+          tools={[
+            ...(several
+              ? [
+                  {
+                    id: 'arrange',
+                    glyph: '▦',
+                    label: 'arrange',
+                    onClick: () => {
+                      touch();
+                      setLayout((l) => next(l, n));
+                    },
+                    disabled: !!oneWindow && !movable,
+                    title:
+                      oneWindow && !movable
+                        ? 'the panes of this window move only when every one is writable'
+                        : `next arrangement (l): ${options(n).join(', ')}`,
+                  },
+                ]
+              : []),
+            ...(writable
+              ? [
+                  {
+                    id: 'fit',
+                    glyph: '⤢',
+                    label: 'fit',
+                    onClick: () => toggleFit(focused),
+                    on: focusedFit,
+                    title: `fit: the host pane follows this tile (f), ${focusedFit ? 'on' : 'off'}; F: every tile`,
+                  },
+                ]
+              : []),
+            ...(writable && focusedFit
+              ? [
+                  {
+                    id: 'refit',
+                    glyph: '⟳',
+                    label: 'fit again',
+                    onClick: () => setRefitTick((t) => t + 1),
+                    title: "fit again: this client's size (r)",
+                  },
+                ]
+              : []),
+            ...(focusedPane
+              ? [
+                  {
+                    id: 'zoom',
+                    glyph: '⊡',
+                    label: 'zoom',
+                    onClick: () => zoom(focusedPane),
+                    on: !several,
+                    title: several
+                      ? 'this pane alone (z, Enter, or double-click)'
+                      : "the window's panes side by side (z, or double-click); w: the mirror layout",
+                  },
+                ]
+              : []),
+            {
+              id: 'open-palette',
+              glyph: '≡',
+              label: 'go to',
+              onClick: requestPalette,
+              title: 'go to a pane (p)',
+            },
+          ]}
+        />
       </InHeader>
       <div className="mx-area" ref={area} data-window-fit={windowFit ? '' : undefined}>
         <Tree

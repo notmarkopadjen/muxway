@@ -24,6 +24,7 @@ import { Screen } from '../term/Screen';
 import { useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
+import { Tools } from '../components/Tools';
 
 // Equal shares in every split, in the browser; with fit on the host follows.
 function equalised(a: Arrangement, tree: Node): Arrangement {
@@ -373,56 +374,58 @@ export function WindowPage() {
           hidden={hiddenAddresses}
           onTab={onTab}
         />
-        <span className="mx-tools">
-          {writable && (
-            <button
-              type="button"
-              className={`mx-toggle${fit ? ' on' : ''}`}
-              onClick={() => setFit(!fit)}
-              title={`fit: the host window follows this box (f), ${fit ? 'on' : 'off'}`}
-              data-testid="fit"
-              data-on={fit ? '1' : '0'}
-            >
-              ⤢
-            </button>
-          )}
-          {writable && fit && (
-            <button
-              type="button"
-              onClick={refit}
-              title="fit again: this client's size (r)"
-              data-testid="refit"
-            >
-              ⟳
-            </button>
-          )}
-          {focus && (
-            <button
-              type="button"
-              onClick={() => open(focus)}
-              title="this pane alone, in the pane view (z, Enter, or double-click)"
-              data-testid="zoom"
-            >
-              ⊡
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => tree && setArr((a) => equalised(a, tree))}
-            title="equal shares (=)"
-            data-testid="equalise"
-          >
-            ⊞
-          </button>
-          <button
-            type="button"
-            onClick={() => setArr(() => fresh(layout))}
-            title="the host's layout (0)"
-            data-testid="reset"
-          >
-            ↺
-          </button>
-        </span>
+        <Tools
+          tools={[
+            ...(writable
+              ? [
+                  {
+                    id: 'fit',
+                    glyph: '⤢',
+                    label: 'fit',
+                    onClick: () => setFit(!fit),
+                    on: fit,
+                    title: `fit: the host window follows this box (f), ${fit ? 'on' : 'off'}`,
+                  },
+                ]
+              : []),
+            ...(writable && fit
+              ? [
+                  {
+                    id: 'refit',
+                    glyph: '⟳',
+                    label: 'fit again',
+                    onClick: refit,
+                    title: "fit again: this client's size (r)",
+                  },
+                ]
+              : []),
+            ...(focus
+              ? [
+                  {
+                    id: 'zoom',
+                    glyph: '⊡',
+                    label: 'zoom',
+                    onClick: () => open(focus),
+                    title: 'this pane alone, in the pane view (z, Enter, or double-click)',
+                  },
+                ]
+              : []),
+            {
+              id: 'equalise',
+              glyph: '⊞',
+              label: 'equal shares',
+              onClick: () => tree && setArr((a) => equalised(a, tree)),
+              title: 'equal shares (=)',
+            },
+            {
+              id: 'reset',
+              glyph: '↺',
+              label: "the host's layout",
+              onClick: () => setArr(() => fresh(layout)),
+              title: "the host's layout (0)",
+            },
+          ]}
+        />
       </InHeader>
       <div className="mx-area" ref={area}>
         {tree && (

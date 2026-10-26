@@ -86,11 +86,11 @@ nothing but the hub to talk to.
 
 ![pane](images/web-pane.png)
 
-Amber and paper, and the phone layout:
+Green and paper, and the phone layout:
 
-![amber](images/web-amber.png)
-![paper](images/web-paper.png)
-![phone](images/web-phone.png)
+![the green theme](images/web-green.png)
+![the paper theme](images/web-paper.png)
+![the phone layout](images/web-phone.png)
 
 ## What a pane is called
 
@@ -188,9 +188,11 @@ view, each live and typable. The page is the Android client's pane view:
   starts one where the host's agent allows it (the `+` key opens it
   too). At the right the pane buttons, 32 px squares with a label under
   the pointer: `▦` arrangement, `⤢` fit, `⟳` fit again, `⊡` zoom, `≡` go
-  to a pane. Last, the profile button with who you are, holding
-  *hubs*, *help*, *admin* (for an admin) and *logout*. The browser tab's
-  icon is drawn in the theme's colours.
+  to a pane; on a narrow screen (640 px and under) they fold into one
+  `⋯` button that opens a menu with the same entries. Last, the profile
+  button with who you are, holding *hubs*, *help*, *admin* (for an
+  admin) and *logout*; on a narrow screen it shows only its caret. The
+  browser tab's icon is drawn in the theme's colours.
 - The **tab strip** lists every pane you may read, in listing order,
   named by what Claude wrote into the title or by what runs there. Each
   tab is **painted with its state** from the lens: the theme's ink,
@@ -313,19 +315,20 @@ typed, the same in every font. A toast names the pane as its tab does,
 with the place after it, and sits level with the key row while an input
 line is on the page.
 
-A lens knows one program and tells the rest of the client what its pane
-is up to. The first is for Claude Code, recognised as [above](#what-a-
-pane-is-called). A pane is **waiting for you** when the listing carries a
-notification; **working** when the last event the hub sent for it was
-`working` (the hook on a submitted prompt) or, while a tile reads it, its
-screen changed in the last ten seconds; **quiet** otherwise. A change
-this client caused does not count: the first read of a tile, the reflow
-after its own resize, the echo of its own input. On load the client
-reads the hub's recent events, so a pane that was working before the
-page opened shows so at once. Panes that are not Claude's show
-notifications the same way and never show "working". tmux's own
-activity flag is not used: it is the window's, shared by every pane in
-it.
+A lens knows one AI coding agent's screen and tells the rest of the
+client what its pane is up to. The one there is, the Claude Code lens,
+recognises Claude Code as [above](#what-a-pane-is-called); another agent
+would get a lens of its own. A pane is **waiting for you** when the
+listing carries a notification; **working** when the last event the hub
+sent for it was `working` (the hook on a submitted prompt) or, while a
+tile reads it, its screen changed in the last ten seconds; **quiet**
+otherwise. A change this client caused does not count: the first read of
+a tile, the reflow after its own resize, the echo of its own input. On
+load the client reads the hub's recent events, so a pane that was
+working before the page opened shows so at once. Panes that are not
+Claude's show notifications the same way and never show "working".
+tmux's own activity flag is not used: it is the window's, shared by
+every pane in it.
 
 ```mermaid
 stateDiagram-v2
@@ -504,7 +507,7 @@ else sees no entry, and `/admin` says *not yours to see*. See
 | `e` / `E` | tiles: lay the focused tile across the whole view's width / height, on the side its middle is |
 | `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, this pane alone (or `Enter`, double-click), host layout, equal shares, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
-| `t` | next theme: green, amber, paper |
+| `t` | next theme: amber, green, paper |
 | `H` | hubs: the other hubs this browser knows, as links; `go` is that hub's own page and sign-in |
 | `?` then `font` | screen font: 11 to 20 px, the cell fit sizes the host by |
 | `m` | effects on / off |
@@ -516,12 +519,13 @@ stack and the key bar wraps.
 
 ## Look and motion
 
-Three themes, chosen with `t` and remembered by the browser: phosphor
-green, amber, and paper for daylight. The page powers on like a tube,
-scanlines and a faint vignette stay, glow sits on borders, headings and
-anything focused, new lines in a pane burn in, badges for questions and
-permissions pulse, and a theme switch re-syncs the picture. All of it is
-CSS driven by tokens in `web/src/styles/tokens.css` and `motion.css`.
+Three themes, chosen with `t` and remembered by the browser: amber, the
+default, phosphor green, and paper for daylight. The page powers on like
+a tube, scanlines and a faint vignette stay, glow sits on borders,
+headings and anything focused, new lines in a pane burn in, badges for
+questions and permissions pulse, and a theme switch re-syncs the
+picture. All of it is CSS driven by tokens in `web/src/styles/tokens.css`
+and `motion.css`.
 `m` turns the effects off, and the operating system's reduced-motion
 preference does the same.
 

@@ -46,7 +46,7 @@ const KEYS: [string, string][] = [
   ],
   ['g then a letter', 'jump to the first host starting with it'],
   ['H', 'hubs: the other hubs this browser knows, as links; each signs you in on its own page'],
-  ['t', 'next theme (green, amber, paper)'],
+  ['t', 'next theme (amber, green, paper)'],
   ['m', 'effects on / off'],
   ['n', 'browser notifications on / off'],
   ['?', 'this help'],

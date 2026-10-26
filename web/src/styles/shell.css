@@ -519,6 +519,24 @@ button:disabled {
   .mx-crumb {
     display: none;
   }
+  /* The row is short: the pane buttons fold behind ⋯ (Tools.tsx) and the
+     profile button keeps only its caret. */
+  .mx-profile-name {
+    display: none;
+  }
+}
+.mx-tools-folded {
+  position: relative;
+}
+.mx-tools-folded .mx-menu > button {
+  width: auto;
+  height: auto;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 6px 10px;
+}
+.mx-tools-folded .mx-menu > button::after {
+  content: none;
 }
 
 /* what a pane is: the program and its own status, with a mark for an AI CLI */

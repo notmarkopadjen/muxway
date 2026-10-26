@@ -38,13 +38,15 @@ Android: `Lens.name`, `Pane.name`.
 
 ### 1.2 The lens
 
-The lens knows one program and says what its pane is up to. Every client
-paints with the same three states and the same marks.
+A lens knows one AI coding agent's screen and says what its pane is up
+to; the Claude Code lens is the one there is, and another agent gets a
+lens of its own. Every client paints with the same three states and the
+same marks.
 
 | State | When | Glyph | Word | Paint |
 |---|---|---|---|---|
 | waiting | the listing carries a notification, except an `idle` one while the screen still moves (then: working) | `!` permission, `?` question, `z` idle, `✓` done | the kind | the theme's ink, inverted (ink ground, background letters), pulsing |
-| working | Claude Code: last event `working`, or the open pane's screen changed in the last 10 s; a change the client caused (first read, its own resize or input) does not count; on start the client reads the hub's recent events | `⟳`: a turning ring, drawn, the same in every font | `working` | dim |
+| working | the Claude Code lens: last event `working`, or the open pane's screen changed in the last 10 s; a change the client caused (first read, its own resize or input) does not count; on start the client reads the hub's recent events | `⟳`: a turning ring, drawn, the same in every font | `working` | dim |
 | quiet | otherwise | none | none | plain |
 
 Selection is never a colour: an open or focused element has a border
@@ -97,10 +99,10 @@ $ [exit][htop][claude][codex]…  │ [make test]
 | Element | Shared behaviour |
 |---|---|
 | back | the brand at the left of the header row returns to the list (web); `‹` (Android) |
-| header row | web: one row, the brand, the strip, `+` right after the last tab (*split here*: a new pane beside the focused one on its host, where the token may type there; *new session*: where the agent starts sessions), the pane buttons at the right as 32 px squares with a label under the pointer (`▦` `⤢` `⟳` `⊡` `≡`), and the profile button with the principal's name (*hubs*, *help*, *admin* for an admin, *logout*); nothing in it repeats the pane's name. Android keeps its own top row |
+| header row | web: one row, the brand, the strip, `+` right after the last tab (*split here*: a new pane beside the focused one on its host, where the token may type there; *new session*: where the agent starts sessions), the pane buttons at the right as 32 px squares with a label under the pointer (`▦` `⤢` `⟳` `⊡` `≡`), and the profile button with the principal's name (*hubs*, *help*, *admin* for an admin, *logout*); nothing in it repeats the pane's name. On a narrow screen (640 px and under) the pane buttons fold into one `⋯` button that opens a menu with the same entries, and the profile button shows only its caret. Android keeps its own top row |
 | strip | every readable pane in listing order, named as §1.1 says, painted as §1.2 says, Claude's mark on every Claude pane with the state glyph beside it; open tabs bordered, the focused one thick and bold; a closed tab tapped swaps into the focused tile; tabs keep their width, the strip scrolls sideways and keeps the focused tab in view; on the web the wheel over it moves it and `‹ ›` at its ends appear while there is more than fits |
 | tiles | one to four panes; arrangements by count: 2 → row, column; 3 → + main-left, main-top; 4 → + grid; `▦` cycles; wide screens start with row, tall with column; splits drag with a 15 % floor; a header dragged onto another tile's middle swaps the two, onto its upper, lower, left or right part splits that tile's place that way with the dragged pane on that side (web), its old place closing up and every share equal again; `▦` goes back to the presets; tiles may come from any hosts, sessions and windows; the arrangement is the client's own, except when the tiles are every pane of one window: then they open as the host has it, follow it, and what is changed here moves the panes on the host (web; needs every pane writable, otherwise they only follow); a header dropped on a divider lays the pane across that split, and a click on the strip inside a tile's inner edge lays it across the whole view (web) |
-| header | painted like its tab: glyph, name, command, mode, the word, the size; the focused tile has the thick border and bold name. Controls live in the header row (web) or the top row (Android), not in tile headers: `▦` arrangement, `⤢` fit (web: for the focused tile), `⟳` fit again, `⊡` zoom |
+| header | painted like its tab: glyph, name, command, mode, the word, the size; the focused tile has the thick border and bold name. Controls live in the header row (web) or the top row (Android), not in tile headers: `▦` arrangement, `⤢` fit (web: for the focused tile), `⟳` fit again, `⊡` zoom; on a narrow web screen (640 px and under) they fold into one `⋯` button whose menu has the same entries |
 | fit | per tile; every writable tile opens with fit on, one or several; `⤢` or `f` toggles, `⟳` or `r` sends the size again; leaving the view releases. The host never lets a fit take a neighbour under 20 columns or 5 rows: the window grows instead. **One fit per window:** open tiles that are every pane of one tmux window fit the window as one, with the arrangement as its layout, as the window view does, so each pane is its tile (web; muxway-android#26). Where only some of a window's panes are open as tiles, only one of them fits its pane (the focused tile's, or the first of them when the focus is elsewhere); the others keep fit off, say *held* in their header and are drawn scaled to their box, so tiles do not fight over one row; focus moving to another tile of the window moves the fit, releasing the previous pane first. **A pane alone** in the view fits its *window* with the pane zoomed over its siblings (tmux's own zoom), so no neighbour is squeezed; a pane left for another in the view stays at size and is not sent again when it comes back at that size |
 | input | a text line and one key row for the focused tile; `Esc` pinned left and `Enter` right on a phone; *type* sends text, *send* sends text then Enter; read-only panes show `read-only` and no way to type. The line is a small editor: text wraps and the field grows upward, to six rows, then scrolls inside; Enter (web) or the keyboard's send key (Android) sends, Shift+Enter starts a new line; a text with several lines reaches the pane as one paste, bracketed when the program asked. While the first word is typed, and nothing follows it, a list above the line offers Claude Code's slash commands or a shell's starters and the lines sent before, eight at most and never anything a pane printed; the web picks with `↑` `↓`, takes with `Tab` or a click, closes with `Esc` and sends the highlighted one with Enter, Android offers a row and takes with a tap. **Microphone**: when the hub has a transcriber (`GET /v1/transcribe` is 204, asked once per sign-in) and the focused pane is writable, a `◉` button sits between the field and *send*; without a transcriber, or on a read-only pane, there is nothing. A press opens the mic and the field's place shows a level meter in block characters and the seconds; `■`, a press on the meter, or sixty seconds stops the clip, which goes to the hub as a WAV and comes back as words on the line, after a space when something is typed there, with the caret at the end and the line focused: nothing is sent until Enter. `✕` (cancel), in the place of `⏎`, or `Esc` drops the clip. The mic is closed the moment recording stops. Refusals are toasts: `microphone refused`, `no microphone`, `too short`, `one clip every five seconds`, `transcriber unavailable` **Files**: where the host's agent has an inbox (`GET /v1/panes/{address}/files` is 204) and the pane is writable, `⇪` sits beside the microphone; a file picked, pasted or dropped goes to the host and its path lands on the line with a space after it, focused, unsent; while it goes the line reads `⇪ name · size…` **Icons**: right of the line, in this order, `⌨` keyboard, `⇪` files (where there is an inbox), `◉` microphone (where there is a transcriber), `⏎` send; square buttons of one size, titled. **Keyboard**: `⌨` opens a window over the view for the focused pane (its title names the pane and follows the focus), with a big terminal board of the old kind and no brand: F1–F24 in two rows (F13–F24 go as Shift+F1–F12), the main block with every printable ASCII key and its shifted legend, both Shifts, Ctrls and Alts, Caps Lock, the navigation keys, the arrows in an inverted T, a keypad with Num Lock, and a column of command keys (*Attn* `C-c`, *Clr* `C-l`, *EOF* `C-d`, *Susp* `C-z`, *Kill* `C-u`, *Word* `C-w`, *Home* `C-a`, *End* `C-e`, *Rev* `C-r`, *Back* Shift+Tab). A click sends at once; Shift, Ctrl and Alt latch for the next key and a double click locks them; a cap lights when pressed and shakes when refused. Keys a terminal cannot carry (Super, Fn, Print Screen, media keys) are not drawn; Ctrl or Alt with `;` is dimmed; on a host whose agent lists no `keys: 2`, the keys only the grammar has are dimmed. The window drags by its bar and folds to it (web); on a phone it takes the bottom of the screen. Read-only panes: the icon is off |
 | key row | one row, scrolling sideways, never wrapping, no scrollbar; keys tinted by group, discreetly (border and ground, never the ink): editing, direction, control, function |
@@ -119,16 +121,19 @@ Web: `web/src/pages/Pane.tsx`, `term/tiles.ts`, `term/commands.ts`,
 Tokens are shared; the values are in the core at
 `web/src/styles/tokens.css` and mirrored in Android's `ui/Theme.kt`.
 
-| Token | Green | Amber | Paper |
+| Token | Amber | Green | Paper |
 |---|---|---|---|
-| background | `#050806` | `#0a0603` | `#f1ead8` |
-| panel | `#0a120c` | `#140b05` | `#e8dfc8` |
-| ink | `#39ff14` | `#ffb000` | `#1f2a1f` |
-| dim · faint | `#1f8f14` · `#0f4a0c` | `#a06c00` · `#4a3200` | `#5a6a5a` · `#b9b39f` |
+| background | `#0a0603` | `#050806` | `#f1ead8` |
+| panel | `#140b05` | `#0a120c` | `#e8dfc8` |
+| ink | `#ffb000` | `#39ff14` | `#1f2a1f` |
+| dim · faint | `#a06c00` · `#4a3200` | `#1f8f14` · `#0f4a0c` | `#5a6a5a` · `#b9b39f` |
 | attention · alert | the ink, inverted · `#ff3b3b` | the ink, inverted · `#ff3b3b` | the ink, inverted · `#a3161b` |
 | Claude | `#d97757` | same | same |
 
-The browser tab's icon is drawn in the theme's colours.
+Amber is the default on every client (the owner prefers it for the
+eyes); the web cycles amber, green, paper with `t`. The browser tab's
+icon is drawn in the theme's colours: `icon.svg` is the amber one,
+`icon-green.svg` and `icon-paper.svg` the others.
 No theme has a second hue for states: a waiting pane is the theme's own
 ink drawn inverted, working is dim, quiet is plain (decided by the owner
 on 2026-10-25). The alert colour is for errors only; the key and command
@@ -136,7 +141,7 @@ rows keep their group tints.
 
 **The watch is the exception** (decided by the owner on 2026-10-25): its
 face, its complications and its app draw a waiting pane in an attention
-hue — `#ffb000` in green, `#ffd36b` in amber, `#9a5b00` on paper — and
+hue — `#ffd36b` in amber, `#ffb000` in green, `#9a5b00` on paper — and
 not inverted. A watch face is always on, where a filled ink bar is
 burn-in and battery, and a complication is drawn by whatever face it sits
 in, which muxway does not own and which honours no inversion of ours. The
@@ -190,7 +195,7 @@ The same action on every client, triggered the way the device does it.
 | the admin page (an admin principal only) | `admin` in the header | Settings → *admin* | — |
 | deny the address of a log line | `deny` on the row | — | — |
 | end a client's session | `end` on the row | `end` on the row | — |
-| theme | `t` | setting | setting |
+| theme: amber, green, paper, in that order | `t` | setting | setting |
 | effects | `m` | setting | — |
 | help | `?` | — | — |
 

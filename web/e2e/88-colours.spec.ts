@@ -41,17 +41,17 @@ test('88 a waiting tab and header are the theme ink, inverted, in every theme', 
   const tab = page.locator(`[data-testid="tab"][data-address="${SHELL0}"]`);
   const head = page.locator(`[data-pane="${SHELL0}"] .mx-tile-head`);
   await expect(tab).toHaveAttribute('data-state', 'waiting');
-  for (const theme of ['green', 'amber', 'paper']) {
+  for (const theme of ['amber', 'green', 'paper']) {
     await expect(page.locator('html')).toHaveAttribute(
       'data-theme',
-      theme === 'green' ? /green|^$/ : theme,
+      theme === 'amber' ? '' : theme,
     );
     await inverted(page, tab);
     await inverted(page, head);
     // The tab's icon follows the theme.
     await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
       'href',
-      theme === 'green' ? '/icon.svg' : `/icon-${theme}.svg`,
+      theme === 'amber' ? '/icon.svg' : `/icon-${theme}.svg`,
     );
     if (theme === 'green') {
       const amber = await colour(page, '#ffb000');

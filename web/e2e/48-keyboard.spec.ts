@@ -33,7 +33,7 @@ test('48 keyboard: j k Enter Esc / i t m ?', async ({ page }, info) => {
   await expect(page.getByTestId('filter')).not.toBeFocused();
   const html = page.locator('html');
   await page.keyboard.press('t');
-  await expect(html).toHaveAttribute('data-theme', 'amber');
+  await expect(html).toHaveAttribute('data-theme', 'green');
   await page.keyboard.press('m');
   await expect(html).toHaveAttribute('data-motion', 'off');
   await page.keyboard.press('m');

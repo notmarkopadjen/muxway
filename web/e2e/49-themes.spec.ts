@@ -5,10 +5,11 @@ test('49 themes and a phone', async ({ page }, info) => {
   await signIn(page);
   await openPane(page, SHELL0);
   const html = page.locator('html');
-  await shot(page, info, '49-green');
-  await page.keyboard.press('t');
-  await expect(html).toHaveAttribute('data-theme', 'amber');
+  await expect(html).toHaveAttribute('data-theme', '');
   await shot(page, info, '49-amber');
+  await page.keyboard.press('t');
+  await expect(html).toHaveAttribute('data-theme', 'green');
+  await shot(page, info, '49-green');
   await page.keyboard.press('t');
   await expect(html).toHaveAttribute('data-theme', 'paper');
   await shot(page, info, '49-paper');
@@ -22,5 +23,23 @@ test('49 themes and a phone', async ({ page }, info) => {
   await shot(page, info, '49-phone');
   await openPane(page, SHELL0);
   await expect(page.getByTestId('keybar')).toBeVisible();
+  // The pane buttons fold behind ⋯ and the profile button keeps its caret.
+  const header = page.locator('header.mx-header');
+  await expect(header.getByTestId('zoom')).toHaveCount(0);
+  await expect(header.getByTestId('who')).toBeVisible();
+  expect((await header.getByTestId('who').boundingBox())!.width).toBeLessThan(48);
   await shot(page, info, '49-phone-pane');
+  await header.getByTestId('more').click();
+  const menu = page.getByTestId('tools-menu');
+  await expect(menu.getByTestId('zoom')).toBeVisible();
+  await expect(menu.getByTestId('open-palette')).toBeVisible();
+  await shot(page, info, '49-phone-tools');
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(page.getByTestId('pane')).toBeVisible();
+  await header.getByTestId('more').click();
+  await menu.getByTestId('open-palette').click();
+  await expect(page.getByTestId('palette')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('palette')).toHaveCount(0);
 });
