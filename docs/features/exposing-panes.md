@@ -34,10 +34,24 @@ a pane. tmux resolves it from pane to window to session, so:
   loses one inherited from the old session. Clients' grants are checked
   against the new address.
 
+```mermaid
+flowchart TD
+    P{mark on the pane?} -->|yes| M[that mark]
+    P -->|no| W{mark on its window?}
+    W -->|yes| M
+    W -->|no| S{mark on its session?}
+    S -->|yes| M
+    S -->|no| N[not exposed]
+    M --> D{which?}
+    D -->|deny| N
+    D -->|read| R[listed, readable]
+    D -->|write| X[listed, readable and writable]
+```
+
 The agent re-reads the marks for every request. As a second guard it
 refuses a pane whose process changed under the same pane id.
 
-## What is safe to expose
+## Security considerations
 
 - **Read** shows everything the pane shows, including secrets printed on
   screen and in scrollback (up to 2000 lines).
@@ -64,3 +78,9 @@ refuses a pane whose process changed under the same pane id.
   running an editor is as powerful as a shell.
 - Do not expose a pane that is logged in elsewhere as a more privileged
   user (`ssh root@...`, `sudo -s`) unless that is exactly what you want.
+- A program in a pane names itself (its `argv[0]`), and tmux prints that
+  name raw in a listing. So the agent lists panes with a separator that is
+  random for each listing and accepts only ids of tmux's own shape (`$1`,
+  `@2`, `%3`). A name that happens to contain the separator makes its own
+  pane unlistable for that listing and nothing else: no field of another
+  pane can be forged.
