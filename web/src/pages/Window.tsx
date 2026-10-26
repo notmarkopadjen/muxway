@@ -1,7 +1,8 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
-import { useInput, useWindow } from '../api/queries';
+import { useQueryClient } from '@tanstack/react-query';
+import { keys, useInput, useWindow } from '../api/queries';
 import type { Mouse, PaneContent } from '../api/types';
 import { LensMark } from '../components/Lens';
 import { Divider } from '../components/Divider';
@@ -78,7 +79,7 @@ interface TreeProps {
   onFocus: (id: string) => void;
   onZoom: (id: string) => void;
   onCell: (address: string, x: number, y: number) => void;
-  onWheel: (address: string, up: boolean, x: number, y: number) => Promise<void>;
+  onWheel: (address: string, up: boolean, x: number, y: number, count: number) => Promise<void>;
 }
 
 function Tree(props: TreeProps) {
@@ -142,7 +143,9 @@ function Tree(props: TreeProps) {
           height={p.height}
           onCell={p.mode === 'write' && p.mouse ? (x, y) => onCell(p.address, x, y) : undefined}
           onWheel={
-            p.mode === 'write' && p.mouse ? (up, x, y) => onWheel(p.address, up, x, y) : undefined
+            p.mode === 'write' && p.mouse
+              ? (up, x, y, count) => onWheel(p.address, up, x, y, count)
+              : undefined
           }
           testId="cell-screen"
         />
@@ -194,6 +197,7 @@ export function WindowPage() {
     window: win = '',
   } = useParams({ strict: false }) as Record<string, string>;
   const data = useWindow(host, session, win);
+  const qc = useQueryClient();
   const navigate = useNavigate();
   const toast = useToast();
   const layout = data.data?.window.layout ?? '';
@@ -346,6 +350,8 @@ export function WindowPage() {
         method: 'POST',
         body: JSON.stringify({ mouse }),
       });
+      // The program has moved: show it now, not at the next poll.
+      void qc.invalidateQueries({ queryKey: keys.window(host, session, win) });
     } catch (err) {
       toast.push({
         kind: 'refused',
@@ -430,8 +436,13 @@ export function WindowPage() {
             onFocus={setFocused}
             onZoom={open}
             onCell={(address, x, y) => void click(address, { button: 'left', x, y })}
-            onWheel={(address, up, x, y) =>
-              click(address, { button: up ? 'wheelup' : 'wheeldown', x, y })
+            onWheel={(address, up, x, y, count) =>
+              click(address, {
+                button: up ? 'wheelup' : 'wheeldown',
+                x,
+                y,
+                ...(count > 1 ? { count } : {}),
+              })
             }
           />
         )}

@@ -58,7 +58,8 @@ nothing but the hub to talk to.
    Code, `htop` and `vim` run on the terminal's alternate screen, which
    has no history of its own, so the wheel over such a pane goes to the
    host as wheel notches at the cell under the pointer, one per row of
-   travel, and the program moves its own view. Any shell history above it
+   travel, the notches of a movement gathered into one request while the
+   last one is answered, and the program moves its own view. Any shell history above it
    is still there, reachable by the box's scrollbar. The tab strip keeps
    its tabs at their width and scrolls sideways: the wheel over it moves
    it, `‹ ›` at its ends appear when there is more than fits, and
@@ -520,7 +521,7 @@ stack and the key bar wraps.
 Three themes, chosen with `t` and remembered by the browser: amber, the
 default, phosphor green, and paper for daylight. The page powers on like
 a tube, and so does every window over it (help, the hubs, go to a pane,
-the keyboard); scanlines and a faint vignette stay, glow sits on borders,
+the keyboard), which powers off the same way backwards; scanlines and a faint vignette stay, glow sits on borders,
 headings and anything focused, new lines in a pane burn in, badges for
 questions and permissions pulse, and a theme switch re-syncs the
 picture. All of it is CSS driven by tokens in `web/src/styles/tokens.css`

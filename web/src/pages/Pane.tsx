@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
+import { queryClient } from '../query';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   closePane,
@@ -96,6 +97,8 @@ async function click(address: string, mouse: Mouse, refused: (why: string) => vo
       method: 'POST',
       body: JSON.stringify({ mouse }),
     });
+    // The program has moved: show it now, not at the next poll.
+    void queryClient.invalidateQueries({ queryKey: keys.pane(address) });
   } catch (err) {
     refused(err instanceof ApiError ? err.code : 'hub unreachable');
   }
@@ -361,8 +364,12 @@ function Tile(props: TileProps) {
           }
           onWheel={
             writable && p?.mouse
-              ? (up, x, y) =>
-                  click(address, { button: up ? 'wheelup' : 'wheeldown', x, y }, props.refused)
+              ? (up, x, y, count) =>
+                  click(
+                    address,
+                    { button: up ? 'wheelup' : 'wheeldown', x, y, ...(count > 1 ? { count } : {}) },
+                    props.refused,
+                  )
               : undefined
           }
           testId={focused ? 'screen' : 'cell-screen'}

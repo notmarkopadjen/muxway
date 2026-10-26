@@ -89,7 +89,10 @@ test('91 the wheel in a shell scrolls the box; once the mouse is asked for, the 
   await page.mouse.wheel(0, -3.5 * at.row);
   const capture = () => control(request, '/capture', { target: 'work:0.0' });
   await expect.poll(async () => notches(await capture(), 64), { timeout: 5000 }).toBe(3);
-  expect(inputs).toHaveLength(3);
+  // Gathered: at most one request per notch, the counts adding up to three.
+  expect(inputs.length).toBeLessThanOrEqual(3);
+  const sent = inputs.map((b) => JSON.parse(b).mouse).filter((m) => m.button === 'wheelup');
+  expect(sent.reduce((n, m) => n + (m.count ?? 1), 0)).toBe(3);
   expect(await gap()).toBeLessThan(5);
   await page.getByTestId('keybar').getByRole('button', { name: 'C-c' }).click();
   await expect.poll(() => control(request, '/command', { target: 'work:0.0' })).toBe('bash');
@@ -127,12 +130,16 @@ test('91 the wheel over a program with the mouse is wheelup and wheeldown at the
   // Down, with the half row left over: three more.
   await page.mouse.wheel(0, 4 * at.row);
   await expect.poll(async () => notches(await capture(), 65), { timeout: 5000 }).toBe(3);
-  // One long event is capped at three notches.
+  // One long event arrives whole, as one counted request.
+  const inputs = watchInput(page);
   await page.mouse.wheel(0, -20 * at.row);
-  await expect.poll(async () => notches(await capture(), 64), { timeout: 5000 }).toBe(6);
+  // Nineteen, the half row from before carried; the screen holds the last
+  // of them and the one request carried them all.
+  await expect
+    .poll(async () => notches(await capture(), 64), { timeout: 5000 })
+    .toBeGreaterThanOrEqual(19);
   await page.waitForTimeout(800);
-  expect(notches(await capture(), 64)).toBe(6);
-  expect(notches(await capture(), 65)).toBe(3);
+  expect(inputs.map((b) => JSON.parse(b).mouse.count)).toEqual([19]);
   // The page itself did not move.
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
   await shot(page, info, '91-wheel');

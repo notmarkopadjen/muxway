@@ -225,9 +225,10 @@ func (s Server) paste(ctx context.Context, paneID, text string) error {
 // bytes would be typed as text.
 var ErrNoMouse = errors.New("no mouse mode in the pane")
 
-// SendMouse clicks, or turns the wheel, at a cell, in the encoding the
-// program asked for: SGR, or the old one with its 223-cell reach.
-func (s Server) SendMouse(ctx context.Context, paneID string, button, x, y int) error {
+// SendMouse clicks, or turns the wheel count notches, at a cell, in the
+// encoding the program asked for: SGR, or the old one with its 223-cell
+// reach.
+func (s Server) SendMouse(ctx context.Context, paneID string, button, x, y, count int) error {
 	out, err := s.run(ctx, "display-message", "-p", "-t", paneID,
 		"#{mouse_any_flag}#{mouse_button_flag}#{mouse_standard_flag}#{mouse_all_flag} #{mouse_sgr_flag}")
 	if err != nil {
@@ -252,6 +253,9 @@ func (s Server) SendMouse(ctx context.Context, paneID string, button, x, y int) 
 		if !wheel {
 			seq += fmt.Sprintf("[M%c%c%c", 32+3, 32+x, 32+y)
 		}
+	}
+	if wheel && count > 1 {
+		seq = strings.Repeat(seq, count)
 	}
 	_, err = s.run(ctx, "send-keys", "-t", paneID, "-l", "--", seq)
 	return err

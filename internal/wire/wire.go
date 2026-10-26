@@ -63,7 +63,12 @@ type Mouse struct {
 	Button string `json:"button"`
 	X      int    `json:"x"`
 	Y      int    `json:"y"`
+	// Count turns the wheel that many notches in one go; absent, one.
+	Count int `json:"count,omitempty"`
 }
+
+// MaxWheel bounds Count: a hand's worth of scrolling per request.
+const MaxWheel = 50
 
 // Buttons a client may send, with their xterm codes.
 var Buttons = map[string]int{"left": 0, "middle": 1, "right": 2, "wheelup": 64, "wheeldown": 65}
@@ -73,7 +78,10 @@ func ValidMouse(m *Mouse, w, h int) bool {
 	if m == nil {
 		return false
 	}
-	_, ok := Buttons[m.Button]
+	code, ok := Buttons[m.Button]
+	if m.Count != 0 && (code < 64 || m.Count < 1 || m.Count > MaxWheel) {
+		return false
+	}
 	return ok && m.X >= 1 && m.X <= w && m.Y >= 1 && m.Y <= h
 }
 

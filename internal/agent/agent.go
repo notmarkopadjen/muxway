@@ -338,7 +338,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 			case req.Text == nil && req.Key == "" && req.Mouse != nil:
 				if !wire.ValidMouse(req.Mouse, p.Width, p.Height) {
 					code = wire.ErrBadInput
-				} else if err := a.tmux.SendMouse(ctx, p.PaneID, wire.Buttons[req.Mouse.Button], req.Mouse.X, req.Mouse.Y); errors.Is(err, tmux.ErrNoMouse) {
+				} else if err := a.tmux.SendMouse(ctx, p.PaneID, wire.Buttons[req.Mouse.Button], req.Mouse.X, req.Mouse.Y, req.Mouse.Count); errors.Is(err, tmux.ErrNoMouse) {
 					code = wire.ErrBadInput
 				} else if err != nil {
 					code = wire.ErrTmux

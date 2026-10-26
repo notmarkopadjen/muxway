@@ -104,7 +104,7 @@ export const Screen = memo(function Screen({
   boxRef?: React.RefObject<HTMLDivElement | null>;
   onClick?: () => void;
   onCell?: (x: number, y: number) => void;
-  onWheel?: (up: boolean, x: number, y: number) => Promise<void> | void;
+  onWheel?: (up: boolean, x: number, y: number, count: number) => Promise<void> | void;
   height?: number;
   focused?: boolean;
   testId?: string;
@@ -182,23 +182,24 @@ export const Screen = memo(function Screen({
     const at = cellAt(ev.target, ev.clientX);
     if (at) onCell(at.x, at.y);
   };
-  // Wheel notches queue behind the one in flight; a backlog past a few is
-  // dropped rather than sent after the hand has stopped.
+  // Wheel notches gather while one request is in flight and go as the
+  // next, counted, so a long scroll is a few requests, not one per row.
   const wheelRef = useRef(onWheel);
   wheelRef.current = onWheel;
   const travel = useRef(0);
-  const queue = useRef<{ up: boolean; x: number; y: number }[]>([]);
+  const queue = useRef<{ up: boolean; x: number; y: number; count: number }[]>([]);
   const busy = useRef(false);
   const pump = async () => {
     if (busy.current) return;
     busy.current = true;
     try {
       for (let n = queue.current.shift(); n; n = queue.current.shift())
-        await wheelRef.current?.(n.up, n.x, n.y);
+        await wheelRef.current?.(n.up, n.x, n.y, n.count);
     } finally {
       busy.current = false;
     }
   };
+  const MAX_NOTCHES = 50;
   useEffect(() => {
     const el = box.current;
     if (!el || !onWheel) return;
@@ -213,13 +214,20 @@ export const Screen = memo(function Screen({
             ? ev.deltaY * el.clientHeight
             : ev.deltaY;
       travel.current += dy;
-      let notches = Math.trunc(travel.current / at.row);
-      if (Math.abs(notches) > 3) {
-        notches = Math.sign(notches) * 3;
-        travel.current = 0;
-      } else travel.current -= notches * at.row;
-      for (let i = 0; i < Math.abs(notches) && queue.current.length < 3; i++)
-        queue.current.push({ up: notches < 0, x: at.x, y: at.y });
+      const notches = Math.trunc(travel.current / at.row);
+      travel.current -= notches * at.row;
+      if (!notches) return;
+      const up = notches < 0;
+      const last = queue.current[queue.current.length - 1];
+      if (last && last.up === up && last.count < MAX_NOTCHES)
+        last.count = Math.min(MAX_NOTCHES, last.count + Math.abs(notches));
+      else if (queue.current.length < 4)
+        queue.current.push({
+          up,
+          x: at.x,
+          y: at.y,
+          count: Math.min(MAX_NOTCHES, Math.abs(notches)),
+        });
       void pump();
     };
     el.addEventListener('wheel', onEvent, { passive: false });

@@ -65,6 +65,14 @@ func TestFlow81_ClickReachesAProgramWithTheMouse(t *testing.T) {
 	waitFor(t, "click shown", func() bool { return strings.Contains(ts.capture("work:0.0"), "^[[<0;5;3M^[[<0;5;3m") })
 	expect(t, e.input(tok, shell0, map[string]any{"mouse": map[string]any{"button": "wheeldown", "x": 1, "y": 1}}), http.StatusNoContent, "wheel")
 	waitFor(t, "wheel shown", func() bool { return strings.Contains(ts.capture("work:0.0"), "^[[<65;1;1M") })
+	// Several notches in one request, and the bounds on them.
+	expect(t, e.input(tok, shell0, map[string]any{"mouse": map[string]any{"button": "wheelup", "x": 2, "y": 2, "count": 3}}), http.StatusNoContent, "three notches")
+	waitFor(t, "three shown", func() bool {
+		return strings.Contains(ts.capture("work:0.0"), "^[[<64;2;2M^[[<64;2;2M^[[<64;2;2M")
+	})
+	expect(t, e.input(tok, shell0, map[string]any{"mouse": map[string]any{"button": "wheelup", "x": 2, "y": 2, "count": 51}}), http.StatusBadRequest, "too many notches")
+	expect(t, e.input(tok, shell0, map[string]any{"mouse": map[string]any{"button": "wheelup", "x": 2, "y": 2, "count": -1}}), http.StatusBadRequest, "negative count")
+	expect(t, e.input(tok, shell0, map[string]any{"mouse": map[string]any{"button": "left", "x": 2, "y": 2, "count": 2}}), http.StatusBadRequest, "a click has no count")
 	// The old encoding, for a program without SGR.
 	ts.must("send-keys", "-t", "work:0.0", "C-c")
 	ts.must("send-keys", "-t", "work:0.0", "-l", `printf '\033[?1006l\033[?1000h'; cat -v`)

@@ -178,6 +178,7 @@ export interface Mouse {
   button: Button;
   x: number;
   y: number;
+  count?: number; // wheel notches in one go, 1 to 50
 }
 
 export const KEYS = [
