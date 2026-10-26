@@ -50,7 +50,8 @@ flowchart LR
   [features/web-client.md](features/web-client.md). What every client
   shows alike, and what belongs to one device, is in
   [ui-guideline.md](ui-guideline.md).
-- **Notifications**: a process in a pane, such as a Claude Code hook, runs
+- **Notifications**: a process in a pane, such as the hooks of an AI
+  coding agent (Claude Code is the one tested), runs
   `muxway notify`; the agent marks the pane and the hub tells clients, see
   [features/notifications.md](features/notifications.md).
 
@@ -184,6 +185,9 @@ sequenceDiagram
 ```
 
 ### Notifications
+
+Any AI coding agent's hook or wrapper enters at `muxway notify`; the flow
+below shows Claude Code's hook, the one tested.
 
 ```mermaid
 sequenceDiagram

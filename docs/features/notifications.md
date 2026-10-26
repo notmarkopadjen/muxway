@@ -1,13 +1,23 @@
 # Notifications
 
 A process in an exposed pane can tell muxway that the pane needs its owner.
-Claude Code does it through its hooks: a client is told when Claude asks a
-question, waits for a permission, has gone idle or has finished, and which
-pane to open.
+AI coding agents that run in tmux (Claude Code is the one tested) tell the
+hub, through their hooks, when they ask a question, wait for a permission,
+have gone idle or have finished, and which pane to open.
+
+Only Claude Code has been tested so far. Another agent needs hooks, or a
+wrapper around it on the host, that call `muxway notify` with the pane and
+the kind (see [from any script](#from-any-script)); a notification carries
+the pane, the kind and a short text and nothing else, so the hub and the
+clients do not learn which agent sent it, and `--from claude-code` only
+tells the command to read Claude Code's hook payload. Where a small client
+should reshape the agent's screen, it also needs a lens of its own: what a
+lens is and shows is in the [UI guideline](../ui-guideline.md#12-the-lens),
+the web client's in [its page](web-client.md#the-lens).
 
 ```mermaid
 flowchart LR
-    CC[Claude Code in a pane] -- hook --> N[muxway notify]
+    CC[AI coding agent in a pane] -- hook --> N[muxway notify]
     N -- notify.sock --> A[Agent]
     A -- event --> H[(Hub)]
     H -- GET /v1/events, attention on panes --> C[Clients]

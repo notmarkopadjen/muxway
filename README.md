@@ -6,39 +6,51 @@ Your tmux, from anywhere. A hub, a small agent per machine, and clients
 from the browser to a phone, a watch, smart glasses and a 2002 feature
 phone. Security first: a tmux pane is a shell.
 
-![Four panes from two machines on one screen: Claude Code asking for a permission, a build, a log and a docker host](docs/images/tiles.png)
+![Four panes from two machines on one screen: an AI agent asking for a permission tall on the left, a build above a log and a docker host on the right](docs/images/tiles.png)
 
 > Young, and used daily by its author. The hub, the agent, the protocol,
-> the web client, notifications from AI coding CLIs and sign-in with
+> the web client, notifications from AI coding agents and sign-in with
 > OpenID Connect are all in; the
 > [Android](https://github.com/notmarkopadjen/muxway-android),
 > [glasses](https://github.com/notmarkopadjen/muxway-glasses-even) and
 > [Java ME](https://github.com/notmarkopadjen/muxway-midp) clients are
 > in their own repositories. Expect the protocol to grow, not to break.
 
+## Only here
+
+What sets muxway apart from the other ways of reaching a terminal from
+a browser or a phone:
+
+- **Panes from several machines in one view.** Up to four tiles from
+  any mix of hosts, sessions and windows: the build on your workstation
+  beside the logs on a server and an AI agent on your laptop, all live
+  and typable. Drag a header to swap two tiles or split a place, drag a
+  divider to resize; tiles that are one window's panes move that window
+  on its host as you rearrange them here.
+- **Voice input.** Hold the microphone in the browser, on the phone, on
+  the watch or on the glasses. The hub transcribes, the words land on
+  the input line for you to read, and nothing is sent until you say so.
+- **Direct keyboard input.** Type as you would at the terminal. A key
+  bar covers what a phone keyboard lacks, the web adds a full terminal
+  keyboard (F1 to F24, Ctrl, Alt, the keypad) and the mouse for programs
+  that take it. Every key goes through a fixed grammar, never a raw
+  escape sequence.
+- **Your AI agent calls you.** An AI coding agent in a pane tells muxway,
+  through its hooks, when it asks a question, wants a permission, has
+  gone idle or has finished. The pane lights up in every client, the
+  phone and the watch buzz, the glasses show a banner, and you answer
+  from wherever you are: a tap, a key, a few typed words, a spoken
+  reply. Claude Code is the agent tested so far; another needs its hooks
+  to call `muxway notify` on the host, and a lens for its screen.
+- **A lens for tiny screens.** A lens knows an agent's screen and
+  reshapes it, so the conversation fits on a watch, on glasses, or on a
+  96 by 65 pixel Nokia.
+- **Clients down to a 2002 feature phone.** The API is small and text
+  mode is plain text, so a browser, an Android phone with a Wear OS
+  watch, Even Realities G2 glasses and a Java ME MIDlet in 30 KiB are
+  all clients, and yours can be too.
+
 ## Why
-
-**One screen, every machine.** Up to four panes side by side from any
-mix of hosts, sessions and windows: the build on your workstation, the
-logs on a server, an AI agent on your laptop, all live and typable. Drag
-a header to rearrange; tiles that are one window's panes stay in step
-with that window on its host, so a divider dragged here moves tmux's
-split there.
-
-**Your AI coding CLI calls you.** Claude Code in a pane tells muxway,
-through its hooks, when it asks a question, wants a permission, has gone
-idle or has finished. The pane lights up in every client, the phone and
-the watch buzz, the glasses show a banner, and you answer from wherever
-you are: a tap, a key, a few typed words, or a spoken reply that the hub
-transcribes. A **lens** knows Claude Code's screen and reshapes it for a
-tiny display, so the conversation fits on a watch, on glasses, or on a
-96 by 65 pixel Nokia.
-
-**Anything that can speak HTTP is a client.** The API is small, text
-mode is plain text, and the clients prove it: a React web app served by
-the hub itself, an Android app with a Wear OS face, an Even Realities G2
-app, and a Java ME MIDlet that fits in 30 KiB. Build your own from the
-[protocol specification](docs/protocol/v1.md).
 
 **Built like a remote shell service, because it is one.** Panes are
 opt-in: nothing is reachable until its owner marks it. A token names
@@ -48,6 +60,11 @@ Every authentication step is rate limited and locked out, every write is
 audit logged on the host, secrets are hashed, compared in constant time
 and never logged. One Go binary per role, one third-party dependency,
 no cgo.
+
+**Anything that can speak HTTP is a client.** The clients prove it: a
+React web app served by the hub itself, an Android app with a Wear OS
+face, an Even Realities G2 app, and a Java ME MIDlet that fits in 30
+KiB. Build your own from the [protocol specification](docs/protocol/v1.md).
 
 ## How it works
 
@@ -62,7 +79,7 @@ flowchart LR
     H[(Hub)]
     subgraph Host[Each machine]
         A[Agent] --- T[tmux]
-        CC[Claude Code] -- hooks --> A
+        AI[AI coding agent] -- hooks --> A
     end
     W & AN & G & J -- "HTTPS, token or session" --> H
     A -- "outbound WSS, signed and encrypted" --> H
@@ -111,22 +128,27 @@ service units, the reverse proxy, backups and token rotation.
 Served by the hub, nothing to install. The pane list groups every host
 you may reach; a badge marks a pane that needs you.
 
-![The pane list: two hosts, their sessions and windows, a Claude pane waiting for a permission](docs/images/panes.png)
+![The pane list: two hosts, their sessions and windows, an AI agent's pane waiting for a permission](docs/images/panes.png)
 
-A pane running Claude Code is named by what Claude says it is doing, the
-header carries the question, and the command row offers Claude's slash
-commands; a shell's gets its recent lines.
+A pane running an AI agent is named by what the agent says it is doing,
+the header carries its question, and the command row offers the agent's
+slash commands; a shell's gets its recent lines. The Claude Code lens is
+the one there is today.
 
 ![A single pane with Claude Code asking whether to run a git commit](docs/images/claude.png)
 
-Amber and paper for daylight, and a phone layout that keeps the keys
-under the thumb.
+Amber by default; phosphor green, and paper for daylight.
 
-| Amber | Paper |
+| Green | Paper |
 |---|---|
-| ![amber](docs/images/amber.png) | ![paper](docs/images/paper.png) |
+| ![the green theme](docs/images/green.png) | ![the paper theme](docs/images/paper.png) |
 
-<img src="docs/images/phone.png" alt="The pane view on a phone-sized screen" width="300">
+On a phone the keys stay under the thumb and the pane buttons fold
+behind one `⋯`.
+
+| A pane on a phone | The pane buttons, folded |
+|---|---|
+| <img src="docs/images/phone.png" alt="The pane view on a phone-sized screen" width="300"> | <img src="docs/images/phone-tools.png" alt="The pane buttons as a menu on a phone" width="300"> |
 
 An admin sees the hub's live log, tokens and users, connected clients
 and agents, and the address allow and deny lists.
@@ -145,16 +167,15 @@ The features: [web client](docs/features/web-client.md),
 
 ## The other clients
 
-| | |
-|---|---|
-| [**muxway-android**](https://github.com/notmarkopadjen/muxway-android) | Panes on a phone, one per screen or side by side, set up by scanning a code. A Wear OS watch face, complication and tile show which panes wait; a tap opens a pane's tail on the wrist with a few answers and the microphone. |
-| [**muxway-glasses-even**](https://github.com/notmarkopadjen/muxway-glasses-even) | Even Realities G2: the pane list at a glance, a pane through the Claude Code lens, a banner when it needs you, and a reply from a fixed set or by voice. |
-| [**muxway-midp**](https://github.com/notmarkopadjen/muxway-midp) | Java ME, MIDP 1.0 and 2.0: list, read, reply and send keys from a Nokia 6310i over GPRS, through a small relay. |
+| Client | What it does | Get it |
+|---|---|---|
+| [**muxway-android**](https://github.com/notmarkopadjen/muxway-android) | Panes on a phone, one per screen or side by side, set up by scanning a code. A Wear OS watch face, complication and tile show which panes wait; a tap opens a pane's tail on the wrist with a few answers and the microphone. | [Latest APKs](https://github.com/notmarkopadjen/muxway-android/releases/latest): the app, the watch app and the watch face |
+| [**muxway-glasses-even**](https://github.com/notmarkopadjen/muxway-glasses-even) | Even Realities G2: the pane list at a glance, a pane through the Claude Code lens, a banner when it needs you, and a reply from a fixed set or by voice. | On the Even Hub: to be provided. Until then, pack it yourself |
+| [**muxway-midp**](https://github.com/notmarkopadjen/muxway-midp) | Java ME, MIDP 1.0 and 2.0: list, read, reply and send keys from a Nokia 6310i over GPRS, through a small relay. | [Latest JARs](https://github.com/notmarkopadjen/muxway-midp/releases/latest): MIDP 2.0 and MIDP 1.0 |
 
-<p>
-<img src="docs/images/glasses.png" alt="Claude Code through the lens on the glasses" width="576">
-<img src="docs/images/midp.png" alt="Claude Code through the lens on a 96 by 65 pixel phone" width="226">
-</p>
+| Even Realities G2: Claude Code through the lens | Nokia 6310i, 96 by 65 pixels: the same pane |
+|---|---|
+| <img src="docs/images/glasses.png" alt="Claude Code through the lens on the glasses" width="576"> | <img src="docs/images/midp.png" alt="Claude Code through the lens on a 96 by 65 pixel phone" width="226"> |
 
 The clients are one product: [docs/ui-guideline.md](docs/ui-guideline.md)
 says what every client shows and which key or gesture does what.

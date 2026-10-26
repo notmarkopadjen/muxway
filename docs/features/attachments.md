@@ -1,11 +1,11 @@
 # Attachments: a file pasted or dropped into a pane lands on the host
 
-Claude Code reads an image or a file when its path is in the prompt. In a
-local terminal a screenshot is pasted straight in; through muxway only
-text travelled. Now a client can hand the program in a pane a file: the
-host's agent writes it into an **inbox** its owner enabled, and the
-client puts the file's path on the input line for you to finish the
-sentence and send.
+An AI coding agent such as Claude Code reads an image or a file when its
+path is in the prompt. In a local terminal a screenshot is pasted
+straight in; through muxway only text travelled. Now a client can hand
+the program in a pane a file: the host's agent writes it into an
+**inbox** its owner enabled, and the client puts the file's path on the
+input line for you to finish the sentence and send.
 
 ## Using it
 
@@ -85,8 +85,8 @@ the owner on 2026-10-24):
 - **The client's own name** for the file is used for its toast only and
   never sent, so no `../` or shell characters come anywhere near a path.
 - **The person types the path** into the prompt; the client never sends
-  it to the pane on its own. A hostile image or PDF read by Claude Code
-  through its path is what pasting it locally does.
+  it to the pane on its own. A hostile image or PDF read by the program
+  in the pane through its path is what pasting it locally does.
 - The hub holds the bytes for the request only. The message that carries
   a file to the agent may be up to 12 MiB; every other message stays
   under 1 MiB.
