@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -22,7 +23,9 @@ import (
 
 var (
 	png2      = []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02\x08\x06\x00\x00\x00r\xb6\r$\x00\x00\x00\x16IDATx\x9cc\xf8\xcf\xc0\xf0\x9f\x81\xe1?\x03\xc3\x7f\x06\x00\x1a\xf6\x05\xfd\x95\x8b\xd8\x1d\x00\x00\x00\x00IEND\xaeB`\x82")
-	inboxName = regexp.MustCompile(`^\d{8}-\d{6}-[a-z0-9]{6}\.(png|txt|json|pdf)$`)
+	inboxName = regexp.MustCompile(`^\d{8}-\d{6}-[a-z0-9]{6}\.(png|txt|json|pdf|zip)$`)
+	// The smallest archive: one empty file, stored.
+	zip2 = []byte("PK\x03\x04\x0a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00aPK\x01\x02\x0a\x00\x0a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00aPK\x05\x06\x00\x00\x00\x00\x01\x00\x01\x00\x2f\x00\x00\x00\x1f\x00\x00\x00\x00\x00")
 )
 
 func filesEnv(t *testing.T, agentArgs ...string) (*env, *agentProc, string) {
@@ -96,6 +99,8 @@ func TestSec116_AFileMustBeWhatItsTypeSays(t *testing.T) {
 		{"image/svg+xml", "<svg onload=alert(1)/>"},
 		{"application/x-sh", "#!/bin/sh\nrm -rf /\n"},
 		{"text/html", "<script>alert(1)</script>"},
+		{"application/zip", "\x7fELF\x02\x01\x01\x00 not an archive"},
+		{"application/zip", string(png2)},
 	} {
 		r := e.sendFile(full, shell0, "x", c.typ, []byte(c.data))
 		expect(t, r, http.StatusUnsupportedMediaType, c.typ)
@@ -106,6 +111,20 @@ func TestSec116_AFileMustBeWhatItsTypeSays(t *testing.T) {
 	expect(t, e.do("POST", full, "/v1/panes/"+shell0+"/files", "", "plain", "Content-Type", "text/plain"), http.StatusBadRequest, "not multipart")
 	if n := len(inboxFiles(t, inbox)); n != 0 {
 		t.Fatalf("%d files written", n)
+	}
+	// An archive that is one is kept as it is, named .zip whatever the client called it.
+	r := e.sendFile(full, shell0, "tool.exe", "application/zip", zip2)
+	expect(t, r, http.StatusCreated, "zip")
+	if !strings.HasSuffix(r.body, `.zip", "bytes": `+strconv.Itoa(len(zip2))+`}`) && !strings.Contains(r.body, `.zip"`) {
+		t.Fatalf("zip: %s", r.body)
+	}
+	entries := inboxFiles(t, inbox)
+	if len(entries) != 1 || !strings.HasSuffix(entries[0].Name(), ".zip") {
+		t.Fatalf("zip written as %v", entries)
+	}
+	data, _ := os.ReadFile(filepath.Join(inbox, entries[0].Name()))
+	if !bytes.Equal(data, zip2) {
+		t.Fatal("the archive was changed")
 	}
 }
 

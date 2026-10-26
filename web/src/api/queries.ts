@@ -193,6 +193,7 @@ export const FILE_TYPES: Record<string, string> = {
   txt: 'text/plain',
   md: 'text/markdown',
   json: 'application/json',
+  zip: 'application/zip',
 };
 
 export function fileType(f: File): string | null {

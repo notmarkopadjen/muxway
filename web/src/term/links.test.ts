@@ -89,6 +89,9 @@ describe('findFiles', () => {
     expect(
       findFiles(`/a/20261025-102235-a1b2c3.json and /b/20261025-102235-d4e5f6.pdf`),
     ).toHaveLength(2);
+    expect(findFiles('/i/20261025-102235-d4e5f6.zip')).toEqual([
+      [0, 29, '20261025-102235-d4e5f6.zip'],
+    ]);
   });
   it('wants a path and the exact name', () => {
     for (const s of [

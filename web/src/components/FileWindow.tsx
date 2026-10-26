@@ -4,8 +4,8 @@ import { previewFile, readFile } from '../api/queries';
 import { size } from './InputPanel';
 
 // A file of the host, shown in a window over the page: an image as
-// itself, a PDF in a frame, anything else as the text it is, with its
-// name, size and a download in the bar. Escape, the bar's × or a click
+// itself, a PDF in a frame, a text as it is, an archive as its download
+// only, with its name, size and a download in the bar. Escape, the bar's × or a click
 // outside closes it. A file of the inbox is asked for by name; one the
 // pane printed the path of, by that path, from under the host's roots.
 export type Shown = { address: string; name: string } | { address: string; path: string };
@@ -22,7 +22,7 @@ function fileNameOf(s: Shown): string {
 }
 
 type Got =
-  | { url: string; bytes: number; kind: 'image' | 'pdf' }
+  | { url: string; bytes: number; kind: 'image' | 'pdf' | 'binary' }
   | { url: string; bytes: number; kind: 'text'; text: string; cut: boolean }
   | { error: string };
 
@@ -44,6 +44,7 @@ export function FileWindow({ shown, onClose }: { shown: Shown; onClose: () => vo
         const typ = blob.type.split(';')[0];
         if (typ.startsWith('image/')) setGot({ url, bytes: blob.size, kind: 'image' });
         else if (typ === 'application/pdf') setGot({ url, bytes: blob.size, kind: 'pdf' });
+        else if (!typ.startsWith('text/')) setGot({ url, bytes: blob.size, kind: 'binary' });
         else {
           const text = await blob.slice(0, TEXT_SHOWN).text();
           if (!gone)
@@ -124,6 +125,10 @@ export function FileWindow({ shown, onClose }: { shown: Shown; onClose: () => vo
             <img src={got.url} alt={label} data-testid="picture-image" />
           ) : got.kind === 'pdf' ? (
             <iframe src={got.url} title={label} data-testid="picture-frame" />
+          ) : got.kind === 'binary' ? (
+            <span className="mx-dim" data-testid="picture-binary">
+              no preview for this type; ⤓ downloads it
+            </span>
           ) : got.kind === 'text' ? (
             <pre className="mx-picture-text" data-testid="picture-text">
               {got.text}

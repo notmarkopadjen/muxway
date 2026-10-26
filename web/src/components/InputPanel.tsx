@@ -505,7 +505,7 @@ export function InputPanel({
               type="file"
               multiple
               hidden
-              accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.md,.json,image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain,text/markdown,application/json"
+              accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.md,.json,.zip,image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain,text/markdown,application/json,application/zip"
               data-testid="file-picker"
               onChange={(e) => {
                 const files = [...(e.target.files ?? [])];

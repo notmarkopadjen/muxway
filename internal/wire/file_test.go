@@ -73,6 +73,7 @@ func TestFileNames(t *testing.T) {
 		"20261025-102235-56fwge.json": "text/plain; charset=utf-8",
 		"20261025-102235-56fwge.md":   "text/plain; charset=utf-8",
 		"20261025-102235-56fwge.exe":  "",
+		"20261025-102235-56fwge.zip":  "application/zip",
 	} {
 		if got := FileTypeOf(n); got != typ {
 			t.Errorf("%s: %q, want %q", n, got, typ)

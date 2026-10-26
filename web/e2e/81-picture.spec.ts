@@ -63,6 +63,8 @@ test('81 a path of the inbox is a link; a click shows the image over the page; E
   await expect(picture).toBeVisible();
   await page.getByTestId('picture-back').click({ position: { x: 5, y: 5 } });
   await expect(picture).toHaveCount(0, { timeout: 3000 });
+  // The screen is left clean for the next spec.
+  await control(request, '/send', { target: 'work:0.0', text: 'clear' });
 });
 
 test('81 security: only an inbox name links; a click sends no input; a missing file says so', async ({
@@ -124,6 +126,8 @@ test('81 security: only an inbox name links; a click sends no input; a missing f
     target: 'work:0.0',
     text: `printf '\\033[?1000l\\033[?1006l'`,
   });
+  // The screen is left clean for the next spec.
+  await control(request, '/send', { target: 'work:0.0', text: 'clear' });
 });
 
 test('81 another type opens in the window as the text it is, with a download', async ({
@@ -154,4 +158,33 @@ test('81 another type opens in the window as the text it is, with a download', a
   expect(download.suggestedFilename()).toBe(path.split('/').pop());
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('picture')).toHaveCount(0, { timeout: 3000 });
+  // The screen is left clean for the next spec.
+  await control(request, '/send', { target: 'work:0.0', text: 'clear' });
+});
+
+test('81 an archive has no preview, only its download', async ({ page, request }) => {
+  await signIn(page);
+  await openPane(page, SHELL0);
+  await settled(page);
+  // The smallest archive: one empty file, stored.
+  const zip = Buffer.from(
+    'UEsDBAoAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAYVBLAQIKAAoAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAABhUEsFBgAAAAABAAEALwAAAB8AAAAAAA==',
+    'base64',
+  );
+  const path = await upload(page.request, 'tool.zip', 'application/zip', zip);
+  expect(path).toMatch(/\.zip$/);
+  await control(request, '/send', { target: 'work:0.0', text: `echo got ${path} ok` });
+  const screen = page.getByTestId('screen');
+  await expect(screen).toContainText(`got ${path} ok`, { timeout: 5000 });
+  await screen.locator('a.mx-file-link').last().click();
+  await expect(page.getByTestId('picture-binary')).toContainText('no preview');
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByTestId('picture-download').click(),
+  ]);
+  expect(download.suggestedFilename()).toBe(path.split('/').pop());
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('picture')).toHaveCount(0, { timeout: 3000 });
+  // The screen is left clean for the next spec.
+  await control(request, '/send', { target: 'work:0.0', text: 'clear' });
 });

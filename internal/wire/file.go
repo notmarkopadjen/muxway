@@ -21,12 +21,14 @@ var FileTypes = map[string]string{
 	"text/plain":       "txt",
 	"text/markdown":    "md",
 	"application/json": "json",
+	// An archive is kept as it is: nothing in it is ever unpacked here.
+	"application/zip": "zip",
 }
 
 // A file of the inbox is named by the agent: a stamp, six random
 // characters and the extension of its type. A read asks for one by that
 // name and nothing else, so no path ever comes from a client.
-var fileName = regexp.MustCompile(`^[0-9]{8}-[0-9]{6}-[a-z0-9]{6}\.(png|jpg|gif|webp|pdf|txt|md|json)$`)
+var fileName = regexp.MustCompile(`^[0-9]{8}-[0-9]{6}-[a-z0-9]{6}\.(png|jpg|gif|webp|pdf|txt|md|json|zip)$`)
 
 func ValidFileName(name string) bool {
 	return fileName.MatchString(name)

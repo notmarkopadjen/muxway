@@ -34,8 +34,8 @@ Several files go one after another, each path appended.
 Once the program has the path, so does everyone reading the pane: a
 path of the inbox's shape printed in a pane is a link. In the browser a
 click shows the file in a window over the page, an image as itself, a
-PDF in a frame, a text as plain text, with its name, size and a `⤓`
-download in the bar; `Escape`, the bar's `×` or a click outside closes
+PDF in a frame, a text as plain text, an archive as its download only,
+with its name, size and a `⤓` download in the bar; `Escape`, the bar's `×` or a click outside closes
 it. A click on the link is not a click on the pane, mouse mode or not.
 The link is the name only: the host serves a file of its inbox by that
 name and nothing else, to a principal that may read the pane. Other
@@ -44,8 +44,9 @@ see [preview](preview.md).
 
 ![an inbox image shown over the page](images/web-file-window.png)
 
-The types: PNG, JPEG, GIF and WebP images, PDF, plain text, Markdown and
-JSON, up to 8 MiB each. Files are kept a day. On a host whose agent runs
+The types: PNG, JPEG, GIF and WebP images, PDF, plain text, Markdown,
+JSON and zip archives, up to 8 MiB each; an archive is kept as it came,
+never unpacked. Files are kept a day. On a host whose agent runs
 without `--inbox` there is no `⇪`, and a paste or a drop answers with a
 toast, `no inbox on alice-laptop: its agent needs --inbox`, and sends
 nothing. On Android an image pasted into the line, a file picked with

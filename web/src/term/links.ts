@@ -41,7 +41,7 @@ export function findLinks(line: string): Link[] {
 // a click shows it from the host. The name is the whole of what travels;
 // a longer extension, a dot or a word glued to it means something else.
 const file =
-  /\/(?:\S*?\/)?(\d{8}-\d{6}-[a-z0-9]{6}\.(?:png|jpg|gif|webp|pdf|txt|md|json))(?!\.?[A-Za-z0-9_])/g;
+  /\/(?:\S*?\/)?(\d{8}-\d{6}-[a-z0-9]{6}\.(?:png|jpg|gif|webp|pdf|txt|md|json|zip))(?!\.?[A-Za-z0-9_])/g;
 
 export type FileLink = [start: number, end: number, name: string];
 
