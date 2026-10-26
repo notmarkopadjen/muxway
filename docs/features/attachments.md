@@ -13,6 +13,7 @@ On the host, once:
 
 ```sh
 muxway agent run --inbox default     # inbox/ in the agent's directory; or --inbox <dir>
+muxway agent run --inbox default --inbox-max-files 50   # a smaller cap than the 500 default
 ```
 
 In the browser, on a writable pane of that host, the input line has `⇪`:
@@ -31,7 +32,7 @@ Several files go one after another, each path appended.
 The types: PNG, JPEG, GIF and WebP images, PDF, plain text, Markdown and
 JSON, up to 8 MiB each. Files are kept a day. On Android the same button
 opens the system picker, and *share* sends an image, a text or a PDF to a
-pane you pick (muxway-android#11).
+pane you pick ([muxway-android#11](https://github.com/notmarkopadjen/muxway-android/issues/11)).
 
 ## How it works
 
@@ -55,8 +56,9 @@ sequenceDiagram
 
 The agent creates the inbox `0700` and each file `0600`, names it
 `<yyyymmdd-hhmmss>-<6 random>.<ext>` with the extension from the type,
-refuses when the inbox holds 500 files or 256 MiB, and removes files
-older than 24 hours at start and every hour. Protocol: [`GET` and `POST
+refuses when the inbox holds 500 files (`--inbox-max-files` lowers that)
+or 256 MiB, and removes files older than 24 hours at start and every
+hour. Protocol: [`GET` and `POST
 /v1/panes/{address}/files`](../protocol/v1.md) and the agent op `file`.
 
 ## Security considerations

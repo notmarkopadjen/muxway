@@ -18,17 +18,43 @@ muxway hub serve --listen 0.0.0.0:7600 --tls-cert cert.pem --tls-key key.pem \
 muxway hub serve --listen 127.0.0.1:7600 --public-url https://hub.example.com --trust-proxy
 ```
 
-- State lives in `--dir` (default `~/.config/muxway/hub`), which must be
-  mode 700: the hub's key, `hub.json` with paired agents and token hashes,
-  and `admin.sock`, through which the `muxway hub ...` commands talk to the
-  running hub.
-- Without TLS the hub refuses any address but loopback.
+- State lives in `--dir`, which must be mode 700: the hub's key, `hub.json`
+  with paired agents and token hashes, and `admin.sock`, through which the
+  `muxway hub ...` commands talk to the running hub. The default is
+  `muxway/hub` under the user's configuration directory: `$XDG_CONFIG_HOME`
+  or `~/.config` on Linux, `~/Library/Application Support` on macOS. The
+  `MUXWAY_DIR` environment variable replaces the whole default as it is,
+  for the hub and the agent alike (no role is appended), so a service can
+  keep its state where its unit says; a hub and an agent on one machine
+  need different values, or `--dir`.
+- The default port is 7600, on loopback. Without TLS the hub refuses any
+  address but loopback.
 - `--trust-proxy` takes the client address from `X-Forwarded-For` when the
   peer is loopback, so lockouts hit the real client and not the proxy. Use
   it only behind a proxy that sets that header itself.
-- The proxy must pass WebSocket upgrades on `/v1/agent`.
+- The proxy must pass WebSocket upgrades on `/v1/agent`; see
+  [operations](#operations) for the rest a proxy needs.
 - `--stt-url` gives the hub a transcriber for spoken clips; see
   [transcription](transcription.md).
+
+| `hub serve` flag | Does |
+|---|---|
+| `--dir <path>` | state directory (see above) |
+| `--listen <addr>` | address to listen on; default `127.0.0.1:7600` |
+| `--public-url <url>` | the URL agents use to reach this hub, carried in pairing codes, e.g. `https://hub.example.com` |
+| `--tls-cert <file>`, `--tls-key <file>` | serve TLS with these; without them the hub listens on loopback only |
+| `--trust-proxy` | take client addresses from `X-Forwarded-For` set by a loopback proxy |
+| `--no-web` | do not serve the web client; `GET /` then only sends a browser to the sign-in provider, if any |
+| `--session-ttl <duration>` | how long a browser stays signed in; default `12h` |
+| `--oidc-issuer <url>` | OpenID Connect issuer, to let people sign in with it (see [signing in](sign-in.md)) |
+| `--oidc-client-id <id>` | client id registered at the issuer |
+| `--oidc-client-secret-file <file>` | file, mode 600, holding the client secret |
+| `--oidc-claim <name>` | ID token claim that carries the e-mail; default `email` |
+| `--oidc-label <text>` | what the sign-in button says; default `Sign in` |
+| `--stt-url <url>` | transcriber for spoken clips: an OpenAI-compatible `/v1/audio/transcriptions` |
+| `--stt-key-file <file>` | file, mode 600, holding the transcriber's key, if it needs one |
+| `--stt-model <name>` | model name sent to the transcriber; default `whisper-1` |
+| `--stt-prompt <text>` | vocabulary hint sent with every clip: host and project names |
 
 ## Pairing an agent
 
@@ -46,12 +72,35 @@ the agent pins it and will never talk to a hub that cannot prove it, even
 if the hub's address or TLS certificate is taken over. `--ca` adds a CA
 for hubs with a private certificate.
 
-Run the agent as a service of the user who owns the tmux server, for
-example a systemd user unit. `--tmux-socket` or `--tmux-name` pick a tmux
-server other than the default.
-
 `muxway hub agents` lists paired agents and whether they are connected;
 `muxway hub agents remove <alias>` unpairs one and drops its connection.
+
+## Running an agent
+
+```sh
+muxway agent run                       # the default tmux server of this user
+muxway agent run --tmux-name work      # a server started with tmux -L work
+muxway agent run --inbox default --allow-sessions
+```
+
+Run it as the user who owns the tmux server, as a service (a systemd user
+unit, see [operations](#operations)). `--tmux-socket` or `--tmux-name` pick
+a tmux server other than the default. The agent's state is its `--dir`
+(default `muxway/agent` under the configuration directory, or
+`MUXWAY_DIR`), mode 700:
+
+| File | Holds |
+|---|---|
+| `agent.json` | the hub's URL and public key, this host's alias, the path of the extra CA if one was given |
+| `agent.key` | the agent's Ed25519 key, the one the hub pinned at pairing |
+| `notify.sock` | the socket the AI CLI hooks post attention events to (see [notifications](notifications.md)) |
+| `inbox/` | files clients hand a pane's program, with `--inbox default` (see [attachments](attachments.md)) |
+
+Losing `agent.key` means pairing again: the hub knows the host by that key
+and refuses any other, so `muxway hub agents remove <alias>` on the hub,
+then a new code. `--allow-sessions` and `--allow-close` let clients with a
+write grant start sessions and close panes; both are off by default (see
+[new panes and sessions](new-panes.md)).
 
 ## Tokens
 
@@ -89,6 +138,142 @@ list, and with a non-empty allow list every address not on it, agents
 included. These commands go over the admin socket, which the lists do not
 cover, so they are the way back in. Admins change the same lists on the
 web; see [the admin overview](admin.md).
+
+## Operations
+
+### As a service
+
+The hub as a system service under its own user, its state in a directory
+that user alone can read:
+
+```ini
+# /etc/systemd/system/muxway-hub.service
+[Unit]
+Description=muxway hub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=muxway
+Group=muxway
+ExecStart=/usr/local/bin/muxway hub serve --dir /var/lib/muxway/hub \
+  --listen 127.0.0.1:7600 --public-url https://hub.example.com --trust-proxy
+Restart=on-failure
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/muxway/hub
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`muxway hub token create` and the other hub commands talk to the running
+hub through `admin.sock` in that directory, so run them as the same user
+with the same `--dir` (or `MUXWAY_DIR=/var/lib/muxway/hub`).
+
+The agent as a user unit of whoever owns the tmux server, so it finds
+that user's tmux socket and state:
+
+```ini
+# ~/.config/systemd/user/muxway-agent.service
+[Unit]
+Description=muxway agent
+After=default.target
+
+[Service]
+ExecStart=%h/go/bin/muxway agent run
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+```
+
+`systemctl --user enable --now muxway-agent`; `loginctl enable-linger
+alice` keeps it running when that user is not logged in.
+
+### Behind a reverse proxy
+
+The hub does what a proxy cannot: authentication, grants, rate limits,
+audit. The proxy only needs to pass everything through unchanged. What it
+must get right:
+
+- the WebSocket upgrade on `/v1/agent`;
+- `X-Forwarded-For` set by the proxy itself, with `--trust-proxy` on the
+  hub, so lockouts hit the client and not the proxy;
+- a body of at least 8 MiB on `/v1/panes/.../files` (the hub's limit),
+  16 KiB suffices elsewhere;
+- no buffering and a read timeout above 30 s on `/v1/events` and
+  `/v1/admin/log`, which long-poll for up to 30 s, and above 90 s on
+  `/v1/transcribe`, which waits for the transcriber;
+- `Strict-Transport-Security`: the hub sets it only when it ends TLS
+  itself, so behind a proxy the proxy must.
+
+Caddy does most of this by default:
+
+```
+hub.example.com {
+    header Strict-Transport-Security "max-age=31536000"
+    request_body {
+        max_size 9MB
+    }
+    reverse_proxy 127.0.0.1:7600 {
+        flush_interval -1
+        transport http {
+            read_timeout 120s
+        }
+    }
+}
+```
+
+nginx:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name hub.example.com;
+    ssl_certificate     /etc/letsencrypt/live/hub.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/hub.example.com/privkey.pem;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    client_max_body_size 9m;
+
+    location / {
+        proxy_pass http://127.0.0.1:7600;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $http_connection;
+        proxy_buffering off;
+        proxy_read_timeout 120s;
+    }
+}
+```
+
+`$remote_addr`, not `$proxy_add_x_forwarded_for`: the hub must see the
+address the proxy saw, never one the client wrote in a header of its own.
+
+### Backup, upgrade, rotation
+
+- **Back up** the hub's directory: `hub.key` (losing it means re-pairing
+  every agent) and `hub.json` (paired agents, token hashes, users, the
+  address lists). Browser sessions and the log ring live in memory and
+  are gone with a restart: people sign in again. The agent's directory
+  holds `agent.key` and `agent.json`; without them the host pairs again.
+- **Upgrade** the hub first, then the agents: the hub answers an older
+  agent, and a client learns what a host takes from the hosts list (see
+  [feature detection](../protocol/v1.md#feature-detection)). The web
+  client is embedded in the binary, so `go install
+  github.com/notmarkopadjen/muxway/cmd/muxway@latest` (or a new release
+  binary) upgrades everything at once; restart the service and reload the
+  page.
+- **Rotate a token** by creating the new one, putting it on the client,
+  then revoking the old one by id: `muxway hub token create ...`,
+  `muxway hub token list`, `muxway hub token revoke <id>`. Revocation is
+  immediate and ends that token's browser sessions too. The same from the
+  [admin overview](admin.md) in a browser.
 
 ## Security considerations
 

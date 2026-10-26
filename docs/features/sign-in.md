@@ -42,9 +42,9 @@ sequenceDiagram
 - A token or user created with `--admin` carries the admin grant, and its
   sessions can use the [admin overview](admin.md); `/v1/me` then says
   `"admin": true`. An admin can list sessions and end one.
-- Until the web client ships, `GET /` on a hub with a provider sends the
-  browser to that provider's sign-in and, once signed in, shows a one-line
-  notice. Without a provider `/` stays a 404.
+- `GET /` serves the web client. On a hub run with `--no-web` it instead
+  sends a browser to the provider's sign-in, if one is configured, and
+  shows a one-line notice once signed in; without a provider it is a 404.
 
 ## Signing in with a token
 
