@@ -173,3 +173,6 @@ Contributors and AI agents: read [AGENTS.md](AGENTS.md) first. It holds
 the privacy rules (nothing personal ever reaches this repository), the
 security rules, how a feature is planned, reviewed and tested, and the
 build and test commands. Security issues: see [SECURITY.md](SECURITY.md).
+
+muxway is free software under the [Apache License 2.0](LICENSE), as are
+its clients.
