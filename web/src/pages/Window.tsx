@@ -2,7 +2,7 @@ import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { keys, useInput, useWindow } from '../api/queries';
+import { keys, useHosts, useInput, useWindow } from '../api/queries';
 import type { Mouse, PaneContent } from '../api/types';
 import { LensMark } from '../components/Lens';
 import { Divider } from '../components/Divider';
@@ -23,7 +23,7 @@ import {
 import { noteOwn, useLens } from '../term/lens';
 import { Screen } from '../term/Screen';
 import { Closing } from '../components/Closing';
-import { Picture, showFile, type Shown } from '../components/Picture';
+import { FileWindow, type Shown } from '../components/FileWindow';
 import { useFit } from '../term/useFit';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
@@ -83,12 +83,13 @@ interface TreeProps {
   onCell: (address: string, x: number, y: number) => void;
   onWheel: (address: string, up: boolean, x: number, y: number, count: number) => Promise<void>;
   onFile: (address: string, name: string) => void;
+  onPath?: (address: string, path: string) => void;
 }
 
 function Tree(props: TreeProps) {
   const { node, path, arr, panes, focused, burn, fit, setArr, onFocus, onZoom, onCell, onWheel } =
     props;
-  const { onFile } = props;
+  const { onFile, onPath } = props;
   const box = useRef<HTMLDivElement>(null);
   const lens = useLens();
   if (node.kind === 'pane') {
@@ -152,6 +153,7 @@ function Tree(props: TreeProps) {
               : undefined
           }
           onFile={(name) => onFile(p.address, name)}
+          onPath={onPath && p.mode === 'write' ? (path) => onPath(p.address, path) : undefined}
           testId="cell-screen"
         />
       </div>
@@ -269,6 +271,8 @@ export function WindowPage() {
     setShowing(true);
   }, []);
   const hide = useCallback(() => setShowing(false), []);
+  const hosts = useHosts();
+  const previews = !!hosts.data?.find((h) => h.name === host)?.preview;
   const fitting = fit && !!writable;
   // With fit on the host takes the browser's proportions too.
   const sent = fit && tree ? layoutFor(tree, arr) : undefined;
@@ -463,16 +467,13 @@ export function WindowPage() {
                 ...(count > 1 ? { count } : {}),
               })
             }
-            onFile={(address, name) =>
-              showFile({ address, name }, show, (why) =>
-                toast.push({ kind: 'refused', title: why }),
-              )
-            }
+            onFile={(address, name) => show({ address, name })}
+            onPath={previews ? (address, path) => show({ address, path }) : undefined}
           />
         )}
       </div>
       <Closing open={showing && !!shown}>
-        {shown && <Picture shown={shown} onClose={hide} />}
+        {shown && <FileWindow shown={shown} onClose={hide} />}
       </Closing>
       <InputPanel
         pane={focusedPane}

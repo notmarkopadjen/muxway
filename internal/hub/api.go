@@ -235,6 +235,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		Sessions bool   `json:"sessions,omitempty"`
 		Close    bool   `json:"close,omitempty"`
 		Keys     int    `json:"keys,omitempty"`
+		Preview  bool   `json:"preview,omitempty"`
 	}
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
@@ -242,6 +243,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		v := hostView{Name: host, Online: a != nil}
 		if a != nil {
 			v.Sessions, v.Close, v.Keys = a.startsSessions(r.Context()), a.closesPanes(r.Context()), a.keyGrammar()
+			v.Preview = a.previews(r.Context())
 		}
 		out = append(out, v)
 	}
@@ -542,6 +544,10 @@ func charsetParam(r *http.Request) (string, bool) {
 func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 	if path, ok := strings.CutSuffix(r.PathValue("path"), "/files"); ok {
 		h.handleFilesProbe(w, r, t, path)
+		return
+	}
+	if path, ok := strings.CutSuffix(r.PathValue("path"), "/preview"); ok {
+		h.handlePreview(w, r, t, path)
 		return
 	}
 	if i := strings.LastIndex(r.PathValue("path"), "/files/"); i >= 0 {

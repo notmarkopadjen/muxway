@@ -126,10 +126,9 @@ test('81 security: only an inbox name links; a click sends no input; a missing f
   });
 });
 
-test('81 another type opens in a tab of its own, as plain text', async ({
+test('81 another type opens in the window as the text it is, with a download', async ({
   page,
   request,
-  context,
 }) => {
   await signIn(page);
   await openPane(page, SHELL0);
@@ -143,13 +142,16 @@ test('81 another type opens in a tab of its own, as plain text', async ({
   await control(request, '/send', { target: 'work:0.0', text: `echo see ${path} too` });
   const screen = page.getByTestId('screen');
   await expect(screen).toContainText(`see ${path} too`, { timeout: 5000 });
-  const [popup] = await Promise.all([
-    context.waitForEvent('page'),
-    screen.locator('a.mx-file-link').last().click(),
+  await screen.locator('a.mx-file-link').last().click();
+  const text = page.getByTestId('picture-text');
+  await expect(text).toHaveText('{"html": "<b>not bold</b>"}');
+  expect(await text.locator('b').count()).toBe(0);
+  await expect(page.getByTestId('picture-size')).toContainText('1 lines');
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByTestId('picture-download').click(),
   ]);
-  await popup.waitForURL(/^blob:/);
-  await expect(popup.locator('body')).toContainText('<b>not bold</b>');
-  expect(await popup.locator('b').count()).toBe(0);
-  await popup.close();
-  await expect(page.getByTestId('picture')).toHaveCount(0);
+  expect(download.suggestedFilename()).toBe(path.split('/').pop());
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('picture')).toHaveCount(0, { timeout: 3000 });
 });

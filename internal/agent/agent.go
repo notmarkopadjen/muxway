@@ -46,6 +46,8 @@ type Config struct {
 	// Inbox is where files clients send are written; empty, none are taken.
 	Inbox         string `json:"-"`
 	InboxMaxFiles int    `json:"-"`
+	// Preview holds the directories under which a writer may read files.
+	Preview []string `json:"-"`
 }
 
 func configPath(dir string) string { return filepath.Join(dir, "agent.json") }
@@ -197,6 +199,10 @@ func (a *Agent) Run(ctx context.Context) error {
 		}
 		go a.sweepInbox(ctx)
 	}
+	// Said once, so the owner sees what writers may read, with this process's rights.
+	if len(a.cfg.Preview) > 0 {
+		a.log.Info("preview roots, read as this user", "roots", a.cfg.Preview)
+	}
 	if a.cfg.Dir != "" {
 		ln, err := a.listenNotify()
 		if err != nil {
@@ -300,6 +306,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		resp.Close = a.cfg.AllowClose
 		resp.Keys = wire.KeyGrammar
 		resp.Inbox = a.cfg.Inbox != ""
+		resp.Preview = len(a.cfg.Preview) > 0
 	case wire.OpRead:
 		p, code := a.find(ctx, req.Pane)
 		if code != "" {
@@ -373,6 +380,10 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 	case wire.OpReadFile:
 		resp.Type, resp.Data, resp.Error = a.fileBack(ctx, req)
 		a.audit(req, resp.Error, "name", req.Name, "bytes", len(resp.Data))
+	case wire.OpReadPath:
+		var file string
+		file, resp.Type, resp.Data, resp.Error = a.preview(ctx, req)
+		a.audit(req, resp.Error, "path", req.Path, "file", file, "bytes", len(resp.Data))
 	default:
 		resp.Error = wire.ErrUnknownOp
 		a.audit(req, wire.ErrUnknownOp)

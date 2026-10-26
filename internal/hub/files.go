@@ -24,6 +24,9 @@ const (
 	// Reading one back: a second apart, a few at once.
 	fileReadRate  = 1
 	fileReadBurst = 3
+	// A preview of a file under the host's roots.
+	previewRate  = 2
+	previewBurst = 5
 )
 
 // paneForFiles finds a pane the principal may write and whose agent takes files.
@@ -99,12 +102,67 @@ func (h *Hub) handleFileRead(w http.ResponseWriter, r *http.Request, t Principal
 		return
 	}
 	h.log.Info("audit read-file", append(attrs, "result", "ok", "bytes", len(resp.Data))...)
-	w.Header().Set("Content-Type", resp.Type)
+	serveBytes(w, resp.Type, resp.Data)
+}
+
+// serveBytes sends a file as the type its name says, to be shown inline
+// and never sniffed or cached.
+func serveBytes(w http.ResponseWriter, typ string, data []byte) {
+	w.Header().Set("Content-Type", typ)
 	w.Header().Set("Content-Disposition", "inline")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "private, no-store")
-	w.Header().Set("Content-Length", strconv.Itoa(len(resp.Data)))
-	w.Write(resp.Data)
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	w.Write(data)
+}
+
+// handlePreview serves a file a pane printed the path of, to a writer of
+// the pane, when the host's agent has it under a root. Every refusal of
+// the agent's is one 404, so nothing is learnt of the host.
+func (h *Hub) handlePreview(w http.ResponseWriter, r *http.Request, t Principal, path string) {
+	asked := r.URL.Query().Get("path")
+	if !wire.ValidPath(asked) {
+		fail(w, http.StatusBadRequest, "bad_input")
+		return
+	}
+	host := r.PathValue("host")
+	a, p, status := h.locate(r.Context(), t, host, path)
+	if status == http.StatusServiceUnavailable {
+		fail(w, status, "host_offline")
+		return
+	}
+	if status != 0 {
+		fail(w, status, "not_found")
+		return
+	}
+	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID, "path", asked}
+	if !t.canWrite(host, p) || p.Mode != tmux.ModeWrite {
+		h.log.Info("audit preview", append(attrs, "result", "read_only")...)
+		fail(w, http.StatusForbidden, "read_only")
+		return
+	}
+	if !a.previews(r.Context()) {
+		h.log.Info("audit preview", append(attrs, "result", "no_roots")...)
+		fail(w, http.StatusNotFound, "not_found")
+		return
+	}
+	if !h.limits.allowNamed("preview:"+t.ID, previewRate, previewBurst) {
+		fail(w, http.StatusTooManyRequests, "rate_limited")
+		return
+	}
+	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpReadPath, Actor: t.ID, Pane: p.PaneID, Path: asked})
+	if err != nil {
+		fail(w, http.StatusServiceUnavailable, "host_offline")
+		return
+	}
+	if resp.Error != "" {
+		h.log.Info("audit preview", append(attrs, "result", resp.Error)...)
+		status, code := statusFor(resp.Error)
+		fail(w, status, code)
+		return
+	}
+	h.log.Info("audit preview", append(attrs, "result", "ok", "bytes", len(resp.Data))...)
+	serveBytes(w, resp.Type, resp.Data)
 }
 
 func (h *Hub) handleFile(w http.ResponseWriter, r *http.Request, t Principal) {

@@ -395,6 +395,15 @@ func runAgent(cmd string, args []string) error {
 		closes := fs.Bool("allow-close", false, "let clients with a write grant close writable panes, ending what runs in them")
 		inbox := fs.String("inbox", "", `directory for files clients send a writable pane ("default": inbox/ in --dir); off when empty`)
 		inboxMax := fs.Int("inbox-max-files", 0, "files the inbox holds at most (default 500)")
+		var preview []string
+		fs.Func("preview", "directory under which clients with a write grant may preview files the pane printed paths of (repeatable); off without", func(dir string) error {
+			abs, err := filepath.Abs(dir)
+			if err != nil {
+				return err
+			}
+			preview = append(preview, abs)
+			return nil
+		})
 		if err := fs.Parse(args); err != nil {
 			return err
 		}
@@ -414,6 +423,7 @@ func runAgent(cmd string, args []string) error {
 			}
 			cfg.InboxMaxFiles = *inboxMax
 		}
+		cfg.Preview = preview
 		a, err := agent.New(cfg, key, tmux.Server{Socket: *socket, Name: *name}, logger())
 		if err != nil {
 			return err

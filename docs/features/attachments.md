@@ -33,12 +33,14 @@ Several files go one after another, each path appended.
 
 Once the program has the path, so does everyone reading the pane: a
 path of the inbox's shape printed in a pane is a link. In the browser a
-click shows an image in a window over the page, with its name and size
-in the bar; `Escape`, the bar's `×` or a click outside closes it. A PDF
-or a text opens in a tab of its own, texts as plain text. A click on the
-link is not a click on the pane, mouse mode or not. The link is the
-name only: the host serves a file of its inbox by that name and nothing
-else, to a principal that may read the pane.
+click shows the file in a window over the page, an image as itself, a
+PDF in a frame, a text as plain text, with its name, size and a `⤓`
+download in the bar; `Escape`, the bar's `×` or a click outside closes
+it. A click on the link is not a click on the pane, mouse mode or not.
+The link is the name only: the host serves a file of its inbox by that
+name and nothing else, to a principal that may read the pane. Other
+paths a pane prints open the same way where the host's owner allows it:
+see [preview](preview.md).
 
 ![an inbox image shown over the page](images/web-file-window.png)
 

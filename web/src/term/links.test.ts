@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findFiles, findLinks, isChoice, isImage } from './links';
+import { findFiles, findLinks, findPaths, isChoice } from './links';
 
 describe('findLinks', () => {
   it('finds http and https runs with their positions', () => {
@@ -104,9 +104,36 @@ describe('findFiles', () => {
     ])
       expect(findFiles(s), s).toEqual([]);
   });
-  it('knows an image from the rest', () => {
-    expect(isImage(name)).toBe(true);
-    expect(isImage('20261025-102235-56fwge.pdf')).toBe(false);
-    expect(isImage('20261025-102235-56fwge.json')).toBe(false);
+});
+
+describe('findPaths', () => {
+  it('finds paths with a slash or from ~, ending in a previewable extension', () => {
+    const line =
+      '1. docs/plans/2026-10-26-fit-keeps-still.md: fit ignores, see ~/notes/todo.txt and /var/log/app.log.';
+    expect(findPaths(line).map((p) => p[2])).toEqual([
+      'docs/plans/2026-10-26-fit-keeps-still.md',
+      '~/notes/todo.txt',
+      '/var/log/app.log',
+    ]);
+    expect(findPaths('wrote ./out/report.csv (3 rows) and ../shot.PNG')).toEqual([
+      [6, 22, './out/report.csv'],
+      [36, 47, '../shot.PNG'],
+    ]);
+    expect(findPaths('"muxway-android/docs/plans/x.md"')).toEqual([
+      [1, 31, 'muxway-android/docs/plans/x.md'],
+    ]);
+  });
+  it('leaves bare names, other extensions and the insides of words', () => {
+    for (const s of [
+      'README.md',
+      'notes.txt in the dir',
+      'docs/plans/x.md.bak',
+      'bin/run.sh',
+      'keys/agent.key',
+      'a/b.mdx',
+      'docs/plans/x.md5',
+      'x/y.md-',
+    ])
+      expect(findPaths(s), s).toEqual([]);
   });
 });

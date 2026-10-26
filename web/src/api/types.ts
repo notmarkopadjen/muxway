@@ -38,6 +38,7 @@ export interface Host {
   sessions?: boolean; // the agent starts sessions for clients
   close?: boolean; // the agent closes writable panes for clients
   keys?: number; // 2: the agent takes the whole key grammar
+  preview?: boolean; // the agent serves files under roots its owner named
 }
 
 export interface Window {

@@ -567,17 +567,26 @@ func (p Pane) Address() string {
 	return fmt.Sprintf("%s/%d.%d", p.SessionName, p.WindowIndex, p.PaneIndex)
 }
 
+// CurrentPath is the directory the pane's shell is in, as tmux knows it.
+func (s Server) CurrentPath(ctx context.Context, paneID string) (string, error) {
+	out, err := s.run(ctx, "display-message", "-p", "-t", paneID, "#{pane_current_path}")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 // Split makes one more pane out of paneID's room, beside it or below,
 // in the same directory, without taking the host's focus. A mark set on
 // the pane itself goes onto the new one; one on the window or session
 // covers it already. Returns the new pane's id.
 func (s Server) Split(ctx context.Context, paneID string, beside bool) (string, error) {
-	out, err := s.run(ctx, "display-message", "-p", "-t", paneID, "#{pane_current_path}")
+	dir, err := s.CurrentPath(ctx, paneID)
 	if err != nil {
 		return "", err
 	}
 	args := []string{"split-window", "-d", "-t", paneID, "-P", "-F", "#{pane_id}"}
-	if dir := strings.TrimSpace(string(out)); dir != "" {
+	if dir != "" {
 		args = append(args, "-c", dir)
 	}
 	if beside {
@@ -585,7 +594,7 @@ func (s Server) Split(ctx context.Context, paneID string, beside bool) (string, 
 	} else {
 		args = append(args, "-v")
 	}
-	out, err = s.run(ctx, args...)
+	out, err := s.run(ctx, args...)
 	if err != nil {
 		return "", err
 	}

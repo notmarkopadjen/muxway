@@ -81,6 +81,7 @@ for hubs with a private certificate.
 muxway agent run                       # the default tmux server of this user
 muxway agent run --tmux-name work      # a server started with tmux -L work
 muxway agent run --inbox default --allow-sessions
+muxway agent run --preview ~/work --preview ~/notes   # files under these, previewed by writers
 ```
 
 Run it as the user who owns the tmux server, as a service (a systemd user
@@ -100,7 +101,10 @@ Losing `agent.key` means pairing again: the hub knows the host by that key
 and refuses any other, so `muxway hub agents remove <alias>` on the hub,
 then a new code. `--allow-sessions` and `--allow-close` let clients with a
 write grant start sessions and close panes; both are off by default (see
-[new panes and sessions](new-panes.md)).
+[new panes and sessions](new-panes.md)). `--preview <dir>`, repeatable,
+lets clients with a write grant read files under that directory when a
+pane prints their paths (see [preview](preview.md)); the agent reads them
+with its own rights, so choose roots the agent's user should show.
 
 ## Tokens
 

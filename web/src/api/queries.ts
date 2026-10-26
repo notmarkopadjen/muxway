@@ -155,8 +155,17 @@ export function useFiles(address: string | undefined, writable: boolean) {
 }
 
 // One file of the host's inbox back, by the name the agent gave it.
-export async function readFile(address: string, name: string): Promise<Blob> {
-  const res = await fetch(`/v1/panes/${address}/files/${name}`, {
+export function readFile(address: string, name: string): Promise<Blob> {
+  return fetchBlob(`/v1/panes/${address}/files/${name}`);
+}
+
+// A file a pane printed the path of, from under the host's preview roots.
+export function previewFile(address: string, path: string): Promise<Blob> {
+  return fetchBlob(`/v1/panes/${address}/preview?path=${encodeURIComponent(path)}`);
+}
+
+async function fetchBlob(url: string): Promise<Blob> {
+  const res = await fetch(url, {
     headers: { 'X-Muxway-Client': 'web' },
     credentials: 'same-origin',
     cache: 'no-store',

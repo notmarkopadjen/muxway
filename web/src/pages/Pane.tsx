@@ -55,7 +55,7 @@ import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
 import { AddMenu } from '../components/AddMenu';
 import { Closing } from '../components/Closing';
-import { Picture, showFile, type Shown } from '../components/Picture';
+import { FileWindow, type Shown } from '../components/FileWindow';
 import { Tools } from '../components/Tools';
 import { requestPalette } from '../term/intent';
 
@@ -134,6 +134,8 @@ interface TileProps {
   onAnswer: (yes: boolean) => void;
   onFit: () => void;
   onFile: (name: string) => void;
+  // The host previews files a pane prints the paths of, for writers.
+  onPath?: (path: string) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDrop: (zone: Zone) => void;
@@ -379,6 +381,7 @@ function Tile(props: TileProps) {
               : undefined
           }
           onFile={props.onFile}
+          onPath={writable ? props.onPath : undefined}
           testId={focused ? 'screen' : 'cell-screen'}
         />
         {props.onSpread &&
@@ -515,6 +518,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const [asking, setAsking] = useState<string | null>(null);
   const hosts = useHosts();
   const hostCloses = (a: string) => !!hosts.data?.find((h) => h.name === a.split('/')[0])?.close;
+  const hostPreviews = (a: string) =>
+    !!hosts.data?.find((h) => h.name === a.split('/')[0])?.preview;
   // A tile closed in the view; the last one goes back to the list.
   const closeTile = (a: string) => {
     if (addresses.length <= 1) {
@@ -882,7 +887,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onAsk={() => setAsking(a)}
         onAnswer={(yes) => void answer(a, yes)}
         onFit={() => toggleFit(a)}
-        onFile={(name) => showFile({ address: a, name }, show, refused)}
+        onFile={(name) => show({ address: a, name })}
+        onPath={hostPreviews(a) ? (path) => show({ address: a, path }) : undefined}
         onDragStart={() => setDragging(a)}
         onDragEnd={() => setDragging(null)}
         onDrop={(zone) => {
@@ -1032,7 +1038,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         )}
       </InputPanel>
       <Closing open={showing && !!shown}>
-        {shown && <Picture shown={shown} onClose={hide} />}
+        {shown && <FileWindow shown={shown} onClose={hide} />}
       </Closing>
     </div>
   );

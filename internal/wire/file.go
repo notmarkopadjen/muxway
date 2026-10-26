@@ -51,6 +51,16 @@ func FileTypeOf(name string) string {
 	return ""
 }
 
+// ValidPath says whether a path as printed may be asked about at all:
+// something, not too long, no control bytes. Where it leads is the
+// agent's to decide.
+func ValidPath(path string) bool {
+	if path == "" || len(path) > MaxPathBytes || !utf8.ValidString(path) {
+		return false
+	}
+	return !strings.ContainsFunc(path, func(r rune) bool { return r < 0x20 || r == 0x7f })
+}
+
 // ValidFile says whether data is what its type claims: a binary type must
 // sniff as itself, a text type must be UTF-8 without control bytes but
 // tab, newline and return, and JSON must parse.

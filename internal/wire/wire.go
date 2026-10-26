@@ -21,6 +21,7 @@ const (
 	OpClosePane  = "close-pane"  // a client closes a writable pane, where the owner allows it
 	OpFile       = "file"        // a file for the pane's program, into the agent's inbox
 	OpReadFile   = "read-file"   // one file of the inbox back, by name
+	OpReadPath   = "read-path"   // a file under the owner's preview roots, by a path as printed
 )
 
 // Request from hub to agent. Actor is the id of the client token the hub
@@ -57,6 +58,8 @@ type Request struct {
 	// Type and Data of a file for the inbox; the agent names it.
 	Type string `json:"type,omitempty"`
 	Data []byte `json:"data,omitempty"`
+	// Path of a file to preview, as a pane printed it.
+	Path string `json:"path,omitempty"`
 }
 
 // Mouse is one click or wheel notch at a cell, 1-based.
@@ -106,6 +109,8 @@ type Response struct {
 	// Type and Data of a file read back.
 	Type string `json:"type,omitempty"`
 	Data []byte `json:"data,omitempty"`
+	// Preview, with a list, says the agent serves files under its roots.
+	Preview bool `json:"preview,omitempty"`
 }
 
 // KeyGrammar is the key names this build takes, as Response.Keys says.
@@ -133,6 +138,7 @@ const (
 	MinCols, MaxCols = 20, 500
 	MinRows, MaxRows = 5, 300
 	MaxLayoutBytes   = 2048
+	MaxPathBytes     = 1024
 	// Panes a window may be split into, and sessions an agent starts for
 	// clients, over its lifetime's live ones.
 	MaxPanesPerWindow = 8

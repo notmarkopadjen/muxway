@@ -166,6 +166,7 @@ type agentConn struct {
 	closes  bool // the agent closes panes for clients
 	keys    int  // the key names the agent takes, 0 before the grammar
 	inbox   bool // the agent takes files for its panes
+	preview bool // the agent serves files under its roots
 	evts    bucket
 	warned  time.Time
 }
@@ -224,7 +225,7 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 		return nil, errors.New(r.Error)
 	}
 	a.mu.Lock()
-	a.list, a.listAt, a.starts, a.closes, a.inbox, a.keys = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Keys
+	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.keys = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Keys
 	a.mu.Unlock()
 	return r.Panes, nil
 }
@@ -237,6 +238,16 @@ func (a *agentConn) takesFiles(ctx context.Context) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.inbox
+}
+
+// previews says, from the agent's listing, whether the agent has preview roots.
+func (a *agentConn) previews(ctx context.Context) bool {
+	if _, err := a.panes(ctx); err != nil {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.preview
 }
 
 // closesPanes says, from the agent's listing, whether clients may close panes there.

@@ -38,7 +38,19 @@ func TestUI_WebClient(t *testing.T) {
 		"--oidc-client-secret-file", secret, "--oidc-label", "Sign in with Test")
 	defer remember(idp.Secrets...)
 	ts := newTmux(t)
-	a := e.pairAgent(host, ts, "--allow-sessions", "--inbox", "default")
+	// A preview root with a few files, where the first pane's shell starts.
+	preview := filepath.Join(e.dir, "work")
+	os.MkdirAll(filepath.Join(preview, "docs", "plans"), 0o700)
+	os.MkdirAll(filepath.Join(preview, ".git"), 0o700)
+	os.WriteFile(filepath.Join(preview, "docs", "plans", "a.md"), []byte("# plan a\n\nThe goal, in a line.\n\n- one\n- two\n"), 0o600)
+	os.WriteFile(filepath.Join(preview, "docs", "report.csv"), []byte("day,count\n1,2\n2,3\n"), 0o600)
+	os.WriteFile(filepath.Join(preview, "docs", "page.html"), []byte("<b>bold?</b><script>alert(1)</script>\n"), 0o600)
+	os.WriteFile(filepath.Join(preview, "docs", "note.pdf"), []byte("%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 100]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"), 0o600)
+	os.WriteFile(filepath.Join(preview, "docs", "shot.png"), png2, 0o600)
+	os.WriteFile(filepath.Join(preview, ".env"), []byte("SECRET=1\n"), 0o600)
+	os.WriteFile(filepath.Join(preview, "run.sh"), []byte("#!/bin/sh\n"), 0o600)
+	a := e.pairAgent(host, ts, "--allow-sessions", "--inbox", "default", "--preview", preview)
+	ts.must("send-keys", "-t", "work:0.0", "cd "+filepath.Join(preview, "docs")+" && clear", "Enter")
 	ts.split("work:0.0")
 	ts.must("new-window", "-t", "work:1", "-n", "logs", shell())
 	ts.title("work:1.0")
@@ -62,7 +74,7 @@ func TestUI_WebClient(t *testing.T) {
 	attack := startAttackPage(t, e.url())
 	runPlaywright(t, e, npx, webDir, os.Getenv("MX_GREP"),
 		"MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_ADMIN_TOKEN="+admin, "MX_CONTROL="+control, "MX_ATTACK="+attack,
-		"MX_HUB2="+e2.url(), "MX_HUB2_TOKEN="+hub2)
+		"MX_HUB2="+e2.url(), "MX_HUB2_TOKEN="+hub2, "MX_PREVIEW="+preview)
 }
 
 // The microphone needs a hub with a transcriber: the stand-in from the

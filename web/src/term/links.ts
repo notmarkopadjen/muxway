@@ -51,9 +51,18 @@ export function findFiles(line: string): FileLink[] {
   return out;
 }
 
-// Images open in a window over the page; the rest in a tab of their own.
-export function isImage(name: string): boolean {
-  return /\.(png|jpg|gif|webp)$/.test(name);
+// A path a program printed, of a file a window can show: a run of path
+// characters with a slash in it, or from ~, ending in one of the
+// extensions the host previews. Where it leads is the host's to say.
+const path =
+  /(?<![\w./~-])((?:~|\.{1,2})?(?:\/[\w.@+-]+)+|(?:[\w.@+-]+\/)+[\w.@+-]+)\.(?:txt|md|markdown|csv|tsv|json|log|ya?ml|toml|ini|xml|html|png|jpe?g|gif|webp|pdf)(?!\.?[\w/-])/gi;
+
+export type PathLink = [start: number, end: number, path: string];
+
+export function findPaths(line: string): PathLink[] {
+  const out: PathLink[] = [];
+  for (const m of line.matchAll(path)) out.push([m.index, m.index + m[0].length, m[0]]);
+  return out;
 }
 
 // A numbered choice as Claude Code and similar menus print them, with or

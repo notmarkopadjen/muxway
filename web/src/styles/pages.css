@@ -1446,6 +1446,30 @@ button.mx-window:focus-visible {
   max-height: calc(100vh - 64px);
   object-fit: contain;
 }
+.mx-picture-body iframe {
+  display: block;
+  width: min(900px, calc(100vw - 34px));
+  height: calc(100vh - 64px);
+  border: 0;
+  background: #fff;
+}
+.mx-picture-text {
+  margin: 0;
+  width: min(100ch, calc(100vw - 34px));
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+  font: inherit;
+  white-space: pre;
+  tab-size: 4;
+  justify-self: start;
+}
+.mx-picture-download {
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--mx-ink);
+  border: 1px solid var(--mx-ink-dim);
+}
 .mx-keyboard {
   --mx-k: 34px;
   position: fixed;
