@@ -350,8 +350,14 @@ export function WindowPage() {
         method: 'POST',
         body: JSON.stringify({ mouse }),
       });
-      // The program has moved: show it now, not at the next poll.
-      void qc.invalidateQueries({ queryKey: keys.window(host, session, win) });
+      // The program has moved: show it soon, not at the next poll, and once
+      // more a little later, in case the first read caught the screen cleared
+      // and not yet redrawn.
+      for (const ms of [150, 600])
+        setTimeout(
+          () => void qc.invalidateQueries({ queryKey: keys.window(host, session, win) }),
+          ms,
+        );
     } catch (err) {
       toast.push({
         kind: 'refused',

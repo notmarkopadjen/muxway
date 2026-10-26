@@ -97,8 +97,11 @@ async function click(address: string, mouse: Mouse, refused: (why: string) => vo
       method: 'POST',
       body: JSON.stringify({ mouse }),
     });
-    // The program has moved: show it now, not at the next poll.
-    void queryClient.invalidateQueries({ queryKey: keys.pane(address) });
+    // The program has moved: show it soon, not at the next poll, and once
+    // more a little later, in case the first read caught the screen cleared
+    // and not yet redrawn.
+    for (const ms of [150, 600])
+      setTimeout(() => void queryClient.invalidateQueries({ queryKey: keys.pane(address) }), ms);
   } catch (err) {
     refused(err instanceof ApiError ? err.code : 'hub unreachable');
   }
