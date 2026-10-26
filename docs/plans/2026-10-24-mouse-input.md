@@ -96,3 +96,10 @@ Deviation from the Android plan: the agent accepts any of tmux's mouse
 mode flags, not only `mouse_any_flag`, and encodes for the mode the
 program chose; a program that asked for the old encoding would otherwise
 have been refused or misread.
+
+## Test run
+
+Implemented on 2026-10-24. The first recorded run holding the feature,
+[#47](https://github.com/notmarkopadjen/muxway/issues/47) (71 tests, 0
+failed), passed: Sec80 (write grant and mouse mode both needed) and
+Flow81 (a click reaches a program with the mouse on) among them.

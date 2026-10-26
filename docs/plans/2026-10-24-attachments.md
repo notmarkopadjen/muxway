@@ -152,3 +152,26 @@ the test. The inbox is in the throwaway agent's directory.
 2. Web: button, paste, drop, progress, toasts; spec 97; `web/dist`.
 3. Android: picker, share target, field; tests; docs; version.
 4. Run, record, push.
+
+## Review
+
+- [x] Diff matches the plan, with one deviation: the inbox's default
+  place. The plan put `--inbox default` under the agent's *state*
+  directory (`~/.local/share/muxway/inbox` in the example above); the
+  agent keeps all of its state in its `--dir`, so the inbox is
+  `inbox/` there, next to `agent.json` and `agent.key`. A hidden cap for
+  the test became the documented `--inbox-max-files` flag.
+- [x] Security rules hold: the checks of §4 are each a test (Sec114 to
+  Sec121).
+- [x] Privacy check: `scripts/prepush-check.sh` clean and diff read.
+- [x] Docs updated: `docs/features/attachments.md`, the protocol, the
+  exposing-panes page.
+
+## Test run
+
+Implemented on 2026-10-25. The first recorded run holding the feature,
+[#114](https://github.com/notmarkopadjen/muxway/issues/114), failed in
+the browser suite with the Go files tests green; the next,
+[#115](https://github.com/notmarkopadjen/muxway/issues/115) (124 tests,
+0 failed), passed in full: Sec114 to Sec121, Flow122 (the sweep) and
+spec 80 in the browser.
