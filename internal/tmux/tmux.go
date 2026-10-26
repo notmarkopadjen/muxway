@@ -173,9 +173,13 @@ func (s Server) List(ctx context.Context) (panes []Pane, skipped int, err error)
 func (p Pane) Exposed() bool { return p.Mode == ModeRead || p.Mode == ModeWrite }
 
 // Capture returns the last `lines` lines of a pane, with escape sequences
-// for colours when ansi is set.
-func (s Server) Capture(ctx context.Context, paneID string, lines int, ansi bool) (string, error) {
-	args := []string{"capture-pane", "-p", "-J", "-t", paneID, "-S", "-" + strconv.Itoa(lines)}
+// for colours when ansi is set. With join, a line the terminal wrapped
+// comes back as one; otherwise the rows are as the terminal shows them.
+func (s Server) Capture(ctx context.Context, paneID string, lines int, ansi, join bool) (string, error) {
+	args := []string{"capture-pane", "-p", "-t", paneID, "-S", "-" + strconv.Itoa(lines)}
+	if join {
+		args = append(args, "-J")
+	}
 	if ansi {
 		args = append(args, "-e")
 	}

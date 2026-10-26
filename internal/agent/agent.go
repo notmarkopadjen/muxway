@@ -312,7 +312,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 			lines = 100
 		}
 		lines = min(lines, wire.MaxLines)
-		content, err := a.tmux.Capture(ctx, p.PaneID, lines, req.ANSI)
+		content, err := a.tmux.Capture(ctx, p.PaneID, lines, req.ANSI, !req.Wrapped)
 		if err != nil {
 			resp.Error = wire.ErrTmux
 			return resp

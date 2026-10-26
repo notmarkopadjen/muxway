@@ -3,6 +3,7 @@
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -94,5 +95,45 @@ func TestFlow92_LinesArePastedAsOneBlock(t *testing.T) {
 		if !strings.Contains(string(logs), "text_bytes=17 result=ok") || strings.Contains(string(logs), "echo one") {
 			t.Fatalf("%s audit:\n%s", name, logs)
 		}
+	}
+}
+
+// A line the terminal wrapped is two rows in JSON, as the screen shows it,
+// and one line again in text mode, which rewraps to the width asked for.
+func TestFlow127_WrappedRowsStayRowsInJSONAndJoinInTextMode(t *testing.T) {
+	e, ts, _ := basic(t)
+	tok := e.token("reader", []string{host + "/*"}, nil)
+	long := "wrap-" + strings.Repeat("x", 70) + "-" + strings.Repeat("y", 70) + "-end"
+	ts.must("send-keys", "-t", "work:0.0", "-l", "echo "+long)
+	ts.must("send-keys", "-t", "work:0.0", "Enter")
+	waitFor(t, "echoed", func() bool { return strings.Contains(ts.capture("work:0.0"), "-end") })
+	r := e.get(tok, "/v1/panes/"+shell0+"?lines=10")
+	expect(t, r, http.StatusOK, "json read")
+	var got struct{ Content string }
+	if err := json.Unmarshal([]byte(r.body), &got); err != nil {
+		t.Fatal(err)
+	}
+	rows := strings.Split(got.Content, "\n")
+	first, second := -1, -1
+	for i, row := range rows {
+		if strings.HasPrefix(row, "wrap-") || strings.HasPrefix(row, "echo wrap-") {
+			first = i
+		}
+		if strings.HasSuffix(row, "-end") && !strings.HasPrefix(row, "wrap-") && !strings.HasPrefix(row, "echo") {
+			second = i
+		}
+	}
+	if first < 0 || second != first+1 {
+		t.Fatalf("the wrapped line is not two rows in JSON:\n%s", got.Content)
+	}
+	for _, row := range rows {
+		if len([]rune(row)) > 100 {
+			t.Fatalf("a JSON row is wider than the pane: %q", row)
+		}
+	}
+	txt := e.getText(tok, "/v1/panes/"+shell0+"?lines=10&width=200")
+	expect(t, txt, http.StatusOK, "text read")
+	if !strings.Contains(txt.body, long) {
+		t.Fatalf("text mode did not join the wrapped line:\n%s", txt.body)
 	}
 }

@@ -25,19 +25,22 @@ const (
 // Request from hub to agent. Actor is the id of the client token the hub
 // acts for, recorded in the agent's audit log.
 type Request struct {
-	ID    uint64  `json:"id"`
-	Op    string  `json:"op"`
-	Actor string  `json:"actor,omitempty"`
-	Pane  string  `json:"pane,omitempty"`
-	Lines int     `json:"lines,omitempty"`
-	ANSI  bool    `json:"ansi,omitempty"`
-	Text  *string `json:"text,omitempty"`
-	Key   string  `json:"key,omitempty"`
-	Mouse *Mouse  `json:"mouse,omitempty"`
-	Cols  int     `json:"cols,omitempty"`
-	Rows  int     `json:"rows,omitempty"`
-	Fit   string  `json:"fit,omitempty"`   // "auto" gives the window back to tmux
-	Scope string  `json:"scope,omitempty"` // "" or "pane": size the pane; "window": size its window
+	ID    uint64 `json:"id"`
+	Op    string `json:"op"`
+	Actor string `json:"actor,omitempty"`
+	Pane  string `json:"pane,omitempty"`
+	Lines int    `json:"lines,omitempty"`
+	ANSI  bool   `json:"ansi,omitempty"`
+	// Wrapped asks for the rows as the terminal wrapped them; without it a
+	// line the terminal wrapped comes back joined, for a reader that rewraps.
+	Wrapped bool    `json:"wrapped,omitempty"`
+	Text    *string `json:"text,omitempty"`
+	Key     string  `json:"key,omitempty"`
+	Mouse   *Mouse  `json:"mouse,omitempty"`
+	Cols    int     `json:"cols,omitempty"`
+	Rows    int     `json:"rows,omitempty"`
+	Fit     string  `json:"fit,omitempty"`   // "auto" gives the window back to tmux
+	Scope   string  `json:"scope,omitempty"` // "" or "pane": size the pane; "window": size its window
 	// Layout, with scope "window", is a tmux layout string whose
 	// proportions the window takes at the new size.
 	Layout string `json:"layout,omitempty"`

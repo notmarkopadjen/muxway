@@ -201,7 +201,7 @@ func (h *Hub) handleWindow(w http.ResponseWriter, r *http.Request, t Principal) 
 		wg.Add(1)
 		go func(i int, p tmux.Pane) {
 			defer wg.Done()
-			resp, err := a.request(r.Context(), wire.Request{Op: wire.OpRead, Actor: t.ID, Pane: p.PaneID, Lines: lines, ANSI: ansi})
+			resp, err := a.request(r.Context(), wire.Request{Op: wire.OpRead, Actor: t.ID, Pane: p.PaneID, Lines: lines, ANSI: ansi, Wrapped: true})
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
