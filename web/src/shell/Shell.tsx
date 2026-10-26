@@ -19,6 +19,7 @@ import { shownName, useHubs } from '../hubs';
 import { Palette } from '../components/Palette';
 import { HeaderSlot } from './HeaderSlot';
 import { Profile } from './Profile';
+import { Closing } from '../components/Closing';
 import { onPaletteRequest } from '../term/intent';
 import { changedRecently, noteEvent } from '../term/lens';
 
@@ -229,9 +230,15 @@ export function Shell() {
           <kbd>?</kbd> help · <kbd>t</kbd> theme · <kbd>/</kbd> filter
         </span>
       </footer>
-      {help && <Help onClose={() => setHelp(false)} />}
-      {hubsOpen && <Hubs signedIn={signedIn} onClose={() => setHubsOpen(false)} />}
-      {palette && <Palette onClose={() => setPalette(false)} />}
+      <Closing open={help}>
+        <Help onClose={() => setHelp(false)} />
+      </Closing>
+      <Closing open={hubsOpen}>
+        <Hubs signedIn={signedIn} onClose={() => setHubsOpen(false)} />
+      </Closing>
+      <Closing open={palette}>
+        <Palette onClose={() => setPalette(false)} />
+      </Closing>
     </>
   );
 }

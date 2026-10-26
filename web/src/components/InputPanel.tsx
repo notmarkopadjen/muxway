@@ -18,6 +18,7 @@ import { CommandBar } from './CommandBar';
 import { Completions } from './Completions';
 import { KeyBar } from './KeyBar';
 import { Keyboard } from './Keyboard';
+import { Closing } from './Closing';
 import { useToast } from './Toast';
 
 // The input line, the key bar and the command row for the focused pane,
@@ -561,15 +562,17 @@ export function InputPanel({
         )}
         {list.length > 0 && <Completions items={list} picked={picked} onTake={take} />}
       </form>
-      {boardOpen && (
-        <Keyboard
-          target={pane.address}
-          grammar={grammar}
-          send={async (body) => (await send(body)) !== false}
-          onRefused={(why) => toast.push({ kind: 'refused', title: why })}
-          onClose={() => setBoard(false)}
-        />
-      )}
+      <Closing open={boardOpen && !!pane}>
+        {pane && (
+          <Keyboard
+            target={pane.address}
+            grammar={grammar}
+            send={async (body) => (await send(body)) !== false}
+            onRefused={(why) => toast.push({ kind: 'refused', title: why })}
+            onClose={() => setBoard(false)}
+          />
+        )}
+      </Closing>
       <div className="mx-below" ref={below}>
         <KeyBar onKey={(k) => void send({ key: k })} disabled={!writable} />
         {row && <CommandBar row={row} disabled={!writable} onRun={run} />}

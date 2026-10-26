@@ -22,7 +22,17 @@ test('51 motion: power-on, burn-in, reduced motion', async ({ page, request }, i
   await expect(page.getByTestId('help')).toBeVisible();
   expect(await windowAnim()).toBe('mx-power-on');
   await shot(page, info, '51-help-on');
+  // Closed, it powers off: the same animation backwards, then it is gone.
   await page.keyboard.press('Escape');
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          getComputedStyle(document.querySelector('[data-testid="help"] > *')!).animationDirection,
+      ),
+    )
+    .toBe('reverse');
+  await expect(page.getByTestId('help')).toHaveCount(0);
   await page.keyboard.press('m');
   await page.keyboard.press('?');
   await expect(page.getByTestId('help')).toBeVisible();
