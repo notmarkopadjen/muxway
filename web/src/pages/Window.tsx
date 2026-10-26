@@ -25,6 +25,7 @@ import { Screen } from '../term/Screen';
 import { Closing } from '../components/Closing';
 import { FileWindow, type Shown } from '../components/FileWindow';
 import { useFit } from '../term/useFit';
+import { screenWords } from '../term/complete';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
 import { Tools } from '../components/Tools';
@@ -84,12 +85,14 @@ interface TreeProps {
   onWheel: (address: string, up: boolean, x: number, y: number, count: number) => Promise<void>;
   onFile: (address: string, name: string) => void;
   onPath?: (address: string, path: string) => void;
+  onCopied: (rows: number) => void;
+  onPrompt: (id: string) => void;
 }
 
 function Tree(props: TreeProps) {
   const { node, path, arr, panes, focused, burn, fit, setArr, onFocus, onZoom, onCell, onWheel } =
     props;
-  const { onFile, onPath } = props;
+  const { onFile, onPath, onCopied, onPrompt } = props;
   const box = useRef<HTMLDivElement>(null);
   const lens = useLens();
   if (node.kind === 'pane') {
@@ -145,7 +148,7 @@ function Tree(props: TreeProps) {
           scale={arr.scale[node.id] ?? 1}
           focused={focused === node.id}
           onClick={() => onFocus(node.id)}
-          height={p.height}
+          height={p.height - (pc.trimmed ?? 0)}
           bounds={{ cols: p.width, rows: p.height }}
           onCell={p.mode === 'write' && p.mouse ? (x, y) => onCell(p.address, x, y) : undefined}
           onWheel={
@@ -155,6 +158,9 @@ function Tree(props: TreeProps) {
           }
           onFile={(name) => onFile(p.address, name)}
           onPath={onPath && p.mode === 'write' ? (path) => onPath(p.address, path) : undefined}
+          onCopy={onCopied}
+          onPrompt={p.mode === 'write' ? () => onPrompt(node.id) : undefined}
+          cursorRow={p.cursor_y}
           testId="cell-screen"
         />
       </div>
@@ -245,6 +251,12 @@ export function WindowPage() {
   );
   const move = (id: string | null) => setFocused(id);
   const focusedPane = focus ? panes.get(focus)?.pane : undefined;
+  const focusedContent = focus ? panes.get(focus)?.content : undefined;
+  const words = useMemo(() => screenWords(focusedContent ?? ''), [focusedContent]);
+  const focusLine = useCallback(() => {
+    const el = document.querySelector<HTMLTextAreaElement>('[data-testid="input"]');
+    if (el && !el.disabled) el.focus();
+  }, []);
   // The strip: this window's panes in layout order, hidden ones dimmed.
   const stripPanes = useMemo(
     () => (tree ? leaves(tree).map((l) => panes.get(l.id)?.pane) : []).filter((p) => !!p),
@@ -476,6 +488,16 @@ export function WindowPage() {
             }
             onFile={(address, name) => show({ address, name })}
             onPath={previews ? (address, path) => show({ address, path }) : undefined}
+            onCopied={(rows) =>
+              toast.push({
+                kind: 'copied',
+                title: rows ? `${rows} ${rows === 1 ? 'row' : 'rows'}` : 'refused by the browser',
+              })
+            }
+            onPrompt={(id) => {
+              setFocused(id);
+              focusLine();
+            }}
           />
         )}
       </div>
@@ -496,6 +518,7 @@ export function WindowPage() {
         onGrow={(px) => {
           grown.current = px;
         }}
+        words={words}
       />
     </div>
   );

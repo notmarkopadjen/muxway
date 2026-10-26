@@ -590,7 +590,7 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 		body = text.Encode(strings.Join(rows, "\n")+"\n", charset)
 	} else {
 		v := view(r.PathValue("host"), t, p)
-		body, _ = json.Marshal(map[string]any{"pane": v, "content": resp.Content})
+		body, _ = json.Marshal(map[string]any{"pane": v, "content": resp.Content, "trimmed": resp.Trimmed})
 	}
 	sum := sha256.Sum256(body)
 	etag := `"` + hex.EncodeToString(sum[:8]) + `"`

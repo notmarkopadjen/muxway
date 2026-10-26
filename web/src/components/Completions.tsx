@@ -1,29 +1,35 @@
-// The list above the input line while its first word is typed. A click
-// takes a row; the keys are the field's, which keeps the focus.
+import type { Offer } from '../term/complete';
+
+// The list above the input line while a word is typed: the program's
+// commands, then words from the screen, marked ⇥ since Tab takes them
+// and Enter sends the line as typed. A click takes a row; the keys are
+// the field's, which keeps the focus.
 export function Completions({
   items,
   picked,
   onTake,
 }: {
-  items: string[];
+  items: Offer[];
   picked: number;
   onTake: (c: string) => void;
 }) {
   return (
     <div className="mx-complete" role="listbox" data-testid="complete">
-      {items.map((c, i) => (
+      {items.map((o, i) => (
         <div
-          key={c}
+          key={o.text}
           role="option"
           aria-selected={i === picked}
           className={i === picked ? 'mx-picked' : undefined}
           data-testid="completion"
-          data-text={c}
+          data-text={o.text}
+          data-kind={o.kind}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => onTake(c)}
+          onClick={() => onTake(o.text)}
         >
           {i === picked ? '▸ ' : '  '}
-          {c}
+          {o.text}
+          {o.kind === 'word' ? <span className="mx-dim"> ⇥</span> : null}
         </div>
       ))}
     </div>

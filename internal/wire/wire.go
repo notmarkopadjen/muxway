@@ -95,6 +95,9 @@ type Response struct {
 	Error   string      `json:"error,omitempty"`
 	Panes   []tmux.Pane `json:"panes,omitempty"`
 	Content string      `json:"content,omitempty"`
+	// Trimmed is how many blank rows at the bottom of the screen Content
+	// leaves out.
+	Trimmed int `json:"trimmed,omitempty"`
 	// Pane is what a split or a new session made.
 	Pane *tmux.Pane `json:"pane,omitempty"`
 	// Sessions, with a list, says the agent starts sessions for clients.

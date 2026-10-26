@@ -170,7 +170,28 @@
   tab-size: 8;
 }
 .mx-screen .ln {
+  position: relative;
   min-height: 1.35em;
+}
+/* the mark at a block's first row: a click copies the block */
+.mx-copy {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  width: 2ch;
+  height: 100%;
+  padding: 0;
+  font: inherit;
+  line-height: inherit;
+  color: var(--mx-accent);
+  background: var(--mx-bg);
+  border: 0;
+  cursor: pointer;
+  text-shadow: var(--mx-glow-text-strong);
+}
+.mx-copy:hover {
+  color: var(--mx-ink);
 }
 .mx-screen .mx-link {
   color: inherit;

@@ -47,6 +47,11 @@ nothing but the hub to talk to.
    starters and the lines sent before from this browser; `↑` `↓` pick,
    `Tab` or a click takes one, `Esc` closes it, and `Enter` sends the
    highlighted one, so the pane's own menu never gets a half-typed word.
+   Any word, two letters in, is also completed from the words on the
+   pane's screen, a path a program printed, a name from an `ls`, newest
+   first, after the commands and marked `⇥`: `Tab` or a click takes
+   one, and `Enter` sends the line as typed. Nothing from another pane
+   or from the hub is ever offered.
    From an empty line the console keys
    (`↑` `↓` `←` `→`, `PageUp` `PageDown` `Home` `End`, `Tab`) go to the
    pane, so a menu in it is driven without leaving the line; with text
@@ -287,6 +292,20 @@ sequenceDiagram
 - A click on a cell the pane no longer has, right of or below its size
   on a frame the host has since shrunk, is not sent; a wheel notch there
   turns at the nearest cell the pane has.
+- A click on the row the program waits on, the cursor's row as the
+  listing reports it (or the last row with text, from an older agent),
+  focuses the input line, after whatever the click did in a pane that
+  has the mouse: so clicking Claude Code's `❯` box or a shell's prompt
+  means *type here*.
+- **Copy a block.** The screen is made of blocks, as Claude Code prints
+  them: the rows down one bar (`│`, `┃`, `|`, `>`), a `●` or `❯` row with
+  the rows indented under it, a `⎿` result with its rows. Under the
+  pointer a block shows `⧉` over its first row's marker; a click on it
+  puts the block's text on the clipboard, without the bar, the marker
+  and the indent, and a toast says how many rows. The click reaches the
+  pane as nothing, mouse mode or not.
+
+  ![a block's mark under the pointer](images/web-copy-block.png)
 - The strip's `+` stays whenever a pane could be added anywhere: *split
   here* needs the focused pane writable, *new session* a host that
   starts them for you; what does not apply is disabled with its reason.

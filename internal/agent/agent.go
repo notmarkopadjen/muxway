@@ -319,12 +319,13 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 			lines = 100
 		}
 		lines = min(lines, wire.MaxLines)
-		content, err := a.tmux.Capture(ctx, p.PaneID, lines, req.ANSI, !req.Wrapped)
+		content, trimmed, err := a.tmux.Capture(ctx, p.PaneID, lines, req.ANSI, !req.Wrapped)
 		if err != nil {
 			resp.Error = wire.ErrTmux
 			return resp
 		}
 		resp.Content = content
+		resp.Trimmed = trimmed
 	case wire.OpInput:
 		p, code := a.find(ctx, req.Pane)
 		if code == "" && p.Mode != tmux.ModeWrite {

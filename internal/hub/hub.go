@@ -224,10 +224,23 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 	if r.Error != "" {
 		return nil, errors.New(r.Error)
 	}
+	sanePanes(r.Panes)
 	a.mu.Lock()
 	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.keys = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Keys
 	a.mu.Unlock()
 	return r.Panes, nil
+}
+
+// sanePanes keeps a listing within itself: a cursor an agent reports
+// outside its pane is dropped, so a client never gets a cell the pane
+// has not.
+func sanePanes(panes []tmux.Pane) {
+	for i := range panes {
+		p := &panes[i]
+		if p.CursorX < 1 || p.CursorX > p.Width || p.CursorY < 1 || p.CursorY > p.Height {
+			p.CursorX, p.CursorY = 0, 0
+		}
+	}
 }
 
 // takesFiles says, from the agent's listing, whether it has an inbox.

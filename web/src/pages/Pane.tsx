@@ -51,6 +51,7 @@ import {
   type Zone,
 } from '../term/tiles';
 import { releaseKept, useFit } from '../term/useFit';
+import { screenWords } from '../term/complete';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
 import { AddMenu } from '../components/AddMenu';
@@ -138,6 +139,9 @@ interface TileProps {
   onPath?: (path: string) => void;
   // Height the input line takes beyond one row, which is not a resize.
   slack: () => number;
+  onCopied: (rows: number) => void;
+  // A click on the row the program waits on: the line takes the focus.
+  onPrompt: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDrop: (zone: Zone) => void;
@@ -368,7 +372,7 @@ function Tile(props: TileProps) {
           boxRef={box}
           focused={several && focused}
           onClick={props.onFocus}
-          height={sp?.height}
+          height={sp && sp.height - (shown?.trimmed ?? 0)}
           bounds={p && { cols: p.width, rows: p.height }}
           onCell={
             writable && p?.mouse
@@ -387,6 +391,9 @@ function Tile(props: TileProps) {
           }
           onFile={props.onFile}
           onPath={writable ? props.onPath : undefined}
+          onCopy={props.onCopied}
+          onPrompt={writable ? props.onPrompt : undefined}
+          cursorRow={p?.cursor_y}
           testId={focused ? 'screen' : 'cell-screen'}
         />
         {props.onSpread &&
@@ -498,7 +505,13 @@ function Tiles({ addresses }: { addresses: string[] }) {
   });
   const index = Math.min(focusedIndex, n - 1);
   const focused = addresses[index];
-  const focusedPane = usePaneCached(focused).data?.pane;
+  const focusedCached = usePaneCached(focused).data;
+  const focusedPane = focusedCached?.pane;
+  const words = useMemo(() => screenWords(focusedCached?.content ?? ''), [focusedCached?.content]);
+  const focusLine = useCallback(() => {
+    const el = document.querySelector<HTMLTextAreaElement>('[data-testid="input"]');
+    if (el && !el.disabled) el.focus();
+  }, []);
   const writable = focusedPane?.mode === 'write';
   const input = useInput(focused);
   const [custom, setCustom] = useState<TileNode | null>(null);
@@ -903,6 +916,16 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onFile={(name) => show({ address: a, name })}
         onPath={hostPreviews(a) ? (path) => show({ address: a, path }) : undefined}
         slack={slack}
+        onCopied={(rows) =>
+          toast.push({
+            kind: 'copied',
+            title: rows ? `${rows} ${rows === 1 ? 'row' : 'rows'}` : 'refused by the browser',
+          })
+        }
+        onPrompt={() => {
+          setFocusedIndex(i);
+          focusLine();
+        }}
         onDragStart={() => setDragging(a)}
         onDragEnd={() => setDragging(null)}
         onDrop={(zone) => {
@@ -1061,6 +1084,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onGrow={(px) => {
           grown.current = px;
         }}
+        words={words}
       >
         {focusedPane && !writable && (
           <div className="mx-readonly" data-testid="readonly">

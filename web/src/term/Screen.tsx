@@ -1,4 +1,5 @@
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { blockAt, blocks } from './blocks';
 import { findFiles, findLinks, findPaths, isChoice } from './links';
 import { fontFor, inner, measureCell } from './measure';
 import { classes, parse, type Span } from './sgr';
@@ -6,8 +7,9 @@ import { classes, parse, type Span } from './sgr';
 // Renders a pane's content. Lines that were not there a moment ago burn
 // in; the view follows the bottom while the person has not scrolled up.
 // With cols and rows given, the font is sized so the pane fills the box.
-// With onCell, a click on the pane's screen (its last `height` lines)
-// reports the cell under the pointer, 1-based; `bounds` is the pane's
+// With onCell, a click on the pane's screen (its last `height` lines:
+// the pane's rows less the blank ones the host left out) reports the
+// cell under the pointer, 1-based; `bounds` is the pane's
 // size as last listed: a click outside it, on a frame the host has since
 // shrunk, reports nothing, and a wheel notch there turns at the nearest
 // cell the pane has. With onWheel, the wheel
@@ -17,6 +19,11 @@ import { classes, parse, type Span } from './sgr';
 // a line is a link that opens in a new tab; its click stays in the browser.
 // With onFile, a path of the host's inbox is a link too, and its click
 // names the file; with onPath, any path of a file the host previews.
+// With onCopy, a block of the screen (a bar's rows, a bullet and its
+// rows, a result) shows ⧉ at its first row under the pointer, and a
+// click on it copies the block's text; with onPrompt, a click on the
+// cursor's row (`cursorRow`, or the last row with text) is a wish to
+// type there, after whatever the click did.
 function SpanView({ s }: { s: Span }) {
   const style: Record<string, string> = {};
   if (typeof s.fg === 'string') style.color = s.fg;
@@ -168,6 +175,9 @@ export const Screen = memo(function Screen({
   onWheel,
   onFile,
   onPath,
+  onCopy,
+  onPrompt,
+  cursorRow,
   height,
   bounds,
   focused,
@@ -184,6 +194,9 @@ export const Screen = memo(function Screen({
   onWheel?: (up: boolean, x: number, y: number, count: number) => Promise<void> | void;
   onFile?: (name: string) => void;
   onPath?: (path: string) => void;
+  onCopy?: (rows: number) => void;
+  onPrompt?: () => void;
+  cursorRow?: number;
   height?: number;
   bounds?: { cols: number; rows: number };
   focused?: boolean;
@@ -201,6 +214,37 @@ export const Screen = memo(function Screen({
     () => lines.map((spans, i) => pieces(spans, marks(plain[i], files, paths))),
     [lines, plain, files, paths],
   );
+  // The blocks a click can copy, and the one under the pointer.
+  const all = useMemo(() => (onCopy ? blocks(plain) : []), [plain, onCopy]);
+  const [hover, setHover] = useState<number | null>(null);
+  const rowOf = (target: EventTarget | null) => {
+    const ln = (target as HTMLElement | null)?.closest?.('.ln');
+    return ln && ln.parentElement
+      ? Array.prototype.indexOf.call(ln.parentElement.children, ln)
+      : -1;
+  };
+  const onMove = (ev: React.MouseEvent) => {
+    if (!onCopy) return;
+    const b = blockAt(all, rowOf(ev.target));
+    setHover(b ? b.start : null);
+  };
+  const copy = (start: number) => {
+    const b = blockAt(all, start);
+    if (!b) return;
+    void navigator.clipboard
+      .writeText(b.text)
+      .then(() => onCopy?.(b.end - b.start + 1))
+      .catch(() => onCopy?.(0));
+  };
+  // The row the program waits on: the cursor's, or the last with text;
+  // a cursor on a blank row below the text, which the host left out,
+  // counts as the last row shown.
+  const promptRow = (() => {
+    if (!height) return undefined;
+    if (cursorRow) return Math.min(cursorRow, height);
+    for (let y = height; y >= 1; y--) if (plain[lines.length - height + y - 1]?.trim()) return y;
+    return undefined;
+  })();
   const fresh = new Set<number>();
   if (burn && prev.current.size) {
     plain.forEach((t, i) => {
@@ -263,9 +307,11 @@ export const Screen = memo(function Screen({
   };
   const click = (ev: React.MouseEvent<HTMLDivElement>) => {
     onClick?.();
-    if (!onCell) return;
-    const at = cellAt(ev.target, ev.clientX);
-    if (at) onCell(at.x, at.y);
+    if (onCell) {
+      const at = cellAt(ev.target, ev.clientX);
+      if (at) onCell(at.x, at.y);
+    }
+    if (onPrompt && promptRow && cellAt(ev.target, ev.clientX, true)?.y === promptRow) onPrompt();
   };
   // Wheel notches gather while one request is in flight and go as the
   // next, counted, so a long scroll is a few requests, not one per row.
@@ -324,8 +370,12 @@ export const Screen = memo(function Screen({
       ref={box}
       data-testid={testId}
       data-font={font ? font.toFixed(1) : undefined}
+      data-rows={height}
+      data-prompt={promptRow}
       tabIndex={0}
       onClick={click}
+      onMouseMove={onCopy ? onMove : undefined}
+      onMouseLeave={onCopy ? () => setHover(null) : undefined}
       onScroll={onScroll}
       style={font ? { fontSize: `${font}px` } : undefined}
     >
@@ -341,6 +391,20 @@ export const Screen = memo(function Screen({
                 : '')
             }
           >
+            {hover === i && (
+              <button
+                type="button"
+                className="mx-copy"
+                title="copy this block"
+                data-testid="copy-block"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  copy(i);
+                }}
+              >
+                ⧉
+              </button>
+            )}
             <LineView pieces={ps} onFile={onFile} onPath={onPath} />
           </div>
         ))}

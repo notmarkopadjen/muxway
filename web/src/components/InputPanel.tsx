@@ -83,6 +83,7 @@ export function InputPanel({
   placeholder,
   send,
   onGrow,
+  words,
   children,
 }: {
   pane: Pane | undefined;
@@ -92,6 +93,8 @@ export function InputPanel({
   // The height the field takes beyond one row, told before the view's
   // boxes are measured again.
   onGrow?: (px: number) => void;
+  // Words on the pane's screen, offered as completions of any word.
+  words?: string[];
   children?: ReactNode;
 }) {
   const [text, setText] = useState('');
@@ -123,7 +126,7 @@ export function InputPanel({
   const [sending, setSending] = useState<string | null>(null);
   const picker = useRef<HTMLInputElement>(null);
   const row = pane ? commandsFor(pane, recent) : null;
-  const list = pane && writable && !closed ? completions(pane, text, caret, recent) : [];
+  const list = pane && writable && !closed ? completions(pane, text, caret, recent, words) : [];
   const picked = Math.min(pick, Math.max(list.length - 1, 0));
 
   // The field grows with its text up to ROWS rows, then scrolls inside.
@@ -414,8 +417,8 @@ export function InputPanel({
     const plain = !e.ctrlKey && !e.altKey && !e.metaKey;
     if (k === 'Enter' && plain && !e.shiftKey) {
       e.preventDefault();
-      if (list.length) {
-        const r = complete(text, caret, list[picked]);
+      if (list.length && list[picked].kind === 'command') {
+        const r = complete(text, caret, list[picked].text);
         change('', 0);
         void line(r.text.trimEnd());
       } else void submit();
@@ -433,7 +436,7 @@ export function InputPanel({
       setPick((picked + step) % list.length);
     } else if (list.length && plain && !e.shiftKey && k === 'Tab') {
       e.preventDefault();
-      take(list[picked]);
+      take(list[picked].text);
     } else if (text === '' && plain && !e.shiftKey && CONSOLE_KEYS[k]) {
       e.preventDefault();
       void send({ key: CONSOLE_KEYS[k] });

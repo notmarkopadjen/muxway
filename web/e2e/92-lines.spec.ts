@@ -136,7 +136,8 @@ test('92 completion: Claude slash commands, a shell recent line; Enter sends the
   await expect(input).toBeFocused();
   await expect(input).toHaveValue('e');
   await page.keyboard.type('c');
-  await expect(rows).toHaveText(['▸ echo hi-$((90+2))']);
+  // The line sent before comes first; the word on the screen after it, marked ⇥.
+  await expect(rows).toHaveText(['▸ echo hi-$((90+2))', '  echo ⇥']);
   await input.fill('');
   await page.evaluate(() => localStorage.removeItem('mx-recent'));
 });

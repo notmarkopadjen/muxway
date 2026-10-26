@@ -115,7 +115,10 @@ type Pane struct {
 	Attention    *Attention `json:"attention,omitempty"`
 	Zoomed       bool       `json:"zoomed,omitempty"` // shown alone in its window
 	Mouse        bool       `json:"mouse,omitempty"`  // the program asked for the mouse
-	PID          int        `json:"-"`
+	// The cursor's cell, 1-based, where the program waits for input.
+	CursorX int `json:"cursor_x,omitempty"`
+	CursorY int `json:"cursor_y,omitempty"`
+	PID     int `json:"-"`
 }
 
 // Attention is what a pane is waiting for: set by a notification from a
@@ -132,6 +135,7 @@ var fields = []string{
 	"#{pane_width}", "#{pane_height}", "#{pane_title}", "#{pane_current_command}",
 	"#{window_activity}", "#{" + optMode + "}", "#{" + optAlias + "}", "#{pane_pid}",
 	"#{window_zoomed_flag}", "#{mouse_any_flag}#{mouse_button_flag}#{mouse_standard_flag}#{mouse_all_flag}",
+	"#{cursor_x}", "#{cursor_y}",
 }
 
 // List returns every pane of the server, marked or not. Lines it cannot
@@ -164,6 +168,7 @@ func (s Server) List(ctx context.Context) (panes []Pane, skipped int, err error)
 			PaneActive: f[9] == "1", Width: atoi(f[10]), Height: atoi(f[11]), Title: f[12], Command: f[13],
 			Activity: act, Mode: f[15], Alias: f[16], PID: atoi(f[17]),
 			Zoomed: f[18] == "1" && f[9] == "1", Mouse: strings.Contains(f[19], "1"),
+			CursorX: atoi(f[20]) + 1, CursorY: atoi(f[21]) + 1,
 		})
 	}
 	return panes, skipped, nil
@@ -175,7 +180,9 @@ func (p Pane) Exposed() bool { return p.Mode == ModeRead || p.Mode == ModeWrite 
 // Capture returns the last `lines` lines of a pane, with escape sequences
 // for colours when ansi is set. With join, a line the terminal wrapped
 // comes back as one; otherwise the rows are as the terminal shows them.
-func (s Server) Capture(ctx context.Context, paneID string, lines int, ansi, join bool) (string, error) {
+// Blank rows at the bottom of the screen are left out, and counted, so a
+// client can still tell which row of the screen a row of the content is.
+func (s Server) Capture(ctx context.Context, paneID string, lines int, ansi, join bool) (string, int, error) {
 	args := []string{"capture-pane", "-p", "-t", paneID, "-S", "-" + strconv.Itoa(lines)}
 	if join {
 		args = append(args, "-J")
@@ -185,13 +192,16 @@ func (s Server) Capture(ctx context.Context, paneID string, lines int, ansi, joi
 	}
 	out, err := s.run(ctx, args...)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	all := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
+	whole := strings.TrimSuffix(string(out), "\n")
+	kept := strings.TrimRight(whole, "\n")
+	trimmed := strings.Count(whole[len(kept):], "\n")
+	all := strings.Split(kept, "\n")
 	if len(all) > lines {
 		all = all[len(all)-lines:]
 	}
-	return strings.Join(all, "\n"), nil
+	return strings.Join(all, "\n"), trimmed, nil
 }
 
 // SendText types text literally; a text with newlines is pasted instead.

@@ -30,6 +30,8 @@ export interface Pane {
   attention?: Attention;
   zoomed?: boolean;
   mouse?: boolean;
+  cursor_x?: number; // the cursor's cell, 1-based, where the program waits
+  cursor_y?: number;
 }
 
 export interface Host {
@@ -62,6 +64,7 @@ export interface Tree {
 export interface PaneContent {
   pane: Pane;
   content: string;
+  trimmed?: number; // blank rows at the screen's bottom left out of content
 }
 
 export interface WindowContent {

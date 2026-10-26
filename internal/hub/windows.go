@@ -155,6 +155,7 @@ func (h *Hub) handleResize(w http.ResponseWriter, r *http.Request, t Principal) 
 type paneContent struct {
 	Pane    PaneView `json:"pane"`
 	Content string   `json:"content"`
+	Trimmed int      `json:"trimmed"`
 }
 
 // handleWindow reads every readable pane of one window.
@@ -212,7 +213,7 @@ func (h *Hub) handleWindow(w http.ResponseWriter, r *http.Request, t Principal) 
 				failed = errors.New(resp.Error)
 				return
 			}
-			out[i] = paneContent{Pane: view(host, t, p), Content: resp.Content}
+			out[i] = paneContent{Pane: view(host, t, p), Content: resp.Content, Trimmed: resp.Trimmed}
 		}(i, p)
 	}
 	wg.Wait()
