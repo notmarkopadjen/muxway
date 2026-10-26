@@ -41,6 +41,10 @@ const KEYS: [string, string][] = [
   ['Tab', 'input line: take the completion; from an empty line, Tab goes to the pane'],
   ['Shift+Esc', 'input line: send Escape to the pane and keep typing'],
   [
+    'K',
+    'the keyboard window for the focused pane, open and closed; Esc closes it too. The ⌨ button the same',
+  ],
+  [
     'v',
     'speak: held, records until released; tapped, again stops; Esc drops it. The ◉ button the same',
   ],
