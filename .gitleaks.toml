@@ -1,0 +1,10 @@
+# The secret scanner's settings for scripts/prepush-check.sh: the default
+# rules, with the built web bundle left out, since minified code matches
+# the generic key rule on names like shiftKey; its sources are scanned.
+title = "muxway"
+
+[extend]
+useDefault = true
+
+[allowlist]
+paths = ['''^web/dist/assets/.*\.js$''']

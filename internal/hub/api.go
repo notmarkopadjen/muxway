@@ -236,6 +236,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		Close    bool   `json:"close,omitempty"`
 		Keys     int    `json:"keys,omitempty"`
 		Preview  bool   `json:"preview,omitempty"`
+		Repeat   bool   `json:"repeat,omitempty"`
 	}
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
@@ -244,6 +245,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		if a != nil {
 			v.Sessions, v.Close, v.Keys = a.startsSessions(r.Context()), a.closesPanes(r.Context()), a.keyGrammar()
 			v.Preview = a.previews(r.Context())
+			v.Repeat = a.repeats(r.Context())
 		}
 		out = append(out, v)
 	}
@@ -620,6 +622,7 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 	var in struct {
 		Text  *string     `json:"text"`
 		Key   string      `json:"key"`
+		Count *int        `json:"count"`
 		Mouse *wire.Mouse `json:"mouse"`
 	}
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
@@ -637,18 +640,23 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		fail(w, http.StatusBadRequest, "bad_json")
 		return
 	}
+	// A count goes with a key only, 1 to 50; absent, the key goes once.
+	count := 0
+	if in.Count != nil {
+		count = *in.Count
+	}
 	switch {
-	case in.Text != nil && in.Key == "" && in.Mouse == nil:
+	case in.Text != nil && in.Key == "" && in.Mouse == nil && in.Count == nil:
 		if !wire.ValidText(*in.Text) {
 			fail(w, http.StatusBadRequest, "bad_input")
 			return
 		}
-	case in.Text == nil && in.Key != "" && in.Mouse == nil:
-		if _, known := tmux.KeyName(in.Key); !known {
+	case in.Text == nil && in.Key != "" && in.Mouse == nil && count >= 0 && count <= wire.MaxKeyCount:
+		if _, known := tmux.KeyName(in.Key); !known || (in.Count != nil && count < 1) {
 			fail(w, http.StatusBadRequest, "bad_input")
 			return
 		}
-	case in.Text == nil && in.Key == "" && in.Mouse != nil:
+	case in.Text == nil && in.Key == "" && in.Mouse != nil && in.Count == nil:
 		if _, known := wire.Buttons[in.Mouse.Button]; !known || in.Mouse.X < 1 || in.Mouse.Y < 1 {
 			fail(w, http.StatusBadRequest, "bad_input")
 			return
@@ -677,7 +685,7 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		fail(w, http.StatusBadRequest, "bad_input")
 		return
 	}
-	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpInput, Actor: t.ID, Pane: p.PaneID, Text: in.Text, Key: in.Key, Mouse: in.Mouse})
+	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpInput, Actor: t.ID, Pane: p.PaneID, Text: in.Text, Key: in.Key, Count: count, Mouse: in.Mouse})
 	if err != nil {
 		fail(w, http.StatusServiceUnavailable, "host_offline")
 		return
@@ -688,6 +696,8 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		attrs = append(attrs, "text_bytes", len(*in.Text))
 	case in.Mouse != nil:
 		attrs = append(attrs, "mouse", in.Mouse.Button)
+	case count > 1:
+		attrs = append(attrs, "key", in.Key, "count", count)
 	default:
 		attrs = append(attrs, "key", in.Key)
 	}

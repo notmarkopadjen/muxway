@@ -178,6 +178,7 @@ export const Screen = memo(function Screen({
   onCopy,
   onPrompt,
   cursorRow,
+  cursor,
   height,
   bounds,
   focused,
@@ -197,6 +198,10 @@ export const Screen = memo(function Screen({
   onCopy?: (rows: number) => void;
   onPrompt?: () => void;
   cursorRow?: number;
+  // The cursor's cell, drawn as a block: where direct typing lands. On a
+  // blank row below the text, which the host leaves out, it is drawn on
+  // the last row shown, as the prompt row is.
+  cursor?: { x: number; y: number };
   height?: number;
   bounds?: { cols: number; rows: number };
   focused?: boolean;
@@ -406,6 +411,14 @@ export const Screen = memo(function Screen({
               </button>
             )}
             <LineView pieces={ps} onFile={onFile} onPath={onPath} />
+            {cursor && height && i === lines.length - height + Math.min(cursor.y, height) - 1 && (
+              <span
+                className="mx-caret"
+                data-testid="caret"
+                aria-hidden
+                style={{ left: `${cursor.x - 1}ch` }}
+              />
+            )}
           </div>
         ))}
       </pre>

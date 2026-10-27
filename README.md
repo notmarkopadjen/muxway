@@ -65,7 +65,9 @@ all clients, and yours can be too.</td>
 </tr>
 <tr>
 <td valign="top"><img src="docs/images/icons/keys.png" width="54" alt=""></td>
-<td><strong>Direct keyboard input.</strong> Type as you would at the terminal. A key
+<td><strong>Direct keyboard input.</strong> Type as you would at the terminal: on the
+web a click on the pane and every key goes to it as pressed, Esc
+included, or compose a line and send it whole. A key
 bar covers what a phone keyboard lacks, the web adds a full terminal
 keyboard (F1 to F24, Ctrl, Alt, the keypad) and the mouse for programs
 that take it. Every key goes through a fixed grammar, never a raw
@@ -191,6 +193,7 @@ and agents, and the address allow and deny lists.
 
 The features: [web client](docs/features/web-client.md),
 [keyboard](docs/features/keyboard.md),
+[direct typing](docs/features/direct.md),
 [notifications](docs/features/notifications.md),
 [sign-in](docs/features/sign-in.md),
 [attachments](docs/features/attachments.md),

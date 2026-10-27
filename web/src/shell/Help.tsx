@@ -33,7 +33,11 @@ const KEYS: [string, string][] = [
     'x / z / 0 / = / + / -',
     'window view: hide, this pane alone (or Enter, double-click), host layout, equal shares, bigger, smaller',
   ],
-  ['i', 'focus the input line; Esc leaves it'],
+  [
+    'i',
+    'direct: keys go to the focused pane as pressed, Esc included; Shift+Esc, a click on the line or the ▮ button leaves. A click on the tile the same',
+  ],
+  [':', 'focus the input line; Esc leaves it'],
   [
     'Enter / Shift+Enter',
     'input line: send (with the list open, the highlighted completion) / a new line',

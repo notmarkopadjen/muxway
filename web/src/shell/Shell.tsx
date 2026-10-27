@@ -167,7 +167,7 @@ export function Shell() {
         toast.push({ kind: 'theme', title: theme });
       } else if (ev.key === 'm') {
         toast.push({ kind: 'effects', title: toggleMotion() ? 'on' : 'off' });
-      } else if (ev.key === 'i') {
+      } else if (ev.key === 'i' || ev.key === ':') {
         const input = document.querySelector<HTMLTextAreaElement>('[data-testid="input"]');
         if (input && !input.disabled) {
           ev.preventDefault();
@@ -226,9 +226,15 @@ export function Shell() {
           {online ? '● hub' : '○ hub unreachable, retrying'}
         </span>
         <span className="mx-spacer" />
-        <span>
-          <kbd>?</kbd> help · <kbd>t</kbd> theme · <kbd>/</kbd> filter
-        </span>
+        {heading.direct ? (
+          <span data-testid="status-direct">
+            <kbd>▮</kbd> direct: keys go to the pane · <kbd>Shift+Esc</kbd> leaves
+          </span>
+        ) : (
+          <span>
+            <kbd>?</kbd> help · <kbd>t</kbd> theme · <kbd>/</kbd> filter
+          </span>
+        )}
       </footer>
       <Closing open={help}>
         <Help onClose={() => setHelp(false)} />

@@ -80,7 +80,7 @@ test('85 a block under the pointer shows its mark; a click copies it without the
   await control(request, '/send', { target: 'work:0.0', text: 'clear' });
 });
 
-test('85 a click on the prompt row focuses the line, and with the mouse on also reaches the pane', async ({
+test('85 a click on the screen turns direct typing on, the line a click away, and with the mouse on also reaches the pane', async ({
   page,
   request,
 }) => {
@@ -88,28 +88,36 @@ test('85 a click on the prompt row focuses the line, and with the mouse on also 
   await openPane(page, SHELL0);
   await settled(page);
   const input = page.getByTestId('input');
+  const form = page.locator('form.mx-input');
   await expect(input).not.toBeFocused();
   const screen = page.getByTestId('screen');
   const rows = screen.locator('.ln');
-  // The row above the prompt is not the prompt: a click there focuses nothing.
+  // A click on any row, the prompt's or one above it, is direct typing;
+  // a click on the line brings the line back.
   await control(request, '/send', { target: 'work:0.0', text: 'echo above the prompt' });
   await expect(screen).toContainText('above the prompt', { timeout: 5000 });
   await page.waitForTimeout(1200);
   await rows.filter({ hasText: 'above the prompt' }).last().click();
   await expect(input).not.toBeFocused();
-  await rows.last().click({ position: { x: 4, y: 4 } });
+  await expect(form).toHaveAttribute('data-direct', '');
+  await input.click();
   await expect(input).toBeFocused();
+  await expect(form).not.toHaveAttribute('data-direct', '');
   await page.keyboard.press('Escape');
   await expect(input).not.toBeFocused();
-  // With the mouse on, cat waits on a blank row below its echo, which the
-  // host leaves out: the last row shown stands for it.
+  await rows.last().click({ position: { x: 4, y: 4 } });
+  await expect(form).toHaveAttribute('data-direct', '');
+  await page.keyboard.press('Shift+Escape');
+  await expect(form).not.toHaveAttribute('data-direct', '');
+  // With the mouse on, the click reaches the pane and direct typing is on.
   await mouseOn(page, request);
   const inputs = watchInput(page);
   await rows.last().click({ position: { x: 4, y: 4 } });
-  await expect(input).toBeFocused();
+  await expect(form).toHaveAttribute('data-direct', '');
   await expect.poll(() => inputs.length).toBe(1);
   expect(inputs[0]).toContain('"left"');
-  await page.keyboard.press('Escape');
+  await page.keyboard.press('Shift+Escape');
+  await expect(form).not.toHaveAttribute('data-direct', '');
   await mouseOff(page, request);
   await control(request, '/send', { target: 'work:0.0', text: 'clear' });
 });

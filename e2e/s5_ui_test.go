@@ -148,15 +148,19 @@ func TestUI_Arrange(t *testing.T) {
 	runPlaywright(t, e, npx, webDir, "100-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_ARRANGE=1")
 }
 
-// The keyboard needs a pane whose program shows each byte it reads; spec
-// 102 runs here with MX_KEYS set, its read-only case in the main
-// environment.
+// The keyboard and direct typing need a pane whose program shows each
+// byte it reads; specs 102 and 104 run here with MX_KEYS set, their
+// read-only cases in the main environment.
 func TestUI_Keyboard(t *testing.T) {
 	npx, webDir := uiTools(t)
+	grep := "10[24]-"
 	if g := os.Getenv("MX_GREP"); g != "" {
-		if ok, _ := regexp.MatchString(g, "102-"); !ok {
-			t.Skip("MX_GREP leaves spec 102 out")
+		ok2, _ := regexp.MatchString(g, "102-")
+		ok4, _ := regexp.MatchString(g, "104-")
+		if !ok2 && !ok4 {
+			t.Skip("MX_GREP leaves specs 102 and 104 out")
 		}
+		grep = g
 	}
 	e := newEnv(t)
 	ts := newTmux(t)
@@ -168,7 +172,7 @@ func TestUI_Keyboard(t *testing.T) {
 	e.expose(ts, "work:0.0", "--write")
 	full := e.token("browser", []string{"*"}, []string{"*"})
 	control := e.startControl(t, ts, a)
-	runPlaywright(t, e, npx, webDir, "102-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_KEYS=1")
+	runPlaywright(t, e, npx, webDir, grep, "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_KEYS=1")
 }
 
 func uiTools(t *testing.T) (npx, webDir string) {

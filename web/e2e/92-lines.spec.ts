@@ -23,7 +23,7 @@ test('92 security: a read-only grant gets a disabled line and no completion', as
   await openPane(page, SHELL0);
   const input = page.getByTestId('input');
   await expect(input).toBeDisabled();
-  await page.keyboard.press('i');
+  await page.keyboard.press(':');
   await expect(input).not.toBeFocused();
   await expect(page.getByTestId('complete')).toHaveCount(0);
 });
@@ -142,7 +142,7 @@ test('92 completion: Claude slash commands, a shell recent line; Enter sends the
   await page.evaluate(() => localStorage.removeItem('mx-recent'));
 });
 
-test('92 keys: i focuses the line, Esc leaves it, console keys from an empty line, Shift+Esc', async ({
+test('92 keys: : focuses the line, Esc leaves it, console keys from an empty line, Shift+Esc', async ({
   page,
   request,
 }) => {
@@ -152,7 +152,7 @@ test('92 keys: i focuses the line, Esc leaves it, console keys from an empty lin
   const input = page.getByTestId('input');
   const capture = () => control(request, '/capture', { target: 'work:0.0' });
   await expect(page.getByTestId('cmdbar')).toHaveCount(0, { timeout: 10_000 });
-  await page.keyboard.press('i');
+  await page.keyboard.press(':');
   await expect(input).toBeFocused();
   // Esc leaves the line: the view's keys work again, a second Esc goes to the list.
   await page.keyboard.press('Escape');
@@ -161,7 +161,7 @@ test('92 keys: i focuses the line, Esc leaves it, console keys from an empty lin
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();
   await openPane(page, SHELL0);
-  await page.keyboard.press('i');
+  await page.keyboard.press(':');
   await expect(input).toBeFocused();
   // Empty line: the console keys reach the pane as named keys.
   const inputs = watchInput(page);

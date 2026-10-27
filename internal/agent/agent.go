@@ -305,6 +305,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		resp.Sessions = a.cfg.AllowSessions
 		resp.Close = a.cfg.AllowClose
 		resp.Keys = wire.KeyGrammar
+		resp.Repeat = true
 		resp.Inbox = a.cfg.Inbox != ""
 		resp.Preview = len(a.cfg.Preview) > 0
 	case wire.OpRead:
@@ -333,17 +334,17 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		}
 		if code == "" {
 			switch {
-			case req.Text != nil && req.Key == "" && wire.ValidText(*req.Text):
+			case req.Text != nil && req.Key == "" && req.Count == 0 && wire.ValidText(*req.Text):
 				if err := a.tmux.SendText(ctx, p.PaneID, *req.Text); err != nil {
 					code = wire.ErrTmux
 				}
-			case req.Text == nil && req.Key != "" && req.Mouse == nil:
+			case req.Text == nil && req.Key != "" && req.Mouse == nil && req.Count >= 0 && req.Count <= wire.MaxKeyCount:
 				if _, ok := tmux.KeyName(req.Key); !ok {
 					code = wire.ErrBadInput
-				} else if err := a.tmux.SendKey(ctx, p.PaneID, req.Key); err != nil {
+				} else if err := a.tmux.SendKey(ctx, p.PaneID, req.Key, req.Count); err != nil {
 					code = wire.ErrTmux
 				}
-			case req.Text == nil && req.Key == "" && req.Mouse != nil:
+			case req.Text == nil && req.Key == "" && req.Mouse != nil && req.Count == 0:
 				if !wire.ValidMouse(req.Mouse, p.Width, p.Height) {
 					code = wire.ErrBadInput
 				} else if err := a.tmux.SendMouse(ctx, p.PaneID, wire.Buttons[req.Mouse.Button], req.Mouse.X, req.Mouse.Y, req.Mouse.Count); errors.Is(err, tmux.ErrNoMouse) {
@@ -760,6 +761,9 @@ func (a *Agent) audit(req wire.Request, code string, extra ...any) {
 	attrs = append(attrs, extra...)
 	if req.Key != "" {
 		attrs = append(attrs, "key", req.Key)
+		if req.Count > 1 {
+			attrs = append(attrs, "count", req.Count)
+		}
 	}
 	if req.Text != nil {
 		attrs = append(attrs, "text_bytes", len(*req.Text))

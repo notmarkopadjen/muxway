@@ -6,13 +6,16 @@ import type { Pane } from '../api/types';
 export interface Heading {
   pane?: Pane;
   place: string;
+  // Direct typing is on in the view: the status bar says so.
+  direct?: boolean;
 }
 
 let current: Heading = { place: '' };
 const listeners = new Set<() => void>();
 
 export function setHeading(h: Heading) {
-  if (h.place === current.place && h.pane === current.pane) return;
+  if (h.place === current.place && h.pane === current.pane && !!h.direct === !!current.direct)
+    return;
   current = h;
   listeners.forEach((fn) => fn());
 }

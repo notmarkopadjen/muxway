@@ -139,7 +139,7 @@ test('84 keys pressed in a burst reach the pane in order', async ({ page, reques
   await signIn(page);
   await openPane(page, SHELL0);
   await expect(page.getByTestId('cmdbar')).toHaveCount(0, { timeout: 10_000 });
-  await page.keyboard.press('i');
+  await page.keyboard.press(':');
   await expect(page.getByTestId('input')).toBeFocused();
   const keys = [
     'ArrowUp',

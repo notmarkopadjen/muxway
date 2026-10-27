@@ -41,6 +41,7 @@ export interface Host {
   close?: boolean; // the agent closes writable panes for clients
   keys?: number; // 2: the agent takes the whole key grammar
   preview?: boolean; // the agent serves files under roots its owner named
+  repeat?: boolean; // the agent takes a count with a key
 }
 
 export interface Window {

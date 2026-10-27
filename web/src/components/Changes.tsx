@@ -15,17 +15,21 @@ export function ChangesWindow({
   onFold,
   onClose,
   onOpen,
+  direct,
 }: {
   address: string;
   folded: boolean;
   onFold: () => void;
   onClose: () => void;
   onOpen: (change: Change, root: string) => void;
+  // Direct typing is on: Escape is the pane's, and × or ⎇ closes.
+  direct?: boolean;
 }) {
   const q = useChanges(address, true);
   // Escape closes the window before the page hears it, unless a file
   // window lies over it: that one closes first.
   useEffect(() => {
+    if (direct) return;
     const onKey = (ev: KeyboardEvent) => {
       if (ev.key !== 'Escape' || document.querySelector('.mx-picture-back')) return;
       const target = ev.target as HTMLElement | null;
@@ -36,7 +40,7 @@ export function ChangesWindow({
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [onClose]);
+  }, [onClose, direct]);
   const [closed, setClosed] = useState<Set<string>>(() => new Set());
   const toggle = (path: string) =>
     setClosed((s) => {

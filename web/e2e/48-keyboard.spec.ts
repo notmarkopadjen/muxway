@@ -18,7 +18,7 @@ test('48 keyboard: j k Enter Esc / i t m ?', async ({ page }, info) => {
     'data-address',
     first!,
   );
-  await page.keyboard.press('i');
+  await page.keyboard.press(':');
   await expect(page.getByTestId('input')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('input')).not.toBeFocused();

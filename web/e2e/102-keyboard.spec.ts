@@ -94,8 +94,10 @@ test('102 the keyboard sends every key as the terminal would', async ({ page, re
   await page.keyboard.press('Escape');
   await expect(board).toHaveCount(0);
   await expect(page.getByTestId('pane')).toBeVisible();
-  // K opens it again, away from the input line.
+  // K opens it again, away from the input line (the click went direct;
+  // Shift+Esc brings the page's keys back).
   await page.getByTestId('screen').click();
+  await page.keyboard.press('Shift+Escape');
   await page.keyboard.press('K');
   await expect(board).toBeVisible();
   expect(Math.round((await board.boundingBox())!.x)).toBe(Math.round(moved.x));

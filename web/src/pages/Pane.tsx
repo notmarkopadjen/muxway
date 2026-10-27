@@ -52,6 +52,7 @@ import {
 } from '../term/tiles';
 import { releaseKept, useFit } from '../term/useFit';
 import { screenWords } from '../term/complete';
+import { Backlog, keyToBody, pasteText } from '../term/direct';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
 import { AddMenu } from '../components/AddMenu';
@@ -145,6 +146,10 @@ interface TileProps {
   onCopied: (rows: number) => void;
   // A click on the row the program waits on: the line takes the focus.
   onPrompt: () => void;
+  // Direct typing: keys go to this pane as pressed; the cursor is drawn
+  // as a block. A click on the screen with a fine pointer turns it on.
+  direct: boolean;
+  onDirect: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDrop: (zone: Zone) => void;
@@ -161,6 +166,8 @@ type Edges = Record<Edge, boolean>;
 const EDGE_GLYPH: Record<Edge, string> = { left: '«', right: '»', top: '˄', bottom: '˅' };
 
 function Tile(props: TileProps) {
+  // What last pressed on the tile's body: a touch keeps the line's ways.
+  const pointer = useRef('mouse');
   const { address, focused, several, refitTick, dragging, alone, zoomable, windowFit } = props;
   const pane = usePane(address, focused ? 1_000 : 2_000);
   const box = useRef<HTMLDivElement>(null);
@@ -366,7 +373,12 @@ function Tile(props: TileProps) {
           )
         )}
       </div>
-      <div className="mx-tile-body">
+      <div
+        className="mx-tile-body"
+        onPointerDownCapture={(e) => {
+          pointer.current = e.pointerType;
+        }}
+      >
         <Screen
           content={shown?.content ?? ''}
           burn={!pane.isPlaceholderData}
@@ -374,7 +386,10 @@ function Tile(props: TileProps) {
           rows={fitting || windowFit ? undefined : sp?.height}
           boxRef={box}
           focused={several && focused}
-          onClick={props.onFocus}
+          onClick={() => {
+            props.onFocus();
+            if (writable && pointer.current !== 'touch') props.onDirect();
+          }}
           height={sp && sp.height - (shown?.trimmed ?? 0)}
           bounds={p && { cols: p.width, rows: p.height }}
           onCell={
@@ -395,8 +410,20 @@ function Tile(props: TileProps) {
           onFile={props.onFile}
           onPath={writable ? props.onPath : undefined}
           onCopy={props.onCopied}
-          onPrompt={writable ? props.onPrompt : undefined}
+          onPrompt={
+            writable
+              ? () => {
+                  // A touch keeps the line's way in; a fine pointer went direct.
+                  if (pointer.current === 'touch') props.onPrompt();
+                }
+              : undefined
+          }
           cursorRow={p?.cursor_y}
+          cursor={
+            props.direct && p?.cursor_x && p?.cursor_y
+              ? { x: p.cursor_x, y: p.cursor_y }
+              : undefined
+          }
           testId={focused ? 'screen' : 'cell-screen'}
         />
         {props.panel}
@@ -545,6 +572,21 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const hostCloses = (a: string) => !!hosts.data?.find((h) => h.name === a.split('/')[0])?.close;
   const hostPreviews = (a: string) =>
     !!hosts.data?.find((h) => h.name === a.split('/')[0])?.preview;
+  // Direct typing: keys go to the focused pane as pressed, while it is
+  // writable; focusing a read-only tile ends it, as does leaving the view.
+  const [direct, setDirect] = useState(false);
+  const directOn = direct && writable;
+  const repeats = useRef(false);
+  repeats.current = !!hosts.data?.find((h) => h.name === focused.split('/')[0])?.repeat;
+  useEffect(() => {
+    if (direct && focusedPane && !writable) setDirect(false);
+  }, [direct, focusedPane, writable]);
+  const enterDirect = useCallback(() => {
+    setDirect(true);
+    const active = document.activeElement as HTMLElement | null;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) active.blur();
+    document.querySelector<HTMLElement>('[data-testid="screen"]')?.focus();
+  }, []);
   // The changes window shows for a writer on a host with roots; the
   // repository's state is asked again once the pane's output settles.
   const showsChanges = changes && writable && hostPreviews(focused);
@@ -609,9 +651,9 @@ function Tiles({ addresses }: { addresses: string[] }) {
     setWeights({});
   }, [n]);
   useEffect(() => {
-    setHeading({ pane: focusedPane, place: focused });
+    setHeading({ pane: focusedPane, place: focused, direct: directOn });
     return () => setHeading({ place: '' });
-  }, [focusedPane, focused]);
+  }, [focusedPane, focused, directOn]);
   // Leaving the pane view, and not for another arrangement of it, gives
   // every pane kept fitted back to the host.
   useEffect(() => {
@@ -788,7 +830,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
     const onKey = (ev: KeyboardEvent) => {
       const target = ev.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (ev.ctrlKey || ev.metaKey || ev.altKey || directOn) return;
       // ] and [ go to the next pane: the next tile, or with one tile open
       // the strip's neighbour shown in it.
       if (ev.key === ']' || ev.key === '[') {
@@ -815,6 +857,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
         touch();
         setWeights({});
       } else if (ev.key === 'g' && writable && hostPreviews(focused)) setChanges((c) => !c);
+      else if (ev.key === 'i' && writable) enterDirect();
+      else if (ev.key === ':') focusLine();
       else if (ev.key === 'z' && focusedPane) zoom(focusedPane);
       else if (ev.key === 'w' && focusedPane)
         navigate({
@@ -844,6 +888,61 @@ function Tiles({ addresses }: { addresses: string[] }) {
       return false;
     }
   };
+  // The keys of direct typing, queued per pane behind the request in
+  // flight; a key typed while the focus moves goes to the new tile. The
+  // file window keeps every key while it is open; a pasted file goes to
+  // the inbox as on the line, with its path typed into the pane.
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  const backlog = useMemo(
+    () =>
+      new Backlog(
+        (b) => sendRef.current(b),
+        () => repeats.current,
+      ),
+    [focused],
+  );
+  useEffect(() => {
+    if (!directOn) return;
+    const typing = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+    };
+    const elsewhere = (t: EventTarget | null) =>
+      typing(t) || !!document.querySelector('.mx-picture-back');
+    const onKey = (ev: KeyboardEvent) => {
+      if (elsewhere(ev.target)) return;
+      if (ev.key === 'Escape' && ev.shiftKey && !ev.ctrlKey && !ev.altKey && !ev.metaKey) {
+        setDirect(false);
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        return;
+      }
+      const body = keyToBody(ev, !!window.getSelection()?.toString());
+      if (!body) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      backlog.push(body);
+    };
+    const onPaste = (ev: ClipboardEvent) => {
+      if (elsewhere(ev.target) || ev.clipboardData?.files.length) return;
+      const text = pasteText(ev.clipboardData?.getData('text') ?? '');
+      if (!text) return;
+      ev.preventDefault();
+      backlog.push({ text });
+    };
+    const onComposed = (ev: CompositionEvent) => {
+      if (!elsewhere(ev.target) && ev.data) backlog.push({ text: ev.data });
+    };
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('paste', onPaste, true);
+    window.addEventListener('compositionend', onComposed, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('paste', onPaste, true);
+      window.removeEventListener('compositionend', onComposed, true);
+    };
+  }, [directOn, backlog]);
 
   // Zoom: the focused pane alone, and back to the tiles it came from, in
   // their places and arrangement; from a pane opened alone, the window's
@@ -935,11 +1034,17 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onFit={() => toggleFit(a)}
         onFile={(name) => show({ address: a, name })}
         onPath={hostPreviews(a) ? (path) => show({ address: a, path }) : undefined}
+        direct={i === index && directOn}
+        onDirect={() => {
+          setFocusedIndex(i);
+          enterDirect();
+        }}
         panel={
           i === index && hostPreviews(a) ? (
             <Closing open={showsChanges}>
               <ChangesWindow
                 address={a}
+                direct={directOn}
                 folded={changesFolded}
                 onFold={() => setChangesFolded((f) => !f)}
                 onClose={() => setChanges(false)}
@@ -1059,6 +1164,20 @@ function Tiles({ addresses }: { addresses: string[] }) {
                   },
                 ]
               : []),
+            ...(writable
+              ? [
+                  {
+                    id: 'direct',
+                    glyph: '▮',
+                    label: 'direct',
+                    onClick: () => (directOn ? setDirect(false) : enterDirect()),
+                    on: directOn,
+                    title: directOn
+                      ? 'direct: keys go to the pane as pressed; Shift+Esc or this leaves'
+                      : 'direct: keys go to the pane as pressed (i); Shift+Esc leaves',
+                  },
+                ]
+              : []),
             ...(writable && hostPreviews(focused)
               ? [
                   {
@@ -1121,12 +1240,16 @@ function Tiles({ addresses }: { addresses: string[] }) {
         placeholder={
           focusedPane
             ? writable
-              ? several
-                ? `type into ${focused}`
-                : 'type · Enter sends · Shift+Enter new line · Esc leaves'
+              ? directOn
+                ? 'direct · keys go to the pane · Shift+Esc or a click here types on the line'
+                : several
+                  ? `type into ${focused}`
+                  : 'type · Enter sends · Shift+Enter new line · Esc leaves'
               : 'read-only pane'
             : 'no pane'
         }
+        direct={directOn}
+        onLeaveDirect={() => setDirect(false)}
         send={send}
         onGrow={(px) => {
           grown.current = px;

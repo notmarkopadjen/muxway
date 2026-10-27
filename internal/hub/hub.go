@@ -167,6 +167,7 @@ type agentConn struct {
 	keys    int  // the key names the agent takes, 0 before the grammar
 	inbox   bool // the agent takes files for its panes
 	preview bool // the agent serves files under its roots
+	repeat  bool // the agent takes a count with a key
 	evts    bucket
 	warned  time.Time
 }
@@ -226,7 +227,7 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 	}
 	sanePanes(r.Panes)
 	a.mu.Lock()
-	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.keys = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Keys
+	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys
 	a.mu.Unlock()
 	return r.Panes, nil
 }
@@ -274,6 +275,16 @@ func (a *agentConn) closesPanes(ctx context.Context) bool {
 }
 
 // keyGrammar is the key names the agent takes, from its last listing.
+// repeats says, from the agent's listing, whether a key may carry a count.
+func (a *agentConn) repeats(ctx context.Context) bool {
+	if _, err := a.panes(ctx); err != nil {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.repeat
+}
+
 func (a *agentConn) keyGrammar() int {
 	a.mu.Lock()
 	defer a.mu.Unlock()

@@ -317,13 +317,18 @@ func KeyName(key string) (string, bool) {
 	return "", false
 }
 
-// SendKey sends one key a client named; KeyName says which.
-func (s Server) SendKey(ctx context.Context, paneID, key string) error {
+// SendKey sends one key a client named, count times when count is above
+// one; KeyName says which.
+func (s Server) SendKey(ctx context.Context, paneID, key string, count int) error {
 	k, ok := KeyName(key)
 	if !ok {
 		return fmt.Errorf("unknown key")
 	}
-	_, err := s.run(ctx, "send-keys", "-t", paneID, k)
+	args := []string{"send-keys", "-t", paneID}
+	if count > 1 {
+		args = append(args, "-N", strconv.Itoa(count))
+	}
+	_, err := s.run(ctx, append(args, k)...)
 	return err
 }
 

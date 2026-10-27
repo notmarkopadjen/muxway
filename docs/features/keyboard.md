@@ -45,7 +45,9 @@ follows the focus. A click on a cap sends that key at once.
   and the board scrolls sideways.
 
 A cap lights when it is pressed and shakes when the key is refused, with
-the reason in a toast.
+the reason in a toast. While [direct typing](direct.md) is on, the caps
+send as they do and the physical keyboard's keys go to the pane too; the
+window then closes by `×`, since `Esc` is the pane's.
 
 ## What it sends
 

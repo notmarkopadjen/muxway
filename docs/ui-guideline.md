@@ -167,7 +167,8 @@ The same action on every client, triggered the way the device does it.
 | move the strip | wheel over it, `‹ ›` | drag | — |
 | scroll a program that has the mouse | wheel over it | drag | — |
 | copy a block of the screen (a bar's rows, a bullet and its rows, a result), without its markers | hover it, click `⧉` at its first row | long press | — |
-| type into the pane: a click on the row its program waits on (the cursor's row) focuses the line | click | tap | — |
+| type into the pane: with a fine pointer a click on the screen turns direct typing on; a tap on the row its program waits on (the cursor's row) focuses the line | click (direct typing), tap (the line) | tap | — |
+| direct typing: every key to the focused pane as pressed, `Esc` included; the prompt shows `▮`, the status bar says so, the cursor is drawn as a block; a read-only tile focused ends it | `i`, a click on the tile, `▮`; `Shift+Esc`, a click on the line or `▮` leaves | — | — |
 | next arrangement | `l`, `▦` | `▦` | — |
 | equal shares in every split (the host follows for one window's tiles with fit on) | `=`, `⊞` | — | — |
 | close the pane on its host, asking on the header (`y` / `n`), where the agent allows it and the pane is writable; elsewhere close the tile | `x`, `×` | `×` | — |
@@ -189,7 +190,7 @@ The same action on every client, triggered the way the device does it.
 | the changes window: git's view of the pane's repository over the tile, docked to its right edge, the tile's size kept; a folder tree with `+` added or untracked (ok colour), `~` modified, `−` deleted (dim, struck), `→` renamed, `!` conflict (warn, bold), `●` staged; the branch and counts in its bar; a click on a file opens the file window with a `diff` / `file` switch | `g` or `⎇` opens and closes, `Esc` or `×` closes, `_` folds it to its bar | — | — |
 | a new line in the input | `Shift+Enter` | `Shift+Enter` on a hardware keyboard | — |
 | take a completion | `Tab`, click | tap | — |
-| focus the input line, leave it | `i`, `Esc` | tap, back | — |
+| focus the input line, leave it | `:`, `Esc` | tap, back | — |
 | a console key from an empty input line | `↑` `↓` `←` `→` `PageUp` `PageDown` `Home` `End` `Tab` | the key row | D-pad |
 | Escape to the pane while typing | `Shift+Esc` | `Esc` in the key row | — |
 | a file for the pane's program: its path onto the input line | `⇪`, paste, drop anywhere on the view | paste into the line, `⇪` (system picker), share to muxway | — |
@@ -218,6 +219,7 @@ A new action gets a row here before it gets a key anywhere.
 | hubs as links (`H`, `⇄`) | a browser keeps a session per origin, so another hub is a link to its own page and sign-in; the list is kept per hub page and carried along only as names and addresses (see `docs/features/web-client.md`, *Several hubs*) |
 | the full admin page (`/admin`): access log, tokens and users with *create* and *revoke*, clients, address lists with *save* and *unlock* | minting a token means typing grant patterns, and a wrong address list shuts the owner out: both want a keyboard and a large screen; the phone has the read side (§3) |
 | keyboard shortcuts as the primary interface | keyboard first |
+| direct typing (`i`, a click on the tile): keys to the pane as pressed | a hardware keyboard sends keys; a soft keyboard composes words, so Android keeps the line and its key row |
 
 Feature page: `docs/features/web-client.md`.
 

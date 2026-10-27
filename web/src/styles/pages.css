@@ -173,6 +173,17 @@
   position: relative;
   min-height: 1.35em;
 }
+/* the cursor as a block, while direct typing lands there */
+.mx-caret {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1ch;
+  background: var(--mx-ink);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 1;
+}
 /* the mark at a block's first row: a click copies the block */
 .mx-copy {
   position: absolute;
@@ -218,6 +229,9 @@
   color: var(--mx-accent);
   align-self: flex-start;
   padding-top: 3px;
+}
+.mx-input .mx-prompt.mx-direct {
+  color: var(--mx-ink);
 }
 .mx-input textarea {
   flex: 1;

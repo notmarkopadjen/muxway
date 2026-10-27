@@ -81,6 +81,8 @@ export function InputPanel({
   pane,
   writable,
   placeholder,
+  direct,
+  onLeaveDirect,
   send,
   onGrow,
   words,
@@ -89,6 +91,10 @@ export function InputPanel({
   pane: Pane | undefined;
   writable: boolean;
   placeholder: string;
+  // Direct typing is on: the line is a click away, and a pasted file's
+  // path is typed into the pane rather than put on the line.
+  direct?: boolean;
+  onLeaveDirect?: () => void;
   send: (body: { text: string } | { key: string }) => Promise<boolean | void>;
   // The height the field takes beyond one row, told before the view's
   // boxes are measured again.
@@ -176,6 +182,10 @@ export function InputPanel({
       setSending(`⇪ ${f.name} · ${size(f.size)}…`);
       try {
         const { path } = await sendFile(pane.address, f, type);
+        if (direct) {
+          await send({ text: `${path} ` });
+          continue;
+        }
         const t = textNow.current;
         const next = `${t && !t.endsWith(' ') ? `${t} ` : t}${path} `;
         textNow.current = next;
@@ -351,6 +361,7 @@ export function InputPanel({
       if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
       const target = ev.target as HTMLElement | null;
       const typing = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+      if (direct && !typing) return;
       if (ev.key === 'v' && ev.repeat && vDown.current) {
         // the key's own repeat while held
       } else if (mic === 'recording') {
@@ -445,9 +456,12 @@ export function InputPanel({
 
   return (
     <>
-      <form className="mx-input" onSubmit={submit} ref={form}>
-        <span className={`mx-prompt${mic === 'recording' ? ' mx-rec' : ''}`}>
-          {mic === 'recording' ? '●' : writable ? '>' : '○'}
+      <form className="mx-input" onSubmit={submit} ref={form} data-direct={direct ? '' : undefined}>
+        <span
+          className={`mx-prompt${mic === 'recording' ? ' mx-rec' : ''}${direct ? ' mx-direct' : ''}`}
+          data-testid="prompt"
+        >
+          {mic === 'recording' ? '●' : direct ? '▮' : writable ? '>' : '○'}
         </span>
         {sending ? (
           <div className="mx-mic-line mx-hearing" data-testid="file-line">
@@ -461,6 +475,9 @@ export function InputPanel({
             onChange={(e) => change(e.target.value, e.target.selectionStart)}
             onSelect={select}
             onKeyDown={onKey}
+            onFocus={() => {
+              if (direct) onLeaveDirect?.();
+            }}
             disabled={!writable}
             placeholder={placeholder}
             aria-label="input"

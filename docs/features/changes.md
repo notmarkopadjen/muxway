@@ -22,7 +22,8 @@ muxway agent run --preview ~/work
 
 In the browser, on a writable pane of that host, `⎇` or `g` opens the
 window; `g` or `Esc` closes it, `×` too, and `_` folds it to its bar in
-the tile's corner. The bar reads `┌─ changes ─ muxway · main ↑1 ─ +3 ~5
+the tile's corner (while [direct typing](direct.md) is on, `g` and `Esc`
+are the pane's: `×` or `⎇` closes it). The bar reads `┌─ changes ─ muxway · main ↑1 ─ +3 ~5
 −1 ─ [_] [×]`: the repository's directory, its branch, how far it is
 ahead of or behind its upstream, and the counts. The body is a tree,
 directories first, folded or unfolded by a click, with a mark and a

@@ -523,6 +523,13 @@ else sees no entry, and `/admin` says *not yours to see*. See
 
 ## Keyboard
 
+The pane view has three states, one at a time, said in the input row:
+the **page**, where a key is one of the shortcuts below; the **line**,
+where keys write the input line (`:` or a click on it); and **direct
+typing**, where every key goes to the focused pane as pressed (`i` or a
+click on the tile; the prompt shows `▮`, the status bar says so and the
+pane's cursor is a block). See [direct typing](direct.md).
+
 | Key | Does |
 |---|---|
 | `j` / `k` | move the selection down / up |
@@ -530,11 +537,12 @@ else sees no entry, and `/admin` says *not yours to see*. See
 | `Enter` | open the selected pane, or the picked ones side by side |
 | `Esc` | back to the panes; or leave the input line (first closing its completion list) |
 | `/` | filter panes |
-| `i` | focus the input line |
+| `i` | direct typing: every key goes to the focused pane as pressed, `Esc` included; `Shift+Esc`, a click on the line or the `▮` button leaves; a click on the tile turns it on too (see [direct typing](direct.md)) |
+| `:` | focus the input line |
 | `Enter` / `Shift+Enter` | input line: send / a new line |
 | `Tab` | input line: take the highlighted completion; from an empty line, `Tab` goes to the pane |
 | `↑` `↓` | input line: pick a completion; from an empty line, the key goes to the pane, as do `←` `→` `PageUp` `PageDown` `Home` `End` |
-| `Shift+Esc` | input line: send `Escape` to the pane and keep typing |
+| `Shift+Esc` | input line: send `Escape` to the pane and keep typing; direct typing: leave it |
 | `K` | the keyboard: a window with a full terminal board for the focused pane (see [the keyboard](keyboard.md)); `Esc` closes it |
 | `v` | speak: record a clip for the hub's transcriber, onto the input line; held, it records until released; tapped, `v` again stops; `Esc` drops it |
 | `p` | selector: go to a pane or window, or start a session on a host |

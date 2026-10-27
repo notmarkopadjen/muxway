@@ -40,11 +40,13 @@ type Request struct {
 	Wrapped bool    `json:"wrapped,omitempty"`
 	Text    *string `json:"text,omitempty"`
 	Key     string  `json:"key,omitempty"`
-	Mouse   *Mouse  `json:"mouse,omitempty"`
-	Cols    int     `json:"cols,omitempty"`
-	Rows    int     `json:"rows,omitempty"`
-	Fit     string  `json:"fit,omitempty"`   // "auto" gives the window back to tmux
-	Scope   string  `json:"scope,omitempty"` // "" or "pane": size the pane; "window": size its window
+	// Count, with Key, sends it that many times: 1 to MaxKeyCount.
+	Count int    `json:"count,omitempty"`
+	Mouse *Mouse `json:"mouse,omitempty"`
+	Cols  int    `json:"cols,omitempty"`
+	Rows  int    `json:"rows,omitempty"`
+	Fit   string `json:"fit,omitempty"`   // "auto" gives the window back to tmux
+	Scope string `json:"scope,omitempty"` // "" or "pane": size the pane; "window": size its window
 	// Layout, with scope "window", is a tmux layout string whose
 	// proportions the window takes at the new size.
 	Layout string `json:"layout,omitempty"`
@@ -109,6 +111,8 @@ type Response struct {
 	// Keys, with a list, is the version of key names the agent takes:
 	// 2 for modifiers on any key, the keypad and chords (tmux.KeyName).
 	Keys int `json:"keys,omitempty"`
+	// Repeat, with a list, says the agent takes a count with a key.
+	Repeat bool `json:"repeat,omitempty"`
 	// Inbox, with a list, says the agent takes files; Path is where one went.
 	Inbox bool   `json:"inbox,omitempty"`
 	Path  string `json:"path,omitempty"`
@@ -169,6 +173,7 @@ const (
 const (
 	MaxLines         = 2000
 	MaxTextBytes     = 4096
+	MaxKeyCount      = 50 // a key sent this many times in one request
 	MinCols, MaxCols = 20, 500
 	MinRows, MaxRows = 5, 300
 	MaxLayoutBytes   = 2048

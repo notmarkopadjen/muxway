@@ -112,7 +112,7 @@ function inOrder<T>(address: string, go: () => Promise<T>): Promise<T> {
 export function useInput(address: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { text: string } | { key: string } | { mouse: Mouse }) => {
+    mutationFn: (body: { text: string } | { key: string; count?: number } | { mouse: Mouse }) => {
       noteOwn(address);
       return inOrder(address, () =>
         api<void>(`/v1/panes/${address}/input`, {
