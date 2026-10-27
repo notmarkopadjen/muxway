@@ -425,11 +425,19 @@ export function WindowPage() {
         />
         <AddMenu
           pane={focusedPane}
+          open={stripPanes.map((p) => p.address)}
           onMade={(a) => {
             // A split appears in this window by itself; a new session is elsewhere: open it.
             if (!a.startsWith(`${host}/${session}/`))
               navigate({ to: '/p/$', params: { _splat: a } });
           }}
+          // A pane of another window: the pane view, with this one's focused pane beside it.
+          onPick={(a) =>
+            navigate({
+              to: '/p/$',
+              params: { _splat: focusedPane ? `${focusedPane.address},${a}` : a },
+            })
+          }
           onRefused={(why) => toast.push({ kind: 'refused', title: why })}
         />
         <Tools

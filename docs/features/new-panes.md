@@ -20,9 +20,12 @@ name (`Enter` creates, `Esc` cancels); the session's first pane then opens.
 Keyboard: `S`. The selector (`p`) lists `+ session on <host>` as well.
 
 **From the pane view.** `+` right after the last tab (or the `+` key)
-offers *split here*, a new pane beside the focused one, and *new
-session* on its host, where each is allowed; the new pane opens beside
-the others.
+opens the add menu: `+ pane`, a new pane beside the focused one, and
+`+ session` on its host, where each is allowed (elsewhere dimmed with
+the reason, *read only* or *no sessions here*); the new pane opens
+beside the others. Under them the menu lists the panes minimised below
+and every other pane you may read, to open as one more tile without
+asking the hub; see [the web client](web-client.md#the-add-menu).
 
 On the host:
 

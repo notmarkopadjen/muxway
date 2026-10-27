@@ -96,5 +96,5 @@ test('90 security: a read-only pane offers no split', async ({ page }) => {
   await page.getByTestId('add').click();
   await expect(page.getByTestId('add-session')).toBeEnabled();
   await expect(page.getByTestId('add-split')).toBeDisabled();
-  await expect(page.getByTestId('add-split')).toHaveAttribute('title', /read-only/);
+  await expect(page.getByTestId('add-split')).toHaveAttribute('title', /read only/);
 });

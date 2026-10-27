@@ -18,6 +18,7 @@ import type { Mouse, Pane, PaneContent } from '../api/types';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
 import { LensMark } from '../components/Lens';
+import { MinimisedRow } from '../components/Minimised';
 import { PaneTitle } from '../components/PaneTitle';
 import { Tabs } from '../components/Tabs';
 import { useToast } from '../components/Toast';
@@ -79,6 +80,8 @@ let unzoomed: Kept | null = null;
 let carried: Kept | null = null;
 // The pane to focus once the tiles of a new count are up.
 let focusNext: string | null = null;
+// The minimised panes, carried across the navigation to the tiles named.
+let minimisedKept: { panes: string[]; minimised: string[] } | null = null;
 
 // How long a tile shows its last frame while the host catches up with a fit.
 const HOLD_FRAME_MS = 3000;
@@ -137,6 +140,9 @@ interface TileProps {
   dragging: string | null;
   onFocus: () => void;
   onClose: () => void;
+  // The tile out of the arrangement, into the minimised row; off on the last tile.
+  minimisable: boolean;
+  onMinimise: () => void;
   // The host closes writable panes for clients; asking: the header asks.
   hostCloses: boolean;
   asking: boolean;
@@ -375,6 +381,24 @@ function Tile(props: TileProps) {
             {counts.conflict ? <span className="mx-warn"> !{counts.conflict}</span> : null}
           </button>
         )}
+        {!props.asking && (
+          <button
+            type="button"
+            title={
+              props.minimisable
+                ? 'minimise: the tile goes to the row above the keys (-)'
+                : 'the last tile cannot be minimised'
+            }
+            disabled={!props.minimisable}
+            data-testid="minimise"
+            onClick={(e) => {
+              e.stopPropagation();
+              props.onMinimise();
+            }}
+          >
+            _
+          </button>
+        )}
         {props.asking && p ? (
           <span className="mx-ask" data-testid="close-ask" onClick={(e) => e.stopPropagation()}>
             close the pane on {p.host}?{' '}
@@ -569,6 +593,13 @@ function Tiles({ addresses }: { addresses: string[] }) {
   });
   const index = Math.min(focusedIndex, n - 1);
   const focused = addresses[index];
+  // Panes taken out of the arrangement: read on, shown in the row above
+  // the keys, forgotten with the view.
+  const [minimised, setMinimised] = useState<string[]>(() => {
+    const k = minimisedKept;
+    minimisedKept = null;
+    return k && k.panes.join() === addresses.join() ? k.minimised : [];
+  });
   const focusedCached = usePaneCached(focused).data;
   const focusedPane = focusedCached?.pane;
   const words = useMemo(() => screenWords(focusedCached?.content ?? ''), [focusedCached?.content]);
@@ -632,16 +663,38 @@ function Tiles({ addresses }: { addresses: string[] }) {
     );
     return () => clearTimeout(t);
   }, [showsChanges, focused, focusedContent]);
-  // A tile closed in the view; the last one goes back to the list.
+  // A tile closed in the view; the last one brings a minimised pane back,
+  // or goes back to the list.
   const closeTile = (a: string) => {
     if (addresses.length <= 1) {
-      navigate({ to: '/' });
+      if (minimised.length) {
+        focusNext = minimised[0];
+        go([minimised[0]], minimised.slice(1));
+      } else navigate({ to: '/' });
       return;
     }
     const rest = close(addresses, a);
     if (layout === 'custom' && rest.length > 1)
       carried = { panes: rest, layout, custom: prune(shape, addresses.indexOf(a)), weights: {} };
     go(rest);
+  };
+  // The tile out of the arrangement, as a closed one, and its pane into
+  // the row; the last tile stays.
+  const minimise = (a: string) => {
+    if (addresses.length <= 1 || minimised.includes(a)) return;
+    const rest = close(addresses, a);
+    if (layout === 'custom' && rest.length > 1)
+      carried = { panes: rest, layout, custom: prune(shape, addresses.indexOf(a)), weights: {} };
+    go(rest, [...minimised, a]);
+  };
+  // Back from the row as one more tile, focused; with four open it takes
+  // the focused tile's place, as a tab does.
+  const restore = (a: string) => {
+    const rest = minimised.filter((m) => m !== a);
+    if (addresses.length < MAX_TILES) {
+      focusNext = a;
+      go([...addresses, a], rest);
+    } else go(replace(addresses, index, a), rest);
   };
   const answer = async (a: string, yes: boolean) => {
     setAsking(null);
@@ -693,6 +746,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
     views++;
     return () => {
       views--;
+      minimisedKept = null;
       window.setTimeout(() => {
         if (!views) releaseKept();
       }, 0);
@@ -847,18 +901,27 @@ function Tiles({ addresses }: { addresses: string[] }) {
     if (refitTick && windowFit) refitWindow();
   }, [refitTick, windowFit, refitWindow]);
 
+  // The minimised panes go along, less any the next tiles show; a change
+  // of count mounts the tiles anew and they are taken up there.
   const go = useCallback(
-    (next: string[]) => {
-      if (next !== addresses)
-        navigate({ to: '/p/$', params: { _splat: routeFor(next) }, replace: true });
+    (next: string[], keep = minimised) => {
+      if (next === addresses) return;
+      const rest = keep.filter((a) => !next.includes(a));
+      minimisedKept = { panes: next, minimised: rest };
+      if (next.length === addresses.length) setMinimised(rest);
+      navigate({ to: '/p/$', params: { _splat: routeFor(next) }, replace: true });
     },
-    [addresses, navigate],
+    [addresses, minimised, navigate],
+  );
+  const shownPanes = useMemo(
+    () => (all.data ?? []).filter((p) => !minimised.includes(p.address)),
+    [all.data, minimised],
   );
   const strip = useMemo(() => {
-    const order = (all.data ?? []).map((p) => p.address);
+    const order = shownPanes.map((p) => p.address);
     for (const a of addresses) if (!order.includes(a)) order.push(a);
     return order;
-  }, [all.data, addresses]);
+  }, [shownPanes, addresses]);
   // A tab focuses its tile, or swaps into the focused one; with Shift it
   // opens beside the others instead.
   const onTab = useCallback(
@@ -904,6 +967,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
       } else if (asking && (ev.key === 'y' || ev.key === 'n')) void answer(asking, ev.key === 'y');
       else if (ev.key === 'x' && hostCloses(focused) && writable) setAsking(focused);
       else if (ev.key === 'x' && several) closeTile(focused);
+      else if (ev.key === '-' && several) minimise(focused);
       else if ((ev.key === 'e' || ev.key === 'E') && several)
         spread(index, ev.key === 'e' ? 'w' : 'h');
       else if (ev.key === 'f' && writable) toggleFit(focused);
@@ -1087,6 +1151,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
         dragging={dragging}
         onFocus={() => setFocusedIndex(i)}
         onClose={() => closeTile(a)}
+        minimisable={several}
+        onMinimise={() => minimise(a)}
         hostCloses={hostCloses(a)}
         asking={asking === a}
         onAsk={() => setAsking(a)}
@@ -1167,7 +1233,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
     >
       <InHeader>
         <Tabs
-          panes={all.data ?? []}
+          panes={shownPanes}
           open={addresses}
           focused={focused}
           onTab={onTab}
@@ -1179,9 +1245,15 @@ function Tiles({ addresses }: { addresses: string[] }) {
         />
         <AddMenu
           pane={focusedPane}
-          onMade={(a) =>
-            go(addresses.length < MAX_TILES ? [...addresses, a] : replace(addresses, index, a))
-          }
+          open={addresses}
+          minimised={minimised}
+          onMade={(a) => {
+            if (addresses.length < MAX_TILES) {
+              focusNext = a;
+              go([...addresses, a]);
+            } else go(replace(addresses, index, a));
+          }}
+          onPick={restore}
           onRefused={refused}
         />
         <Tools
@@ -1300,6 +1372,11 @@ function Tiles({ addresses }: { addresses: string[] }) {
           }
         />
       </div>
+      <MinimisedRow
+        addresses={minimised}
+        onRestore={restore}
+        onGone={(a) => setMinimised((m) => m.filter((x) => x !== a))}
+      />
       <InputPanel
         pane={focusedPane}
         writable={writable}

@@ -128,9 +128,9 @@ test('84 the + stays on a read-only pane of a host without sessions, its items d
   await expect(add).toBeVisible();
   await add.click();
   await expect(page.getByTestId('add-split')).toBeDisabled();
-  await expect(page.getByTestId('add-split')).toHaveAttribute('title', /read-only/);
+  await expect(page.getByTestId('add-split')).toHaveAttribute('title', /read only/);
   await expect(page.getByTestId('add-session')).toBeDisabled();
-  await expect(page.getByTestId('add-session')).toHaveAttribute('title', /does not start sessions/);
+  await expect(page.getByTestId('add-session')).toHaveAttribute('title', /no sessions here/);
   await page.keyboard.press('Escape');
 });
 

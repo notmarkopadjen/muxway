@@ -192,21 +192,20 @@ view, each live and typable. The page is the Android client's pane view:
 
 ```
 ┌─ muxway ─┐ [⟳ fixing the build][! review][bash][tail · build.log] [+]   [▦][⤢][⎇][⊡][≡]  [alice ▾]
-┌─ ✳ Claude · fixing the build · work/0.0 · 96×28 · write · ⟳ working ──────┐
+┌─ ✳ Claude · fixing the build · work/0.0 · 96×28 · write · ⟳ working ─ _ × ┐
 │ $ make test                                                                   │
 │ ok                                                                            │
 └───────────────────────────────────────────────────────────────────────────────┘
+[? deploy][hub.log]                                          ← the minimised row
 > ________________________________________________________________________ [send]
 [Enter][Tab][BSpace][Escape]…
 ✳ [/clear][/exit][/compact][/rename][/model][/resume][/usage][/context][/help]…
 ```
 
 - The **header** is one row. The brand at its left goes back to the
-  list. After it the tab strip, and right after the last tab `+`: *split
-  here* makes one more pane beside the focused one on its host (where
-  you may type there) and opens it beside the others; *new session*
-  starts one where the host's agent allows it (the `+` key opens it
-  too). At the right the pane buttons, 32 px squares with a label under
+  list. After it the tab strip, and right after the last tab `+`, which
+  opens the [add menu](#the-add-menu) (the `+` key opens it too). At
+  the right the pane buttons, 32 px squares with a label under
   the pointer: `▦` arrangement, `⤢` fit, `⎇` changes, `⊡` zoom, `≡` go
   to a pane; on a narrow screen (640 px and under) they fold into one
   `⋯` button that opens a menu with the same entries. Last, the profile
@@ -282,11 +281,12 @@ sequenceDiagram
 ```
 - A tile's **header** is painted like its tab and names the pane, its
   address, its size, its mode and the lens's word; the focused tile has
-  the thick border and the bold name. At its right, before `×`, a
-  writable tile on a host with preview roots counts the repository's
+  the thick border and the bold name. At its right, before `_` and `×`,
+  a writable tile on a host with preview roots counts the repository's
   changes (`⎇ +3 ~5 −1`, `⎇ ✓` when clean, nothing outside a
   repository); a click on the count opens the changes window (see
-  [changes](changes.md)). The controls sit in the top row,
+  [changes](changes.md)). `_` minimises the tile (below); it is off on
+  the last tile. The controls sit in the top row,
   at the right, as icons: `▦` the next arrangement (with several tiles),
   `⤢` fit for the focused tile (selected when on), `⎇` the changes
   window over the tile on a host with preview roots (see
@@ -315,9 +315,38 @@ sequenceDiagram
   pane as nothing, mouse mode or not.
 
   ![a block's mark under the pointer](images/web-copy-block.png)
-- The strip's `+` stays whenever a pane could be added anywhere: *split
-  here* needs the focused pane writable, *new session* a host that
-  starts them for you; what does not apply is disabled with its reason.
+- <a id="the-add-menu"></a>The **add menu**, `+` after the last tab or
+  the `+` key, is built from the listing the page already holds and
+  offers, in this order: **+ pane**, one more pane beside the focused
+  one on its host, where you may type there; **+ session** on the
+  focused pane's host, where its agent starts sessions; a rule; the
+  **minimised** panes; a rule; every other readable pane the view is not
+  showing, grouped by host and session in the listing's order, each as
+  its glyph and name with the place dimmed after it. The focused pane
+  and the open tiles are not listed. An entry the token or the host does
+  not allow is dimmed with the reason, *read only* or *no sessions
+  here*. `+ pane` and `+ session` ask the hub and open the new pane
+  beside the others; a pick asks nothing and becomes one more tile,
+  focused. With four tiles open the menu's heading says *four open: a
+  pick replaces <the focused pane>* and the pick swaps into the focused
+  tile, as a tab does. `Esc` closes the menu.
+
+  ![the add menu](images/web-add-menu.png)
+- The **minimised row**. `_` on a tile's header, or `-` on the focused
+  tile, takes the tile out of the arrangement and puts its tab in a row
+  right above the key row, painted like a tab with its glyph and the
+  state's colours, and still read every two seconds, so the glyph keeps
+  moving; its tab leaves the strip while it is below. A click on the
+  tab brings the tile back, focused, as does its entry in the add menu;
+  with four tiles open it takes the focused tile's place. The last tile
+  cannot be minimised; closing the last tile brings a minimised pane
+  back instead of leaving the view. The row is not drawn while it is
+  empty. Minimised panes belong to the view's arrangement and are
+  forgotten with it, on leaving the view or a reload; the fit of a
+  minimised pane is kept and released like a closed tile's, when the
+  view is left.
+
+  ![a minimised pane](images/web-minimised.png)
 - **Zoom** is one view at two distances, not two views: `⊡`, `z` or a
   double-click on a tile, its header or its tab open that pane alone,
   and the same again bring back the tiles it came from, in their places,
@@ -553,7 +582,8 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `K` | the keyboard: a window with a full terminal board for the focused pane (see [the keyboard](keyboard.md)); `Esc` closes it |
 | `v` | speak: record a clip for the hub's transcriber, onto the input line; held, it records until released; tapped, `v` again stops; `Esc` drops it |
 | `p` | selector: go to a pane or window, or start a session on a host |
-| `+` | one more pane in the selected row's window; it opens |
+| `+` | the list: one more pane in the selected row's window; it opens. Tiles: the add menu |
+| `-` | tiles: minimise the focused tile to the row above the keys; a click on its tab there, or its entry in the add menu, brings it back |
 | `S` | a new session on the selected row's host (or the first that allows it): a one-line form, `Enter` starts, `Esc` cancels |
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |

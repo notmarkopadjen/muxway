@@ -183,6 +183,11 @@ button:disabled {
   left: 0;
   right: auto;
   min-width: 20em;
+  max-width: 32em;
+}
+.mx-add .mx-menu.mx-menu-right {
+  left: auto;
+  right: 0;
 }
 .mx-menu > button,
 .mx-menu > a {
@@ -206,6 +211,51 @@ button:disabled {
 }
 .mx-menu .mx-session-form {
   padding: 6px 10px;
+}
+.mx-menu > hr {
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--mx-ink-faint);
+}
+.mx-add-menu {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.mx-add-heading {
+  padding: 4px 10px 2px;
+  font-size: 12px;
+  color: var(--mx-ink-dim);
+}
+.mx-add-group {
+  display: grid;
+}
+.mx-add-group > button,
+.mx-add-menu .mx-add-pane {
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+  text-align: left;
+  padding: 4px 10px 4px 18px;
+  border: 1px solid transparent;
+  color: var(--mx-ink);
+}
+.mx-add-pane:hover,
+.mx-add-pane:focus-visible {
+  border-color: var(--mx-ink);
+  box-shadow: none;
+  background: color-mix(in srgb, var(--mx-ink) 10%, transparent);
+}
+.mx-add-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mx-menu > button:disabled {
+  color: var(--mx-ink-dim);
+  cursor: default;
 }
 @keyframes mx-menu-in {
   from {

@@ -30,6 +30,10 @@ const KEYS: [string, string][] = [
     "tiles: focus one, next arrangement, close the pane on its host (asks y / n; elsewhere the tile), fit all, zoom (one pane alone and back; or double-click a tile, its header or tab), the mirror layout; Shift+click a tab to open it beside; drag a header onto a tile's middle to swap, onto its edge to split",
   ],
   [
+    '+ / -',
+    'tiles: the add menu (one more pane beside the focused one, a new session, a minimised pane back, any other pane as one more tile) / minimise the focused tile to the row above the keys; a click on its tab there brings it back',
+  ],
+  [
     'x / z / 0 / = / + / -',
     'window view: hide, this pane alone (or Enter, double-click), host layout, equal shares, bigger, smaller',
   ],
