@@ -550,6 +550,14 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 		h.handlePreview(w, r, t, path)
 		return
 	}
+	if path, ok := strings.CutSuffix(r.PathValue("path"), "/git/diff"); ok {
+		h.handleDiff(w, r, t, path)
+		return
+	}
+	if path, ok := strings.CutSuffix(r.PathValue("path"), "/git"); ok {
+		h.handleChanges(w, r, t, path)
+		return
+	}
 	if i := strings.LastIndex(r.PathValue("path"), "/files/"); i >= 0 {
 		h.handleFileRead(w, r, t, r.PathValue("path")[:i], r.PathValue("path")[i+len("/files/"):])
 		return

@@ -186,6 +186,7 @@ The same action on every client, triggered the way the device does it.
 | a command of the row | click | tap | — |
 | open a link printed in a pane | click | tap | — |
 | see a file printed in a pane (inbox, or under the host's preview roots) | click: a window over the page with `⤓` download, `Esc` closes; Markdown rendered with a `rendered` / `plain` switch, code with its colours (web) | tap: a sheet | — |
+| the changes window: git's view of the pane's repository over the tile, docked to its right edge, the tile's size kept; a folder tree with `+` added or untracked (ok colour), `~` modified, `−` deleted (dim, struck), `→` renamed, `!` conflict (warn, bold), `●` staged; the branch and counts in its bar; a click on a file opens the file window with a `diff` / `file` switch | `g` or `⎇` opens and closes, `Esc` or `×` closes, `_` folds it to its bar | — | — |
 | a new line in the input | `Shift+Enter` | `Shift+Enter` on a hardware keyboard | — |
 | take a completion | `Tab`, click | tap | — |
 | focus the input line, leave it | `i`, `Esc` | tap, back | — |

@@ -103,8 +103,10 @@ then a new code. `--allow-sessions` and `--allow-close` let clients with a
 write grant start sessions and close panes; both are off by default (see
 [new panes and sessions](new-panes.md)). `--preview <dir>`, repeatable,
 lets clients with a write grant read files under that directory when a
-pane prints their paths (see [preview](preview.md)); the agent reads them
-with its own rights, so choose roots the agent's user should show.
+pane prints their paths (see [preview](preview.md)) and see the changes of
+a repository under it with read-only `git status` and `git diff` run by
+the agent (see [changes](changes.md)); the agent reads them with its own
+rights, so choose roots the agent's user should show.
 
 ## Tokens
 

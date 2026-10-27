@@ -230,3 +230,27 @@ export const KEYS = [
   'F12',
 ] as const;
 export type Key = (typeof KEYS)[number];
+
+// Git's view of the repository a pane works in, from under the host's
+// preview roots: see GET /v1/panes/{address}/git.
+export type ChangeKind = 'added' | 'modified' | 'deleted' | 'renamed' | 'untracked' | 'conflict';
+export interface Change {
+  path: string;
+  from?: string; // the old path of a rename
+  kind: ChangeKind;
+  staged?: boolean;
+}
+export interface Changes {
+  root: string;
+  branch: string;
+  ahead?: number;
+  behind?: number;
+  truncated?: boolean;
+  entries: Change[];
+}
+// One change's diff against the last commit.
+export interface Diff {
+  diff: string;
+  binary?: boolean;
+  cut?: boolean;
+}

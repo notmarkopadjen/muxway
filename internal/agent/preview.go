@@ -72,24 +72,8 @@ func resolvePreview(roots []string, cwd, home, path string) (string, string, err
 	if err != nil {
 		return "", "", errNoPreview
 	}
-	var under string
-	for _, root := range roots {
-		real, err := filepath.EvalSymlinks(root)
-		if err != nil {
-			continue
-		}
-		if rel, err := filepath.Rel(real, file); err == nil && rel != ".." && !strings.HasPrefix(rel, "../") && rel != "." {
-			under = rel
-			break
-		}
-	}
-	if under == "" {
+	if _, ok := underRoot(roots, file); !ok {
 		return "", "", errNoPreview
-	}
-	for _, part := range strings.Split(under, string(filepath.Separator)) {
-		if strings.HasPrefix(part, ".") {
-			return "", "", errNoPreview
-		}
 	}
 	typ, ok := previewTypes[strings.ToLower(strings.TrimPrefix(filepath.Ext(file), "."))]
 	if !ok {
@@ -100,6 +84,29 @@ func resolvePreview(roots []string, cwd, home, path string) (string, string, err
 		return "", "", errNoPreview
 	}
 	return file, typ, nil
+}
+
+// underRoot says whether a resolved path lies below one of the roots, and
+// answers its path from there: not the root itself, and with no dot
+// component, so nothing hidden is ever shown.
+func underRoot(roots []string, file string) (string, bool) {
+	for _, root := range roots {
+		real, err := filepath.EvalSymlinks(root)
+		if err != nil {
+			continue
+		}
+		rel, err := filepath.Rel(real, file)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, "../") || rel == "." {
+			continue
+		}
+		for _, part := range strings.Split(rel, string(filepath.Separator)) {
+			if strings.HasPrefix(part, ".") {
+				return "", false
+			}
+		}
+		return rel, true
+	}
+	return "", false
 }
 
 // preview answers the resolved path, the type and the bytes of a file a

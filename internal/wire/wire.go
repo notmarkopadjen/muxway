@@ -22,6 +22,8 @@ const (
 	OpFile       = "file"        // a file for the pane's program, into the agent's inbox
 	OpReadFile   = "read-file"   // one file of the inbox back, by name
 	OpReadPath   = "read-path"   // a file under the owner's preview roots, by a path as printed
+	OpGitStatus  = "git-status"  // the changes of the pane's repository, when it lies under a root
+	OpGitDiff    = "git-diff"    // one changed file's diff against the last commit
 )
 
 // Request from hub to agent. Actor is the id of the client token the hub
@@ -58,7 +60,8 @@ type Request struct {
 	// Type and Data of a file for the inbox; the agent names it.
 	Type string `json:"type,omitempty"`
 	Data []byte `json:"data,omitempty"`
-	// Path of a file to preview, as a pane printed it.
+	// Path of a file to preview, as a pane printed it; or of a change to
+	// diff, as the status listed it.
 	Path string `json:"path,omitempty"`
 }
 
@@ -114,6 +117,34 @@ type Response struct {
 	Data []byte `json:"data,omitempty"`
 	// Preview, with a list, says the agent serves files under its roots.
 	Preview bool `json:"preview,omitempty"`
+	// Changes of the pane's repository; Diff of one of them, Binary when
+	// git has no text for it, Cut when it was longer than MaxDiff.
+	Changes *Changes `json:"changes,omitempty"`
+	Diff    string   `json:"diff,omitempty"`
+	Binary  bool     `json:"binary,omitempty"`
+	Cut     bool     `json:"cut,omitempty"`
+}
+
+// Changes is git's view of a repository: its root, its branch, how far
+// it is from its upstream, and every changed path with its kind.
+type Changes struct {
+	Root   string `json:"root"`
+	Branch string `json:"branch"`
+	Ahead  int    `json:"ahead,omitempty"`
+	Behind int    `json:"behind,omitempty"`
+	// Truncated: more than MaxChanges were left out.
+	Truncated bool     `json:"truncated,omitempty"`
+	Entries   []Change `json:"entries"`
+}
+
+// Change is one path of a repository that differs from its last commit.
+type Change struct {
+	Path string `json:"path"`
+	// From is the old path of a rename.
+	From string `json:"from,omitempty"`
+	// Kind is one of added, modified, deleted, renamed, untracked, conflict.
+	Kind   string `json:"kind"`
+	Staged bool   `json:"staged,omitempty"`
 }
 
 // KeyGrammar is the key names this build takes, as Response.Keys says.
@@ -151,6 +182,9 @@ const (
 	MaxFile        = 8 << 20
 	MaxFileMessage = 12 << 20
 	MaxMessage     = 1 << 20
+	// Changes a status lists, and the bytes a diff may run to.
+	MaxChanges = 2000
+	MaxDiff    = 1 << 20
 )
 
 // A session a client starts has a short name of its own.

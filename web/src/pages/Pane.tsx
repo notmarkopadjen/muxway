@@ -57,6 +57,7 @@ import { InHeader } from '../shell/HeaderSlot';
 import { AddMenu } from '../components/AddMenu';
 import { Closing } from '../components/Closing';
 import { FileWindow, type Shown } from '../components/FileWindow';
+import { ChangesWindow } from '../components/Changes';
 import { Tools } from '../components/Tools';
 import { requestPalette } from '../term/intent';
 
@@ -112,6 +113,8 @@ async function click(address: string, mouse: Mouse, refused: (why: string) => vo
 
 interface TileProps {
   address: string;
+  // A window over the screen, docked to the tile's edge: the changes.
+  panel?: React.ReactNode;
   index: number;
   focused: boolean;
   several: boolean;
@@ -396,6 +399,7 @@ function Tile(props: TileProps) {
           cursorRow={p?.cursor_y}
           testId={focused ? 'screen' : 'cell-screen'}
         />
+        {props.panel}
         {props.onSpread &&
           (Object.keys(EDGE_GLYPH) as Edge[])
             .filter((e) => props.edges?.[e])
@@ -531,6 +535,9 @@ function Tiles({ addresses }: { addresses: string[] }) {
     setShowing(true);
   }, []);
   const hide = useCallback(() => setShowing(false), []);
+  // The changes window over the focused tile, and whether it is folded.
+  const [changes, setChanges] = useState(false);
+  const [changesFolded, setChangesFolded] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
   // The tile whose header asks whether to close its pane on the host.
   const [asking, setAsking] = useState<string | null>(null);
@@ -538,6 +545,18 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const hostCloses = (a: string) => !!hosts.data?.find((h) => h.name === a.split('/')[0])?.close;
   const hostPreviews = (a: string) =>
     !!hosts.data?.find((h) => h.name === a.split('/')[0])?.preview;
+  // The changes window shows for a writer on a host with roots; the
+  // repository's state is asked again once the pane's output settles.
+  const showsChanges = changes && writable && hostPreviews(focused);
+  const focusedContent = focusedCached?.content;
+  useEffect(() => {
+    if (!showsChanges) return;
+    const t = setTimeout(
+      () => void queryClient.invalidateQueries({ queryKey: keys.changes(focused) }),
+      800,
+    );
+    return () => clearTimeout(t);
+  }, [showsChanges, focused, focusedContent]);
   // A tile closed in the view; the last one goes back to the list.
   const closeTile = (a: string) => {
     if (addresses.length <= 1) {
@@ -795,7 +814,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
       else if (ev.key === '=' && several && (!oneWindow || movable)) {
         touch();
         setWeights({});
-      } else if (ev.key === 'z' && focusedPane) zoom(focusedPane);
+      } else if (ev.key === 'g' && writable && hostPreviews(focused)) setChanges((c) => !c);
+      else if (ev.key === 'z' && focusedPane) zoom(focusedPane);
       else if (ev.key === 'w' && focusedPane)
         navigate({
           to: `/w/${focusedPane.host}/${focusedPane.session}/${focusedPane.window_index}`,
@@ -915,6 +935,21 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onFit={() => toggleFit(a)}
         onFile={(name) => show({ address: a, name })}
         onPath={hostPreviews(a) ? (path) => show({ address: a, path }) : undefined}
+        panel={
+          i === index && hostPreviews(a) ? (
+            <Closing open={showsChanges}>
+              <ChangesWindow
+                address={a}
+                folded={changesFolded}
+                onFold={() => setChangesFolded((f) => !f)}
+                onClose={() => setChanges(false)}
+                onOpen={(c, root) =>
+                  show({ address: a, path: c.path, change: { kind: c.kind, root } })
+                }
+              />
+            </Closing>
+          ) : undefined
+        }
         slack={slack}
         onCopied={(rows) =>
           toast.push({
@@ -1021,6 +1056,18 @@ function Tiles({ addresses }: { addresses: string[] }) {
                     onClick: () => toggleFit(focused),
                     on: focusedFit,
                     title: `fit: the host pane follows this tile (f), ${focusedFit ? 'on' : 'off'}; F: every tile`,
+                  },
+                ]
+              : []),
+            ...(writable && hostPreviews(focused)
+              ? [
+                  {
+                    id: 'changes',
+                    glyph: '⎇',
+                    label: 'changes',
+                    onClick: () => setChanges((c) => !c),
+                    on: changes,
+                    title: "git's changes of the pane's repository, over the tile (g)",
                   },
                 ]
               : []),

@@ -1495,6 +1495,130 @@ button.mx-window:focus-visible {
   color: var(--mx-ink);
   border-color: var(--mx-ink);
 }
+/* A diff: added rows in the ok colour, removed rows dim and struck,
+   headers dim. */
+.mx-diff-line[data-d='+'] {
+  color: var(--mx-ok);
+}
+.mx-diff-line[data-d='-'] {
+  color: var(--mx-ink-dim);
+  text-decoration: line-through;
+}
+.mx-diff-line[data-d='@'],
+.mx-diff-line[data-d='h'] {
+  color: var(--mx-ink-dim);
+}
+/* The changes window: git's view of the repository, docked to the tile's
+   right edge over the screen; the screen keeps its size. Folded, only its
+   bar stays, in the corner. */
+.mx-changes {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  width: max(33%, 32ch);
+  max-width: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  font-size: 12px;
+  background: var(--mx-bg);
+  border-left: 1px solid var(--mx-ink);
+  box-shadow: var(--mx-glow-box-strong);
+}
+.mx-changes[data-folded] {
+  bottom: auto;
+  width: auto;
+  grid-template-rows: auto;
+  border-bottom: 1px solid var(--mx-ink);
+}
+.mx-changes[data-folded] .mx-changes-body {
+  display: none;
+}
+.mx-changes-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  user-select: none;
+  background: var(--mx-bg-raised);
+  border-bottom: 1px solid var(--mx-ink-dim);
+}
+.mx-changes-where {
+  color: var(--mx-accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mx-changes-bar .mx-spacer {
+  flex: 1;
+  min-width: 1ch;
+  overflow: hidden;
+  color: var(--mx-ink-dim);
+}
+.mx-changes-bar button {
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.mx-changes-body {
+  overflow: auto;
+  padding: 2px 0 4px;
+}
+.mx-changes-body > .mx-dim {
+  display: block;
+  padding: 4px 6px;
+}
+.mx-change-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: var(--mx-ink);
+  font: inherit;
+  line-height: 1.5;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.mx-change-row:hover,
+.mx-change-row:focus-visible {
+  background: color-mix(in srgb, var(--mx-ink) 12%, transparent);
+  outline: none;
+}
+.mx-change-mark {
+  flex: none;
+  width: 2ch;
+}
+.mx-change-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mx-change-dir {
+  color: var(--mx-ink-dim);
+}
+.mx-change-row[data-kind='added'] .mx-change-mark,
+.mx-change-row[data-kind='untracked'] .mx-change-mark {
+  color: var(--mx-ok);
+}
+.mx-change-row[data-kind='deleted'] {
+  color: var(--mx-ink-dim);
+}
+.mx-change-row[data-kind='deleted'] .mx-change-name {
+  text-decoration: line-through;
+}
+.mx-change-row[data-kind='conflict'] {
+  color: var(--mx-warn);
+  font-weight: bold;
+}
+.mx-change-staged {
+  color: var(--mx-accent);
+  font-size: 8px;
+  vertical-align: middle;
+}
 /* code with its colours, in the window and in rendered Markdown */
 .mx-code {
   margin: 0;

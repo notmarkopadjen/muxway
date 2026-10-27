@@ -181,13 +181,15 @@
    it runs the same backwards (Closing.tsx keeps it until then). */
 .mx-help > *,
 .mx-keyboard,
-.mx-picture {
+.mx-picture,
+.mx-changes {
   animation: mx-power-on var(--mx-motion-slow) var(--mx-ease-crt) both;
   transform-origin: center;
 }
 .mx-closing .mx-help > *,
 .mx-closing .mx-keyboard,
-.mx-closing .mx-picture {
+.mx-closing .mx-picture,
+.mx-closing .mx-changes {
   animation: mx-power-on var(--mx-motion-slow) var(--mx-ease-crt) reverse both;
   pointer-events: none;
 }
@@ -229,6 +231,7 @@
   .mx-help > *,
   .mx-keyboard,
   .mx-picture,
+  .mx-changes,
   .mx-closing .mx-help,
   .mx-closing .mx-picture-back,
   .mx-burn,
@@ -252,6 +255,7 @@
 :root[data-motion='off'] .mx-help > *,
 :root[data-motion='off'] .mx-keyboard,
 :root[data-motion='off'] .mx-picture,
+:root[data-motion='off'] .mx-changes,
 :root[data-motion='off'] .mx-closing .mx-help,
 :root[data-motion='off'] .mx-closing .mx-picture-back,
 :root[data-motion='off'] .mx-burn,

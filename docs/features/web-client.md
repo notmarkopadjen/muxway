@@ -188,7 +188,7 @@ workstation, the logs on a server and an AI agent on your laptop in one
 view, each live and typable. The page is the Android client's pane view:
 
 ```
-┌─ muxway ─┐ [⟳ fixing the build][! review][bash][tail · build.log] [+]   [▦][⤢][⊡][≡]  [alice ▾]
+┌─ muxway ─┐ [⟳ fixing the build][! review][bash][tail · build.log] [+]   [▦][⤢][⎇][⊡][≡]  [alice ▾]
 ┌─ ✳ Claude · fixing the build · work/0.0 · 96×28 · write · ⟳ working ──────┐
 │ $ make test                                                                   │
 │ ok                                                                            │
@@ -204,7 +204,7 @@ view, each live and typable. The page is the Android client's pane view:
   you may type there) and opens it beside the others; *new session*
   starts one where the host's agent allows it (the `+` key opens it
   too). At the right the pane buttons, 32 px squares with a label under
-  the pointer: `▦` arrangement, `⤢` fit, `⊡` zoom, `≡` go
+  the pointer: `▦` arrangement, `⤢` fit, `⎇` changes, `⊡` zoom, `≡` go
   to a pane; on a narrow screen (640 px and under) they fold into one
   `⋯` button that opens a menu with the same entries. Last, the profile
   button with who you are, holding *hubs*, *help*, *admin* (for an
@@ -281,7 +281,9 @@ sequenceDiagram
   address, its size, its mode and the lens's word; the focused tile has
   the thick border and the bold name. The controls sit in the top row,
   at the right, as icons: `▦` the next arrangement (with several tiles),
-  `⤢` fit for the focused tile (selected when on), `⊡` zoom.
+  `⤢` fit for the focused tile (selected when on), `⎇` the changes
+  window over the tile on a host with preview roots (see
+  [changes](changes.md)), `⊡` zoom.
 - **Fit** is per tile, with the pane's own scope (see
   [fit](#fit-the-host-follows-the-browser)). Every writable tile opens
   with fit on, one or several. `⤢` or `f` toggles the focused tile, `F`
@@ -543,6 +545,7 @@ else sees no entry, and `/admin` says *not yours to see*. See
 | `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view: pane), coming round at either end |
 | `1`–`4`, `l`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
 | `e` / `E` | tiles: lay the focused tile across the whole view's width / height, on the side its middle is |
+| `g` | tiles: the changes window over the focused tile, git's view of its repository, on a writable pane of a host with preview roots; `g`, `Esc` or `×` closes it, `_` folds it to its bar (see [changes](changes.md)) |
 | `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, this pane alone (or `Enter`, double-click), host layout, equal shares, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
 | `t` | next theme: amber, green, paper |

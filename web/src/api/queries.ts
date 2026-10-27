@@ -4,6 +4,8 @@ import { api, ApiError } from './client';
 import { noteOwn } from '../term/lens';
 import type {
   AuthMethods,
+  Changes,
+  Diff,
   Host,
   Me,
   Mouse,
@@ -26,6 +28,7 @@ export const keys = {
   transcriber: ['transcriber'] as const,
   admin: ['admin'] as const,
   files: (address: string) => ['files', address] as const,
+  changes: (address: string) => ['changes', address] as const,
 };
 
 function useVisible(): boolean {
@@ -174,6 +177,24 @@ export function readFile(address: string, name: string): Promise<Blob> {
 // A file a pane printed the path of, from under the host's preview roots.
 export function previewFile(address: string, path: string): Promise<Blob> {
   return fetchBlob(`/v1/panes/${address}/preview?path=${encodeURIComponent(path)}`);
+}
+
+// The changes of the repository the pane works in, every five seconds
+// while the window is open; a refusal is kept, not retried.
+export function useChanges(address: string, enabled: boolean) {
+  return useQuery({
+    queryKey: keys.changes(address),
+    queryFn: () => api<Changes>(`/v1/panes/${address}/git`),
+    enabled,
+    refetchInterval: 5_000,
+    retry: (count, err) => !(err instanceof ApiError) && count < 2,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// One change's diff against the last commit.
+export function readDiff(address: string, path: string): Promise<Diff> {
+  return api<Diff>(`/v1/panes/${address}/git/diff?path=${encodeURIComponent(path)}`);
 }
 
 async function fetchBlob(url: string): Promise<Blob> {

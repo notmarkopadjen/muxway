@@ -201,7 +201,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 	// Said once, so the owner sees what writers may read, with this process's rights.
 	if len(a.cfg.Preview) > 0 {
-		a.log.Info("preview roots, read as this user", "roots", a.cfg.Preview)
+		a.log.Info("preview roots, read as this user; git status and diff run for repositories under them", "roots", a.cfg.Preview)
 	}
 	if a.cfg.Dir != "" {
 		ln, err := a.listenNotify()
@@ -385,6 +385,17 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		var file string
 		file, resp.Type, resp.Data, resp.Error = a.preview(ctx, req)
 		a.audit(req, resp.Error, "path", req.Path, "file", file, "bytes", len(resp.Data))
+	case wire.OpGitStatus:
+		resp.Changes, resp.Error = a.changes(ctx, req)
+		n, root := 0, ""
+		if resp.Changes != nil {
+			n, root = len(resp.Changes.Entries), resp.Changes.Root
+		}
+		a.audit(req, resp.Error, "root", root, "entries", n)
+	case wire.OpGitDiff:
+		var root string
+		resp.Diff, resp.Binary, resp.Cut, resp.Error, root = a.diff(ctx, req)
+		a.audit(req, resp.Error, "root", root, "path", req.Path, "bytes", len(resp.Diff))
 	default:
 		resp.Error = wire.ErrUnknownOp
 		a.audit(req, wire.ErrUnknownOp)

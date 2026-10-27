@@ -41,7 +41,6 @@ func TestUI_WebClient(t *testing.T) {
 	// A preview root with a few files, where the first pane's shell starts.
 	preview := filepath.Join(e.dir, "work")
 	os.MkdirAll(filepath.Join(preview, "docs", "plans"), 0o700)
-	os.MkdirAll(filepath.Join(preview, ".git"), 0o700)
 	os.WriteFile(filepath.Join(preview, "docs", "plans", "a.md"), []byte("# plan a\n\nThe goal, in a line.\n\n- one\n- two\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, "docs", "report.csv"), []byte("day,count\n1,2\n2,3\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, "docs", "evil.md"), []byte("# Hostile\n\n<script>alert(1)</script> <img src=x onerror=alert(1)>\n\n[go](javascript:alert(1)) and [fine](https://example.com/x)\n\n- a `code` span\n\n```js\nconst x = 1; // one\n```\n"), 0o600)
@@ -52,6 +51,8 @@ func TestUI_WebClient(t *testing.T) {
 	os.WriteFile(filepath.Join(preview, "docs", "shot.png"), png2, 0o600)
 	os.WriteFile(filepath.Join(preview, ".env"), []byte("SECRET=1\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, "run.sh"), []byte("#!/bin/sh\n"), 0o600)
+	// The root is a repository with a change of each kind, for the changes window.
+	gitRepo(t, preview)
 	a := e.pairAgent(host, ts, "--allow-sessions", "--inbox", "default", "--preview", preview)
 	ts.must("send-keys", "-t", "work:0.0", "cd "+filepath.Join(preview, "docs")+" && clear", "Enter")
 	ts.split("work:0.0")
