@@ -144,7 +144,10 @@ they give or take the difference, and the window grows before any pane
 of it would go under 20 columns or 5 rows. Tiles that are every pane of
 one window fit the window as one, laid out as the tiles are, the way the
 window view does, so each pane is exactly its tile and a divider dragged
-moves the host's split. Where only some of a window's panes are open as
+moves the host's split. The layout sent is exact: each pane gets as many
+cells as its tile's screen holds, so no pane has rows its tile cannot
+show; the tiles of a stack lose a header each, and a tile across from
+them keeps that much spare at its bottom. Where only some of a window's panes are open as
 tiles, they share one fit, because two fits on one row can only undo
 each other: the focused tile's pane fits (or the first of them, when the
 focus is in another window), and the others say *held* in their header,
@@ -279,7 +282,11 @@ sequenceDiagram
 ```
 - A tile's **header** is painted like its tab and names the pane, its
   address, its size, its mode and the lens's word; the focused tile has
-  the thick border and the bold name. The controls sit in the top row,
+  the thick border and the bold name. At its right, before `×`, a
+  writable tile on a host with preview roots counts the repository's
+  changes (`⎇ +3 ~5 −1`, `⎇ ✓` when clean, nothing outside a
+  repository); a click on the count opens the changes window (see
+  [changes](changes.md)). The controls sit in the top row,
   at the right, as icons: `▦` the next arrangement (with several tiles),
   `⤢` fit for the focused tile (selected when on), `⎇` the changes
   window over the tile on a host with preview roots (see

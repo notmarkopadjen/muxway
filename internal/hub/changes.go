@@ -13,7 +13,7 @@ import (
 // without roots, and every refusal of the agent's is one 404.
 const (
 	changesRate  = 1
-	changesBurst = 3
+	changesBurst = 6
 	diffRate     = 2
 	diffBurst    = 5
 )

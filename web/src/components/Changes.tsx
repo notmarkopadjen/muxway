@@ -49,7 +49,9 @@ export function ChangesWindow({
       else n.add(path);
       return n;
     });
-  const data = q.data;
+  // A 404 says the pane left the repository: the counts the header's
+  // share of the query still holds are not shown as the window's.
+  const data = q.error instanceof ApiError && q.error.status === 404 ? undefined : q.data;
   const repo = data?.root.split('/').pop() ?? '';
   const counts = data ? summary(countOf(data.entries)) : '';
   const where = data

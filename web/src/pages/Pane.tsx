@@ -8,6 +8,7 @@ import {
   keys,
   resizePane,
   useAllPanes,
+  useChanges,
   useHosts,
   useInput,
   usePane,
@@ -40,6 +41,8 @@ import {
   dropOn,
   fromHost,
   rects,
+  bottomLeaves,
+  exactLayout,
   rootKey,
   nearWeights,
   prune,
@@ -50,8 +53,10 @@ import {
   type Weights,
   type Zone,
 } from '../term/tiles';
+import { cellsFor, inner } from '../term/measure';
 import { releaseKept, useFit } from '../term/useFit';
 import { screenWords } from '../term/complete';
+import { countOf, summary } from '../term/changes';
 import { Backlog, keyToBody, pasteText } from '../term/direct';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
@@ -141,6 +146,11 @@ interface TileProps {
   onFile: (name: string) => void;
   // The host previews files a pane prints the paths of, for writers.
   onPath?: (path: string) => void;
+  // The host has roots: the header counts the repository's changes, and
+  // the count opens the changes window over this tile.
+  previews: boolean;
+  changesOpen: boolean;
+  onChanges: () => void;
   // Height the input line takes beyond one row, which is not a resize.
   slack: () => number;
   onCopied: (rows: number) => void;
@@ -231,6 +241,14 @@ function Tile(props: TileProps) {
   const lens = useLens();
   const st = p ? lens.status(p) : 'quiet';
   const [over, setOver] = useState<Zone | null>(null);
+  // The repository's changes, counted in the header for a writer on a
+  // host with roots; a 404 says the pane is in none, and the count goes.
+  const counting = !!p && writable && props.previews;
+  const ch = useChanges(address, counting, 10_000);
+  const counts =
+    counting && ch.data && !(ch.error instanceof ApiError && ch.error.status === 404)
+      ? countOf(ch.data.entries)
+      : null;
   // A pane that exited leaves the tiles at once; tmux has renumbered the
   // rest, so the window's last address is the one that is gone.
   const gone = several && pane.error instanceof ApiError && pane.error.status === 404;
@@ -342,6 +360,21 @@ function Tile(props: TileProps) {
           </>
         )}
         <span className="mx-spacer" />
+        {counts && (
+          <button
+            type="button"
+            className={`mx-tile-changes${props.changesOpen ? ' on' : ''}`}
+            title="the repository's changes (g)"
+            data-testid="tile-changes"
+            onClick={(e) => {
+              e.stopPropagation();
+              props.onChanges();
+            }}
+          >
+            ⎇ {summary({ ...counts, conflict: 0 }) || (counts.conflict ? '' : '✓')}
+            {counts.conflict ? <span className="mx-warn"> !{counts.conflict}</span> : null}
+          </button>
+        )}
         {props.asking && p ? (
           <span className="mx-ask" data-testid="close-ask" onClick={(e) => e.stopPropagation()}>
             close the pane on {p.host}?{' '}
@@ -715,15 +748,23 @@ function Tiles({ addresses }: { addresses: string[] }) {
     touched.current = Date.now();
   };
   const idsKey = oneWindow?.join() ?? '';
+  // The layout last sent to the host. Coming back from it, it is not a
+  // change to take: an exact one differs from the weights by the headers.
+  const sentLayout = useRef('');
   const adopt = useCallback(
     (always: boolean) => {
       if (!oneWindow || !hostLayout) return;
       const h = fromHost(hostLayout, oneWindow);
       if (!h) return;
       const settled = Date.now() - touched.current > 3000;
+      const mine = sentLayout.current ? fromHost(sentLayout.current, oneWindow) : null;
+      const ours =
+        !!mine && sameTree(h.node, mine.node) && nearWeights(h.node, h.weights, mine.weights, 0.03);
       if (
         always ||
-        (settled && (!sameTree(h.node, shape) || !nearWeights(h.node, h.weights, weights, 0.03)))
+        (settled &&
+          !ours &&
+          (!sameTree(h.node, shape) || !nearWeights(h.node, h.weights, weights, 0.03)))
       ) {
         setCustom(h.node);
         setLayout('custom');
@@ -758,10 +799,28 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const slack = useCallback(() => grown.current, []);
   const windowFit = !!oneWindow && synced && (fit[focused] ?? true) && !!writable;
   const windowLayout = oneWindow && synced ? tilesLayout(shape, weights, oneWindow) : undefined;
+  // The window's size and layout, exact: each pane as many cells as its
+  // tile's screen holds, the tiles along the bottom measured as if the
+  // input line had not grown.
+  const exact = useCallback(() => {
+    if (!oneWindow || !area.current) return null;
+    const bottom = new Set(bottomLeaves(shape));
+    const sizes: { cols: number; rows: number }[] = [];
+    for (const [i, a] of addresses.entries()) {
+      const el = area.current.querySelector<HTMLElement>(`[data-pane="${a}"] .mx-screen`);
+      if (!el) return null;
+      const { w, h } = inner(el);
+      sizes.push(cellsFor(w, h + (bottom.has(i) ? grown.current : 0)));
+    }
+    const r = exactLayout(shape, sizes, oneWindow);
+    sentLayout.current = r.layout;
+    return r;
+  }, [oneWindow, shape, addresses]);
   const { refit: refitWindow } = useFit(focused, windowFit, area, 'window', windowLayout, false, {
     keep: true,
     onDone: follow,
     slack,
+    exact,
   });
   // With fit off the arrangement still goes to the host, without a size.
   const [retry, setRetry] = useState(0);
@@ -770,6 +829,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
     const h = fromHost(hostLayout, oneWindow);
     if (h && sameTree(h.node, shape) && nearWeights(shape, h.weights, weights, 0.01)) return;
     const t = window.setTimeout(() => {
+      sentLayout.current = windowLayout;
       resizePane(focused, { scope: 'window', layout: windowLayout })
         .then(follow)
         .catch((err) => {
@@ -1034,6 +1094,12 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onFit={() => toggleFit(a)}
         onFile={(name) => show({ address: a, name })}
         onPath={hostPreviews(a) ? (path) => show({ address: a, path }) : undefined}
+        previews={hostPreviews(a)}
+        changesOpen={i === index && showsChanges}
+        onChanges={() => {
+          setFocusedIndex(i);
+          setChanges((c) => (i === index ? !c : true));
+        }}
         direct={i === index && directOn}
         onDirect={() => {
           setFocusedIndex(i);

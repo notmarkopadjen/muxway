@@ -157,6 +157,9 @@
   background: #000;
   padding: var(--mx-gap);
   min-height: 0;
+  /* Direct typing focuses the screen; the ▮ prompt and the status bar
+     say so, not a ring around the pane. */
+  outline: none;
   --mx-text-glow: 0 0 3px var(--mx-glow-soft);
   text-shadow: var(--mx-text-glow);
 }
@@ -1138,12 +1141,15 @@ button.mx-window:focus-visible {
     opacity: 0;
   }
 }
+/* The header is a 36 px row, twice a line of text: room for a finger on
+   its buttons and for the repository's count at its right. */
 .mx-tile-head {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  font-size: 12px;
-  padding: 1px 4px;
+  min-height: 36px;
+  font-size: 14px;
+  padding: 0 8px;
   white-space: nowrap;
   overflow: hidden;
   cursor: pointer;
@@ -1156,13 +1162,23 @@ button.mx-window:focus-visible {
   font-weight: bold;
 }
 .mx-tile-head button {
+  flex: none;
+  align-self: stretch;
   border-color: transparent;
-  padding: 0 4px;
-  font-size: 12px;
+  padding: 0 8px;
+  font-size: 14px;
+}
+.mx-tile-head .mx-tile-changes {
+  font-family: var(--mx-mono);
+  color: var(--mx-ink-dim);
+}
+.mx-tile-head .mx-tile-changes.on {
+  color: var(--mx-ink);
+  border-color: var(--mx-ink);
 }
 .mx-tile-head .mx-mode {
   font-family: var(--mx-pixel);
-  font-size: 8px;
+  font-size: 10px;
   color: var(--mx-ink-dim);
 }
 .mx-tile-head .mx-mode.write {

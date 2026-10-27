@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { control, openPane, settled, SHELL0, shot, signIn } from './fixtures';
+import { control, HOST, openPane, paneLoaded, settled, SHELL0, shot, signIn } from './fixtures';
 
 // The changes window: git's view of the repository the pane works in,
 // over the tile, docked to its right edge; a click on a file opens its
@@ -133,6 +133,43 @@ test('103 a change opens in the file window: the diff with its colours, the file
   await expect(page.getByTestId('changes-window')).toHaveCount(0, { timeout: 3000 });
 });
 
+test('103 the header counts the changes, in a row twice a line tall: a click on the count opens the window and lights it; a read-only tile counts and asks nothing', async ({
+  page,
+}) => {
+  test.skip(!PREVIEW, 'no preview root in this environment');
+  const asked: string[] = [];
+  page.on('request', (r) => {
+    if (r.url().includes('/git')) asked.push(r.url());
+  });
+  await signIn(page);
+  await openPane(page, SHELL0);
+  await settled(page);
+  const count = page.getByTestId('tile-changes');
+  await expect(count).toHaveText('⎇ +6 ~2 −1');
+  const head = await page.locator('.mx-tile-head').first().boundingBox();
+  expect(head!.height).toBeGreaterThanOrEqual(32);
+  const box = await count.boundingBox();
+  expect(box!.height).toBeGreaterThanOrEqual(32);
+  // The count sits at the header's right, inside its last 80 px.
+  expect(box!.x + box!.width).toBeGreaterThan(head!.x + head!.width - 80);
+  await count.click();
+  const changes = page.getByTestId('changes-window');
+  await expect(changes).toBeVisible();
+  await expect(page.getByTestId('changes-counts')).toHaveText('+6 ~2 −1');
+  await expect(count).toHaveClass(/\bon\b/);
+  await count.click();
+  await expect(changes).toHaveCount(0, { timeout: 3000 });
+  await expect(count).not.toHaveClass(/\bon\b/);
+  // A read-only pane: no count, and the hub is never asked for it.
+  const ro = `${HOST}/work/0.1`;
+  await page.goto(`/p/${ro}`);
+  await paneLoaded(page);
+  await settled(page);
+  await expect(page.locator(`[data-pane="${ro}"] [data-testid="tile-changes"]`)).toHaveCount(0);
+  expect(asked.filter((u) => u.includes('work/0.1'))).toEqual([]);
+  expect(asked.filter((u) => u.includes('work/0.0')).length).toBeGreaterThan(0);
+});
+
 test('103 a pane outside a repository says so', async ({ page, request }) => {
   test.skip(!PREVIEW, 'no preview root in this environment');
   await signIn(page);
@@ -144,8 +181,11 @@ test('103 a pane outside a repository says so', async ({ page, request }) => {
     timeout: 8000,
   });
   await expect(page.getByTestId('changes-counts')).toHaveText('');
+  // The header's count went with the repository.
+  await expect(page.getByTestId('tile-changes')).toHaveCount(0);
   await control(request, '/send', { target: 'work:0.0', text: `cd ${PREVIEW}/docs && clear` });
   await expect(page.getByTestId('changes-where')).toHaveText('work · main', { timeout: 8000 });
+  await expect(page.getByTestId('tile-changes')).toHaveText('⎇ +6 ~2 −1');
   await page.keyboard.press('g');
   await expect(page.getByTestId('changes-window')).toHaveCount(0, { timeout: 3000 });
 });

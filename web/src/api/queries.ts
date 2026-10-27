@@ -179,15 +179,21 @@ export function previewFile(address: string, path: string): Promise<Blob> {
   return fetchBlob(`/v1/panes/${address}/preview?path=${encodeURIComponent(path)}`);
 }
 
-// The changes of the repository the pane works in, every five seconds
-// while the window is open; a refusal is kept, not retried.
-export function useChanges(address: string, enabled: boolean) {
+// The changes of the repository the pane works in: every five seconds
+// while the window is open, every ten for a tile's header (the window
+// and the header share the query, so the shorter wins); a pane outside
+// a repository is asked again every minute, since it may enter one. A
+// refusal is kept, not retried.
+export function useChanges(address: string, enabled: boolean, every = 5_000) {
   return useQuery({
     queryKey: keys.changes(address),
     queryFn: () => api<Changes>(`/v1/panes/${address}/git`),
     enabled,
-    refetchInterval: 5_000,
-    retry: (count, err) => !(err instanceof ApiError) && count < 2,
+    refetchInterval: (q) =>
+      q.state.error instanceof ApiError && q.state.error.status === 404 ? 60_000 : every,
+    // The status limit is one a second: a 429 is asked again after one.
+    retry: (count, err) => (err instanceof ApiError ? err.status === 429 && count < 3 : count < 2),
+    retryDelay: 1_100,
     placeholderData: (prev) => prev,
   });
 }

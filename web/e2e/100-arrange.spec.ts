@@ -16,7 +16,10 @@ const places = async (request: APIRequestContext) =>
     return { id, x: +x, y: +y, w: +w, h: +h };
   });
 
-// Each tile's screen holds as many rows as its pane has, within one.
+// Each tile's screen holds the rows its pane has, within one, and at most
+// a header's worth more: the tiles of a stack lose a header each, no pane
+// is given rows its tile cannot show, so a tile across from the stack
+// keeps that much spare.
 async function rowsMatch(page: Page, request: APIRequestContext) {
   const ps = await places(request);
   for (const tile of await page.getByTestId('tile').all()) {
@@ -31,9 +34,8 @@ async function rowsMatch(page: Page, request: APIRequestContext) {
         const lh = ln ? ln.getBoundingClientRect().height : 16;
         return Math.floor(el.clientHeight / lh);
       });
-    expect(Math.abs(rows - p.h), `${address}: ${rows} rows shown, pane ${p.h}`).toBeLessThanOrEqual(
-      1,
-    );
+    expect(rows - p.h, `${address}: ${rows} rows shown, pane ${p.h}`).toBeGreaterThanOrEqual(-1);
+    expect(rows - p.h, `${address}: ${rows} rows shown, pane ${p.h}`).toBeLessThanOrEqual(3);
   }
 }
 

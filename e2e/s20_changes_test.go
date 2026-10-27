@@ -260,10 +260,10 @@ func TestSec163_GitWritesNothingAndRunsNothingOfTheRepository(t *testing.T) {
 func TestSec164_ChangesAreRateLimitedAndAudited(t *testing.T) {
 	e, _, _, _ := changesEnv(t, true)
 	full := e.token("full", []string{host + "/*"}, []string{host + "/*"})
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 6; i++ {
 		expect(t, e.changes(full, shell0), http.StatusOK, "within the burst")
 	}
-	expect(t, e.changes(full, shell0), http.StatusTooManyRequests, "the fourth status")
+	expect(t, e.changes(full, shell0), http.StatusTooManyRequests, "the seventh status")
 	for i := 0; i < 5; i++ {
 		expect(t, e.diff(full, shell0, "src/a.go"), http.StatusOK, "within the burst")
 	}

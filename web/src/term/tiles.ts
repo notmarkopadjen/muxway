@@ -233,6 +233,16 @@ export function tilesLayout(node: TileNode, weights: Weights, ids: string[]): st
   return `${checksum(body)},${body}`;
 }
 
+// Shares of a split taken from the host. Children within a cell of one
+// another are equal shares: the host could not split its cells more
+// evenly, and a 50/49 carried over as 0.505 would come back as 66/64 at
+// a wider size when the tiles are sized exactly.
+function evenShares(s: Extract<Node, { kind: 'h' | 'v' }>): number[] {
+  const sizes = s.children.map((c) => (s.kind === 'h' ? c.w : c.h));
+  if (Math.max(...sizes) - Math.min(...sizes) <= 1) return sizes.map(() => 1 / sizes.length);
+  return fractions(s);
+}
+
 // The host's layout of a window as the tiles' tree, when the tiles are
 // its panes: `ids` are the tiles' pane ids. Null when it names another pane.
 export function fromHost(
@@ -253,7 +263,7 @@ export function fromHost(
     }
     const children = n.children.map((c, i) => walk(c, `${key}.${i}`));
     if (children.some((c) => c === null)) return null;
-    weights[key] = fractions(n);
+    weights[key] = evenShares(n);
     return { kind: n.kind, key, children: children as TileNode[] };
   };
   const node = walk(root, 'r');
@@ -345,4 +355,75 @@ export function rects(node: TileNode, weights: Weights): Map<number, Rect> {
 // The root split's key, for laying a tile across the whole view.
 export function rootKey(node: TileNode): string | null {
   return typeof node === 'number' ? null : node.key;
+}
+
+// The tiles along the bottom of the view: every tile of a row, the last
+// of a stack. Height the input line took is theirs to measure back.
+export function bottomLeaves(node: TileNode): number[] {
+  if (typeof node === 'number') return [node];
+  if (node.kind === 'h') return node.children.flatMap(bottomLeaves);
+  return bottomLeaves(node.children[node.children.length - 1]);
+}
+
+// Whole shares of `total` in the proportions of `wants`, summing to it.
+function shares(wants: number[], total: number): number[] {
+  const sum = wants.reduce((s, w) => s + w, 0) || 1;
+  const out = wants.map((w) => Math.max(1, Math.floor((w * total) / sum)));
+  let left = total - out.reduce((s, w) => s + w, 0);
+  for (let i = 0; left > 0; i = (i + 1) % out.length, left--) out[i]++;
+  for (let i = 0; left < 0 && i < out.length; i++)
+    if (out[i] > 1) {
+      out[i]--;
+      left++;
+    }
+  return out;
+}
+
+// The tiles' arrangement as an exact tmux layout of their window: each
+// pane as many cells as its tile's screen holds. A split side by side is
+// as wide as its children together with a divider between each two, and
+// as tall as the shortest of them; stacked, as tall as its children
+// together and as wide as the narrowest. So no pane is given rows its
+// tile cannot show: the tiles of a stack lose a header each, and a tile
+// across from them keeps that much spare. The window's size is the
+// root's.
+export function exactLayout(
+  node: TileNode,
+  sizes: { cols: number; rows: number }[],
+  ids: string[],
+): { cols: number; rows: number; layout: string } {
+  type Size = { cols: number; rows: number };
+  const natural = (n: TileNode): Size => {
+    if (typeof n === 'number') return sizes[n];
+    const kids = n.children.map(natural);
+    const gaps = kids.length - 1;
+    return n.kind === 'h'
+      ? {
+          cols: kids.reduce((s, k) => s + k.cols, 0) + gaps,
+          rows: Math.min(...kids.map((k) => k.rows)),
+        }
+      : {
+          cols: Math.min(...kids.map((k) => k.cols)),
+          rows: kids.reduce((s, k) => s + k.rows, 0) + gaps,
+        };
+  };
+  const cell = (n: TileNode, w: number, h: number): string => {
+    if (typeof n === 'number') return `${w}x${h},0,0,${ids[n].replace(/^%/, '')}`;
+    const kids = n.children.map(natural);
+    const gaps = kids.length - 1;
+    const parts =
+      n.kind === 'h'
+        ? shares(
+            kids.map((k) => k.cols),
+            w - gaps,
+          ).map((cw, i) => cell(n.children[i], cw, h))
+        : shares(
+            kids.map((k) => k.rows),
+            h - gaps,
+          ).map((ch, i) => cell(n.children[i], w, ch));
+    return `${w}x${h},0,0${n.kind === 'h' ? '{' : '['}${parts.join(',')}${n.kind === 'h' ? '}' : ']'}`;
+  };
+  const root = natural(node);
+  const body = cell(node, root.cols, root.rows);
+  return { ...root, layout: `${checksum(body)},${body}` };
 }

@@ -51,8 +51,12 @@ test('99 every pane of a window as tiles: the window fits as one, laid out as th
   await expect.poll(() => fitsOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
   const fit = fitsOf(resizes, LOGS)[0].body;
   expect(fit.scope).toBe('window');
+  // The layout is exact: the window's size is the root's, the two panes
+  // its full height, side by side.
   expect(String(fit.layout)).toMatch(
-    /^[0-9a-f]{4},1000x1000,0,0\{\d+x1000,0,0,\d+,\d+x1000,0,0,\d+\}$/,
+    new RegExp(
+      `^[0-9a-f]{4},${fit.cols}x${fit.rows},0,0\\{\\d+x${fit.rows},0,0,\\d+,\\d+x${fit.rows},0,0,\\d+\\}$`,
+    ),
   );
   await expect.poll(size, { timeout: 5000 }).toBe(`${fit.cols}x${fit.rows}`);
   await page.waitForTimeout(1500);

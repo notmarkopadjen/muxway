@@ -47,6 +47,9 @@ export interface FitOptions {
   onDone?: (r: { panes?: Pane[] }) => void;
   hold?: boolean;
   slack?: () => number;
+  // Window scope: the size and layout measured from the tiles themselves,
+  // exact to the cell, instead of the box and the proportional layout.
+  exact?: () => { cols: number; rows: number; layout: string } | null;
 }
 
 // Panes fitted and not yet released, across tiles that came and went.
@@ -80,14 +83,16 @@ export function useFit(
   known.current = opts.known;
   const slack = useRef(opts.slack);
   slack.current = opts.slack;
+  const exact = useRef(opts.exact);
+  exact.current = opts.exact;
   const done = useRef(opts.onDone);
   done.current = opts.onDone;
 
   useEffect(() => {
     if (!enabled || hold || !box.current) return;
     const el = box.current;
-    const send = (cols: number, rows: number) => {
-      const key = `${cols}x${rows} ${layout ?? ''} ${zoom}`;
+    const send = (cols: number, rows: number, lay = layout) => {
+      const key = `${cols}x${rows} ${lay ?? ''} ${zoom}`;
       if (key === last.current) return;
       last.current = key;
       fitted.current = true;
@@ -97,7 +102,7 @@ export function useFit(
         setSize({ cols, rows });
         return;
       }
-      resizePane(address, { cols, rows, scope, layout, zoom: zoom || undefined })
+      resizePane(address, { cols, rows, scope, layout: lay, zoom: zoom || undefined })
         .then((r) => {
           setSize({ cols: r.pane.width, rows: r.pane.height });
           done.current?.(r);
@@ -110,6 +115,11 @@ export function useFit(
         });
     };
     const measure = () => {
+      const ex = scope === 'window' ? exact.current?.() : undefined;
+      if (ex) {
+        send(Math.min(500, Math.max(20, ex.cols)), Math.min(300, Math.max(5, ex.rows)), ex.layout);
+        return;
+      }
       const { w, h } = inner(el);
       const off = inset ? CELL_INSET : 0;
       const { cols, rows } = cellsFor(w - off, h - off + (slack.current?.() ?? 0));

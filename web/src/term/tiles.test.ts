@@ -17,6 +17,8 @@ import {
   replace,
   routeFor,
   swap,
+  bottomLeaves,
+  exactLayout,
   tilesLayout,
   tree,
 } from './tiles';
@@ -92,6 +94,61 @@ describe('tilesLayout', () => {
     expect(tilesLayout(tree(3, 'main-left'), {}, ids)).toMatch(
       /^[0-9a-f]{4},1000x1000,0,0\{500x1000,0,0,3,500x1000,0,0\[500x500,0,0,4,500x500,0,0,5\]\}$/,
     );
+  });
+});
+
+describe('exactLayout', () => {
+  const ids = ['%3', '%4', '%5'];
+  it('gives each pane the cells its tile holds, a split the sum along it and the least across', () => {
+    const r = exactLayout(
+      tree(3, 'main-left'),
+      [
+        { cols: 60, rows: 40 },
+        { cols: 60, rows: 19 },
+        { cols: 60, rows: 19 },
+      ],
+      ids,
+    );
+    expect(r.cols).toBe(121);
+    expect(r.rows).toBe(39);
+    expect(r.layout).toMatch(
+      /^[0-9a-f]{4},121x39,0,0\{60x39,0,0,3,60x39,0,0\[60x19,0,0,4,60x19,0,0,5\]\}$/,
+    );
+    expect(
+      exactLayout(
+        tree(2, 'column'),
+        [
+          { cols: 80, rows: 24 },
+          { cols: 70, rows: 20 },
+        ],
+        ids,
+      ).layout,
+    ).toMatch(/^[0-9a-f]{4},70x45,0,0\[70x24,0,0,3,70x20,0,0,4\]$/);
+  });
+  it('scales a stack down to the tile across from it, never up', () => {
+    const r = exactLayout(
+      tree(3, 'main-left'),
+      [
+        { cols: 60, rows: 30 },
+        { cols: 60, rows: 20 },
+        { cols: 60, rows: 20 },
+      ],
+      ids,
+    );
+    expect(r.rows).toBe(30);
+    expect(r.layout).toMatch(/\[60x15,0,0,4,60x14,0,0,5\]\}$/);
+  });
+  it('takes a host split within a cell of even as even', () => {
+    const h = fromHost('c1a2,100x30,0,0{50x30,0,0,3,49x30,51,0[49x15,51,0,4,49x14,51,16,5]}', ids);
+    expect(h?.weights).toEqual({ r: [0.5, 0.5], 'r.1': [0.5, 0.5] });
+    const u = fromHost('4e55,100x30,0,0{70x30,0,0,3,29x30,71,0,4}', ids.slice(0, 2));
+    expect(u?.weights.r).toEqual([70 / 99, 29 / 99]);
+  });
+  it('names the tiles along the bottom', () => {
+    expect(bottomLeaves(tree(3, 'main-left'))).toEqual([0, 2]);
+    expect(bottomLeaves(tree(3, 'main-top'))).toEqual([1, 2]);
+    expect(bottomLeaves(tree(2, 'row'))).toEqual([0, 1]);
+    expect(bottomLeaves(tree(2, 'column'))).toEqual([1]);
   });
 });
 

@@ -8,7 +8,10 @@ there, or another pane. On a host whose owner named **preview roots**
 edge, with the repository's changes as a folder tree, the branch and the
 counts in its bar. The tile keeps its size and its fit: the window lies
 over the screen. A click on a file opens it in the file window, as its
-diff against the last commit or as the file it is now.
+diff against the last commit or as the file it is now. The counts are
+also in the tile's own header, next to `×`, without opening anything:
+`⎇ +3 ~5 −1`, or `⎇ ✓` for a clean repository; a click on them opens
+the window.
 
 ![the changes window over a pane](images/web-changes.png)
 
@@ -25,7 +28,14 @@ window; `g` or `Esc` closes it, `×` too, and `_` folds it to its bar in
 the tile's corner (while [direct typing](direct.md) is on, `g` and `Esc`
 are the pane's: `×` or `⎇` closes it). The bar reads `┌─ changes ─ muxway · main ↑1 ─ +3 ~5
 −1 ─ [_] [×]`: the repository's directory, its branch, how far it is
-ahead of or behind its upstream, and the counts. The body is a tree,
+ahead of or behind its upstream, and the counts. The same counts stand
+in the tile's header, at its right: a writable tile on a host with
+roots asks for the repository's state every ten seconds while the page
+is in the foreground (every five while the window is open; the two
+share one request), shows `⎇` with the counts, `⎇ ✓` when nothing has
+changed, and nothing when the pane's directory is in no repository the
+host shows (asked again every minute, since the pane may enter one); a
+click on the count opens the window on that tile. The body is a tree,
 directories first, folded or unfolded by a click, with a mark and a
 colour per file:
 
@@ -123,7 +133,9 @@ writers who could run both in the pane.
   the tree are text.
 - **One refusal** (`404 not_found`) for everything the host will not
   show, so the endpoint cannot be used to map the host; one status a
-  second per principal with a burst of three, two diffs a second with a
-  burst of five.
+  second per principal with a burst of six (four tiles and an open
+  window ask at once), two diffs a second with a burst of five.
 - **Audit** on hub and agent: who, pane, the root, the path, the number
-  of entries, the size of the diff, the result. Never the content.
+  of entries, the size of the diff, the result. Never the content. A
+  tile's header asks every ten seconds, so an open tile writes six
+  audit lines a minute on each; the lines stay, so the log is complete.
