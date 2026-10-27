@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { shot, TOKEN, profile } from './fixtures';
 
+// With a peer named (the harness's second hub) the cookie travels to it:
+// SameSite=None; on a hub without peers it stays on its site.
+const PEERS = !!process.env.MX_HUB2;
+
 test('43 token sign-in, session survives a reload, logout', async ({ page }, info) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/signin$/);
@@ -20,7 +24,7 @@ test('43 token sign-in, session survives a reload, logout', async ({ page }, inf
   const session = cookies.find((c) => c.name === 'muxway_session');
   expect(session?.httpOnly).toBe(true);
   expect(session?.secure).toBe(true);
-  expect(session?.sameSite).toBe('Strict');
+  expect(session?.sameSite).toBe(PEERS ? 'None' : 'Strict');
   await profile(page, 'logout');
   await expect(page).toHaveURL(/\/signin$/);
   await page.goto('/');

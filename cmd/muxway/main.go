@@ -122,11 +122,20 @@ func runHub(cmd string, args []string) error {
 		sttKeyFile := fs.String("stt-key-file", "", "file (mode 600) holding the transcriber's key, if it needs one")
 		sttModel := fs.String("stt-model", "whisper-1", "model name sent to the transcriber")
 		sttPrompt := fs.String("stt-prompt", "", "vocabulary hint sent with every clip: host and project names")
+		var peers repeated
+		fs.Var(&peers, "peer", "origin of another hub of yours whose web page may use a session here, e.g. https://work.example.com (repeatable)")
 		if err := fs.Parse(args); err != nil {
 			return err
 		}
 		cfg := hub.Config{Dir: *dir, Listen: *listen, PublicURL: strings.TrimRight(*public, "/"),
 			TLSCert: *cert, TLSKey: *key, TrustProxy: *proxy, SessionTTL: *sessionTTL, NoWeb: *noWeb}
+		for _, p := range peers {
+			origin, err := hub.PeerOrigin(p)
+			if err != nil {
+				return fmt.Errorf("--peer %q: %w", p, err)
+			}
+			cfg.Peers = append(cfg.Peers, origin)
+		}
 		if *sttURL != "" {
 			if !strings.HasPrefix(*sttURL, "https://") && !strings.HasPrefix(*sttURL, "http://") {
 				return fmt.Errorf("--stt-url must be an http(s) URL")
@@ -364,6 +373,12 @@ func readSecretFile(path, flag string) (string, error) {
 	}
 	return secret, nil
 }
+
+// repeated is a flag given more than once.
+type repeated []string
+
+func (r *repeated) String() string     { return strings.Join(*r, ",") }
+func (r *repeated) Set(v string) error { *r = append(*r, v); return nil }
 
 func tmuxFlags(fs *flag.FlagSet) (*string, *string) {
 	return fs.String("tmux-socket", "", "tmux socket path (tmux -S)"), fs.String("tmux-name", "", "tmux socket name (tmux -L)")

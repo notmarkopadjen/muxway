@@ -34,6 +34,7 @@ type Config struct {
 	Providers  []auth.Provider // ways to sign in besides pasting a token
 	NoWeb      bool            // do not serve the web client
 	STT        STT             // the transcriber spoken clips go to, if any
+	Peers      []string        // origins of the owner's other hubs, whose pages may use a session here
 }
 
 // Hub is a running hub.

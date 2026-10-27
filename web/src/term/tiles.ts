@@ -6,7 +6,8 @@ import { checksum, fractions, parseLayout, type Node } from './layout';
 
 export const MAX_TILES = 4;
 
-export const ADDRESS = /^[A-Za-z0-9][A-Za-z0-9_-]*(\/[A-Za-z0-9._@-]+){2,3}$/;
+// A pane's address, with the hub's name before `~` for a pane of another hub.
+export const ADDRESS = /^([a-z0-9-]{1,32}~)?[A-Za-z0-9][A-Za-z0-9_-]*(\/[A-Za-z0-9._@-]+){2,3}$/;
 
 // What a board kept in this browser held, for a bookmark of one: its
 // panes, up to four, as tiles. The board itself is gone with this read.

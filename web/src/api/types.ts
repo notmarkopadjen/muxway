@@ -32,6 +32,7 @@ export interface Pane {
   mouse?: boolean;
   cursor_x?: number; // the cursor's cell, 1-based, where the program waits
   cursor_y?: number;
+  hub?: string; // the hub of the hubs box it came from; none for this page's own
 }
 
 export interface Host {
@@ -42,6 +43,7 @@ export interface Host {
   keys?: number; // 2: the agent takes the whole key grammar
   preview?: boolean; // the agent serves files under roots its owner named
   repeat?: boolean; // the agent takes a count with a key
+  hub?: string; // as on a pane
 }
 
 export interface Window {

@@ -50,7 +50,7 @@ func (h *Hub) handleAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sess := h.sessions.create("token", t.ID, "token", clientType(r), addr)
-	setSessionCookie(w, sess)
+	h.setSessionCookie(w, sess)
 	h.log.Info("signed in", "method", "token", "token", t.ID, "addr", addr)
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -59,7 +59,7 @@ func (h *Hub) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(sessionCookie); err == nil {
 		h.sessions.drop(c.Value)
 	}
-	clearSessionCookie(w)
+	h.clearSessionCookie(w)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -120,7 +120,7 @@ func (h *Hub) handleSignInFinish(prov auth.Provider) http.HandlerFunc {
 			return
 		}
 		sess := h.sessions.create("user", u.ID, prov.Name(), clientType(r), addr)
-		setSessionCookie(w, sess)
+		h.setSessionCookie(w, sess)
 		h.log.Info("signed in", "method", prov.Name(), "user", u.ID, "addr", addr)
 		// Not a redirect: the browser is still on a cross-site navigation
 		// from the provider, on which it withholds a SameSite=Strict cookie.

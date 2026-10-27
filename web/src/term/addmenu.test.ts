@@ -74,9 +74,36 @@ describe('addRows', () => {
       minimised: [],
       focused: HTOP,
     });
-    expect(rows.groups.map((g) => g.key)).toEqual(['alice-laptop/work', 'bob-server/ops']);
+    expect(rows.groups.map((g) => g.key)).toEqual(['~alice-laptop/work', '~bob-server/ops']);
     expect(rows.groups[0].panes).toEqual([BUILD, DEPLOY, LOGS]);
     expect(rows.groups[1].panes).toEqual([HUBLOG]);
+    expect(rows.groups[0].hub).toBeUndefined();
+  });
+
+  it('groups by hub first when the listing has more than one', () => {
+    const far = { ...HTOP, address: 'work~' + HTOP.address, hub: 'work' };
+    const rows = addRows({
+      panes: [BUILD, far, LOGS],
+      hosts: [...HOSTS, { name: 'bob-server', online: true, sessions: true, hub: 'work' }],
+      me: ME,
+      open: [BUILD.address],
+      minimised: [],
+      focused: BUILD,
+    });
+    expect(rows.groups.map((g) => [g.hub, g.host, g.panes.map((p) => p.address)])).toEqual([
+      ['work', 'bob-server', [far.address]],
+      ['', 'alice-laptop', [LOGS.address]],
+    ]);
+    // + session looks at the focused pane's own hub's host.
+    const there = addRows({
+      panes: [BUILD, far],
+      hosts: [{ name: 'bob-server', online: true, sessions: true, hub: 'work' }],
+      me: { ...ME, write: ['bob-server/*'] },
+      open: [far.address],
+      minimised: [],
+      focused: far,
+    });
+    expect(there.session).toEqual({ on: true });
   });
 
   it('dims + pane on a read-only pane and + session where the host or the grant lacks', () => {

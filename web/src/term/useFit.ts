@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError } from '../api/client';
+import { ApiError, target } from '../api/client';
 import { resizePane } from '../api/queries';
 import type { Pane } from '../api/types';
 import { cellsFor, inner } from './measure';
@@ -22,10 +22,11 @@ import { cellsFor, inner } from './measure';
 // The release must survive the page going away, hence keepalive. It can
 // land within the second of the resize it undoes, so a 429 is tried again.
 function release(address: string, tries = 3) {
-  fetch(`/v1/panes/${address}/resize`, {
+  const t = target(address);
+  fetch(`${t.hub ?? ''}/v1/panes/${t.address}/resize`, {
     method: 'POST',
     keepalive: true,
-    credentials: 'same-origin',
+    credentials: t.hub ? 'include' : 'same-origin',
     headers: { 'X-Muxway-Client': 'web', 'Content-Type': 'application/json' },
     body: JSON.stringify({ fit: 'auto' }),
   })

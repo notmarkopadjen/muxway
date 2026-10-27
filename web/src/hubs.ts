@@ -55,6 +55,26 @@ export function shownName(h: Hub): string {
   return h.name || new URL(h.url).host;
 }
 
+// A pane of another hub is named `<hub name>~<address>` wherever the page
+// keys panes by address: routes, tiles, the strip, the selector. This
+// page's own hub keeps bare addresses, so every bookmark stands.
+export function splitAddress(a: string): { hub?: string; address: string } {
+  const i = a.indexOf('~');
+  if (i < 0) return { address: a };
+  const hub = a.slice(0, i);
+  return HUB_NAME.test(hub) ? { hub, address: a.slice(i + 1) } : { address: a };
+}
+
+export function joinAddress(hub: string | undefined, address: string): string {
+  return hub ? `${hub}~${address}` : address;
+}
+
+// The origin of another hub in the box, by its name; nothing for this
+// page's own hub or a name the box does not have.
+export function originOfHub(name: string): string | undefined {
+  return loadHubs().find((h, i) => i > 0 && h.name === name)?.url;
+}
+
 // A list is carried to another hub in the URL's fragment, names and
 // origins only. That page never takes it as it is: the entries it does
 // not know wait in the tab until the person, signed in, adds or ignores

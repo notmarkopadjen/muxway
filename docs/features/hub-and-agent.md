@@ -46,6 +46,7 @@ muxway hub serve --listen 127.0.0.1:7600 --public-url https://hub.example.com --
 | `--trust-proxy` | take client addresses from `X-Forwarded-For` set by a loopback proxy |
 | `--no-web` | do not serve the web client; `GET /` then only sends a browser to the sign-in provider, if any |
 | `--session-ttl <duration>` | how long a browser stays signed in; default `12h` |
+| `--peer <origin>` | another hub of yours, `https://work.example.com`, whose web page may use a session here (repeatable); see [several hubs](web-client.md#several-hubs) |
 | `--oidc-issuer <url>` | OpenID Connect issuer, to let people sign in with it (see [signing in](sign-in.md)) |
 | `--oidc-client-id <id>` | client id registered at the issuer |
 | `--oidc-client-secret-file <file>` | file, mode 600, holding the client secret |

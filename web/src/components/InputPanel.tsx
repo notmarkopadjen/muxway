@@ -9,7 +9,15 @@ import {
   type SyntheticEvent,
 } from 'react';
 import { ApiError } from '../api/client';
-import { fileType, sendFile, transcribe, useFiles, useHosts, useTranscriber } from '../api/queries';
+import {
+  fileType,
+  hostOf,
+  sendFile,
+  transcribe,
+  useFiles,
+  useHosts,
+  useTranscriber,
+} from '../api/queries';
 import type { Key, Pane } from '../api/types';
 import { commandsFor, isShell, remember, useRecent, type Command } from '../term/commands';
 import { complete, completions } from '../term/complete';
@@ -119,7 +127,7 @@ export function InputPanel({
   // agent takes the whole key grammar.
   const [board, setBoard] = useState(false);
   const hosts = useHosts();
-  const grammar = hosts.data?.find((h) => h.name === pane?.host)?.keys === 2;
+  const grammar = !!pane && hostOf(hosts.data, pane.address)?.keys === 2;
   const boardOpen = board && writable && !!pane;
   const [mic, setMic] = useState<Mic>('idle');
   const [level, setLevel] = useState<{ levels: number[]; seconds: number }>({

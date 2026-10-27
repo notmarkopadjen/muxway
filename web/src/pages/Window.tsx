@@ -286,7 +286,7 @@ export function WindowPage() {
   }, []);
   const hide = useCallback(() => setShowing(false), []);
   const hosts = useHosts();
-  const previews = !!hosts.data?.find((h) => h.name === host)?.preview;
+  const previews = !!hosts.data?.find((h) => h.name === host && !h.hub)?.preview;
   const fitting = fit && !!writable;
   // With fit on the host takes the browser's proportions too.
   const sent = fit && tree ? layoutFor(tree, arr) : undefined;

@@ -12,8 +12,15 @@ import (
 // API, Vite's hashed assets with a long cache life, and a content security
 // policy that allows nothing but the client's own files, and an image the
 // client fetched itself and shows from a blob, a PDF the same way in a frame.
-const webCSP = "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' blob:; " +
-	"frame-src blob:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+// The page connects to its own hub, and to the peers the owner named.
+func (h *Hub) webCSP() string {
+	connect := "'self'"
+	for _, p := range h.cfg.Peers {
+		connect += " " + p
+	}
+	return "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' blob:; " +
+		"frame-src blob:; connect-src " + connect + "; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+}
 
 func (h *Hub) webHandler() http.Handler {
 	files := web.Files()
@@ -22,12 +29,13 @@ func (h *Hub) webHandler() http.Handler {
 	if err != nil {
 		panic("web client not built: " + err.Error())
 	}
+	csp := h.webCSP()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			fail(w, http.StatusNotFound, "not_found")
 			return
 		}
-		w.Header().Set("Content-Security-Policy", webCSP)
+		w.Header().Set("Content-Security-Policy", csp)
 		name := strings.TrimPrefix(r.URL.Path, "/")
 		if name != "" && name != "index.html" {
 			if f, err := files.Open(name); err == nil {

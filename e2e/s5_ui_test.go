@@ -34,8 +34,14 @@ func TestUI_WebClient(t *testing.T) {
 	defer os.RemoveAll(secretDir)
 	secret := filepath.Join(secretDir, "oidc.secret")
 	os.WriteFile(secret, []byte(idp.ClientSecret+"\n"), 0o600)
+	// A second hub, reached as localhost so the browser keeps its cookie
+	// apart from the first's; each names the other as a peer, so the first
+	// hub's page lists and opens the second's panes.
+	addr2 := freeAddr(t)
+	_, port2, _ := net.SplitHostPort(addr2)
+	hub2URL := "https://localhost:" + port2
 	e := newEnv(t, "--oidc-issuer", idp.Issuer, "--oidc-client-id", idp.ClientID,
-		"--oidc-client-secret-file", secret, "--oidc-label", "Sign in with Test")
+		"--oidc-client-secret-file", secret, "--oidc-label", "Sign in with Test", "--peer", hub2URL)
 	defer remember(idp.Secrets...)
 	ts := newTmux(t)
 	// A preview root with a few files, where the first pane's shell starts.
@@ -69,16 +75,18 @@ func TestUI_WebClient(t *testing.T) {
 	admin := e.adminToken()
 	e.mustCLI("hub", "user", "create", "--dir", e.hubDir, "--email", idp.Account.Email, "--read", "*", "--write", "*")
 
-	// A second hub, reached as localhost so the browser keeps its cookie
-	// apart from the first's: the hubs list links to it.
-	e2 := newEnvAs(t, "localhost")
-	hub2 := e2.token("work-browser", []string{"*"}, nil)
+	e2 := newEnvOn(t, "localhost", addr2, "--peer", e.url())
+	ts3 := newTmux(t)
+	a2 := e2.pairAgent("carol-desk", ts3)
+	e2.expose(ts3, "work:0.0", "--write")
+	hub2 := e2.token("work-browser", []string{"*"}, []string{"*"})
 
 	control := e.startControl(t, ts, a)
+	control2 := e2.startControl(t, ts3, a2)
 	attack := startAttackPage(t, e.url())
 	runPlaywright(t, e, npx, webDir, os.Getenv("MX_GREP"),
 		"MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_ADMIN_TOKEN="+admin, "MX_CONTROL="+control, "MX_ATTACK="+attack,
-		"MX_HUB2="+e2.url(), "MX_HUB2_TOKEN="+hub2, "MX_PREVIEW="+preview)
+		"MX_HUB2="+e2.url(), "MX_HUB2_TOKEN="+hub2, "MX_CONTROL2="+control2, "MX_PREVIEW="+preview)
 }
 
 // The microphone needs a hub with a transcriber: the stand-in from the

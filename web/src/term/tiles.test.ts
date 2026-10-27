@@ -77,6 +77,9 @@ describe('tiles', () => {
     expect(parseRoute('')).toHaveProperty('error');
     expect(parseRoute([A, B, C, A].join(','))).toHaveProperty('error');
     expect(parseRoute([A, B, C, 'c/d/1.0', 'e/f/1.0'].join(','))).toHaveProperty('error');
+    expect(parseRoute(`work~${A},${B}`)).toEqual({ addresses: [`work~${A}`, B] });
+    expect(parseRoute(`Work~${A}`)).toHaveProperty('error');
+    expect(parseRoute(`work~~${A}`)).toHaveProperty('error');
     expect(parseRoute('../etc/passwd')).toHaveProperty('error');
     expect(parseRoute('<img src=x>/a/1.0')).toHaveProperty('error');
   });

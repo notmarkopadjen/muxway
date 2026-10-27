@@ -16,9 +16,11 @@ import {
 
 // The hubs box: the hubs this browser knows, the current one marked, and
 // a plain link to each other one. Going there is a navigation to that
-// hub's own page and sign-in; the list goes along in the fragment when
-// asked, nothing else does. A list carried here in a link is shown apart
-// until the person, signed in, adds or ignores each entry.
+// hub's own page and sign-in, once; from then on this page lists and
+// opens that hub's panes too, by the browser's cookie for it. The list
+// goes along in the fragment when asked, nothing else does. A list
+// carried here in a link is shown apart until the person, signed in,
+// adds or ignores each entry.
 export function Hubs({ signedIn, onClose }: { signedIn: boolean; onClose: () => void }) {
   const hubs = useHubs();
   const pending = usePending();
@@ -193,7 +195,8 @@ export function Hubs({ signedIn, onClose }: { signedIn: boolean; onClose: () => 
             </button>
           </div>
           <p className="mx-dim mx-hub-note">
-            each hub signs you in on its own page; nothing but these links is shared.
+            each hub signs you in on its own page, once; the panes of every hub you are signed in on
+            are then listed here. Nothing but these links is shared.
           </p>
         </Box>
       </div>

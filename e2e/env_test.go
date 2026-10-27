@@ -91,6 +91,12 @@ func newEnv(t *testing.T, hubArgs ...string) *env { return newEnvAs(t, "", hubAr
 // carry the name, and the hub is reached by that name instead of the
 // address, so a browser keeps the two hubs' cookies apart.
 func newEnvAs(t *testing.T, name string, hubArgs ...string) *env {
+	return newEnvOn(t, name, freeAddr(t), hubArgs...)
+}
+
+// newEnvOn starts the hub on an address chosen beforehand, so two hubs
+// can each be told the other's origin.
+func newEnvOn(t *testing.T, name, addr string, hubArgs ...string) *env {
 	t.Helper()
 	dir, err := os.MkdirTemp("", "mxw-")
 	if err != nil {
@@ -104,7 +110,7 @@ func newEnvAs(t *testing.T, name string, hubArgs ...string) *env {
 	e := &env{t: t, dir: dir, logs: filepath.Join(runDir, "logs", logs), hubDir: filepath.Join(dir, "hub"), host: name}
 	os.MkdirAll(e.logs, 0o755)
 	e.makeCA()
-	e.addr = freeAddr(t)
+	e.addr = addr
 	e.hubArgs = hubArgs
 	e.startHub()
 	t.Cleanup(e.close)

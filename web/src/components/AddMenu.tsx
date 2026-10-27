@@ -1,8 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
-import { keys, splitWindow, useAllPanes, useHosts, useMe } from '../api/queries';
+import { keys, splitWindow, useAllPanes, useHosts, useHubMe } from '../api/queries';
 import type { Pane } from '../api/types';
+import { shownName, useHubs } from '../hubs';
 import { SessionForm, splitDirection } from '../pages/Panes';
 import { addRows } from '../term/addmenu';
 import { describe } from '../term/describe';
@@ -38,14 +39,15 @@ export function AddMenu({
   const busy = useRef(false);
   const box = useRef<HTMLDivElement>(null);
   const hosts = useHosts();
-  const me = useMe();
+  const mes = useHubMe();
+  const hubs = useHubs();
   const all = useAllPanes(true);
   const lens = useLens();
   const qc = useQueryClient();
   const rows = addRows({
     panes: all.data ?? [],
     hosts: hosts.data ?? [],
-    me: me.data,
+    me: mes.find((m) => (m.own ? undefined : m.hub.name) === pane?.hub)?.data,
     open,
     minimised,
     focused: pane,
@@ -94,8 +96,9 @@ export function AddMenu({
         pane.session,
         pane.window_index,
         splitDirection(pane),
+        pane.hub,
       );
-      qc.invalidateQueries({ queryKey: keys.panes });
+      qc.invalidateQueries({ queryKey: keys.panesOf(pane.hub) });
       onMade(made.pane.address);
     } catch (err) {
       onRefused(err instanceof ApiError ? err.code.replace('_', ' ') : 'failed');
@@ -171,10 +174,11 @@ export function AddMenu({
           {naming && rows.session.on ? (
             <SessionForm
               host={pane.host}
+              hub={pane.hub}
               onDone={(address) => {
                 close();
                 if (address) {
-                  qc.invalidateQueries({ queryKey: keys.panes });
+                  qc.invalidateQueries({ queryKey: keys.panesOf(pane.hub) });
                   onMade(address);
                 }
               }}
@@ -202,8 +206,13 @@ export function AddMenu({
             </>
           )}
           {rows.groups.length > 0 && <hr />}
-          {rows.groups.map((g) => (
+          {rows.groups.map((g, i) => (
             <div key={g.key} className="mx-add-group" data-testid="add-group">
+              {g.hub !== undefined && g.hub !== rows.groups[i - 1]?.hub && (
+                <div className="mx-add-hub" data-testid="add-hub">
+                  ═ {g.hub || (hubs[0] && shownName(hubs[0]))} ═
+                </div>
+              )}
               <div className="mx-add-heading">
                 {g.host} · {g.session}
               </div>

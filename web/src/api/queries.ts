@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
-import { api, ApiError } from './client';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { api, ApiError, target } from './client';
+import { joinAddress, originOfHub, splitAddress, useHubs, type Hub } from '../hubs';
 import { noteOwn } from '../term/lens';
 import type {
   AuthMethods,
@@ -16,15 +17,21 @@ import type {
   WindowContent,
 } from './types';
 
+// Another hub of the hubs box keys its lists by its name; this page's
+// own hub by nothing, so the bare keys stand.
 export const keys = {
   auth: ['auth'] as const,
   me: ['me'] as const,
+  meOf: (hub?: string) => (hub ? (['me', hub] as const) : (['me'] as const)),
   hosts: ['hosts'] as const,
-  tree: (host: string) => ['tree', host] as const,
+  hostsOf: (hub?: string) => (hub ? (['hosts', hub] as const) : (['hosts'] as const)),
+  tree: (host: string, hub?: string) =>
+    hub ? (['tree', host, hub] as const) : (['tree', host] as const),
   pane: (address: string) => ['pane', address] as const,
   window: (host: string, session: string, window: string) =>
     ['window', host, session, window] as const,
   panes: ['panes'] as const,
+  panesOf: (hub?: string) => (hub ? (['panes', hub] as const) : (['panes'] as const)),
   transcriber: ['transcriber'] as const,
   admin: ['admin'] as const,
   files: (address: string) => ['files', address] as const,
@@ -58,32 +65,117 @@ export function useMe() {
   });
 }
 
-export function useHosts() {
-  return useQuery({
-    queryKey: keys.hosts,
-    queryFn: () => api<Host[]>('/v1/hosts').then(unwrapHosts),
-    refetchInterval: 5_000,
+// Every hub of the hubs box is asked, this page's own first with the
+// session it has, the others with the browser's cookie for each; what a
+// peer answers is marked with its name. A peer's refusal is not retried.
+export interface HubList<T> {
+  hub: Hub;
+  own: boolean;
+  data?: T;
+  error?: unknown;
+  pending: boolean;
+}
+
+const peerRetry = (count: number, err: unknown) => !(err instanceof ApiError) && count < 2;
+
+function useHubLists<T>(
+  key: (hub?: string) => readonly unknown[],
+  fetch: (hub: Hub, own: boolean) => Promise<T>,
+  opts: { enabled?: boolean; refetchInterval?: number; staleTime?: number } = {},
+): HubList<T>[] {
+  const hubs = useHubs();
+  const combine = useCallback(
+    (rs: { data: T | undefined; error: unknown; isPending: boolean }[]) =>
+      rs.map((r, i) => ({
+        hub: hubs[i],
+        own: i === 0,
+        data: r.data,
+        error: r.error ?? undefined,
+        pending: r.isPending,
+      })),
+    [hubs],
+  );
+  return useQueries({
+    queries: hubs.map((h, i) => ({
+      queryKey: key(i === 0 ? undefined : h.name),
+      queryFn: () => fetch(h, i === 0),
+      retry: i === 0 ? undefined : peerRetry,
+      ...opts,
+    })),
+    combine,
   });
 }
+
+export function useHubMe(): HubList<Me>[] {
+  return useHubLists(keys.meOf, (h, own) => api<Me>('/v1/me', own ? {} : { hub: h.url }), {
+    staleTime: 30_000,
+  });
+}
+
+export function useHubHosts(): HubList<Host[]>[] {
+  return useHubLists(
+    keys.hostsOf,
+    (h, own) =>
+      api<unknown>('/v1/hosts', own ? {} : { hub: h.url }).then((v) =>
+        unwrapHosts(v).map((x) => (own ? x : { ...x, hub: h.name })),
+      ),
+    { refetchInterval: 5_000 },
+  );
+}
+
+// Every hub's hosts in one list, this page's own first.
+export function useHosts(): { data: Host[] | undefined; isPending: boolean } {
+  const lists = useHubHosts();
+  return useMemo(
+    () => ({
+      data: lists[0]?.data === undefined ? undefined : lists.flatMap((l) => l.data ?? []),
+      isPending: !!lists[0]?.pending,
+    }),
+    [lists],
+  );
+}
+
+// The host a pane is on, by the hub it belongs to and its name.
+export function hostOf(hosts: Host[] | undefined, address: string): Host | undefined {
+  const { hub, address: bare } = splitAddress(address);
+  const name = bare.split('/')[0];
+  return hosts?.find((h) => h.name === name && h.hub === hub);
+}
+
 function unwrapHosts(v: unknown): Host[] {
   return (v as { hosts: Host[] | null }).hosts ?? [];
 }
 
-export function useTree(host: string, online: boolean) {
+export function useTree(host: string, online: boolean, hub?: string) {
   return useQuery({
-    queryKey: keys.tree(host),
-    queryFn: () => api<Tree>(`/v1/hosts/${host}/tree`),
+    queryKey: keys.tree(host, hub),
+    queryFn: () => api<Tree>(`/v1/hosts/${host}/tree`, hub ? { hub: originOfHub(hub) } : {}),
     enabled: online,
     refetchInterval: 5_000,
     retry: (count, err) => !(err instanceof ApiError) && count < 2,
   });
 }
 
+// A pane the hub answered, named as this page names it: with the hub's
+// name when it is another hub's.
+function claim(address: string, p: Pane): Pane {
+  const { hub } = splitAddress(address);
+  return hub ? { ...p, address, hub } : p;
+}
+
+function readPane(address: string, conditional: boolean): Promise<PaneContent> {
+  const t = target(address);
+  return api<PaneContent>(`/v1/panes/${t.address}?ansi=1&lines=400`, {
+    conditional,
+    hub: t.hub,
+  }).then((r) => ({ ...r, pane: claim(address, r.pane) }));
+}
+
 export function usePane(address: string, every = 1_000) {
   const visible = useVisible();
   return useQuery({
     queryKey: keys.pane(address),
-    queryFn: () => api<PaneContent>(`/v1/panes/${address}?ansi=1&lines=400`, { conditional: true }),
+    queryFn: () => readPane(address, true),
     refetchInterval: visible ? every : 5_000,
     retry: (count, err) => !(err instanceof ApiError) && count < 2,
     placeholderData: (prev) => prev,
@@ -94,7 +186,7 @@ export function usePane(address: string, every = 1_000) {
 export function usePaneCached(address: string) {
   return useQuery({
     queryKey: keys.pane(address),
-    queryFn: () => api<PaneContent>(`/v1/panes/${address}?ansi=1&lines=400`),
+    queryFn: () => readPane(address, false),
     enabled: false,
   });
 }
@@ -114,19 +206,15 @@ export function useInput(address: string) {
   return useMutation({
     mutationFn: (body: { text: string } | { key: string; count?: number } | { mouse: Mouse }) => {
       noteOwn(address);
-      return inOrder(address, () =>
-        api<void>(`/v1/panes/${address}/input`, {
-          method: 'POST',
-          body: JSON.stringify(body),
-        }),
-      );
+      return inOrder(address, () => sendInput(address, body));
     },
     onSuccess: () => {
       noteOwn(address);
       qc.invalidateQueries({ queryKey: keys.pane(address) });
       // Input clears the pane's attention: the lists say so at once.
-      qc.invalidateQueries({ queryKey: keys.panes });
-      qc.invalidateQueries({ queryKey: keys.tree(address.split('/')[0]) });
+      const { hub, address: bare } = splitAddress(address);
+      qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
+      qc.invalidateQueries({ queryKey: keys.tree(bare.split('/')[0], hub) });
     },
   });
 }
@@ -145,25 +233,51 @@ export function useWindow(host: string, session: string, window: string) {
   });
 }
 
-// Every pane the principal may read, flat, for the selector.
-export function useAllPanes(enabled: boolean) {
-  return useQuery({
-    queryKey: keys.panes,
-    queryFn: () => api<{ panes: Pane[] | null }>('/v1/panes').then((v) => v.panes ?? []),
-    enabled,
-    refetchInterval: 5_000,
+// A click, a key or text to the pane, on its own hub.
+export function sendInput(
+  address: string,
+  body: { text: string } | { key: string; count?: number } | { mouse: Mouse },
+): Promise<void> {
+  const t = target(address);
+  return api<void>(`/v1/panes/${t.address}/input`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    hub: t.hub,
   });
+}
+
+// Every pane the principal may read on every hub, flat, this page's own
+// hub's first, for the selector, the strip and the add menu.
+export function useAllPanes(enabled: boolean) {
+  const lists = useHubLists(
+    keys.panesOf,
+    (h, own) =>
+      api<{ panes: Pane[] | null }>('/v1/panes', own ? {} : { hub: h.url }).then((v) =>
+        (v.panes ?? []).map((p) =>
+          own ? p : { ...p, address: joinAddress(h.name, p.address), hub: h.name },
+        ),
+      ),
+    { enabled, refetchInterval: 5_000 },
+  );
+  return useMemo(
+    () => ({
+      data: lists[0]?.data === undefined ? undefined : lists.flatMap((l) => l.data ?? []),
+    }),
+    [lists],
+  );
 }
 
 // Whether the pane's host takes files for it: 204 yes, anything else no.
 export function useFiles(address: string | undefined, writable: boolean) {
   return useQuery({
     queryKey: keys.files(address ?? ''),
-    queryFn: () =>
-      api<void>(`/v1/panes/${address}/files`).then(
+    queryFn: () => {
+      const t = target(address!);
+      return api<void>(`/v1/panes/${t.address}/files`, { hub: t.hub }).then(
         () => true,
         () => false,
-      ),
+      );
+    },
     enabled: !!address && writable,
     staleTime: 60_000,
   });
@@ -171,12 +285,14 @@ export function useFiles(address: string | undefined, writable: boolean) {
 
 // One file of the host's inbox back, by the name the agent gave it.
 export function readFile(address: string, name: string): Promise<Blob> {
-  return fetchBlob(`/v1/panes/${address}/files/${name}`);
+  const t = target(address);
+  return fetchBlob(`/v1/panes/${t.address}/files/${name}`, t.hub);
 }
 
 // A file a pane printed the path of, from under the host's preview roots.
 export function previewFile(address: string, path: string): Promise<Blob> {
-  return fetchBlob(`/v1/panes/${address}/preview?path=${encodeURIComponent(path)}`);
+  const t = target(address);
+  return fetchBlob(`/v1/panes/${t.address}/preview?path=${encodeURIComponent(path)}`, t.hub);
 }
 
 // The changes of the repository the pane works in: every five seconds
@@ -187,7 +303,10 @@ export function previewFile(address: string, path: string): Promise<Blob> {
 export function useChanges(address: string, enabled: boolean, every = 5_000) {
   return useQuery({
     queryKey: keys.changes(address),
-    queryFn: () => api<Changes>(`/v1/panes/${address}/git`),
+    queryFn: () => {
+      const t = target(address);
+      return api<Changes>(`/v1/panes/${t.address}/git`, { hub: t.hub });
+    },
     enabled,
     refetchInterval: (q) =>
       q.state.error instanceof ApiError && q.state.error.status === 404 ? 60_000 : every,
@@ -200,13 +319,16 @@ export function useChanges(address: string, enabled: boolean, every = 5_000) {
 
 // One change's diff against the last commit.
 export function readDiff(address: string, path: string): Promise<Diff> {
-  return api<Diff>(`/v1/panes/${address}/git/diff?path=${encodeURIComponent(path)}`);
+  const t = target(address);
+  return api<Diff>(`/v1/panes/${t.address}/git/diff?path=${encodeURIComponent(path)}`, {
+    hub: t.hub,
+  });
 }
 
-async function fetchBlob(url: string): Promise<Blob> {
-  const res = await fetch(url, {
+async function fetchBlob(path: string, hub?: string): Promise<Blob> {
+  const res = await fetch((hub ?? '') + path, {
     headers: { 'X-Muxway-Client': 'web' },
-    credentials: 'same-origin',
+    credentials: hub ? 'include' : 'same-origin',
     cache: 'no-store',
   });
   if (!res.ok) {
@@ -246,12 +368,18 @@ export function fileType(f: File): string | null {
 export function sendFile(address: string, f: File, type: string): Promise<{ path: string }> {
   const form = new FormData();
   form.append('file', new Blob([f], { type }), 'file');
-  return api<{ path: string }>(`/v1/panes/${address}/files`, { method: 'POST', body: form });
+  const t = target(address);
+  return api<{ path: string }>(`/v1/panes/${t.address}/files`, {
+    method: 'POST',
+    body: form,
+    hub: t.hub,
+  });
 }
 
 // closePane asks the host to close the pane, ending what runs in it.
 export function closePane(address: string): Promise<void> {
-  return api<void>(`/v1/panes/${address}/close`, { method: 'POST' });
+  const t = target(address);
+  return api<void>(`/v1/panes/${t.address}/close`, { method: 'POST', hub: t.hub });
 }
 
 // resize asks the host to size the pane's window; the answer is the pane
@@ -260,12 +388,18 @@ export function closePane(address: string): Promise<void> {
 // addresses.
 export function resizePane(address: string, body: Resize): Promise<{ pane: Pane; panes?: Pane[] }> {
   noteOwn(address);
-  return api<{ pane: Pane; panes?: Pane[] }>(`/v1/panes/${address}/resize`, {
+  const t = target(address);
+  const { hub } = splitAddress(address);
+  return api<{ pane: Pane; panes?: Pane[] }>(`/v1/panes/${t.address}/resize`, {
     method: 'POST',
     body: JSON.stringify(body),
+    hub: t.hub,
   }).then((r) => {
     noteOwn(address);
-    return r;
+    return {
+      pane: claim(address, r.pane),
+      panes: r.panes?.map((p) => (hub ? { ...p, address: joinAddress(hub, p.address), hub } : p)),
+    };
   });
 }
 
@@ -276,20 +410,23 @@ export function splitWindow(
   session: string,
   window: number,
   direction: 'h' | 'v',
+  hub?: string,
 ): Promise<{ pane: Pane }> {
   return api<{ pane: Pane }>(`/v1/windows/${host}/${session}/${window}/panes`, {
     method: 'POST',
     body: JSON.stringify({ direction }),
-  });
+    hub: hub ? originOfHub(hub) : undefined,
+  }).then((r) => ({ pane: claim(joinAddress(hub, r.pane.address), r.pane) }));
 }
 
 // newSession starts a session on a host whose agent allows it; the answer
 // is its first pane.
-export function newSession(host: string, name: string): Promise<{ pane: Pane }> {
+export function newSession(host: string, name: string, hub?: string): Promise<{ pane: Pane }> {
   return api<{ pane: Pane }>(`/v1/hosts/${host}/sessions`, {
     method: 'POST',
     body: JSON.stringify({ name }),
-  });
+    hub: hub ? originOfHub(hub) : undefined,
+  }).then((r) => ({ pane: claim(joinAddress(hub, r.pane.address), r.pane) }));
 }
 
 // Whether the hub has a transcriber: asked once per sign-in, so a hub

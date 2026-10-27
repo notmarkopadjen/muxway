@@ -55,7 +55,7 @@ func (h *Hub) routes() http.Handler {
 		mux.Handle("/", h.webHandler())
 	}
 	h.adminRoutes(mux)
-	return securityHeaders(h.cfg.TLSCert != "", h.gate(cors(mux)))
+	return securityHeaders(h.cfg.TLSCert != "", h.gate(h.cors(mux)))
 }
 
 // handleRoot stands in for the web client on a hub that does not serve
@@ -179,7 +179,7 @@ func (h *Hub) withPrincipal(next principalHandler) http.HandlerFunc {
 				// A session the hub does not know is one it ended, or one from
 				// before a restart: 256 random bits are not guessed, so it does
 				// not count, and the cookie is cleared so the browser stops.
-				clearSessionCookie(w)
+				h.clearSessionCookie(w)
 				h.log.Info("stale session", "addr", addr, "path", r.URL.Path)
 			}
 		}

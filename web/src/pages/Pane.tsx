@@ -1,12 +1,14 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, ApiError } from '../api/client';
+import { ApiError } from '../api/client';
 import { queryClient } from '../query';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   closePane,
+  hostOf,
   keys,
   resizePane,
+  sendInput,
   useAllPanes,
   useChanges,
   useHosts,
@@ -14,6 +16,7 @@ import {
   usePane,
   usePaneCached,
 } from '../api/queries';
+import { splitAddress } from '../hubs';
 import type { Mouse, Pane, PaneContent } from '../api/types';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
@@ -106,10 +109,7 @@ let views = 0;
 async function click(address: string, mouse: Mouse, refused: (why: string) => void) {
   try {
     noteOwn(address);
-    await api<void>(`/v1/panes/${address}/input`, {
-      method: 'POST',
-      body: JSON.stringify({ mouse }),
-    });
+    await sendInput(address, { mouse });
     // The program has moved: show it soon, not at the next poll, and once
     // more a little later, in case the first read caught the screen cleared
     // and not yet redrawn.
@@ -633,15 +633,14 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // The tile whose header asks whether to close its pane on the host.
   const [asking, setAsking] = useState<string | null>(null);
   const hosts = useHosts();
-  const hostCloses = (a: string) => !!hosts.data?.find((h) => h.name === a.split('/')[0])?.close;
-  const hostPreviews = (a: string) =>
-    !!hosts.data?.find((h) => h.name === a.split('/')[0])?.preview;
+  const hostCloses = (a: string) => !!hostOf(hosts.data, a)?.close;
+  const hostPreviews = (a: string) => !!hostOf(hosts.data, a)?.preview;
   // Direct typing: keys go to the focused pane as pressed, while it is
   // writable; focusing a read-only tile ends it, as does leaving the view.
   const [direct, setDirect] = useState(false);
   const directOn = direct && writable;
   const repeats = useRef(false);
-  repeats.current = !!hosts.data?.find((h) => h.name === focused.split('/')[0])?.repeat;
+  repeats.current = !!hostOf(hosts.data, focused)?.repeat;
   useEffect(() => {
     if (direct && focusedPane && !writable) setDirect(false);
   }, [direct, focusedPane, writable]);
@@ -759,7 +758,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const windowOf = useCallback(
     (a: string) => {
       const q = (all.data ?? []).find((x) => x.address === a);
-      return q ? `${q.host}/${q.session}/${q.window_index}` : a;
+      return q ? `${q.hub ?? ''}~${q.host}/${q.session}/${q.window_index}` : a;
     },
     [all.data],
   );
@@ -838,7 +837,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const follow = (r: { panes?: Pane[] }) => {
     if (!r.panes || !oneWindow) return;
     const by = new Map(r.panes.map((p) => [p.pane_id, p]));
-    qc.setQueryData<Pane[]>(keys.panes, (old) =>
+    const { hub } = splitAddress(addresses[0]);
+    qc.setQueryData<Pane[]>(keys.panesOf(hub), (old) =>
       old?.map((p) => (p.host === r.panes![0].host ? (by.get(p.pane_id) ?? p) : p)),
     );
     qc.invalidateQueries({ queryKey: ['pane'] });
@@ -984,7 +984,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
       else if (ev.key === 'i' && writable) enterDirect();
       else if (ev.key === ':') focusLine();
       else if (ev.key === 'z' && focusedPane) zoom(focusedPane);
-      else if (ev.key === 'w' && focusedPane)
+      else if (ev.key === 'w' && focusedPane && !focusedPane.hub)
         navigate({
           to: `/w/${focusedPane.host}/${focusedPane.session}/${focusedPane.window_index}`,
         });
@@ -1087,11 +1087,16 @@ function Tiles({ addresses }: { addresses: string[] }) {
       }
       const mates = (all.data ?? [])
         .filter(
-          (q) => q.host === p.host && q.session === p.session && q.window_index === p.window_index,
+          (q) =>
+            q.hub === p.hub &&
+            q.host === p.host &&
+            q.session === p.session &&
+            q.window_index === p.window_index,
         )
         .map((q) => q.address);
       if (mates.length < 2) {
-        navigate({ to: `/w/${p.host}/${p.session}/${p.window_index}` });
+        // The window view is this hub's own.
+        if (!p.hub) navigate({ to: `/w/${p.host}/${p.session}/${p.window_index}` });
         return;
       }
       const others = mates.filter((a) => a !== p.address).slice(0, MAX_TILES - 1);
@@ -1338,7 +1343,9 @@ function Tiles({ addresses }: { addresses: string[] }) {
                     on: !several,
                     title: several
                       ? 'this pane alone (z, Enter, or double-click)'
-                      : "the window's panes side by side (z, or double-click); w: the mirror layout",
+                      : focusedPane.hub
+                        ? "the window's panes side by side (z, or double-click)"
+                        : "the window's panes side by side (z, or double-click); w: the mirror layout",
                   },
                 ]
               : []),

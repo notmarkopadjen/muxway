@@ -147,12 +147,19 @@ test('105 minimise: _ takes the tile to the row above the keys, still read and p
   await page.getByTestId('add-minimised').click();
   await expect(page.getByTestId('tile')).toHaveCount(2);
   await expect(row).toHaveCount(0);
-  // Answer the question, so the pane is quiet for the next spec.
+  // Answer the question, so the pane is quiet for the next spec, and
+  // leave the view, so the windows are given back to the host.
   await page.getByTestId('input').fill('y');
   await page.getByTestId('input').press('Enter');
   await expect(tile(page, LOGS).locator('.mx-tile-head')).not.toHaveAttribute('data-state', /./, {
     timeout: 10_000,
   });
+  await page.goto('/');
+  await expect(page.getByTestId('panes')).toBeVisible();
+  for (const target of ['work:0', 'work:1'])
+    await expect
+      .poll(() => control(request, '/window-size', { target }), { timeout: 8000 })
+      .toBe('100x30');
 });
 
 test('105 security: a read-only account has + pane and + session dimmed with the reason; the other panes are still listed', async ({

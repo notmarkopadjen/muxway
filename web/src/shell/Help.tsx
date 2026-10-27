@@ -57,7 +57,10 @@ const KEYS: [string, string][] = [
     'speak: held, records until released; tapped, again stops; Esc drops it. The ◉ button the same',
   ],
   ['g then a letter', 'jump to the first host starting with it'],
-  ['H', 'hubs: the other hubs this browser knows, as links; each signs you in on its own page'],
+  [
+    'H',
+    "hubs: the other hubs this browser knows; each signs you in on its own page, once, and the list then shows every hub's panes",
+  ],
   ['t', 'next theme (amber, green, paper)'],
   ['m', 'effects on / off'],
   ['n', 'browser notifications on / off'],

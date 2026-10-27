@@ -23,7 +23,7 @@ sequenceDiagram
         H->>I: exchange the code, fetch the keys
         H->>H: verify the ID token, find the user by e-mail
     end
-    H-->>B: Set-Cookie: muxway_session (HttpOnly, Secure, SameSite=Strict), page continuing to /
+    H-->>B: Set-Cookie: muxway_session (HttpOnly, Secure, SameSite=Strict, or None with peers), page continuing to /
     B->>H: GET /v1/panes  (cookie + X-Muxway-Client)
 ```
 
@@ -38,6 +38,13 @@ sequenceDiagram
 - The cookie is sent only on same-site requests, and the hub honours it
   only when the request also carries the `X-Muxway-Client` header. Native
   clients keep using `Authorization: Bearer`.
+- On a hub started with `--peer <origin>` (the owner's other hubs; see
+  [several hubs](web-client.md#several-hubs)) the cookie is
+  `SameSite=None`, so the browser sends it to this hub from a peer's page
+  as well; the hub answers a peer's preflight with the client header
+  allowed and credentials, and nobody else's. A page on any other
+  origin still cannot add the header, so the cookie is as useless to it
+  as before.
 - `POST /v1/auth/logout` ends a session; `GET /v1/me` says who you are.
 - A token or user created with `--admin` carries the admin grant, and its
   sessions can use the [admin overview](admin.md); `/v1/me` then says
@@ -125,7 +132,11 @@ proxy such as Authelia, trusted only from loopback with `--trust-proxy`.
 - A session is the principal's grants for up to the session lifetime.
   The cookie cannot be read by scripts, travels only over TLS and only on
   same-site requests, and is useless without the client header, which a
-  cross-origin page cannot add.
+  cross-origin page cannot add. With peers the cookie travels cross-site
+  too, and the header can be added from a peer's page alone: a peer's
+  page that is compromised can then act here as the signed-in person,
+  which is why peers are hubs the same owner runs, named one by one on
+  the command line, and why an empty list is the old behaviour exactly.
 - Failed token sign-ins and failed or unknown identities count toward the
   address lockout (ten in ten minutes), so neither tokens nor the
   provider's directory can be probed through the hub. A session cookie the

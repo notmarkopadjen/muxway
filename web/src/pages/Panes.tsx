@@ -1,9 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { keys, newSession, splitWindow, useHosts, useMe, useTree } from '../api/queries';
+import {
+  keys,
+  newSession,
+  splitWindow,
+  useHubHosts,
+  useHubMe,
+  useTree,
+  type HubList,
+} from '../api/queries';
 import { ApiError } from '../api/client';
-import type { Host, Pane } from '../api/types';
+import type { Host, Me, Pane } from '../api/types';
 import { Box } from '../components/Box';
 import { LensMark } from '../components/Lens';
 import { PaneTitle } from '../components/PaneTitle';
@@ -13,12 +21,21 @@ import { mayWriteOn } from '../term/grants';
 import { onSessionRequest } from '../term/intent';
 import { useLens, word } from '../term/lens';
 import { MAX_TILES, routeFor } from '../term/tiles';
+import { joinAddress, shownName } from '../hubs';
 
-// The pane list: every host, its sessions, windows and panes. A click
-// opens a pane; the pick box, space, or a click while something is
-// picked gathers up to four to open side by side. A window row opens the
-// window view, the host's own layout. Under a window where you may type,
-// `+ pane` splits it; on a host that starts sessions, `+ session`.
+// The pane list: every hub of the hubs box, its hosts, their sessions,
+// windows and panes. A click opens a pane; the pick box, space, or a
+// click while something is picked gathers up to four to open side by
+// side. A window row opens the window view, the host's own layout. Under
+// a window where you may type, `+ pane` splits it; on a host that starts
+// sessions, `+ session`. With one hub the hub level is not drawn; with
+// several each hub has its line, and one not signed in on says so, with
+// a link to its own page.
+
+// A host, by the hub it belongs to and its name.
+function hostKey(hub: string | undefined, name: string): string {
+  return joinAddress(hub, name);
+}
 
 // The pane a split starts from: the window's active pane when you may
 // type there, else the first you may.
@@ -35,9 +52,11 @@ export function splitDirection(p: Pane): 'h' | 'v' {
 
 export function SessionForm({
   host,
+  hub,
   onDone,
 }: {
   host: string;
+  hub?: string;
   onDone: (address: string | null) => void;
 }) {
   const [name, setName] = useState('');
@@ -54,7 +73,7 @@ export function SessionForm({
     }
     setBusy(true);
     try {
-      const { pane } = await newSession(host, n);
+      const { pane } = await newSession(host, n, hub);
       onDone(pane.address);
     } catch (err) {
       setError(err instanceof ApiError ? err.code.replace('_', ' ') : 'failed');
@@ -102,6 +121,7 @@ export function SessionForm({
 }
 
 function HostTree({
+  hub,
   host,
   filter,
   selected,
@@ -114,6 +134,7 @@ function HostTree({
   onNaming,
   register,
 }: {
+  hub?: string;
   host: Host;
   filter: string;
   selected: string | null;
@@ -126,27 +147,42 @@ function HostTree({
   onNaming: (host: string | null) => void;
   register: (host: string, panes: Pane[]) => void;
 }) {
-  const tree = useTree(host.name, host.online);
+  const tree = useTree(host.name, host.online, hub);
   const navigate = useNavigate();
   const lens = useLens();
+  // The panes as this page names them: a peer's with its hub's name.
+  const sessions = useMemo(
+    () =>
+      (tree.data?.sessions ?? []).map((s) => ({
+        ...s,
+        windows: s.windows.map((w) => ({
+          ...w,
+          panes: w.panes.map((p) =>
+            hub ? { ...p, address: joinAddress(hub, p.address), hub } : p,
+          ),
+        })),
+      })),
+    [tree.data, hub],
+  );
   const panes = useMemo(() => {
     const all: Pane[] = [];
-    for (const s of tree.data?.sessions ?? []) for (const w of s.windows) all.push(...w.panes);
+    for (const s of sessions) for (const w of s.windows) all.push(...w.panes);
     const f = filter.toLowerCase();
     return f
       ? all.filter((p) =>
           `${p.address} ${label(p)} ${p.title} ${p.alias ?? ''}`.toLowerCase().includes(f),
         )
       : all;
-  }, [tree.data, filter]);
-  useEffect(() => register(host.name, panes), [host.name, panes, register]);
+  }, [sessions, filter]);
+  const key = hostKey(hub, host.name);
+  useEffect(() => register(key, panes), [key, panes, register]);
 
   return (
     <Box
       title={host.name}
       className={host.online ? '' : 'mx-host-offline'}
       active={false}
-      testId={`host-${host.name}`}
+      testId={`host-${key}`}
     >
       <span className="mx-host-top">
         {host.online && canStart && !naming && (
@@ -163,6 +199,7 @@ function HostTree({
         {naming && (
           <SessionForm
             host={host.name}
+            hub={hub}
             onDone={(address) => {
               onNaming(null);
               if (address) onOpen(address);
@@ -179,7 +216,7 @@ function HostTree({
         <div className="mx-empty">no panes{filter ? ' match' : ' exposed'}</div>
       )}
       <ul className="mx-tree">
-        {tree.data?.sessions.map((s) => {
+        {sessions.map((s) => {
           const shown = s.windows
             .map((w) => ({ w, panes: w.panes.filter((p) => panes.includes(p)) }))
             .filter((x) => x.panes.length);
@@ -190,16 +227,24 @@ function HostTree({
               {shown.map(({ w, panes: ps }) => (
                 <div key={w.index}>
                   <div className="mx-window-line">
-                    <button
-                      type="button"
-                      className="mx-window"
-                      data-testid="window-row"
-                      onClick={() => navigate({ to: `/w/${host.name}/${s.name}/${w.index}` })}
-                      title="the window as the host lays it out"
-                    >
-                      ▦ {w.index}: {w.name} · {w.panes.length} pane{w.panes.length === 1 ? '' : 's'}{' '}
-                      · mirror layout ▸
-                    </button>
+                    {hub ? (
+                      // The window view is this page's own hub's.
+                      <span className="mx-window mx-window-still">
+                        ▦ {w.index}: {w.name} · {w.panes.length} pane
+                        {w.panes.length === 1 ? '' : 's'}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="mx-window"
+                        data-testid="window-row"
+                        onClick={() => navigate({ to: `/w/${host.name}/${s.name}/${w.index}` })}
+                        title="the window as the host lays it out"
+                      >
+                        ▦ {w.index}: {w.name} · {w.panes.length} pane
+                        {w.panes.length === 1 ? '' : 's'} · mirror layout ▸
+                      </button>
+                    )}
                   </div>
                   {ps.map((p) => {
                     const st = lens.status(p);
@@ -249,7 +294,7 @@ function HostTree({
                       type="button"
                       className="mx-new-row"
                       data-testid="new-pane"
-                      data-window={`${host.name}/${s.name}/${w.index}`}
+                      data-window={`${key}/${s.name}/${w.index}`}
                       title="one more pane in this window (+)"
                       onClick={() => onSplit(w.panes)}
                     >
@@ -266,9 +311,42 @@ function HostTree({
   );
 }
 
+// Why a hub's hosts cannot be listed, for its line.
+function hubReason(l: HubList<Host[]>) {
+  if (l.pending && !l.data) return <span className="mx-dim">listing…</span>;
+  if (!l.error) return null;
+  if (l.error instanceof ApiError && l.error.status === 401)
+    return (
+      <span className="mx-dim" data-testid="hub-reason">
+        not signed in ·{' '}
+        <a href={l.hub.url + '/'} rel="noreferrer" data-testid="hub-signin">
+          sign in
+        </a>
+      </span>
+    );
+  return (
+    <span className="mx-dim" data-testid="hub-reason">
+      unreachable
+    </span>
+  );
+}
+
 export function PanesPage() {
-  const hosts = useHosts();
-  const me = useMe();
+  const lists = useHubHosts();
+  const mes = useHubMe();
+  const hosts = useMemo(
+    () => ({
+      data: lists[0]?.data === undefined ? undefined : lists.flatMap((l) => l.data ?? []),
+      isPending: !!lists[0]?.pending,
+    }),
+    [lists],
+  );
+  // The grants on a host are its own hub's.
+  const meOf = useCallback(
+    (hub: string | undefined): Me | undefined =>
+      mes.find((m) => (m.own ? undefined : m.hub.name) === hub)?.data,
+    [mes],
+  );
   const navigate = useNavigate();
   const qc = useQueryClient();
   const toast = useToast();
@@ -277,18 +355,19 @@ export function PanesPage() {
   const [picked, setPicked] = useState<string[]>([]);
   const [naming, setNaming] = useState<string | null>(null);
   const filterRef = useRef<HTMLInputElement>(null);
-  const [lists, setLists] = useState<Map<string, Pane[]>>(new Map());
+  const [panesOf, setPanesOf] = useState<Map<string, Pane[]>>(new Map());
   const register = useMemo(
     () => (host: string, panes: Pane[]) => {
-      setLists((m) => (m.get(host) === panes ? m : new Map(m).set(host, panes)));
+      setPanesOf((m) => (m.get(host) === panes ? m : new Map(m).set(host, panes)));
     },
     [],
   );
   const ordered = useMemo(() => {
     const out: string[] = [];
-    for (const h of hosts.data ?? []) for (const p of lists.get(h.name) ?? []) out.push(p.address);
+    for (const h of hosts.data ?? [])
+      for (const p of panesOf.get(hostKey(h.hub, h.name)) ?? []) out.push(p.address);
     return out;
-  }, [hosts.data, lists]);
+  }, [hosts.data, panesOf]);
   const open = useCallback(
     (addresses: string[]) => navigate({ to: '/p/$', params: { _splat: routeFor(addresses) } }),
     [navigate],
@@ -305,8 +384,8 @@ export function PanesPage() {
   // The selector asks for the form from anywhere.
   useEffect(() => onSessionRequest(setNaming), []);
   const canStart = useCallback(
-    (h: Host) => !!h.sessions && mayWriteOn(me.data?.write ?? [], h.name),
-    [me.data],
+    (h: Host) => !!h.sessions && mayWriteOn(meOf(h.hub)?.write ?? [], h.name),
+    [meOf],
   );
 
   // One more pane in the window these panes make up; the new one opens.
@@ -322,9 +401,10 @@ export function PanesPage() {
           src.session,
           src.window_index,
           splitDirection(src),
+          src.hub,
         );
-        qc.invalidateQueries({ queryKey: keys.tree(src.host) });
-        qc.invalidateQueries({ queryKey: keys.panes });
+        qc.invalidateQueries({ queryKey: keys.tree(src.host, src.hub) });
+        qc.invalidateQueries({ queryKey: keys.panesOf(src.hub) });
         open([pane.address]);
       } catch (err) {
         toast.push({
@@ -354,13 +434,13 @@ export function PanesPage() {
       if (pendingG) {
         pendingG = false;
         const host = (hosts.data ?? []).find((h) => h.name.startsWith(ev.key.toLowerCase()));
-        const first = host && lists.get(host.name)?.[0];
+        const first = host && panesOf.get(hostKey(host.hub, host.name))?.[0];
         if (first) setSelected(first.address);
         return;
       }
       const i = selected ? ordered.indexOf(selected) : -1;
       const current = selected
-        ? [...lists.values()].flat().find((p) => p.address === selected)
+        ? [...panesOf.values()].flat().find((p) => p.address === selected)
         : undefined;
       if (ev.key === 'j') setSelected(ordered[Math.min(i + 1, ordered.length - 1)] ?? null);
       else if (ev.key === 'k') setSelected(ordered[Math.max(i - 1, 0)] ?? null);
@@ -374,20 +454,23 @@ export function PanesPage() {
         filterRef.current?.focus();
       } else if (ev.key === 'g') pendingG = true;
       else if (ev.key === '+' && current) {
-        const siblings = (lists.get(current.host) ?? []).filter(
+        const siblings = (panesOf.get(hostKey(current.hub, current.host)) ?? []).filter(
           (p) => p.session === current.session && p.window_index === current.window_index,
         );
         void split(siblings);
       } else if (ev.key === 'S') {
         const host = (hosts.data ?? []).find(
-          (h) => h.online && canStart(h) && (!current || h.name === current.host),
+          (h) =>
+            h.online &&
+            canStart(h) &&
+            (!current || (h.name === current.host && h.hub === current.hub)),
         );
-        if (host) setNaming(host.name);
+        if (host) setNaming(hostKey(host.hub, host.name));
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ordered, selected, picked, open, pick, split, canStart, hosts.data, lists]);
+  }, [ordered, selected, picked, open, pick, split, canStart, hosts.data, panesOf]);
 
   return (
     <div data-testid="panes">
@@ -405,23 +488,37 @@ export function PanesPage() {
           {ordered.length} pane{ordered.length === 1 ? '' : 's'}
         </span>
       </div>
-      {hosts.isPending && <div className="mx-empty">contacting the hub…</div>}
-      {hosts.data?.length === 0 && <div className="mx-empty">this account sees no hosts</div>}
-      {hosts.data?.map((h) => (
-        <HostTree
-          key={h.name}
-          host={h}
-          filter={filter}
-          selected={selected}
-          picked={picked}
-          naming={naming === h.name}
-          canStart={canStart(h)}
-          onOpen={(a) => open([a])}
-          onPick={pick}
-          onSplit={(panes) => void split(panes)}
-          onNaming={setNaming}
-          register={register}
-        />
+      {lists.map((l) => (
+        <div key={l.hub.url} data-testid="hub" data-hub={l.own ? '' : l.hub.name}>
+          {lists.length > 1 && (
+            <div className="mx-hub-line" data-testid="hub-line">
+              <span className="mx-hub-rule">═══</span> {shownName(l.hub)}{' '}
+              <span className="mx-hub-rule">═══</span> {hubReason(l)}
+            </div>
+          )}
+          {l.own && l.pending && !l.data && <div className="mx-empty">contacting the hub…</div>}
+          {l.data?.length === 0 && <div className="mx-empty">this account sees no hosts</div>}
+          {l.data?.map((h) => {
+            const key = hostKey(h.hub, h.name);
+            return (
+              <HostTree
+                key={key}
+                hub={h.hub}
+                host={h}
+                filter={filter}
+                selected={selected}
+                picked={picked}
+                naming={naming === key}
+                canStart={canStart(h)}
+                onOpen={(a) => open([a])}
+                onPick={pick}
+                onSplit={(panes) => void split(panes)}
+                onNaming={setNaming}
+                register={register}
+              />
+            );
+          })}
+        </div>
       ))}
       {picked.length > 0 && (
         <div className="mx-picked-bar" data-testid="picked-bar">

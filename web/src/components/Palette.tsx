@@ -50,6 +50,7 @@ export function Palette({
       const wk = `${p.host}/${p.session}/${p.window_index}`;
       windows.set(wk, [...(windows.get(wk) ?? []), p]);
       if (pick && exclude.includes(p.address)) continue;
+      if (p.hub) windows.delete(wk);
       out.push({
         key: p.address,
         kind: 'pane',
@@ -62,7 +63,8 @@ export function Palette({
     }
     if (!pick)
       for (const h of hosts.data ?? []) {
-        if (!h.online || !h.sessions || !mayWriteOn(me.data?.write ?? [], h.name)) continue;
+        if (h.hub || !h.online || !h.sessions || !mayWriteOn(me.data?.write ?? [], h.name))
+          continue;
         out.push({
           key: 's:' + h.name,
           kind: 'session',

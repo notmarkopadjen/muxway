@@ -15,7 +15,7 @@ import { useToast } from '../components/Toast';
 import { cycleTheme, getNotify, toggleMotion, useSettings } from '../settings';
 import { Help } from './Help';
 import { Hubs } from './Hubs';
-import { shownName, useHubs } from '../hubs';
+import { shownName, splitAddress, useHubs } from '../hubs';
 import { Palette } from '../components/Palette';
 import { HeaderSlot } from './HeaderSlot';
 import { Profile } from './Profile';
@@ -87,11 +87,13 @@ export function Shell() {
     (address: string): Pane | undefined => {
       const open = qc.getQueryData<PaneContent>(keys.pane(address))?.pane;
       if (open) return open;
-      const all = qc.getQueryData<Pane[]>(keys.panes)?.find((p) => p.address === address);
+      const { hub, address: bare } = splitAddress(address);
+      const all = qc.getQueryData<Pane[]>(keys.panesOf(hub))?.find((p) => p.address === address);
       if (all) return all;
-      const host = address.split('/')[0];
-      for (const s of qc.getQueryData<Tree>(keys.tree(host))?.sessions ?? [])
-        for (const w of s.windows) for (const p of w.panes) if (p.address === address) return p;
+      const host = bare.split('/')[0];
+      for (const s of qc.getQueryData<Tree>(keys.tree(host, hub))?.sessions ?? [])
+        for (const w of s.windows)
+          for (const p of w.panes) if (p.address === bare) return hub ? { ...p, address, hub } : p;
       return undefined;
     },
     [qc],

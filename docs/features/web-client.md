@@ -495,9 +495,12 @@ board kept in the browser is forgotten with it.
 ## Several hubs
 
 A hub gathers hosts; a person with a hub at home and one at work has two
-addresses and two sign-ins. The browser remembers the other hubs as
-**links**, nothing more. `H`, or *hubs* in the profile menu, opens the
-**hubs** box:
+addresses and two sign-ins. The browser remembers the other hubs in the
+**hubs** box (`H`, or *hubs* in the profile menu), signs in on each
+hub's own page once, and from then on **this page lists and opens the
+panes of every hub it is signed in on**: the list groups them by hub,
+and a pane of another hub opens as a tile beside this hub's, is read
+from, typed into, resized and watched on its own hub.
 
 ```
 ┌ hubs ────────────────────────────────────┐
@@ -519,8 +522,55 @@ itself and sets its own session cookie; with more than one hub known, the
 header shows the current one's name beside the brand. **×** removes a
 link.
 
+**The list with several hubs.** Each hub has its line, `═══ work ═══`,
+above its hosts; with one hub the line is not drawn. A hub the page is
+not signed in on says *not signed in* beside its name, with a **sign
+in** link to that hub's own page, and nothing under it; one that cannot
+be reached says *unreachable*. Once signed in there, come back: its
+hosts, sessions, windows and panes are listed under its line, refreshed
+like this hub's, with `+ pane` and `+ session` where that hub's grants
+allow them. The window view (mirror layout) is this hub's own: a pane of
+another hub has no window button and `w` does nothing for it.
+
+![two hubs listed](images/web-every-hub.png)
+
+**Naming a pane of another hub.** Everywhere the page keys panes by
+address (the route, the tiles, the strip, the selector, the add menu) a
+pane of another hub is `<hub name>~<address>`: `/p/alice-laptop/work/0.0,work~bob-server/ops/0.0`
+opens one pane of each side by side. This hub's panes keep their bare
+addresses, so every bookmark stands. Renaming a hub in the box renames
+its panes' addresses in your bookmarks too.
+
+![one pane of each hub, side by side](images/web-side-by-side.png)
+
+**How it works: peers.** A browser keeps a session cookie per origin and
+the hub's cookie stays on its site, so a page on hub A could not call hub
+B. The hub owner names the other hub as a **peer**: `muxway hub serve
+--peer https://work.example.com` on each, naming the other. A hub with
+peers sets its cookie `SameSite=None` (still `Secure`, `HttpOnly`), so
+the browser sends it from a peer's page, and answers a peer's preflight
+with that origin echoed, credentials allowed and `X-Muxway-Client` among
+the allowed headers; its web page's content security policy lets it
+connect to the peers. The page asks every hub of the box for `/v1/hosts`
+and `/v1/panes` with the browser's cookie for each, keeps one event long
+poll per hub, and sends every call for a pane to the hub it belongs to.
+Nothing is relayed: no hub ever holds another's credential.
+
+```mermaid
+sequenceDiagram
+    participant B as browser on hub A's page
+    participant A as hub A (--peer B)
+    participant W as hub B (--peer A)
+    B->>A: GET /v1/panes (same origin, cookie)
+    A-->>B: panes
+    B->>W: OPTIONS /v1/panes, Origin: A
+    W-->>B: allow A, credentials, X-Muxway-Client
+    B->>W: GET /v1/panes, Origin: A, cookie (SameSite=None)
+    W-->>B: panes (signed in on B before), or 401 → the "sign in" link
+```
+
 The list lives in the browser's storage under the origin of the hub
-whose page you added it on, so each hub's page has the links added
+whose page you added it on, so each hub's page has the hubs added
 there. To have the same list on both, leave *carry this list along when
 going* on: **go** then puts the names and addresses in the address's
 fragment (`#hubs=…`). The other hub's page reads it once, strips it from
@@ -542,11 +592,17 @@ referrer.
 └──────────────────────────────────────────────────┘
 ```
 
-The decision behind the design, taken on 2026-10-24: hubs stay separate.
-One page talking to two hubs would need that page to hold the other
-hub's credentials; one list mixing several hubs' panes needs the same;
-so neither exists. One hub per page, one sign-in each. On Android the
-app holds a token per hub in its keystore and switches between them; see
+**The decision.** On 2026-10-24 the owner had hubs stay separate: one
+hub per page, one sign-in each, no page talking to two hubs. On
+2026-10-27 he reversed it ("I mean all the hubs on all servers. Go and
+implement all of that"), with the consequence in front of him: a peer's
+page that is compromised can act on this hub as the signed-in person,
+because the browser sends the cookie there and the hub lets that page
+add the header. So peers are hubs the same owner runs, named one by one
+on the command line; a hub with no `--peer` behaves exactly as before,
+and a page on any other origin still gets nothing (see
+[security](#security-considerations)). On Android the app holds a token
+per hub in its keystore and lists every hub's panes together; see
 [muxway-android/docs/features/connect.md](https://github.com/notmarkopadjen/muxway-android/blob/main/docs/features/connect.md).
 
 ## Admin
@@ -594,7 +650,7 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, this pane alone (or `Enter`, double-click), host layout, equal shares, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
 | `t` | next theme: amber, green, paper |
-| `H` | hubs: the other hubs this browser knows, as links; `go` is that hub's own page and sign-in |
+| `H` | hubs: the other hubs this browser knows; `go` is that hub's own page and sign-in, once; the list then shows every hub's panes |
 | `?` then `font` | screen font: 11 to 20 px, the cell fit sizes the host by |
 | `m` | effects on / off |
 | `n` | browser notifications on / off (in the help overlay) |
@@ -670,9 +726,22 @@ and fails if the committed output differs from the sources.
   with `arrange=true`.
 - The cookie is `SameSite=Strict` and useless without the client header,
   so a page on another origin can neither read nor use the session. The
-  suite proves it from a second origin.
-- No request ever leaves the hub's origin: no fonts, scripts or analytics
-  from elsewhere. Browser notifications carry kind and address only.
+  suite proves it from a second origin. On a hub with peers the cookie is
+  `SameSite=None`: the browser then sends it to this hub from a peer's
+  page, and the hub lets a peer's page add the client header, through the
+  preflight it answers for peer origins alone; every other origin keeps
+  the credential-less wildcard and the same refusal, which the suite
+  proves from the second origin on a hub with peers (specs 41 and 94,
+  tests 170 to 172). A peer is therefore trusted with the session: a
+  peer's page that is compromised can act here as the signed-in person.
+  Peers are hubs the same owner runs, named on the command line; without
+  `--peer` nothing changes.
+- No request leaves the hub's origin but to the hubs of the hubs box, each
+  asked with the browser's cookie for it and nothing of this hub's: no
+  fonts, scripts or analytics from elsewhere, and the content security
+  policy names the peers and nothing else. A hub that answers 401 is shown
+  as not signed in; its refusal moves nothing on this page. Browser
+  notifications carry kind and address only.
 - A text with newlines is the one new thing the line sends. The hub
   admits the newline and no other control character; the agent delivers
   it through a tmux buffer, never a shell, and the bracketed-paste marks

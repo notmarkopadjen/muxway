@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { checkHub, fragment, fromFragment, hubOrigin, normalize, shownName } from './hubs';
+import {
+  checkHub,
+  fragment,
+  fromFragment,
+  hubOrigin,
+  joinAddress,
+  normalize,
+  shownName,
+  splitAddress,
+} from './hubs';
 
 const HOME = 'https://hub.example.com';
 const WORK = 'https://work.example.com';
@@ -102,5 +111,20 @@ describe('fragment', () => {
         { name: 'work', url: WORK },
       ]),
     ).toBe('#hubs=' + encodeURIComponent(JSON.stringify([{ name: 'work', url: WORK }])));
+  });
+});
+
+describe('splitAddress', () => {
+  it('takes the hub off a peer address and leaves a bare one alone', () => {
+    expect(splitAddress('work~alice-laptop/work/0.0')).toEqual({
+      hub: 'work',
+      address: 'alice-laptop/work/0.0',
+    });
+    expect(splitAddress('alice-laptop/work/0.0')).toEqual({ address: 'alice-laptop/work/0.0' });
+    expect(splitAddress('Bad Hub~alice-laptop/work/0.0')).toEqual({
+      address: 'Bad Hub~alice-laptop/work/0.0',
+    });
+    expect(joinAddress('work', 'alice-laptop/work/0.0')).toBe('work~alice-laptop/work/0.0');
+    expect(joinAddress(undefined, 'alice-laptop/work/0.0')).toBe('alice-laptop/work/0.0');
   });
 });

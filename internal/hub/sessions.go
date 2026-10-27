@@ -152,12 +152,22 @@ func (h *Hub) sessionPrincipal(id string) (Principal, bool) {
 	return p, true
 }
 
-func setSessionCookie(w http.ResponseWriter, sess *session) {
-	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: sess.id, Path: "/", Expires: sess.expires,
-		HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
+// The cookie stays on this site, unless the owner named peers: then it
+// travels with cross-site requests too, which the hub honours only from a
+// peer's page, through the preflight a peer alone gets.
+func (h *Hub) cookieSite() http.SameSite {
+	if len(h.cfg.Peers) > 0 {
+		return http.SameSiteNoneMode
+	}
+	return http.SameSiteStrictMode
 }
 
-func clearSessionCookie(w http.ResponseWriter) {
+func (h *Hub) setSessionCookie(w http.ResponseWriter, sess *session) {
+	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: sess.id, Path: "/", Expires: sess.expires,
+		HttpOnly: true, Secure: true, SameSite: h.cookieSite()})
+}
+
+func (h *Hub) clearSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1,
-		HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
+		HttpOnly: true, Secure: true, SameSite: h.cookieSite()})
 }

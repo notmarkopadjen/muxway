@@ -62,6 +62,23 @@
 .mx-host-offline {
   opacity: 0.45;
 }
+/* With several hubs, each has its line above its hosts. */
+.mx-hub-line {
+  margin: var(--mx-gap-2) 0 var(--mx-gap);
+  color: var(--mx-accent);
+  font-family: var(--mx-pixel);
+  font-size: 11px;
+}
+.mx-hub-line .mx-hub-rule {
+  color: var(--mx-ink-faint);
+}
+.mx-hub-line .mx-dim {
+  font-family: var(--mx-mono);
+  font-size: 13px;
+}
+.mx-window-still {
+  cursor: default;
+}
 .mx-tree {
   margin: 0;
   padding: 0;

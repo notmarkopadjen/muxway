@@ -226,6 +226,12 @@ button:disabled {
   font-size: 12px;
   color: var(--mx-ink-dim);
 }
+.mx-add-hub {
+  padding: 6px 10px 2px;
+  font-family: var(--mx-pixel);
+  font-size: 10px;
+  color: var(--mx-accent);
+}
 .mx-add-group {
   display: grid;
 }

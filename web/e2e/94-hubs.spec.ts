@@ -1,14 +1,22 @@
-import { expect, test, type Page } from '@playwright/test';
-import { settled, shot, signIn, TOKEN } from './fixtures';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { settled, shot, SHELL0, signIn, TOKEN } from './fixtures';
 
 // Several hubs: the browser keeps other hubs as links, each hub signs the
-// person in on its own page, and nothing but names and addresses is
-// carried from one to the other. The second hub is the harness's, reached
-// as localhost so its cookie is its own.
+// person in on its own page, once, and nothing but names and addresses is
+// carried from one to the other. Signed in on both, the page lists and
+// opens the panes of both, through the hubs' peer rule. The second hub is
+// the harness's, reached as localhost so its cookie is its own.
 
 const HUB2 = (process.env.MX_HUB2 ?? '').replace(/\/$/, '');
 const HUB2_TOKEN = process.env.MX_HUB2_TOKEN ?? '';
+const CONTROL2 = process.env.MX_CONTROL2 ?? '';
 const WORK = 'https://work.example.com';
+const FAR = 'work~carol-desk/work/0.0';
+
+async function capture2(request: APIRequestContext, target: string) {
+  const r = await request.get(`${CONTROL2}/capture?target=${encodeURIComponent(target)}`);
+  return (await r.text()).trim();
+}
 
 const stored = (page: Page) => page.evaluate(() => localStorage.getItem('mx-hubs') ?? '');
 
@@ -203,4 +211,94 @@ test('94 rename and remove follow in the list', async ({ page }) => {
   expect(await stored(page)).not.toContain('work.example.com');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('hubs')).toHaveCount(0);
+});
+
+test("94 every hub: a hub not signed in on says so with a link to its page; signed in there once, its panes are listed and open beside this hub's", async ({
+  page,
+  request,
+}, info) => {
+  test.skip(!HUB2, 'no second hub in this environment');
+  await signIn(page);
+  await settled(page);
+  // One hub: no hub level.
+  await expect(page.getByTestId('hub-line')).toHaveCount(0);
+  await page.keyboard.press('H');
+  await expect(page.getByTestId('hubs')).toBeVisible();
+  await page.getByTestId('hub-name').first().click();
+  await page.getByTestId('hub-rename').fill('home');
+  await page.getByTestId('hub-rename').press('Enter');
+  await addHub(page, 'work', HUB2);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('hubs')).toHaveCount(0);
+  // Two hubs: a line each; the second is not signed in on, so its line
+  // says so, links to its own page, and nothing is listed under it.
+  const lines = page.getByTestId('hub-line');
+  await expect(lines).toHaveCount(2);
+  await expect(lines.nth(0)).toContainText('home');
+  await expect(lines.nth(1)).toContainText('work');
+  await expect(lines.nth(1).getByTestId('hub-reason')).toContainText('not signed in', {
+    timeout: 10_000,
+  });
+  await expect(lines.nth(1).getByTestId('hub-signin')).toHaveAttribute('href', `${HUB2}/`);
+  const work = page.locator('[data-testid="hub"][data-hub="work"]');
+  await expect(work.getByTestId('pane-row')).toHaveCount(0);
+  await expect(page.getByTestId('pane-row').first()).toBeVisible();
+  await shot(page, info, '94-not-signed-in');
+  // Sign in there, on its own page.
+  await page.getByTestId('hub-signin').click();
+  await expect(page).toHaveURL(`${HUB2}/signin`);
+  await settled(page);
+  await page.getByTestId('token').fill(HUB2_TOKEN);
+  await page.getByTestId('token-submit').click();
+  await expect(page.getByTestId('panes')).toBeVisible({ timeout: 10_000 });
+  // Back here, the second hub's host and pane are listed under its line,
+  // asked of that hub.
+  const asked: string[] = [];
+  page.on('request', (r) => {
+    if (r.url().startsWith(HUB2 + '/v1/')) asked.push(r.url().slice(HUB2.length));
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('panes')).toBeVisible();
+  await expect(work.getByTestId('host-work~carol-desk')).toBeVisible({ timeout: 10_000 });
+  const row = work.getByTestId('pane-row').filter({ hasText: FAR });
+  await expect(row).toBeVisible();
+  await expect(lines.nth(1).getByTestId('hub-reason')).toHaveCount(0);
+  expect(asked).toContain('/v1/hosts');
+  expect(asked).toContain('/v1/hosts/carol-desk/tree');
+  await shot(page, info, '94-every-hub');
+  // One pane of each, side by side; the far one is read from and typed
+  // into on its own hub.
+  await page
+    .getByTestId('pane-row')
+    .filter({ hasText: SHELL0 })
+    .first()
+    .getByTestId('pick')
+    .click();
+  await row.click();
+  await page.getByTestId('open-picked').click();
+  await expect(page).toHaveURL(new RegExp(`/p/${SHELL0},${FAR}$`.replace(/\//g, '\\/')));
+  const tiles = page.getByTestId('tile');
+  await expect(tiles).toHaveCount(2);
+  await expect(tiles.nth(1)).toHaveAttribute('data-pane', FAR);
+  await expect(tiles.nth(1).locator('.mx-mode')).toHaveText('write');
+  await page.keyboard.press(']');
+  await expect(page.locator('[data-testid="tile"][data-focused]')).toHaveAttribute(
+    'data-pane',
+    FAR,
+  );
+  await expect(page.getByTestId('input')).toBeEnabled();
+  await page.getByTestId('input').fill('echo peer-$((90+4))');
+  await page.getByTestId('input').press('Enter');
+  await expect.poll(() => capture2(request, 'work:0.0'), { timeout: 5000 }).toContain('peer-94');
+  await expect(page.getByTestId('screen')).toContainText('peer-94', { timeout: 5000 });
+  expect(asked).toContain(`/v1/panes/carol-desk/work/0.0/input`);
+  await shot(page, info, '94-side-by-side');
+  // The strip names the far pane too, and the add menu groups by hub.
+  await expect(page.locator(`[data-testid="tab"][data-address="${FAR}"]`)).toHaveAttribute(
+    'data-open',
+    '',
+  );
+  await page.getByTestId('add').click();
+  await expect(page.getByTestId('add-hub').first()).toContainText('home');
+  await page.keyboard.press('Escape');
 });
