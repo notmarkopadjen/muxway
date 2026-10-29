@@ -172,7 +172,7 @@ The same action on every client, triggered the way the device does it.
 | scroll a program that has the mouse | wheel over it | drag | — |
 | copy a block of the screen (a bar's rows, a bullet and its rows, a result), without its markers | hover it, click `⧉` at its first row | long press | — |
 | type into the pane: with a fine pointer a click on the screen turns direct typing on; a tap on the row its program waits on (the cursor's row) focuses the line | click (direct typing), tap (the line) | tap | — |
-| direct typing: every key to the focused pane as pressed, `Esc` included; the prompt shows `▮`, the status bar says so, the cursor is drawn as a block; a read-only tile focused ends it | `i`, a click on the tile, `▮`; `Shift+Esc`, a click on the line or `▮` leaves | — | — |
+| direct typing: every key to the focused pane as pressed, `Esc` included; the prompt shows `▮`, the status bar says so, the cursor is drawn as a block; a read-only tile focused ends it | `i`, a click on the tile, `▮`; `Shift+Esc`, a click on the line or `▮` leaves | a hardware keyboard with the *hardware keyboard* setting on, while the line is not focused (the status line says `direct`); a tap on the line leaves, back from the line returns | — |
 | next arrangement | `l`, `▦` | `▦` | — |
 | equal shares in every split (the host follows for one window's tiles with fit on) | `=`, `⊞` | `▦` held | — |
 | close the pane on its host, asking on the header (`y` / `n`), where the agent allows it and the pane is writable; elsewhere close the tile | `x`, `×` | `×` | — |
@@ -192,7 +192,7 @@ The same action on every client, triggered the way the device does it.
 | a command of the row | click | tap | — |
 | open a link printed in a pane | click | tap | — |
 | see a file printed in a pane (inbox, or under the host's preview roots) | click: a window over the page with `⤓` download, `Esc` closes; Markdown rendered with a `rendered` / `plain` switch, code with its colours (web) | tap: a sheet; Markdown rendered as the terminal would draw it, with a *plain* switch; the host's paths in it are links | — |
-| the changes window: git's view of the pane's repository over the tile, docked to its right edge, the tile's size kept; a folder tree with `+` added or untracked (ok colour), `~` modified, `−` deleted (dim, struck), `→` renamed, `!` conflict (warn, bold), `●` staged; the branch and counts in its bar; a click on a file opens the file window with a `diff` / `file` switch | `g`, `⎇` or the count in the tile's header opens and closes, `Esc` or `×` closes, `_` folds it to its bar | — | — |
+| the changes window: git's view of the pane's repository over the tile, docked to its right edge, the tile's size kept; a folder tree with `+` added or untracked (ok colour), `~` modified, `−` deleted (dim, struck), `→` renamed, `!` conflict (warn, bold), `●` staged; the branch and counts in its bar; a click on a file opens the file window with a `diff` / `file` switch | `g`, `⎇` or the count in the tile's header opens and closes, `Esc` or `×` closes, `_` folds it to its bar | the count in the tile's header opens it as a sheet; back or `×` closes; a file opens the file sheet with its `diff` / `file` switch | — |
 | a new line in the input | `Shift+Enter` | `Shift+Enter` on a hardware keyboard | — |
 | take a completion | `Tab`, click | tap | — |
 | focus the input line, leave it | `:`, `Esc` | tap, back | — |
@@ -224,7 +224,7 @@ A new action gets a row here before it gets a key anywhere.
 | hubs as peers (`H`, `⇄`) | a browser keeps a session per origin, so every hub in the hubs box signs the person in on its own page, once; the page then lists and opens the panes of every hub it is signed in on, through the hubs' peer rule (`--peer`, see `docs/features/web-client.md`, *Several hubs*); the list is kept per hub page and carried along only as names and addresses |
 | the full admin page (`/admin`): access log, tokens and users with *create* and *revoke*, clients, address lists with *save* and *unlock* | minting a token means typing grant patterns, and a wrong address list shuts the owner out: both want a keyboard and a large screen; the phone has the read side (§3) |
 | keyboard shortcuts as the primary interface | keyboard first |
-| direct typing (`i`, a click on the tile): keys to the pane as pressed | a hardware keyboard sends keys; a soft keyboard composes words, so Android keeps the line and its key row |
+| direct typing (`i`, a click on the tile): keys to the pane as pressed | a soft keyboard composes words, so Android keeps the line and its key row; with its *hardware keyboard* setting on, a hardware keyboard's keys go direct while the line is not focused (§1.6) |
 
 Feature page: `docs/features/web-client.md`.
 
