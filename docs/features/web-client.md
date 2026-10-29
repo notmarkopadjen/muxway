@@ -78,6 +78,11 @@ nothing but the hub to talk to.
    nothing of it, even when its program has the mouse. The punctuation
    after an address stays text, a bracket the address opened stays in,
    and an address wrapped onto a second row opens up to the row's end.
+   A program may name the address itself, the way Claude Code marks a
+   work item or a file (the OSC 8 sequence, which tmux 3.6 keeps): the
+   label is the link, in its own colours, and the address shows when
+   you hover it, since the label may say anything; the same two schemes
+   and nothing else.
    In a pane whose program has the mouse, a numbered choice (Claude
    Code's `❯ 1. Yes`, `2. No`) shows the hand, since a click picks it.
    Where the host's agent has an inbox and the pane is writable, `⇪` sits

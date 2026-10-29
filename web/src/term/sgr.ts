@@ -1,6 +1,6 @@
-// Just enough SGR to show a pane: colours, bold, dim, underline, inverse.
-// Every other escape sequence is dropped. Output is text with attributes,
-// never markup.
+// Just enough SGR to show a pane: colours, bold, dim, underline, inverse,
+// and the address a program names for a run of text (OSC 8). Every other
+// escape sequence is dropped. Output is text with attributes, never markup.
 
 export interface Span {
   text: string;
@@ -10,6 +10,7 @@ export interface Span {
   dim?: boolean;
   underline?: boolean;
   inverse?: boolean;
+  href?: string;
 }
 
 interface State {
@@ -19,6 +20,20 @@ interface State {
   dim: boolean;
   underline: boolean;
   inverse: boolean;
+  href?: string;
+}
+
+// The address of an OSC 8 link, if it is one the page may follow: http or
+// https as the browser parses it, no control character, not overlong.
+// Anything else leaves the label as text.
+export function linkTarget(uri: string): string | undefined {
+  if (!uri || uri.length > 2048 || /[\x00-\x20\x7f]/.test(uri)) return undefined;
+  try {
+    const u = new URL(uri);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? uri : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 const fresh = (): State => ({ bold: false, dim: false, underline: false, inverse: false });
@@ -86,12 +101,18 @@ export function parseLine(line: string, start: State = fresh()): { spans: Span[]
       dim: state.dim,
       underline: state.underline,
       inverse: state.inverse,
+      href: state.href,
     });
   };
   for (const m of line.matchAll(escape)) {
     push(line.slice(last, m.index));
     last = m.index + m[0].length;
-    if (m[2] === 'm')
+    if (m[0].startsWith('\x1b]8;')) {
+      // OSC 8 ; params ; address: an address opens a link, none closes it.
+      const body = m[0].slice(2).replace(/(?:\x07|\x1b\\)$/, '');
+      const at = body.indexOf(';', 2);
+      state.href = at < 0 ? undefined : linkTarget(body.slice(at + 1));
+    } else if (m[2] === 'm')
       apply(
         state,
         (m[1] || '0')

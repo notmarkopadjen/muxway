@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classes, parse, parseLine } from './sgr';
+import { classes, linkTarget, parse, parseLine } from './sgr';
 
 describe('sgr', () => {
   it('splits colours into spans', () => {
@@ -33,5 +33,70 @@ describe('sgr', () => {
     const [l] = parse('<script>alert(1)</script>\x1b[7m<img onerror=x>');
     expect(l.map((s) => s.text).join('')).toBe('<script>alert(1)</script><img onerror=x>');
     expect(classes(l[1])).toBe('sgr-i');
+  });
+});
+
+const OSC = (uri: string, label: string, end = '\x1b\\') =>
+  `\x1b]8;;${uri}${end}${label}\x1b]8;;${end}`;
+
+describe('osc 8', () => {
+  it('puts the address on the label, with BEL or ST, with or without params', () => {
+    const [a] = parse(`see ${OSC('https://example.com/x', 'docs')} now`);
+    expect(a.map((s) => [s.text, s.href])).toEqual([
+      ['see ', undefined],
+      ['docs', 'https://example.com/x'],
+      [' now', undefined],
+    ]);
+    const [b] = parse(`\x1b]8;id=7;https://example.com/y\x07label\x1b]8;;\x07.`);
+    expect(b.map((s) => [s.text, s.href])).toEqual([
+      ['label', 'https://example.com/y'],
+      ['.', undefined],
+    ]);
+  });
+  it('keeps the colours inside a label and the link across a reset', () => {
+    const [l] = parse('\x1b]8;;https://example.com/z\x1b\\la\x1b[31mbel\x1b[0m!\x1b]8;;\x1b\\');
+    expect(l.map((s) => [s.text, s.fg, s.href])).toEqual([
+      ['la', undefined, 'https://example.com/z'],
+      ['bel', 1, 'https://example.com/z'],
+      ['!', undefined, 'https://example.com/z'],
+    ]);
+  });
+  it('carries a link onto the next row and two links in one row apart', () => {
+    const lines = parse('\x1b]8;;https://example.com/a\x1b\\one\ntwo\x1b]8;;\x1b\\ three');
+    expect(lines[0][0]).toMatchObject({ text: 'one', href: 'https://example.com/a' });
+    expect(lines[1][0]).toMatchObject({ text: 'two', href: 'https://example.com/a' });
+    expect(lines[1][1]).toMatchObject({ text: ' three', href: undefined });
+    const [l] = parse(`${OSC('https://example.com/1', 'x')}-${OSC('https://example.com/2', 'y')}`);
+    expect(l.map((s) => [s.text, s.href])).toEqual([
+      ['x', 'https://example.com/1'],
+      ['-', undefined],
+      ['y', 'https://example.com/2'],
+    ]);
+  });
+  it('security: only http and https as the browser parses them', () => {
+    for (const bad of [
+      'javascript:alert(1)',
+      'JAVASCRIPT:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'file:///etc/passwd',
+      'vbscript:x',
+      ' https://example.com/space',
+      'https://example.com/\x01ctl',
+      'https://example.com/' + 'a'.repeat(2048),
+      '//example.com/relative',
+      '/path',
+      '',
+      'https://',
+    ]) {
+      expect(linkTarget(bad), bad).toBeUndefined();
+      const [l] = parse(`${OSC(bad, 'label')}`);
+      expect(l.map((s) => s.text).join('')).toBe('label');
+      expect(
+        l.every((s) => s.href === undefined),
+        bad,
+      ).toBe(true);
+    }
+    expect(linkTarget('https://example.com/ok?a=1#f')).toBe('https://example.com/ok?a=1#f');
+    expect(linkTarget('http://example.com')).toBe('http://example.com');
   });
 });

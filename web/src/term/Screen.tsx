@@ -45,11 +45,22 @@ interface Mark {
   path?: string;
 }
 
-// The marks of a line in order; a file name inside a web address is the
-// address's, an inbox path is the inbox's before it is a path.
-function marks(line: string, files: boolean, paths: boolean): Mark[] {
-  const out: Mark[] = findLinks(line).map(([start, end, href]) => ({ start, end, href }));
+// The marks of a line in order: the links a program named (OSC 8) first,
+// then the addresses found in the text where no such link is; a file name
+// inside a web address is the address's, an inbox path is the inbox's
+// before it is a path.
+export function marks(spans: Span[], line: string, files: boolean, paths: boolean): Mark[] {
+  const out: Mark[] = [];
+  let at = 0;
+  for (const s of spans) {
+    const last = out[out.length - 1];
+    if (s.href && last && last.href === s.href && last.end === at) last.end += s.text.length;
+    else if (s.href) out.push({ start: at, end: at + s.text.length, href: s.href });
+    at += s.text.length;
+  }
   const free = (start: number, end: number) => !out.some((m) => m.start < end && start < m.end);
+  for (const [start, end, href] of findLinks(line))
+    if (free(start, end)) out.push({ start, end, href });
   if (files)
     for (const [start, end, file] of findFiles(line))
       if (free(start, end)) out.push({ start, end, file });
@@ -145,6 +156,7 @@ function LineView({
         key={j}
         className="mx-link"
         href={p.href}
+        title={p.href}
         target="_blank"
         rel="noopener noreferrer"
         onClick={keep}
@@ -216,7 +228,7 @@ export const Screen = memo(function Screen({
   const files = !!onFile;
   const paths = !!onPath;
   const linked = useMemo(
-    () => lines.map((spans, i) => pieces(spans, marks(plain[i], files, paths))),
+    () => lines.map((spans, i) => pieces(spans, marks(spans, plain[i], files, paths))),
     [lines, plain, files, paths],
   );
   // The blocks a click can copy, and the one under the pointer.
