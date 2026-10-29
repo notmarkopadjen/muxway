@@ -40,3 +40,23 @@ test('79 a pane that exits leaves the tiles by itself', async ({ page, request }
     .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
     .toBe('100x30');
 });
+
+test('79 a pane alone that exits takes the view back to the list', async ({ page, request }) => {
+  const id = await control(request, '/split', { target: 'work:1.0', dir: 'h' });
+  await signIn(page);
+  await expect(page.getByTestId('pane-row').filter({ hasText: SPLIT })).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.goto(`/p/${SPLIT}`);
+  await expect(page.getByTestId('tile')).toHaveCount(1);
+  await settled(page);
+  await control(request, '/kill-pane', { target: id });
+  // Without a key or a click: within the tile's own read interval.
+  await expect(page.getByTestId('panes')).toBeVisible({ timeout: 4000 });
+  await expect(page.getByTestId('toast').filter({ hasText: 'is gone' })).toHaveCount(1, {
+    timeout: 2000,
+  });
+  await expect
+    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
+    .toBe('100x30');
+});

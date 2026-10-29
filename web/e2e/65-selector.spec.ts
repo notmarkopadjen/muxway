@@ -17,9 +17,13 @@ test('65 the selector jumps to a pane or a window', async ({ page }, info) => {
   );
   await page.getByTestId('open-palette').click();
   // The window by name: another window may still show a split a spec
-  // before this one killed, until the listing catches up.
-  await page.getByTestId('palette-filter').fill(`${HOST}/work/0 (2 panes`);
-  await expect(page.getByTestId('palette-row')).toHaveCount(1);
+  // before this one killed, until the listing catches up. The view is
+  // still settling (its first fit lands), so the filter is typed again
+  // if the palette lost it.
+  await expect(async () => {
+    await page.getByTestId('palette-filter').fill(`${HOST}/work/0 (2 panes`);
+    await expect(page.getByTestId('palette-row')).toHaveCount(1, { timeout: 1500 });
+  }).toPass({ timeout: 10_000 });
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('window')).toBeVisible();
   await expect(page.getByTestId('cell')).toHaveCount(2);

@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { flushSync } from 'react-dom';
 import { ApiError } from '../api/client';
 import { queryClient } from '../query';
 import { useQueryClient } from '@tanstack/react-query';
@@ -82,6 +83,25 @@ interface Kept {
   weights: Weights;
 }
 let unzoomed: Kept | null = null;
+// The tile on its way to the whole view or back, named for the browser's
+// view transition. The tiles mount anew on the way, so it lives outside
+// React and the tiles watch it.
+let zoomingNow: string | null = null;
+const zoomWatchers = new Set<() => void>();
+function setZoomingNow(a: string | null) {
+  zoomingNow = a;
+  zoomWatchers.forEach((fn) => fn());
+}
+function useZoomingNow() {
+  return useSyncExternalStore(
+    (fn) => {
+      zoomWatchers.add(fn);
+      return () => zoomWatchers.delete(fn);
+    },
+    () => zoomingNow,
+    () => null,
+  );
+}
 let carried: Kept | null = null;
 // The pane to focus once the tiles of a new count are up.
 let focusNext: string | null = null;
@@ -130,8 +150,6 @@ interface TileProps {
   focused: boolean;
   several: boolean;
   fit: boolean | undefined;
-  // Another tile of the same window carries the fit for it.
-  held: boolean;
   // The tiles fit their window as one, with the arrangement as its layout.
   windowFit: boolean;
   // Alone in the view: the window is sized and the pane zoomed in it,
@@ -142,6 +160,8 @@ interface TileProps {
   dragging: string | null;
   onFocus: () => void;
   onClose: () => void;
+  // The pane is no longer there: the tile goes, with a word.
+  onGone: () => void;
   // The tile out of the arrangement, into the minimised row; off on the last tile.
   minimisable: boolean;
   onMinimise: () => void;
@@ -188,49 +208,59 @@ function Tile(props: TileProps) {
   const pointer = useRef('mouse');
   const { address, focused, several, refitTick, dragging, alone, zoomable, windowFit } = props;
   const pane = usePane(address, focused ? 1_000 : 2_000);
+  const zoomingTile = useZoomingNow();
   const box = useRef<HTMLDivElement>(null);
   const p = pane.data?.pane;
   const writable = p?.mode === 'write';
   // Every writable tile opens with fit on, as a single pane does.
   const fit = props.fit ?? writable;
-  const fitting = fit && writable && !props.held && !windowFit;
-  const { size: fitted, refit } = useFit(
-    address,
-    fit && writable && !windowFit,
-    box,
-    alone ? 'window' : 'pane',
-    undefined,
-    alone && zoomable,
-    {
-      keep: true,
-      inset: false,
-      hold: props.held,
-      slack: props.slack,
-      known: () => p && { cols: p.width, rows: p.height, zoomed: p.zoomed },
-    },
-  );
+  const fitting = fit && writable && !windowFit;
+  const {
+    size: fitted,
+    asked,
+    refit,
+  } = useFit(address, fitting, box, alone ? 'window' : 'pane', undefined, alone && zoomable, {
+    keep: true,
+    inset: false,
+    slack: props.slack,
+    known: () => p && { cols: p.width, rows: p.height, zoomed: p.zoomed },
+  });
   // While a fit is in flight the host still answers at its old size; the
   // tile keeps showing the last frame it had rather than that one, for a
   // moment at most, so switching panes does not flash a smaller screen.
-  const held = useRef<PaneContent | null>(frames.get(address) ?? null);
+  const frame = useRef<PaneContent | null>(frames.get(address) ?? null);
   const [, bump] = useState(0);
   const since = useRef(Date.now());
   useEffect(() => {
     since.current = Date.now();
-    held.current = frames.get(address) ?? null;
+    frame.current = frames.get(address) ?? null;
+  }, [address]);
+  useEffect(() => {
     const t = window.setTimeout(() => bump((n) => n + 1), HOLD_FRAME_MS + 50);
     return () => window.clearTimeout(t);
-  }, [address]);
+  }, [address, asked]);
+  const sentAt = asked?.at ?? since.current;
   let shown = pane.data;
+  let settled = false;
   if (fitting && shown) {
-    const settled =
-      !!fitted && shown.pane.width === fitted.cols && shown.pane.height === fitted.rows;
-    if (settled || Date.now() - since.current > HOLD_FRAME_MS) {
-      held.current = shown;
+    settled = !!fitted && shown.pane.width === fitted.cols && shown.pane.height === fitted.rows;
+    if (settled || Date.now() - sentAt > HOLD_FRAME_MS) {
+      frame.current = shown;
       if (settled) frames.set(address, shown);
-    } else if (held.current) shown = held.current;
+    } else if (frame.current) shown = frame.current;
   }
   const sp = shown?.pane;
+  // Held: the host would not give the size asked, since another tile's
+  // fit shares the axis (its answer differs, or the pane was moved after
+  // it). The screen is drawn scaled to the box, and nothing is sent again
+  // until the box changes.
+  const held =
+    fitting &&
+    !!fitted &&
+    !!asked &&
+    (fitted.cols !== asked.cols ||
+      fitted.rows !== asked.rows ||
+      (!settled && Date.now() - sentAt > HOLD_FRAME_MS));
   useEffect(() => {
     if (refitTick) refit();
   }, [refitTick, refit]);
@@ -257,13 +287,18 @@ function Tile(props: TileProps) {
     counting && ch.data && !(ch.error instanceof ApiError && ch.error.status === 404)
       ? countOf(ch.data.entries)
       : null;
-  // A pane that exited leaves the tiles at once; tmux has renumbered the
-  // rest, so the window's last address is the one that is gone.
-  const gone = several && pane.error instanceof ApiError && pane.error.status === 404;
-  const { onClose } = props;
+  // A pane that exited leaves the view at once, alone or among tiles;
+  // tmux has renumbered the rest, so the window's last address is the
+  // one that is gone.
+  const gone = pane.error instanceof ApiError && pane.error.status === 404;
+  const { onGone } = props;
+  const left = useRef(false);
   useEffect(() => {
-    if (gone) onClose();
-  }, [gone, onClose]);
+    if (gone && !left.current) {
+      left.current = true;
+      onGone();
+    }
+  }, [gone, onGone]);
 
   if (pane.isError) {
     const err = pane.error;
@@ -301,7 +336,8 @@ function Tile(props: TileProps) {
       data-several={several ? '' : undefined}
       data-focused={focused ? '' : undefined}
       data-fit={writable ? (fit ? '1' : '0') : undefined}
-      data-held={props.held ? '' : undefined}
+      data-held={held ? '' : undefined}
+      data-zooming={zoomingTile === address ? '' : undefined}
       onDragOver={(e) => {
         if (dragging && dragging !== address) {
           e.preventDefault();
@@ -347,10 +383,10 @@ function Tile(props: TileProps) {
               </span>
             </span>
             <span className={`mx-mode ${p.mode}`}>{p.mode}</span>
-            {props.held && writable && fit && (
+            {held && (
               <span
                 className="mx-warn"
-                title="another tile of this window carries the fit"
+                title="the host could not give this tile's size: another tile's fit shares the axis"
                 data-testid="held"
               >
                 held
@@ -441,8 +477,8 @@ function Tile(props: TileProps) {
         <Screen
           content={shown?.content ?? ''}
           burn={!pane.isPlaceholderData}
-          cols={fitting || windowFit ? undefined : sp?.width}
-          rows={fitting || windowFit ? undefined : sp?.height}
+          cols={(fitting && !held) || windowFit ? undefined : sp?.width}
+          rows={(fitting && !held) || windowFit ? undefined : sp?.height}
           boxRef={box}
           focused={several && focused}
           onClick={() => {
@@ -754,9 +790,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
     };
   }, []);
 
-  // Tiles that are panes of one window share one fit: the focused one's,
-  // or the first of them; the others are held. A pane alone is zoomed
-  // over its siblings, when it has any.
+  // A pane alone is zoomed over its siblings, when it has any. Tiles of
+  // one window each fit their own pane; the host sorts the neighbours out.
   const windowOf = useCallback(
     (a: string) => {
       const q = (all.data ?? []).find((x) => x.address === a);
@@ -764,12 +799,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
     },
     [all.data],
   );
-  const heldTile = (a: string) => {
-    const w = windowOf(a);
-    const mates = addresses.filter((b) => windowOf(b) === w);
-    if (mates.length < 2) return false;
-    return a !== (mates.includes(focused) ? focused : mates[0]);
-  };
   const siblings = (a: string) => {
     const w = windowOf(a);
     return (all.data ?? []).some((q) => q.address !== a && windowOf(q.address) === w);
@@ -1085,17 +1114,48 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // their places and arrangement; from a pane opened alone, the window's
   // panes side by side in the window's order, up to four; a window of one
   // pane shows its mirror layout instead.
+  // The zoom is drawn: the tile grows into the whole view, or shrinks
+  // back to its place, as the browser's view transition, unless effects
+  // are off.
+  const animated = useCallback((address: string, change: () => void) => {
+    const doc = document as Document & {
+      startViewTransition?: (update: () => Promise<void>) => { finished: Promise<void> };
+    };
+    if (!doc.startViewTransition || document.documentElement.dataset.motion === 'off') {
+      change();
+      return;
+    }
+    // The name is in the DOM before the transition takes its picture.
+    flushSync(() => setZoomingNow(address));
+    const over = () => setZoomingNow(null);
+    try {
+      doc
+        .startViewTransition(
+          () =>
+            new Promise<void>((resolve) => {
+              change();
+              requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+            }),
+        )
+        .finished.then(over, over);
+    } catch {
+      // No transition after all: the change at once, the mark cleared.
+      change();
+      over();
+    }
+    window.setTimeout(over, 1500);
+  }, []);
   const zoom = useCallback(
     (p: Pane) => {
       if (several) {
         unzoomed = { panes: addresses, layout, custom, weights };
-        go([p.address]);
+        animated(p.address, () => go([p.address]));
         return;
       }
       if (unzoomed && unzoomed.panes.includes(p.address)) {
         const back = unzoomed.panes;
         focusNext = p.address;
-        go(back);
+        animated(p.address, () => go(back));
         return;
       }
       const mates = (all.data ?? [])
@@ -1115,9 +1175,9 @@ function Tiles({ addresses }: { addresses: string[] }) {
       const others = mates.filter((a) => a !== p.address).slice(0, MAX_TILES - 1);
       const back = mates.filter((a) => a === p.address || others.includes(a));
       focusNext = p.address;
-      go(back);
+      animated(p.address, () => go(back));
     },
-    [several, addresses, layout, weights, all.data, go, navigate],
+    [several, addresses, layout, weights, all.data, go, navigate, animated],
   );
   const focusedFit = fit[focused] ?? writable;
   // Laying a tile across: onto a divider, its split; from an edge strip or
@@ -1161,7 +1221,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
         focused={i === index}
         several={several}
         fit={fit[a]}
-        held={!oneWindow && heldTile(a)}
         windowFit={!!oneWindow}
         alone={!several}
         zoomable={siblings(a)}
@@ -1169,6 +1228,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
         dragging={dragging}
         onFocus={() => setFocusedIndex(i)}
         onClose={() => closeTile(a)}
+        onGone={() => {
+          toast.push({ kind: 'gone', title: `${a} is gone` });
+          closeTile(a);
+        }}
         minimisable={several}
         onMinimise={() => minimise(a)}
         hostCloses={hostCloses(a)}

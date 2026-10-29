@@ -178,7 +178,7 @@ The same action on every client, triggered the way the device does it.
 | close the pane on its host, asking on the header (`y` / `n`), where the agent allows it and the pane is writable; elsewhere close the tile | `x`, `×` | `×` | — |
 | fit on / off, again | `f`, `r`, button | `⤢` tap, hold | — |
 | fit every tile | `F` | — | — |
-| zoom: one pane alone, then back to the tiles it came from, in their places and arrangement (or, opened alone, the window's panes side by side in the window's order) | `z`, `⊡`, double-click a tile, its header or its tab | `⊡`, double-tap a header | — |
+| zoom: one pane alone, then back to the tiles it came from, in their places and arrangement (or, opened alone, the window's panes side by side in the window's order); on the web the tile grows into the view and shrinks back, unless effects are off | `z`, `⊡`, double-click a tile, its header or its tab | `⊡`, double-tap a header | — |
 | the window view (mirror layout) | `w` | — | — |
 | go to a pane | `p`, `≡` among the pane buttons | the strip | — |
 | one more pane beside the focused one, a new session, or an existing pane as one more tile: the add menu | `+` after the tabs (and the `+` key) | `+` after the tabs; `+ pane`, `+ session` in the list too | — |

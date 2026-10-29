@@ -2,8 +2,10 @@ import { expect, test, type Page } from '@playwright/test';
 import { control, HOST, openPane, SHELL0, settled, shot, signIn } from './fixtures';
 
 // Tiles that are every pane of one window fit the window as one; tiles of
-// a window not wholly open share one fit; a pane alone fits its window
-// with the pane zoomed; a pane left for another stays at size and comes
+// a window not wholly open each fit their own pane, and the focus sends
+// nothing; a tile whose size the host would not give says held; a pane
+// alone fits its window with the pane zoomed, and a sibling opened beside
+// it undoes the zoom; a pane left for another stays at size and comes
 // back without a resize.
 
 const LOGS = `${HOST}/work/1.0`;
@@ -27,6 +29,11 @@ const fitsOf = (rs: Resize[], address: string) =>
   rs.filter((r) => r.address === address && r.body.fit !== 'auto');
 const releasesOf = (rs: Resize[], address: string) =>
   rs.filter((r) => r.address === address && r.body.fit === 'auto');
+const sizeOf = async (page: Page, a: string) => {
+  const t = await page.locator(`[data-pane="${a}"] .mx-tile-head .mx-dim`).innerText();
+  const m = /(\d+)×(\d+)/.exec(t)!;
+  return { cols: Number(m[1]), rows: Number(m[2]) };
+};
 
 test('99 every pane of a window as tiles: the window fits as one, laid out as the tiles', async ({
   page,
@@ -62,12 +69,9 @@ test('99 every pane of a window as tiles: the window fits as one, laid out as th
   await page.waitForTimeout(1500);
   expect(fitsOf(resizes, SPLIT)).toHaveLength(0);
   // Each pane is its tile: the two share the window's width, side by side.
-  const sizes = await Promise.all(
-    [LOGS, SPLIT].map((a) => page.locator(`[data-pane="${a}"] .mx-tile-head .mx-dim`).innerText()),
-  );
-  const cols = sizes.map((t) => Number(/(\d+)×/.exec(t)![1]));
-  expect(cols[0] + cols[1] + 1).toBe(Number(fit.cols));
-  expect(Math.abs(cols[0] - cols[1])).toBeLessThanOrEqual(1);
+  const sizes = await Promise.all([LOGS, SPLIT].map((a) => sizeOf(page, a)));
+  expect(sizes[0].cols + sizes[1].cols + 1).toBe(Number(fit.cols));
+  expect(Math.abs(sizes[0].cols - sizes[1].cols)).toBeLessThanOrEqual(1);
   await shot(page, info, '99-window');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();
@@ -76,12 +80,13 @@ test('99 every pane of a window as tiles: the window fits as one, laid out as th
   await control(request, '/kill-pane', { target: id });
 });
 
-test('99 two tiles of a window not wholly open: the focused one fits, the other is held; focus moves the fit', async ({
+test('99 two tiles of a window not wholly open each fit their pane; the focus sends nothing', async ({
   page,
   request,
 }, info) => {
+  // Three panes in a row; two of them open side by side.
   const id = await control(request, '/split', { target: 'work:1.0', dir: 'h' });
-  const id2 = await control(request, '/split', { target: 'work:1.0', dir: 'v' });
+  const id2 = await control(request, '/split', { target: id, dir: 'h' });
   const resizes = watchResizes(page);
   await signIn(page);
   await expect(page.getByTestId('pane-row').filter({ hasText: SPLIT2 })).toBeVisible({
@@ -94,32 +99,36 @@ test('99 two tiles of a window not wholly open: the focused one fits, the other 
   await expect(page.locator('.mx-area')).not.toHaveAttribute('data-window-fit', '');
   await expect(tiles.nth(0)).toHaveAttribute('data-focused', '');
   await expect(tiles.nth(0)).toHaveAttribute('data-fit', '1');
-  await expect(tiles.nth(0)).not.toHaveAttribute('data-held', '');
-  await expect(tiles.nth(1)).toHaveAttribute('data-held', '');
-  await expect(tiles.nth(1).getByTestId('held')).toHaveText('held');
-  await expect.poll(() => fitsOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
+  await expect(tiles.nth(1)).toHaveAttribute('data-fit', '1');
+  // One pane fit each, and each pane at its tile's size.
+  await expect.poll(() => fitsOf(resizes, LOGS).length, { timeout: 8000 }).toBe(1);
+  await expect.poll(() => fitsOf(resizes, SPLIT).length, { timeout: 8000 }).toBe(1);
   expect(fitsOf(resizes, LOGS)[0].body.scope).toBe('pane');
-  await page.waitForTimeout(1500);
-  expect(fitsOf(resizes, SPLIT)).toHaveLength(0);
-  // The held tile is scaled to its box, not cropped.
-  await expect(tiles.nth(1).getByTestId('cell-screen')).toHaveAttribute('data-font', /\d/);
-  await shot(page, info, '99-held');
-  // Focus on the other tile moves the fit: the second fits, the first keeps
-  // its size and is not released; back and forth then sends nothing.
-  await page.keyboard.press(']');
-  await expect(tiles.nth(1)).toHaveAttribute('data-focused', '');
-  await expect(tiles.nth(0)).toHaveAttribute('data-held', '');
+  expect(fitsOf(resizes, SPLIT)[0].body.scope).toBe('pane');
+  for (const a of [LOGS, SPLIT]) {
+    const asked = fitsOf(resizes, a)[0].body;
+    await expect
+      .poll(() => sizeOf(page, a), { timeout: 8000 })
+      .toEqual({ cols: asked.cols, rows: asked.rows });
+  }
+  await page.waitForTimeout(3500);
+  await expect(page.getByTestId('held')).toHaveCount(0);
+  await expect(tiles.nth(0)).not.toHaveAttribute('data-held', '');
   await expect(tiles.nth(1)).not.toHaveAttribute('data-held', '');
-  await expect.poll(() => fitsOf(resizes, SPLIT).length, { timeout: 5000 }).toBe(1);
-  await page.waitForTimeout(1500);
-  expect(releasesOf(resizes, LOGS)).toHaveLength(0);
+  await shot(page, info, '99-both-fit');
+  // The focus moves back and forth: nothing is sent, nothing is released.
   const sent = resizes.length;
-  await page.keyboard.press('[');
-  await expect(tiles.nth(0)).toHaveAttribute('data-focused', '');
-  await page.keyboard.press(']');
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press(']');
+    await expect(tiles.nth(1)).toHaveAttribute('data-focused', '');
+    await page.keyboard.press('[');
+    await expect(tiles.nth(0)).toHaveAttribute('data-focused', '');
+  }
+  await tiles.nth(1).locator('.mx-tile-head').click();
   await expect(tiles.nth(1)).toHaveAttribute('data-focused', '');
   await page.waitForTimeout(1500);
   expect(resizes).toHaveLength(sent);
+  await expect(page.getByTestId('held')).toHaveCount(0);
   // Leaving the view releases both.
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();
@@ -129,7 +138,106 @@ test('99 two tiles of a window not wholly open: the focused one fits, the other 
   await control(request, '/kill-pane', { target: id });
 });
 
-test('99 a pane alone fits the window zoomed; left for another it keeps its size and comes back without a resize', async ({
+test('99 two tiles whose panes share a width: the later fit sets both, the other says held and stays', async ({
+  page,
+  request,
+}, info) => {
+  // The first pane across the top, two below it: the top one and one of
+  // the bottom share the window's width.
+  const id = await control(request, '/split', { target: 'work:1.0', dir: 'v' });
+  const id2 = await control(request, '/split', { target: id, dir: 'h' });
+  const resizes = watchResizes(page);
+  await signIn(page);
+  await expect(page.getByTestId('pane-row').filter({ hasText: SPLIT2 })).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.goto(`/p/${LOGS},${SPLIT}`);
+  const tiles = page.getByTestId('tile');
+  await expect(tiles).toHaveCount(2);
+  await settled(page);
+  // Stacked tiles: the same width asked for both panes, which cannot be,
+  // as the bottom one has a neighbour on its row.
+  await page.keyboard.press('l');
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-layout', 'column');
+  await expect.poll(() => fitsOf(resizes, LOGS).length, { timeout: 8000 }).toBeGreaterThan(0);
+  await expect.poll(() => fitsOf(resizes, SPLIT).length, { timeout: 8000 }).toBeGreaterThan(0);
+  await expect.poll(() => page.getByTestId('held').count(), { timeout: 10_000 }).toBe(1);
+  const heldTile = page.locator('[data-testid="tile"][data-held]');
+  await expect(heldTile).toHaveCount(1);
+  // The held tile is scaled to its box, not cropped.
+  await expect(
+    heldTile.locator('[data-testid="screen"], [data-testid="cell-screen"]'),
+  ).toHaveAttribute('data-font', /\d/);
+  await shot(page, info, '99-held');
+  // Nothing more is sent: not for the focus, not for the held tile.
+  await page.waitForTimeout(2500);
+  const sent = resizes.length;
+  await page.keyboard.press(']');
+  await page.keyboard.press('[');
+  await page.keyboard.press(']');
+  await page.waitForTimeout(1500);
+  expect(resizes).toHaveLength(sent);
+  await expect(heldTile).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('panes')).toBeVisible();
+  await expect.poll(() => releasesOf(resizes, SPLIT).length, { timeout: 5000 }).toBe(1);
+  await expect.poll(() => releasesOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
+  await control(request, '/kill-pane', { target: id2 });
+  await control(request, '/kill-pane', { target: id });
+});
+
+test('99 a pane alone fits the window zoomed; a sibling opened beside it undoes the zoom; z is drawn', async ({
+  page,
+  request,
+}) => {
+  const id = await control(request, '/split', { target: 'work:1.0', dir: 'h' });
+  const id2 = await control(request, '/split', { target: id, dir: 'h' });
+  const resizes = watchResizes(page);
+  const zoomed = () => control(request, '/zoomed', { target: 'work:1' });
+  await signIn(page);
+  await expect(page.getByTestId('pane-row').filter({ hasText: SPLIT2 })).toBeVisible({
+    timeout: 10_000,
+  });
+  await openPane(page, LOGS);
+  await settled(page);
+  await expect.poll(() => fitsOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
+  expect(fitsOf(resizes, LOGS)[0].body.scope).toBe('window');
+  expect(fitsOf(resizes, LOGS)[0].body.zoom).toBe(true);
+  await expect.poll(zoomed, { timeout: 5000 }).toBe('1');
+  // The sibling opened beside: both fit their panes, the zoom is gone.
+  await page.goto(`/p/${LOGS},${SPLIT}`);
+  const tiles = page.getByTestId('tile');
+  await expect(tiles).toHaveCount(2);
+  await expect.poll(() => fitsOf(resizes, SPLIT).length, { timeout: 8000 }).toBe(1);
+  expect(fitsOf(resizes, SPLIT)[0].body.scope).toBe('pane');
+  await expect.poll(zoomed, { timeout: 8000 }).toBe('0');
+  await expect.poll(() => fitsOf(resizes, LOGS).length, { timeout: 8000 }).toBe(2);
+  expect(fitsOf(resizes, LOGS)[1].body.scope).toBe('pane');
+  for (const a of [LOGS, SPLIT]) {
+    const asked = fitsOf(resizes, a).at(-1)!.body;
+    await expect
+      .poll(() => sizeOf(page, a), { timeout: 8000 })
+      .toEqual({ cols: asked.cols, rows: asked.rows });
+  }
+  // z: the focused tile alone, drawn on the way, and back to its place.
+  await page.keyboard.press('z');
+  await expect(tiles).toHaveCount(1);
+  await expect(page.locator('[data-testid="tile"][data-zooming]')).toHaveCount(0, {
+    timeout: 3000,
+  });
+  await page.keyboard.press('z');
+  await expect(tiles).toHaveCount(2);
+  await expect(page.locator('[data-testid="tile"][data-zooming]')).toHaveCount(0, {
+    timeout: 3000,
+  });
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('panes')).toBeVisible();
+  await expect.poll(() => releasesOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
+  await control(request, '/kill-pane', { target: id2 });
+  await control(request, '/kill-pane', { target: id });
+});
+
+test('99 a pane left for another keeps its size and comes back without a resize', async ({
   page,
   request,
 }) => {
@@ -137,6 +245,10 @@ test('99 a pane alone fits the window zoomed; left for another it keeps its size
   const size = () => control(request, '/window-size', { target: 'work:0' });
   const zoomed = () => control(request, '/zoomed', { target: 'work:0' });
   await signIn(page);
+  // The splits of the tests before are gone from the listing.
+  await expect(page.getByTestId('pane-row').filter({ hasText: SPLIT })).toHaveCount(0, {
+    timeout: 15_000,
+  });
   await openPane(page, SHELL0);
   await settled(page);
   await expect.poll(() => fitsOf(resizes, SHELL0).length, { timeout: 5000 }).toBe(1);

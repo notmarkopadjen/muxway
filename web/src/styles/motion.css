@@ -293,3 +293,30 @@
     animation: none;
   }
 }
+
+/* Zoom: the tile grows into the whole view, or shrinks back to its
+   place, as a view transition on that tile alone; the rest of the page
+   does not cross-fade. */
+.mx-tile[data-zooming] {
+  view-transition-name: mx-zoom;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-group(mx-zoom) {
+  animation-duration: 240ms;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+::view-transition-old(mx-zoom),
+::view-transition-new(mx-zoom) {
+  animation-duration: 240ms;
+}
+:root[data-motion='off'] .mx-tile[data-zooming] {
+  view-transition-name: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mx-tile[data-zooming] {
+    view-transition-name: none;
+  }
+}

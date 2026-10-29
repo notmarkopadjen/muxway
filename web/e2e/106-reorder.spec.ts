@@ -80,7 +80,9 @@ test('106 security: garbage in the stored order is ignored', async ({ page }) =>
   ]) {
     await page.evaluate((v) => localStorage.setItem('mx-tab-order', v), bad);
     await page.goto(`/p/${SHELL0}`);
+    await expect(page.getByTestId('pane')).toBeVisible({ timeout: 15_000 });
     await paneLoaded(page);
+    await expect(page.getByTestId('toast').filter({ hasText: 'is gone' })).toHaveCount(0);
     await expect.poll(() => first3(page)).toEqual([SHELL0, RO, LOGS]);
     await page.goto('/');
   }

@@ -13,7 +13,9 @@ test('85 the tab strip: every pane, a tab swaps into the focused tile, keys move
   await expect(page.getByTestId('tile')).toHaveCount(2);
   // Every pane the token may read is a tab; the open ones are marked.
   const tabs = page.getByTestId('tab');
-  await expect(tabs).toHaveCount(4);
+  // The listing is read every five seconds; under the full suite's load
+  // the first one can be short of a host.
+  await expect(tabs).toHaveCount(4, { timeout: 15_000 });
   await expect(page.locator('[data-testid="tab"][data-open]')).toHaveCount(2);
   await expect(page.locator('[data-testid="tab"][data-focused]')).toHaveAttribute(
     'data-address',

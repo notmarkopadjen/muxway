@@ -297,9 +297,11 @@ export function previewFile(address: string, path: string): Promise<Blob> {
 
 // The changes of the repository the pane works in: every five seconds
 // while the window is open, every ten for a tile's header (the window
-// and the header share the query, so the shorter wins); a pane outside
-// a repository is asked again every minute, since it may enter one. A
-// refusal is kept, not retried.
+// and the header share the query, so the shorter wins). A pane outside
+// a repository is asked again every minute for the header, since it may
+// enter one, and at the window's own pace while the window is open: it
+// says so, and a cd into a repository should show. A refusal is kept,
+// not retried.
 export function useChanges(address: string, enabled: boolean, every = 5_000) {
   return useQuery({
     queryKey: keys.changes(address),
@@ -309,7 +311,9 @@ export function useChanges(address: string, enabled: boolean, every = 5_000) {
     },
     enabled,
     refetchInterval: (q) =>
-      q.state.error instanceof ApiError && q.state.error.status === 404 ? 60_000 : every,
+      q.state.error instanceof ApiError && q.state.error.status === 404 && every > 5_000
+        ? 60_000
+        : every,
     // The status limit is one a second: a 429 is asked again after one.
     retry: (count, err) => (err instanceof ApiError ? err.status === 429 && count < 3 : count < 2),
     retryDelay: 1_100,

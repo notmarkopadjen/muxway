@@ -169,11 +169,13 @@ type Agent struct {
 	attention map[string]tmux.Attention
 	// panes whose last turn ended with work still running in the background
 	background map[string]bool
-	resized    map[string]time.Time // window id -> last resize applied
-	layouts    map[string]string    // window id -> layout before its first resize, put back on release
-	made       map[string]time.Time // pane id -> when a split made it, while the hub may still undo it
-	sessions   map[string]bool      // session ids started for clients
-	sess       *secure.Session      // current connection to the hub, nil while away
+	resized    map[string]time.Time            // window id -> last resize applied
+	layouts    map[string]string               // window id -> layout before its first resize, put back on release
+	fits       map[string]map[string]tmux.Size // window id -> pane id -> size given at pane scope, kept by later fits
+	fitters    map[string]map[string]bool      // window id -> the panes that fitted it; all gone, the window is given back
+	made       map[string]time.Time            // pane id -> when a split made it, while the hub may still undo it
+	sessions   map[string]bool                 // session ids started for clients
+	sess       *secure.Session                 // current connection to the hub, nil while away
 }
 
 // New prepares an agent; Run connects it.
@@ -186,7 +188,7 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 		return nil, err
 	}
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
-		seen: map[string]int{}, attention: map[string]tmux.Attention{}, background: map[string]bool{}, resized: map[string]time.Time{}, layouts: map[string]string{},
+		seen: map[string]int{}, attention: map[string]tmux.Attention{}, background: map[string]bool{}, resized: map[string]time.Time{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{},
 		made: map[string]time.Time{}, sessions: map[string]bool{}}, nil
 }
 
@@ -469,6 +471,30 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	if release {
 		delete(a.layouts, p.WindowID)
 	}
+	// A pane's fit is kept so the next fit of a sibling gives it its size
+	// again; a window fit or a release starts over.
+	others := map[string]tmux.Size{}
+	if release {
+		delete(a.fitters, p.WindowID)
+	} else if !arrangeOnly {
+		if a.fitters[p.WindowID] == nil {
+			a.fitters[p.WindowID] = map[string]bool{}
+		}
+		a.fitters[p.WindowID][p.PaneID] = true
+	}
+	if release || req.Scope == "window" {
+		delete(a.fits, p.WindowID)
+	} else if !arrangeOnly {
+		if a.fits[p.WindowID] == nil {
+			a.fits[p.WindowID] = map[string]tmux.Size{}
+		}
+		for id, sz := range a.fits[p.WindowID] {
+			if id != p.PaneID {
+				others[id] = sz
+			}
+		}
+		a.fits[p.WindowID][p.PaneID] = tmux.Size{Cols: req.Cols, Rows: req.Rows}
+	}
 	// An arrangement stays: a release later gives the size back, not the
 	// old places.
 	if req.Arrange && (kept || !arrangeOnly) {
@@ -501,7 +527,7 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	if req.Scope == "window" {
 		err = a.tmux.ResizeWindow(ctx, p.PaneID, req.Cols, req.Rows, req.Layout, req.Zoom)
 	} else {
-		err = a.tmux.ResizePane(ctx, p.PaneID, req.Cols, req.Rows)
+		err = a.tmux.ResizePane(ctx, p.PaneID, req.Cols, req.Rows, others)
 	}
 	if err != nil {
 		return wire.ErrTmux
@@ -720,7 +746,6 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 		a.log.Warn("tmux panes skipped", "count", skipped, "err", tmux.ErrUnparsed)
 	}
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	alive := map[string]bool{}
 	for i := range panes {
 		alive[panes[i].PaneID] = true
@@ -731,6 +756,38 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 	for id := range a.attention {
 		if !alive[id] {
 			delete(a.attention, id)
+		}
+	}
+	// A window whose fitting panes are all gone (the shell exited) has no
+	// pane left to release it through: it is given back here.
+	type orphan struct{ pane, layout string }
+	var orphans []orphan
+	for w, set := range a.fitters {
+		left := false
+		for id := range set {
+			if alive[id] {
+				left = true
+				break
+			}
+		}
+		if left {
+			continue
+		}
+		delete(a.fitters, w)
+		delete(a.fits, w)
+		saved := a.layouts[w]
+		delete(a.layouts, w)
+		for i := range panes {
+			if panes[i].WindowID == w {
+				orphans = append(orphans, orphan{panes[i].PaneID, saved})
+				break
+			}
+		}
+	}
+	a.mu.Unlock()
+	for _, o := range orphans {
+		if err := a.tmux.ReleaseWindow(ctx, o.pane, o.layout); err != nil {
+			a.log.Warn("window release after its pane left", "err", err)
 		}
 	}
 	return panes, nil

@@ -367,27 +367,43 @@ const (
 	floorRows = 5
 )
 
+// A size a pane was given by a client, kept so a later fit of a
+// neighbour does not undo it.
+type Size struct{ Cols, Rows int }
+
 // ResizePane makes one pane cols × rows. On an axis the pane spans, its
 // window is sized, as for a window alone; on an axis it shares, the
 // neighbours give or take, and the window grows before any of them goes
-// under the floor. Nothing shrinks the window below what it has.
-func (s Server) ResizePane(ctx context.Context, paneID string, cols, rows int) error {
+// under the floor. Nothing shrinks the window below what it has. The
+// other panes of the window that were fitted (others) are given their
+// sizes again first, so growing the window for this one, which scales
+// every pane, does not take theirs; this pane is sized last and wins
+// where two cannot both be had, and a few rounds settle the rest.
+func (s Server) ResizePane(ctx context.Context, paneID string, cols, rows int, others map[string]Size) error {
+	// A pane shown beside a sibling is no longer alone: the zoom goes.
+	s.unzoom(ctx, paneID)
 	for round := 0; ; round++ {
+		for id, sz := range others {
+			// A pane gone since its fit is skipped, not an error.
+			_ = s.resizePaneOnce(ctx, id, sz.Cols, sz.Rows)
+		}
 		if err := s.resizePaneOnce(ctx, paneID, cols, rows); err != nil {
 			return err
 		}
 		// Growing the window scales every pane alike, so the window is
 		// grown by what brings the smallest pane up to the floor; the
-		// pane is then sized again and its surplus goes to a neighbour.
+		// panes are then sized again and the surplus goes to a neighbour.
 		out, err := s.run(ctx, "list-panes", "-t", paneID,
-			"-F", "#{window_width} #{window_height} #{pane_width} #{pane_height}")
+			"-F", "#{pane_id} #{window_width} #{window_height} #{pane_width} #{pane_height}")
 		if err != nil {
 			return err
 		}
 		var ww, wh, nw, nh int
+		kept := true
 		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+			var id string
 			var w, h int
-			if _, err := fmt.Sscan(line, &ww, &wh, &w, &h); err != nil {
+			if _, err := fmt.Sscan(line, &id, &ww, &wh, &w, &h); err != nil {
 				continue
 			}
 			if w < floorCols {
@@ -396,12 +412,17 @@ func (s Server) ResizePane(ctx context.Context, paneID string, cols, rows int) e
 			if h < floorRows {
 				nh = max(nh, (wh*floorRows+h-1)/h+1)
 			}
+			if sz, ok := others[id]; ok && (w != sz.Cols || h != sz.Rows) {
+				kept = false
+			}
 		}
-		if (nw == 0 && nh == 0) || round == 3 {
+		if (nw == 0 && nh == 0 && kept) || round == 3 {
 			return nil
 		}
-		if err := s.ResizeWindow(ctx, paneID, max(nw, ww), max(nh, wh), "", false); err != nil {
-			return err
+		if nw != 0 || nh != 0 {
+			if err := s.ResizeWindow(ctx, paneID, max(nw, ww), max(nh, wh), "", false); err != nil {
+				return err
+			}
 		}
 	}
 }

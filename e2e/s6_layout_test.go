@@ -416,3 +416,83 @@ func TestFlow57_WindowReadWithETag(t *testing.T) {
 	again := e.do("GET", tok, "/v1/windows/"+host+"/work/shell?ansi=1&lines=50", "", "", "If-None-Match", etag)
 	expect(t, again, http.StatusNotModified, "etag")
 }
+
+// A pane fit undoes the window's zoom: the pane was alone in a view and
+// now has a sibling beside it.
+func TestFlow170_APaneFitUndoesTheZoom(t *testing.T) {
+	e, ts, _ := basic(t)
+	ts.split("work:0.0")
+	e.expose(ts, "work", "--write")
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	r := e.resize(tok, shell0, `{"cols":90,"rows":25,"scope":"window","zoom":true}`)
+	expect(t, r, http.StatusOK, "window resize with zoom")
+	if ts.must("display-message", "-p", "-t", "work:0", "#{window_zoomed_flag}") != "1" {
+		t.Fatal("window not zoomed")
+	}
+	time.Sleep(1100 * time.Millisecond)
+	r = e.resize(tok, host+"/work/0.1", `{"cols":40,"rows":25}`)
+	expect(t, r, http.StatusOK, "pane resize of the sibling")
+	if ts.must("display-message", "-p", "-t", "work:0", "#{window_zoomed_flag}") != "0" {
+		t.Fatal("window still zoomed after a pane fit")
+	}
+	if !strings.Contains(r.body, `"width":40`) || !strings.Contains(r.body, `"height":25`) {
+		t.Fatalf("sibling after its fit: %s", r.body)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")
+}
+
+// Two panes of one window fitted one after the other both keep their
+// sizes: the second fit gives the first its size again after growing the
+// window, and the panes not fitted take what is left.
+func TestFlow171_TwoPaneFitsOfOneWindowBothHold(t *testing.T) {
+	e, ts, _ := basic(t)
+	for _, target := range []string{"work:0.0", "work:0.1"} {
+		ts.title(ts.must("split-window", "-h", "-t", target, "-P", "-F", "#{pane_id}", shell()))
+	}
+	e.expose(ts, "work", "--write")
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	size := func(target string) string {
+		return ts.must("display-message", "-p", "-t", target, "#{pane_width}x#{pane_height}")
+	}
+	expect(t, e.resize(tok, shell0, `{"cols":60,"rows":24}`), http.StatusOK, "first pane fit")
+	if got := size("work:0.0"); got != "60x24" {
+		t.Fatalf("first pane is %s", got)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	expect(t, e.resize(tok, host+"/work/0.1", `{"cols":60,"rows":24}`), http.StatusOK, "second pane fit")
+	if a, b := size("work:0.0"), size("work:0.1"); a != "60x24" || b != "60x24" {
+		t.Fatalf("after the second fit the panes are %s and %s", a, b)
+	}
+	var w, h int
+	if _, err := fmt.Sscanf(size("work:0.2"), "%dx%d", &w, &h); err != nil || w < 20 {
+		t.Fatalf("the third pane went under the floor: %s", size("work:0.2"))
+	}
+	time.Sleep(1100 * time.Millisecond)
+	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")
+}
+
+// A window fitted through a pane that then exits is given back on the
+// next listing: no client can release it through that pane any more.
+func TestFlow172_AWindowWhoseFitterLeftIsGivenBack(t *testing.T) {
+	e, ts, _ := basic(t)
+	ts.split("work:0.0")
+	e.expose(ts, "work", "--write")
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	before := ts.windowSize("work:0")
+	r := e.resize(tok, host+"/work/0.1", `{"cols":90,"rows":25,"scope":"window","zoom":true}`)
+	expect(t, r, http.StatusOK, "window fit through the split pane")
+	if got := ts.windowSize("work:0"); got != "90x25" {
+		t.Fatalf("window is %s after the fit", got)
+	}
+	ts.must("kill-pane", "-t", "work:0.1")
+	// The agent notices on its next listing; the hub serves one from its
+	// cache for a second.
+	waitFor(t, "the window given back", func() bool {
+		e.get(tok, "/v1/panes")
+		return ts.windowSize("work:0") == before
+	})
+	if ts.must("display-message", "-p", "-t", "work:0", "#{window_zoomed_flag}") != "0" {
+		t.Fatal("window still zoomed after its fitter left")
+	}
+}

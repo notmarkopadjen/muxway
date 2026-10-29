@@ -34,7 +34,8 @@ roots asks for the repository's state every ten seconds while the page
 is in the foreground (every five while the window is open; the two
 share one request), shows `⎇` with the counts, `⎇ ✓` when nothing has
 changed, and nothing when the pane's directory is in no repository the
-host shows (asked again every minute, since the pane may enter one); a
+host shows (asked again every minute for the header, and every five
+seconds while the window is open, since the pane may enter one); a
 click on the count opens the window on that tile. The body is a tree,
 directories first, folded or unfolded by a click, with a mark and a
 colour per file:

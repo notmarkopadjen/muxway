@@ -146,21 +146,22 @@ sizes the window without a zoom. With several tiles, each *pane* on the
 host becomes the columns and rows that fit its tile: where it spans its
 window, the window is sized; where it shares the window with neighbours,
 they give or take the difference, and the window grows before any pane
-of it would go under 20 columns or 5 rows. Tiles that are every pane of
+of it would go under 20 columns or 5 rows; the host remembers the size
+each pane of the window was given and gives it again when a sibling is
+fitted, so the second fit does not take the first one's size. Tiles that are every pane of
 one window fit the window as one, laid out as the tiles are, the way the
 window view does, so each pane is exactly its tile and a divider dragged
 moves the host's split. The layout sent is exact: each pane gets as many
 cells as its tile's screen holds, so no pane has rows its tile cannot
 show; the tiles of a stack lose a header each, and a tile across from
 them keeps that much spare at its bottom. Where only some of a window's panes are open as
-tiles, they share one fit, because two fits on one row can only undo
-each other: the focused tile's pane fits (or the first of them, when the
-focus is in another window), and the others say *held* in their header,
-keep fit off and are drawn scaled to their box, which leaves the width
-the host gave the pane unused; focus moving to another tile of the
-window moves the fit there, and the pane left behind keeps its size, so
-going back and forth sends nothing once both panes have their tiles'
-sizes; they are all released when the view is left. In the
+tiles, each fits its own pane and the host sorts the neighbours out,
+as above. A size the host would not give, because another tile's fit
+shares the axis (two tiles whose panes are stacked ask for different
+widths: the later one sets both), leaves that tile saying *held* in its
+header, drawn scaled to its box, until its box changes. The focus plays
+no part in any of this: moving it between tiles sends nothing. Every
+fitted pane is released when the view is left. In the
 window view, fit sizes the whole
 *window* to the area and lays it out as the browser shows it: the panes
 keep their proportions until you drag a divider, and then the host's
@@ -366,8 +367,10 @@ sequenceDiagram
   window's panes side by side in the window's order, up to four (a
   window of one pane shows its mirror layout instead). `w` opens the
   window's mirror layout.
-- A pane that exits leaves the tiles by itself within a second; the
-  others close up.
+- A pane that exits (`exit` in its shell, say) leaves the view by
+  itself within a second, with a toast saying which: among tiles the
+  others close up, alone it takes you back to the list, or to the first
+  minimised pane.
 - While a fit is on its way to the host, a tile keeps the last frame it
   had instead of the host's answers at the old size, for three seconds
   at most, so switching panes does not flash a smaller screen.

@@ -14,9 +14,8 @@ import { cellsFor, inner } from './measure';
 // away leaves its pane fitted: the pane view keeps panes at size while
 // another is shown in their place and releases them all when it is left
 // (releaseKept); a kept pane found at the size asked for is not sent
-// again. With `hold` the fit pauses without a release: another tile of
-// the window carries it meanwhile and the pane stays kept at its size.
-// `slack` is height the box has lost to something that is not a resize,
+// again. `asked` is the last size sent, with when, so a tile can tell a
+// size the host would not give. `slack` is height the box has lost to something that is not a resize,
 // the input line grown while a message is written: the fit measures as
 // if it were not there, so the host is not resized a row at a time.
 // The release must survive the page going away, hence keepalive. It can
@@ -46,7 +45,6 @@ export interface FitOptions {
   inset?: boolean;
   // The host's answer, which after a layout lists the window's panes.
   onDone?: (r: { panes?: Pane[] }) => void;
-  hold?: boolean;
   slack?: () => number;
   // Window scope: the size and layout measured from the tiles themselves,
   // exact to the cell, instead of the box and the proportional layout.
@@ -75,11 +73,12 @@ export function useFit(
   opts: FitOptions = {},
 ) {
   const [size, setSize] = useState<{ cols: number; rows: number } | null>(null);
+  const [asked, setAsked] = useState<{ cols: number; rows: number; at: number } | null>(null);
   const last = useRef<string>('');
   const timer = useRef<number | null>(null);
   const fitted = useRef(false);
   const again = useRef<(() => void) | null>(null);
-  const { keep = false, inset = scope === 'window', hold = false } = opts;
+  const { keep = false, inset = scope === 'window' } = opts;
   const known = useRef(opts.known);
   known.current = opts.known;
   const slack = useRef(opts.slack);
@@ -90,13 +89,14 @@ export function useFit(
   done.current = opts.onDone;
 
   useEffect(() => {
-    if (!enabled || hold || !box.current) return;
+    if (!enabled || !box.current) return;
     const el = box.current;
     const send = (cols: number, rows: number, lay = layout) => {
       const key = `${cols}x${rows} ${lay ?? ''} ${zoom}`;
       if (key === last.current) return;
       last.current = key;
       fitted.current = true;
+      setAsked({ cols, rows, at: Date.now() });
       const have = kept.has(address) ? known.current?.() : undefined;
       kept.add(address);
       if (have && have.cols === cols && have.rows === rows && (!zoom || have.zoomed)) {
@@ -143,7 +143,7 @@ export function useFit(
       if (timer.current) window.clearTimeout(timer.current);
       last.current = '';
     };
-  }, [address, enabled, hold, box, scope, layout, zoom, inset]);
+  }, [address, enabled, box, scope, layout, zoom, inset]);
   const refit = useCallback(() => again.current?.(), []);
 
   // Release on the way out, if we ever fitted: on unmount, unless the
@@ -169,5 +169,5 @@ export function useFit(
     }
   }, [enabled, address]);
 
-  return { size, refit };
+  return { size, asked, refit };
 }
