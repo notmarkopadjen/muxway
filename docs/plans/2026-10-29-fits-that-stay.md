@@ -203,6 +203,18 @@ the reflow the owner saw. Both views now fit the window through one
 writable pane of it, the same one while it is shown (specs 76 and 99
 check that the focus sends nothing). [Run 20261029-150403-19e873c](https://github.com/notmarkopadjen/muxway/issues/160): passed, 159 tests, 0 failed.
 
+Second follow-up, from the owner's next screenshot (three tiles of one
+window, text cropped): a fit answered 429 scheduled its retry on the
+hook's shared timer even after the hook had been re-keyed, so the lone
+view's zoom fit kept coming back until it won and the three-tile fit
+was rate-limited away. A fit's retry now belongs to its own run and
+dies with it; the layout-only send happens only with fit really off
+(not while the focused pane is still unknown); a tile of a window
+whose fit is off is drawn scaled. [Run 20261029-153632-3ea820c](https://github.com/notmarkopadjen/muxway/issues/162):
+the two red specs are the window arrangement's (`62`), run from disk
+against a build without that feature; every fit spec and the new one
+(a pane alone, then both as tiles, nothing sent again) passed.
+
 Shipped in the same commit, from the owner's report of the same day:
 a pane alone that exits (`exit` in its shell) now leaves the view too,
 back to the list or the first minimised pane, with a toast; the "gone"

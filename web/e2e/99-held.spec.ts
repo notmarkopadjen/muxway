@@ -297,3 +297,49 @@ test('99 a pane left for another keeps its size and comes back without a resize'
   await page.keyboard.press('Escape');
   await expect.poll(() => releasesOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
 });
+
+test('99 a pane alone of a two-pane window, then both as tiles: the window fits as one, the zoom gone, nothing sent again', async ({
+  page,
+  request,
+}) => {
+  const id = await control(request, '/split', { target: 'work:1.0', dir: 'h' });
+  const resizes = watchResizes(page);
+  const zoomed = () => control(request, '/zoomed', { target: 'work:1' });
+  await signIn(page);
+  await expect(page.getByTestId('pane-row').filter({ hasText: SPLIT })).toBeVisible({
+    timeout: 10_000,
+  });
+  await openPane(page, LOGS);
+  await settled(page);
+  await expect.poll(() => fitsOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
+  expect(fitsOf(resizes, LOGS)[0].body.zoom).toBe(true);
+  await expect.poll(zoomed, { timeout: 5000 }).toBe('1');
+  // The other pane opened beside: the window fits as one, laid out as the
+  // tiles, and the zoom is gone.
+  await page.goto(`/p/${LOGS},${SPLIT}`);
+  const tiles = page.getByTestId('tile');
+  await expect(tiles).toHaveCount(2);
+  await expect(page.locator('.mx-area')).toHaveAttribute('data-window-fit', '', { timeout: 8000 });
+  await expect
+    .poll(() => resizes.filter((r) => r.body.scope === 'window' && r.body.layout).length, {
+      timeout: 8000,
+    })
+    .toBeGreaterThan(0);
+  await expect.poll(zoomed, { timeout: 8000 }).toBe('0');
+  const fit = resizes.filter((r) => r.body.scope === 'window' && r.body.layout).at(-1)!.body;
+  for (const a of [LOGS, SPLIT])
+    await expect.poll(() => sizeOf(page, a), { timeout: 8000 }).toMatchObject({ rows: fit.rows });
+  // Once it holds, nothing is sent again: no stale fit of the lone view
+  // comes back, and the zoom stays gone.
+  await page.waitForTimeout(2500);
+  const sent = resizes.length;
+  await page.waitForTimeout(3000);
+  expect(resizes).toHaveLength(sent);
+  expect(await zoomed()).toBe('0');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('panes')).toBeVisible();
+  await expect
+    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
+    .toBe('100x30');
+  await control(request, '/kill-pane', { target: id });
+});

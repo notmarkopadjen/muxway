@@ -150,8 +150,10 @@ interface TileProps {
   focused: boolean;
   several: boolean;
   fit: boolean | undefined;
-  // The tiles fit their window as one, with the arrangement as its layout.
+  // The tiles fit their window as one, with the arrangement as its layout;
+  // fitted says that fit is on (off, the tile is drawn scaled to its box).
   windowFit: boolean;
+  windowFitted: boolean;
   // Alone in the view: the window is sized and the pane zoomed in it,
   // when it has siblings to be zoomed over.
   alone: boolean;
@@ -477,8 +479,8 @@ function Tile(props: TileProps) {
         <Screen
           content={shown?.content ?? ''}
           burn={!pane.isPlaceholderData}
-          cols={(fitting && !held) || windowFit ? undefined : sp?.width}
-          rows={(fitting && !held) || windowFit ? undefined : sp?.height}
+          cols={(fitting && !held) || (windowFit && props.windowFitted) ? undefined : sp?.width}
+          rows={(fitting && !held) || (windowFit && props.windowFitted) ? undefined : sp?.height}
           boxRef={box}
           focused={several && focused}
           onClick={() => {
@@ -913,9 +915,13 @@ function Tiles({ addresses }: { addresses: string[] }) {
     exact,
   });
   // With fit off the arrangement still goes to the host, without a size.
+  // Only with fit really off: while the focused pane is still unknown the
+  // window fit is not on yet either, and a layout sent then would take
+  // the window's one resize a second from the fit.
   const [retry, setRetry] = useState(0);
+  const windowFitOff = fit[focused] === false;
   useEffect(() => {
-    if (!movable || !synced || windowFit || !windowLayout || !hostLayout || !oneWindow) return;
+    if (!movable || !synced || !windowFitOff || !windowLayout || !hostLayout || !oneWindow) return;
     const h = fromHost(hostLayout, oneWindow);
     if (h && sameTree(h.node, shape) && nearWeights(shape, h.weights, weights, 0.01)) return;
     const t = window.setTimeout(() => {
@@ -932,7 +938,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         });
     }, 300);
     return () => window.clearTimeout(t);
-  }, [movable, synced, windowFit, windowLayout, retry]);
+  }, [movable, synced, windowFitOff, windowLayout, retry]);
   useEffect(() => {
     if (refitTick && windowFit) refitWindow();
   }, [refitTick, windowFit, refitWindow]);
@@ -1227,6 +1233,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         several={several}
         fit={fit[a]}
         windowFit={!!oneWindow}
+        windowFitted={windowFit}
         alone={!several}
         zoomable={siblings(a)}
         refitTick={i === index ? refitTick : 0}

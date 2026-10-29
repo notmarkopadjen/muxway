@@ -75,7 +75,6 @@ export function useFit(
   const [size, setSize] = useState<{ cols: number; rows: number } | null>(null);
   const [asked, setAsked] = useState<{ cols: number; rows: number; at: number } | null>(null);
   const last = useRef<string>('');
-  const timer = useRef<number | null>(null);
   const fitted = useRef(false);
   const again = useRef<(() => void) | null>(null);
   const { keep = false, inset = scope === 'window' } = opts;
@@ -91,6 +90,11 @@ export function useFit(
   useEffect(() => {
     if (!enabled || !box.current) return;
     const el = box.current;
+    // A fit of this run only: once the run is over (the view changed what
+    // it fits), a late answer schedules nothing, or a stale size would be
+    // sent again until it won.
+    let live = true;
+    let timer: number | null = null;
     const send = (cols: number, rows: number, lay = layout) => {
       const key = `${cols}x${rows} ${lay ?? ''} ${zoom}`;
       if (key === last.current) return;
@@ -106,16 +110,17 @@ export function useFit(
       resizePane(address, { cols, rows, scope, layout: lay, zoom: zoom || undefined })
         .then((r) => {
           setSize({ cols: r.pane.width, rows: r.pane.height });
-          done.current?.(r);
+          if (live) done.current?.(r);
         })
         .catch((err) => {
-          if (err instanceof ApiError && err.status === 429) {
+          if (live && err instanceof ApiError && err.status === 429) {
             last.current = '';
-            timer.current = window.setTimeout(() => measure(), 1100);
+            timer = window.setTimeout(measure, 1100);
           }
         });
     };
     const measure = () => {
+      if (!live) return;
       const ex = scope === 'window' ? exact.current?.() : undefined;
       if (ex) {
         send(Math.min(500, Math.max(20, ex.cols)), Math.min(300, Math.max(5, ex.rows)), ex.layout);
@@ -127,8 +132,8 @@ export function useFit(
       send(Math.min(500, Math.max(20, cols)), Math.min(300, Math.max(5, rows)));
     };
     const schedule = () => {
-      if (timer.current) window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(measure, 300);
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(measure, 300);
     };
     const ro = new ResizeObserver(schedule);
     ro.observe(el);
@@ -138,9 +143,10 @@ export function useFit(
       measure();
     };
     return () => {
+      live = false;
       ro.disconnect();
       again.current = null;
-      if (timer.current) window.clearTimeout(timer.current);
+      if (timer) window.clearTimeout(timer);
       last.current = '';
     };
   }, [address, enabled, box, scope, layout, zoom, inset]);
