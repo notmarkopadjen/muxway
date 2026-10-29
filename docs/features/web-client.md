@@ -165,7 +165,9 @@ fitted pane is released when the view is left. In the
 window view, fit sizes the whole
 *window* to the area and lays it out as the browser shows it: the panes
 keep their proportions until you drag a divider, and then the host's
-split follows the divider; a pane zoomed here is zoomed on the host too,
+split follows the divider (the window is fitted through one writable
+pane of it, the same one while it is shown, so moving the focus between
+the cells sends nothing); a pane zoomed here is zoomed on the host too,
 with tmux's own zoom, so it gets the whole window. With fit on a pane is
 read at the font you chose (the help overlay, `?`, cycles it from 11 to
 20 px, remembered by the browser) and the host is sized by that cell, so

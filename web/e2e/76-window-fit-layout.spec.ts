@@ -38,6 +38,21 @@ test("76 fit on in the window view: the host takes the browser's dividers", asyn
   // The host's split follows the browser's, within a few per cent.
   await expect.poll(() => hostFraction(request), { timeout: 5000 }).toBeCloseTo(want, 1);
   await shot(page, info, '76-window-fit');
+  // The focus moving between the cells sends nothing to the host.
+  await page.waitForTimeout(1500);
+  const sent: string[] = [];
+  page.on('request', (r) => {
+    if (r.url().includes('/resize') && r.method() === 'POST') sent.push(r.postData() ?? '');
+  });
+  const cells = page.getByTestId('cell');
+  for (let i = 0; i < 3; i++) {
+    await cells.nth(1).locator('.mx-cell-head').click();
+    await expect(cells.nth(1)).toHaveAttribute('data-focused', '');
+    await cells.nth(0).locator('.mx-cell-head').click();
+    await expect(cells.nth(0)).toHaveAttribute('data-focused', '');
+  }
+  await page.waitForTimeout(1500);
+  expect(sent).toEqual([]);
   // The host's new sizes do not reset the browser's arrangement.
   await page.waitForTimeout(1500);
   expect(Number(await slots.nth(0).getAttribute('data-fraction'))).toBeCloseTo(want, 2);

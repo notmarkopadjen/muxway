@@ -115,6 +115,7 @@ function Tree(props: TreeProps) {
         data-testid="cell"
         data-pane={node.id}
         data-state={state}
+        data-focused={focused === node.id ? '' : undefined}
         onDoubleClick={() => onZoom(node.id)}
       >
         <div
@@ -287,14 +288,20 @@ export function WindowPage() {
   const hide = useCallback(() => setShowing(false), []);
   const hosts = useHosts();
   const previews = !!hosts.data?.find((h) => h.name === host && !h.hub)?.preview;
-  const fitting = fit && !!writable;
+  // The window is fitted through one of its writable panes, the same one
+  // while it is shown, so moving the focus sends nothing.
+  const fitVia = useMemo(
+    () => visible.map((id) => panes.get(id)?.pane).find((p) => p?.mode === 'write')?.address ?? '',
+    [visible, panes],
+  );
+  const fitting = fit && !!fitVia;
   // With fit on the host takes the browser's proportions too.
   const sent = fit && tree ? layoutFor(tree, arr) : undefined;
   // The input line grown while a message is written takes height from
   // the area; the fit measures as if it had not.
   const grown = useRef(0);
   const slack = useCallback(() => grown.current, []);
-  const { refit } = useFit(focusedPane?.address ?? '', fitting, area, 'window', sent, false, {
+  const { refit } = useFit(fitVia, fitting, area, 'window', sent, false, {
     slack,
   });
   useEffect(() => {

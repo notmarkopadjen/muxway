@@ -901,7 +901,12 @@ function Tiles({ addresses }: { addresses: string[] }) {
     sentLayout.current = r.layout;
     return r;
   }, [oneWindow, shape, addresses]);
-  const { refit: refitWindow } = useFit(focused, windowFit, area, 'window', windowLayout, false, {
+  // The window is fitted through one tile's pane, the same one while it
+  // is open, so moving the focus sends nothing.
+  const windowVia =
+    addresses.find((a) => (all.data ?? []).find((q) => q.address === a)?.mode === 'write') ??
+    focused;
+  const { refit: refitWindow } = useFit(windowVia, windowFit, area, 'window', windowLayout, false, {
     keep: true,
     onDone: follow,
     slack,
@@ -915,7 +920,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
     if (h && sameTree(h.node, shape) && nearWeights(shape, h.weights, weights, 0.01)) return;
     const t = window.setTimeout(() => {
       sentLayout.current = windowLayout;
-      resizePane(focused, { scope: 'window', layout: windowLayout })
+      resizePane(windowVia, { scope: 'window', layout: windowLayout })
         .then(follow)
         .catch((err) => {
           if (err instanceof ApiError && err.status === 429)

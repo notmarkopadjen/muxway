@@ -73,6 +73,16 @@ test('99 every pane of a window as tiles: the window fits as one, laid out as th
   expect(sizes[0].cols + sizes[1].cols + 1).toBe(Number(fit.cols));
   expect(Math.abs(sizes[0].cols - sizes[1].cols)).toBeLessThanOrEqual(1);
   await shot(page, info, '99-window');
+  // The focus moving between the tiles sends nothing.
+  const sent = resizes.length;
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press(']');
+    await expect(tiles.nth(1)).toHaveAttribute('data-focused', '');
+    await page.keyboard.press('[');
+    await expect(tiles.nth(0)).toHaveAttribute('data-focused', '');
+  }
+  await page.waitForTimeout(1500);
+  expect(resizes).toHaveLength(sent);
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();
   await expect.poll(() => releasesOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);

@@ -195,6 +195,14 @@ test environment.
 Flow170 (a pane fit undoes the zoom), Flow171 (two fits of one window
 both hold) and Flow172 (a window whose fitter left is given back).
 
+Follow-up the same afternoon, from the owner's next screenshot: the
+window-scope fit (every pane of one window as tiles, and the window
+view) was keyed on the focused pane, so each focus change released the
+window through the old pane and fitted it again through the new one,
+the reflow the owner saw. Both views now fit the window through one
+writable pane of it, the same one while it is shown (specs 76 and 99
+check that the focus sends nothing). [Run 20261029-150403-19e873c](https://github.com/notmarkopadjen/muxway/issues/160): passed, 159 tests, 0 failed.
+
 Shipped in the same commit, from the owner's report of the same day:
 a pane alone that exits (`exit` in its shell) now leaves the view too,
 back to the list or the first minimised pane, with a toast; the "gone"
