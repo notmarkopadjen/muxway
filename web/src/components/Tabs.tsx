@@ -6,7 +6,9 @@ import { LensMark } from './Lens';
 import { ClaudeMark } from './PaneTitle';
 
 // The strip: one tab per pane, painted with its state. Open tabs are
-// bordered, the focused one thick and bold, a hidden one dimmed.
+// bordered, the focused one thick and bold, a hidden one dimmed. With
+// `reorder` a tab can be dragged along the strip: a mark shows on the
+// nearer edge of the tab under the pointer, and the drop puts it there.
 export function Tabs({
   panes,
   open,
@@ -15,6 +17,7 @@ export function Tabs({
   addable = false,
   onTab,
   onZoom,
+  reorder,
 }: {
   panes: Pane[];
   open: string[];
@@ -23,9 +26,16 @@ export function Tabs({
   addable?: boolean;
   onTab: (address: string, add: boolean) => void;
   onZoom?: (address: string) => void;
+  reorder?: (dragged: string, before: string | null) => void;
 }) {
   const lens = useLens();
   const strip = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [mark, setMark] = useState<{ address: string; side: 'before' | 'after' } | null>(null);
+  const endDrag = () => {
+    setDragging(null);
+    setMark(null);
+  };
   useEffect(() => {
     strip.current
       ?.querySelector('[data-focused]')
@@ -64,6 +74,8 @@ export function Tabs({
     pane: p,
   }));
   for (const a of open) if (!rows.some((r) => r.address === a)) rows.push({ address: a });
+  const after = (address: string) =>
+    rows[rows.findIndex((r) => r.address === address) + 1]?.address ?? null;
   return (
     <div className="mx-strip">
       {more && (
@@ -77,7 +89,34 @@ export function Tabs({
           ‹
         </button>
       )}
-      <div className="mx-tabs" ref={strip} data-testid="tabs">
+      <div
+        className="mx-tabs"
+        ref={strip}
+        data-testid="tabs"
+        onDragOver={
+          reorder && dragging
+            ? (e) => {
+                // The space after the last tab: the drop goes last.
+                if (e.target !== e.currentTarget) return;
+                e.preventDefault();
+                setMark({ address: rows[rows.length - 1].address, side: 'after' });
+              }
+            : undefined
+        }
+        onDrop={
+          reorder && dragging
+            ? (e) => {
+                e.preventDefault();
+                if (mark)
+                  reorder(dragging, mark.side === 'before' ? mark.address : after(mark.address));
+                endDrag();
+              }
+            : undefined
+        }
+        onDragLeave={(e) => {
+          if (!strip.current?.contains(e.relatedTarget as Node | null)) setMark(null);
+        }}
+      >
         {rows.map(({ address, pane }) => {
           const st = pane ? lens.status(pane) : 'quiet';
           const isOpen = open.includes(address);
@@ -93,14 +132,38 @@ export function Tabs({
               data-focused={address === focused ? '' : undefined}
               data-hidden={isHidden ? '' : undefined}
               data-state={st === 'quiet' ? undefined : st}
+              data-dragging={dragging === address ? '' : undefined}
+              data-drop={mark?.address === address ? mark.side : undefined}
+              draggable={!!reorder}
+              onDragStart={
+                reorder &&
+                ((e) => {
+                  e.dataTransfer.setData('text/plain', '');
+                  e.dataTransfer.effectAllowed = 'move';
+                  setDragging(address);
+                })
+              }
+              onDragEnd={reorder && endDrag}
+              onDragOver={
+                reorder && dragging
+                  ? (e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      const r = e.currentTarget.getBoundingClientRect();
+                      const side = e.clientX < r.left + r.width / 2 ? 'before' : 'after';
+                      if (mark?.address !== address || mark.side !== side)
+                        setMark({ address, side });
+                    }
+                  : undefined
+              }
               onClick={(e) => onTab(address, e.shiftKey)}
               onDoubleClick={onZoom && (() => onZoom(address))}
               title={
-                isHidden
+                (isHidden
                   ? `${address} · hidden here, click brings it back`
                   : addable && !isOpen
                     ? `${address} · Shift+click opens it beside`
-                    : address
+                    : address) + (reorder ? ' · drag along the strip to reorder' : '')
               }
             >
               {pane && describe(pane).agent === 'claude' && <ClaudeMark />}

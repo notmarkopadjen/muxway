@@ -222,7 +222,14 @@ view, each live and typable. The page is the Android client's pane view:
   an open tab focuses its tile; a click on a closed tab swaps it into
   the focused tile, and a Shift+click opens it beside the others, up to
   four, so a second pane and the `▦` arrangements are one click away.
-  The strip scrolls and keeps the focused tab in view.
+  The strip scrolls and keeps the focused tab in view. **Drag a tab**
+  along the strip to put it where you want it: a mark on the nearer
+  edge of the tab under the pointer shows where it lands, and `}` `{`
+  move the focused pane's tab one place. The order is kept in the
+  browser: the dragged tabs come first in that order, every other pane
+  follows in listing order, a new pane comes last, and a pane that goes
+  away takes its place back when the same address returns. The window
+  view keeps the host's order.
 - **Tiles** share the area in one of the Android arrangements: two panes
   have a `row` and a `column`; three add `main-left` (a main pane with
   the others stacked beside it) and `main-top`; four add a `grid`. `▦`,
@@ -644,6 +651,7 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |
 | `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view: pane), coming round at either end |
+| `}` / `{` | move the focused pane's tab one place right / left along the strip (or drag it); the order is kept in the browser |
 | `1`–`4`, `l`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
 | `e` / `E` | tiles: lay the focused tile across the whole view's width / height, on the side its middle is |
 | `g` | tiles: the changes window over the focused tile, git's view of its repository, on a writable pane of a host with preview roots; `g`, `Esc` or `×` closes it, `_` folds it to its bar (see [changes](changes.md)) |

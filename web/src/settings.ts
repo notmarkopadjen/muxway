@@ -1,4 +1,5 @@
-import { useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
+import { ORDER_MAX } from './term/order';
 
 // Per-browser preferences: theme, effects, browser notifications, the
 // screen font size.
@@ -75,6 +76,40 @@ export function setPreview(v: PreviewView) {
 }
 export function usePreview(): PreviewView {
   return useSyncExternalStore(subscribe, getPreview, getPreview);
+}
+
+// The strip's order: the addresses dragged into place, first to last.
+// Garbage in storage is an empty order; see term/order.ts for the rest.
+export function parseOrder(raw: string | null): string[] {
+  if (!raw || raw.length > 65_536) return [];
+  let v: unknown;
+  try {
+    v = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(v)) return [];
+  const out: string[] = [];
+  for (const x of v) {
+    if (typeof x !== 'string' || !x || x.length > 256) return [];
+    if (!out.includes(x)) out.push(x);
+    if (out.length === ORDER_MAX) break;
+  }
+  return out;
+}
+export function getTabOrder(): string[] {
+  return parseOrder(read('mx-tab-order'));
+}
+export function setTabOrder(order: string[]) {
+  write('mx-tab-order', JSON.stringify(order.slice(0, ORDER_MAX)));
+}
+export function useTabOrder(): string[] {
+  const raw = useSyncExternalStore(
+    subscribe,
+    () => read('mx-tab-order'),
+    () => null,
+  );
+  return useMemo(() => parseOrder(raw), [raw]);
 }
 
 export function getMotion(): boolean {

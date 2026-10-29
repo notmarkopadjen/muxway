@@ -16,7 +16,9 @@ test('65 the selector jumps to a pane or a window', async ({ page }, info) => {
     `${HOST}/work/1.0`,
   );
   await page.getByTestId('open-palette').click();
-  await page.getByTestId('palette-filter').fill('2 panes');
+  // The window by name: another window may still show a split a spec
+  // before this one killed, until the listing catches up.
+  await page.getByTestId('palette-filter').fill(`${HOST}/work/0 (2 panes`);
   await expect(page.getByTestId('palette-row')).toHaveCount(1);
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('window')).toBeVisible();

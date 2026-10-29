@@ -924,6 +924,16 @@ button.mx-window:focus-visible {
 .mx-tab[data-open] {
   border-color: var(--mx-ink);
 }
+/* A tab on its way along the strip, and the mark where it would land. */
+.mx-tab[data-dragging] {
+  opacity: 0.5;
+}
+.mx-tab[data-drop='before'] {
+  box-shadow: -4px 0 0 0 var(--mx-ink);
+}
+.mx-tab[data-drop='after'] {
+  box-shadow: 4px 0 0 0 var(--mx-ink);
+}
 /* The minimised row: tabs of the tiles taken out, right above the keys. */
 .mx-minimised {
   display: flex;

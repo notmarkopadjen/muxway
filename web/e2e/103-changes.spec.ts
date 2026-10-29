@@ -184,7 +184,9 @@ test('103 a pane outside a repository says so', async ({ page, request }) => {
   // The header's count went with the repository.
   await expect(page.getByTestId('tile-changes')).toHaveCount(0);
   await control(request, '/send', { target: 'work:0.0', text: `cd ${PREVIEW}/docs && clear` });
-  await expect(page.getByTestId('changes-where')).toHaveText('work · main', { timeout: 8000 });
+  // The repository is asked again once the pane's output settles: a read
+  // every two seconds, then git on the host, slow under the full suite.
+  await expect(page.getByTestId('changes-where')).toHaveText('work · main', { timeout: 15_000 });
   await expect(page.getByTestId('tile-changes')).toHaveText('⎇ +6 ~2 −1');
   await page.keyboard.press('g');
   await expect(page.getByTestId('changes-window')).toHaveCount(0, { timeout: 3000 });

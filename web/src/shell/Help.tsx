@@ -26,6 +26,10 @@ const KEYS: [string, string][] = [
     "next / previous pane: the tile, or with one tile open the strip's neighbour, round at the ends (window view: pane)",
   ],
   [
+    '} / {',
+    "move the focused pane's tab one place along the strip (or drag a tab); the order is kept in this browser",
+  ],
+  [
     '1 – 4 / l / x / F / z / w',
     "tiles: focus one, next arrangement, close the pane on its host (asks y / n; elsewhere the tile), fit all, zoom (one pane alone and back; or double-click a tile, its header or tab), the mirror layout; Shift+click a tab to open it beside; drag a header onto a tile's middle to swap, onto its edge to split",
   ],

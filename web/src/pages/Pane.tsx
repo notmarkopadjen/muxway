@@ -26,6 +26,8 @@ import { PaneTitle } from '../components/PaneTitle';
 import { Tabs } from '../components/Tabs';
 import { useToast } from '../components/Toast';
 import { noteChange, noteOwn, useLens } from '../term/lens';
+import { inOrder, move, step } from '../term/order';
+import { setTabOrder, useTabOrder } from '../settings';
 import { Screen } from '../term/Screen';
 import {
   close,
@@ -917,11 +919,19 @@ function Tiles({ addresses }: { addresses: string[] }) {
     () => (all.data ?? []).filter((p) => !minimised.includes(p.address)),
     [all.data, minimised],
   );
+  // The strip in the owner's order; an open address the listing lacks
+  // goes last.
+  const tabOrder = useTabOrder();
+  const stripPanes = useMemo(() => inOrder(shownPanes, tabOrder), [shownPanes, tabOrder]);
   const strip = useMemo(() => {
-    const order = shownPanes.map((p) => p.address);
+    const order = stripPanes.map((p) => p.address);
     for (const a of addresses) if (!order.includes(a)) order.push(a);
     return order;
-  }, [shownPanes, addresses]);
+  }, [stripPanes, addresses]);
+  const reorder = useCallback(
+    (dragged: string, before: string | null) => setTabOrder(move(tabOrder, strip, dragged, before)),
+    [tabOrder, strip],
+  );
   // A tab focuses its tile, or swaps into the focused one; with Shift it
   // opens beside the others instead.
   const onTab = useCallback(
@@ -960,6 +970,9 @@ function Tiles({ addresses }: { addresses: string[] }) {
         const d = ev.key === ']' ? 1 : -1;
         if (several) setFocusedIndex((index + d + n) % n);
         else neighbour(d);
+      } else if (ev.key === '}' || ev.key === '{') {
+        // The focused pane's tab one place along the strip.
+        setTabOrder(step(tabOrder, strip, focused, ev.key === '}' ? 1 : -1));
       } else if (/^[1-4]$/.test(ev.key) && Number(ev.key) <= n) setFocusedIndex(Number(ev.key) - 1);
       else if (ev.key === 'l' && several && (!oneWindow || movable)) {
         touch();
@@ -1238,10 +1251,11 @@ function Tiles({ addresses }: { addresses: string[] }) {
     >
       <InHeader>
         <Tabs
-          panes={shownPanes}
+          panes={stripPanes}
           open={addresses}
           focused={focused}
           onTab={onTab}
+          reorder={reorder}
           onZoom={(a) => {
             const p = (all.data ?? []).find((q) => q.address === a);
             if (p) zoom(p);
