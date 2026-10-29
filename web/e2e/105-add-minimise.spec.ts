@@ -182,3 +182,43 @@ test('105 security: a read-only account has + pane and + session dimmed with the
   await expect(page.getByTestId('tile')).toHaveCount(2);
   expect(made.n).toBe(0);
 });
+
+test('105 + pane beside a pane with neighbours: the open tiles follow their panes by id when tmux renumbers them', async ({
+  page,
+  request,
+}) => {
+  const listing = async () => {
+    const r = await page.request.get('/v1/panes', { headers: { 'X-Muxway-Client': 'web' } });
+    return ((await r.json()) as { panes: { address: string; pane_id: string }[] }).panes;
+  };
+  await signIn(page);
+  await page.goto(`/p/${SHELL0},${RO}`);
+  await expect(page.getByTestId('tile')).toHaveCount(2);
+  await settled(page);
+  const before = await listing();
+  const ids = [SHELL0, RO].map((a) => before.find((p) => p.address === a)!.pane_id);
+  await page.getByTestId('add').click();
+  const [res] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes('/v1/windows/') && r.request().method() === 'POST',
+    ),
+    page.getByTestId('add-split').click(),
+  ]);
+  expect(res.status()).toBe(201);
+  const split = ((await res.json()) as { pane: { address: string; pane_id: string } }).pane;
+  await control(request, '/rename', { what: 'title', target: split.pane_id, name: 'test-pane' });
+  // Three tiles, none named twice: the two that were open are still the
+  // same panes, wherever tmux numbered them now.
+  await expect(page.getByTestId('tile')).toHaveCount(3, { timeout: 8000 });
+  await expect(page.getByText('a pane named twice')).toHaveCount(0);
+  const after = await listing();
+  const open = (await page.getByTestId('pane').getAttribute('data-panes'))!.split(' ');
+  const openIds = open.map((a) => after.find((p) => p.address === a)?.pane_id);
+  expect(openIds).toEqual([...ids, split.pane_id]);
+  await expect(tile(page, split.address)).toHaveAttribute('data-focused', '');
+  await page.goto('/');
+  await control(request, '/kill-pane', { target: split.pane_id });
+  await expect
+    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 8000 })
+    .toBe('100x30');
+});

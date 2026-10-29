@@ -451,7 +451,7 @@ controls sit at the right as icons, the tooltip naming each with its
 key:
 
 ```
-[‹] [✳ Claude · fixing the build][bash][! review][ logs ]      [⤢][⊡][⊞][↺]
+[‹] [✳ Claude · fixing the build][bash][! review][ logs ]      [⤢][⊡][▦][⊞][↺]
 ┌ ✳ Claude · fixing the build · work/0.0 · 98×40 · ⟳ working              × ┐
 ```
 
@@ -460,6 +460,7 @@ key:
 | `+` | one more pane: split here, or a new session on a host that starts them (as in the pane view) | `+` |
 | `⤢` | fit: the host window follows the box (selected when on) | `f` |
 | `⊡` | the focused pane alone, in the pane view with everything it has | `z`, `Enter`, double-click |
+| `▦` | the next arrangement of the window's panes, on the host: row, column, then main-left, main-top and grid by count, over the shown panes, the hidden ones kept in a thin stack at the right; off while any pane of the window is read-only, since the host's panes move only with the write grant on all of them, and above four panes | `l` |
 | `⊞` | equal shares in every split (with fit on, the host follows: the way to put a squeezed window right) | `=` |
 | `↺` | the host's own layout again | `0` |
 

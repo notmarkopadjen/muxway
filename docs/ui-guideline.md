@@ -216,7 +216,7 @@ A new action gets a row here before it gets a key anywhere.
 
 | Feature | Why only here |
 |---|---|
-| window view (`/w/…`, "mirror layout") | the host's own arrangement needs the room of a screen; the list's window buttons and `w` open it; zoom out from a single tile goes to the window's tiles instead, so the one pane view keeps its controls. Its row is the pane view's (§1.4): the brand, a tab per pane of the window, and icons at the right: `⤢` fit, `⊡` the pane alone in the pane view (zoom in; `z`, `Enter`, a double-click on the cell or its header), `⊞` equal shares (on the host too with fit on), `↺` the host's layout; a hidden pane's tab stays, dimmed, and brings it back |
+| window view (`/w/…`, "mirror layout") | the host's own arrangement needs the room of a screen; the list's window buttons and `w` open it; zoom out from a single tile goes to the window's tiles instead, so the one pane view keeps its controls. Its row is the pane view's (§1.4): the brand, a tab per pane of the window, and icons at the right: `⤢` fit, `⊡` the pane alone in the pane view (zoom in; `z`, `Enter`, a double-click on the cell or its header), `▦` the next arrangement of the window's panes on the host (`l`; the pane view's presets by count, the hidden panes kept in a thin stack at the right; off while any pane is read-only or above four panes), `⊞` equal shares (on the host too with fit on), `↺` the host's layout; a hidden pane's tab stays, dimmed, and brings it back |
 | selector (`p`) | a keyboard is at hand |
 | sign-in with an identity provider | a browser has the flow |
 | browser notifications, tab title flash | the browser's own channels |

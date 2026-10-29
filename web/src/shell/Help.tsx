@@ -39,7 +39,7 @@ const KEYS: [string, string][] = [
   ],
   [
     'x / z / 0 / = / + / -',
-    'window view: hide, this pane alone (or Enter, double-click), host layout, equal shares, bigger, smaller',
+    "window view: hide, this pane alone (or Enter, double-click), host layout, equal shares, bigger, smaller; l (▦): the next arrangement of the window's panes, on the host",
   ],
   [
     'i',

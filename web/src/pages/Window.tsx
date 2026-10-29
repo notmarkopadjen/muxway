@@ -2,7 +2,7 @@ import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { keys, useHosts, useInput, useWindow } from '../api/queries';
+import { keys, resizePane, useHosts, useInput, useWindow } from '../api/queries';
 import type { Mouse, PaneContent } from '../api/types';
 import { LensMark } from '../components/Lens';
 import { Divider } from '../components/Divider';
@@ -26,6 +26,14 @@ import { AddMenu } from '../components/AddMenu';
 import { Closing } from '../components/Closing';
 import { FileWindow, type Shown } from '../components/FileWindow';
 import { useFit } from '../term/useFit';
+import {
+  next as nextPreset,
+  options as presetOptions,
+  tilesLayout,
+  tree as presetTree,
+  type Layout as Preset,
+  type TileNode,
+} from '../term/tiles';
 import { screenWords } from '../term/complete';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
@@ -304,6 +312,47 @@ export function WindowPage() {
   const { refit } = useFit(fitVia, fitting, area, 'window', sent, false, {
     slack,
   });
+  // The next preset for the window's panes, as the pane view cycles its
+  // tiles, sent to the host as the window's layout: the shown panes laid
+  // out the preset way, the hidden ones kept in a thin stack at the
+  // right. Moving the host's panes needs the write grant on all of them;
+  // the hub says so if not.
+  const [preset, setPreset] = useState<Preset>('custom');
+  const readOnlyPane = [...panes.values()].some((p) => p.pane.mode !== 'write');
+  const arrangeable = !!fitVia && !readOnlyPane && visible.length >= 2 && visible.length <= 4;
+  const arrange = useCallback(() => {
+    if (!arrangeable) return;
+    const p = nextPreset(preset, visible.length);
+    const hidden = [...panes.keys()].filter((id) => !visible.includes(id));
+    let node: TileNode = presetTree(visible.length, p);
+    const weights: Record<string, number[]> = {};
+    if (hidden.length) {
+      const stack = hidden.map((_, i) => visible.length + i);
+      node = {
+        kind: 'h',
+        key: 'shown',
+        children: [node, { kind: 'v', key: 'hidden', children: stack }],
+      };
+      weights.shown = [0.85, 0.15];
+    }
+    setPreset(p);
+    const layout = tilesLayout(node, weights, [...visible, ...hidden]);
+    // The window takes one resize a second: right after a fit or a
+    // release the layout waits its turn.
+    const send = (tries: number) =>
+      resizePane(fitVia, { scope: 'window', layout })
+        .then(() => qc.invalidateQueries({ queryKey: keys.window(host, session, win) }))
+        .catch((err) => {
+          if (err instanceof ApiError && err.status === 429 && tries > 1)
+            window.setTimeout(() => send(tries - 1), 1100);
+          else
+            toast.push({
+              kind: 'refused',
+              title: err instanceof ApiError ? err.code : 'hub unreachable',
+            });
+        });
+    void send(3);
+  }, [arrangeable, preset, visible, panes, fitVia, qc, host, session, win, toast]);
   useEffect(() => {
     setHeading({ pane: focusedPane, place: `window ${host}/${session}/${win}` });
     return () => setHeading({ place: '' });
@@ -352,6 +401,7 @@ export function WindowPage() {
       else if ((ev.key === 'z' || ev.key === 'Enter') && focus) open(focus);
       else if (ev.key === 'x' && focus) setArr((a) => ({ ...a, hidden: [...a.hidden, focus] }));
       else if (ev.key === '0') setArr(() => fresh(layout));
+      else if (ev.key === 'l' && arrangeable) arrange();
       else if (ev.key === '=' && tree) setArr((a) => equalised(a, tree));
       else if (ev.key === '+' && focus) {
         setArr((a) => ({
@@ -472,6 +522,18 @@ export function WindowPage() {
                   },
                 ]
               : []),
+            {
+              id: 'arrange',
+              glyph: '▦',
+              label: 'arrange',
+              onClick: arrange,
+              disabled: !arrangeable,
+              title: readOnlyPane
+                ? 'the panes of this window move only when every one is writable'
+                : visible.length > 4
+                  ? 'arrangements are for up to four panes'
+                  : `next arrangement of the window's panes, on the host (l): ${presetOptions(visible.length).join(', ')}`,
+            },
             {
               id: 'equalise',
               glyph: '⊞',

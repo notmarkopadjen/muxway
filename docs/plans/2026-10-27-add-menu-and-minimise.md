@@ -194,3 +194,9 @@ screenshots `105-add-menu`, `105-add-menu-full` and `105-minimised`
 (the first and last are `web-add-menu.png` and `web-minimised.png` in
 the feature page). The full suite (`make e2e`) was not run for this
 commit; it runs with the next one, every hub, and is recorded there.
+
+Follow-up on 2026-10-29, from the owner: `+ pane` beside a pane with
+neighbours left the view saying *a pane named twice*, since tmux
+numbers panes by place and the new pane shifted its neighbours'
+addresses while the route kept the old ones. The open tiles now follow
+their panes by id through a fresh listing after the split (spec 105).
