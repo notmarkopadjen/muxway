@@ -185,3 +185,50 @@ scanlines above the window) and 104 (Ctrl+V, Shift+Insert) added; 80
 changed. Android `LinksTest` and `CodeTest` extended. Run
 `20261030-090640-1b0a7db`: 159 passed, recorded as
 [#166](https://github.com/notmarkopadjen/muxway/issues/166).
+
+---
+
+## Part two: nothing under a root out of reach
+
+> The owner, the same day, after a systemd file outside the roots and a
+> `.github/workflows` file were both refused: "when it's unable to
+> preview, should be able to download at least. This way I cannot do
+> anything."
+
+**Design.** Under a root, every regular file of at most 8 MiB is served:
+a shown type as itself, anything else as `application/octet-stream`, a
+download. The client underlines any path with a slash whose last
+component has an extension (one to eight word characters) that is not a
+secret's, or a name the host shows without one. Hidden components stay
+refused by default; `--preview-hidden` lets them through (`.github`,
+`.vscode`, `.claude`), but a hidden directory that keeps secrets the
+usual way (`.git .ssh .gnupg .aws .azure .gcloud .kube .docker .config
+.password-store .terraform .vault`) is never entered, and a secret by
+name is never served from anywhere: `.env` and `.env.*`, `.netrc`,
+`.npmrc`, `.yarnrc`, `.pypirc`, `.htpasswd`, `.htaccess`, `.pgpass`,
+`.my.cnf`, `.git-credentials`, `.credentials*`, `.secret*`,
+`credentials`, `credentials.*`, `secrets.*`, `id_rsa` `id_dsa`
+`id_ecdsa` `id_ed25519`, and the extensions `env pem key crt cer der
+p12 pfx jks keystore kdbx ovpn asc gpg pgp tfstate`. A path outside the
+roots is still refused: the roots are the boundary, and the window's
+one sentence now names the four reasons a host refuses, so the owner
+knows to add a root or the flag.
+
+**Security.** This turns the type list from a whitelist into "anything
+but a secret" under the roots, by the owner's explicit decision. A
+writer can read every such file through the shell, so reach is
+unchanged; the roots, the symlink resolution and the one refusal code
+stand; hidden directories need a second explicit decision at start.
+The deny list is a list, so a secret under a name it does not know is
+served, as `cat` would serve it. Default behaviour without the flag
+differs from before in one way only: a file of an unlisted type under a
+root downloads instead of answering 404.
+
+**Tests.** Unit: `a.exe`, `Makefile.am` and `notes.db` as
+octet-stream; `x.env`, `id.crt`, `key.pem`, `id_rsa`, `.env.local`,
+`credentials.json`, `.github/…` and `.ssh/…` refused; with hidden
+allowed, `.github/workflows/ci.yml` served and the secrets still
+refused. End-to-end: 143 gains `a.exe`; the security list gains
+`.github/ci.yml`; new 173 runs the agent with `--preview-hidden`. The
+browser's matcher: any extension links, a secret's never. Spec 83's
+refusal text.

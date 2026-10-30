@@ -14,21 +14,26 @@ On the host, once, naming the directories writers may read under:
 
 ```sh
 muxway agent run --preview ~/work --preview ~/notes
+muxway agent run --preview ~/work --preview-hidden   # .github, .vscode and such too
 ```
 
 In the browser, on a writable pane of that host, a run of text that
 looks like a path, with a slash in it or from `~`, and ends in a type
-the host shows, by extension or by name (the list is in [the
-protocol](../protocol/v1.md#get-v1panesaddresspreviewpath): every
+the host serves: any extension but a secret's (`.pem`, `.key`, `.env`,
+…), or a name it shows without one (`Makefile`, `Dockerfile`,
+`LICENSE`); the types shown are in [the
+protocol](../protocol/v1.md#get-v1panesaddresspreviewpath), every
 source, script, markup, data, config and template type a project holds,
-`Makefile`, `Dockerfile`, `LICENSE` and such without one, images, PDF,
-and archives and office files as a download only)
+images and PDF, and anything else under a root is a download,
 is underlined. A click opens the window: the bar has
 the path, the size, for a text its line count, `⤓` and `×`; `Escape`,
 `×` or a click outside closes it. A relative path is taken from the
 directory the pane's shell is in, `~` from the agent's home. What the
-host will not serve, a hidden file, a path outside the roots, a missing
-file, says `the host does not preview this file`.
+host will not serve, a path outside the roots, a hidden file on an
+agent without `--preview-hidden`, a secret, a missing file, says so in
+one sentence, naming those four reasons, since the host gives one code
+for all of them (the owner, who reads it most, adds a root or the flag;
+the log on the host says which it was).
 
 A Markdown file opens **rendered**: headings, lists, quotes, tables,
 rules, emphasis, inline code, fenced code with its colours, web links
@@ -100,13 +105,19 @@ from panes to files, by the owner's explicit decision (2026-10-26):
   directory with every symlink followed, on it and on the roots, and the
   result must lie under a root; `..` and absolute paths are fine because
   the check is on the result. Any component starting with a dot below
-  the root is refused, so `.env`, `.git`, `.ssh` are never served. The
-  type list keeps keys, certificates, executables and databases out;
-  every text type, scripts and markup included, is served as plain text
-  with `nosniff`, so HTML, SVG or a Razor page never render as a page,
-  and the browser shows the file from a blob of its own (the policy
-  allows `img-src blob:` and `frame-src blob:`). An archive or an
-  office file is `application/octet-stream`, shown only as its download.
+  the root is refused unless the agent runs with `--preview-hidden`,
+  and even then `.git`, `.ssh`, `.config`, `.aws`, `.kube`, `.docker`,
+  `.gnupg` and such are never entered; a secret by name (`.env`,
+  `.netrc`, `credentials`, `id_rsa`, a `.pem`, a `.key`, …) is never
+  served from anywhere. Every text type, scripts and markup included,
+  is served as plain text with `nosniff`, so HTML, SVG or a Razor page
+  never render as a page, and the browser shows the file from a blob of
+  its own (the policy allows `img-src blob:` and `frame-src blob:`).
+  Anything else under a root, an archive, an executable, a database, is
+  `application/octet-stream`, shown only as its download: under a root
+  nothing is out of reach but a secret, by the owner's decision of
+  2026-10-30 ("when it's unable to preview, should be able to download
+  at least"), since a writer can read it through the shell anyway.
 - **One refusal** (`404 not_found`) for everything the host will not
   serve, so the endpoint cannot be used to map the host. Two a second
   per principal.

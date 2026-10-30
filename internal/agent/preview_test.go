@@ -29,6 +29,14 @@ func TestResolvePreview(t *testing.T) {
 	write(filepath.Join(root, "docs", "a.diff"), "--- a\n+++ b\n")
 	write(filepath.Join(root, "docs", "a.zip"), "PK")
 	write(filepath.Join(root, "docs", "README"), "read me")
+	os.MkdirAll(filepath.Join(root, ".github", "workflows"), 0o700)
+	os.MkdirAll(filepath.Join(root, ".ssh"), 0o700)
+	write(filepath.Join(root, ".github", "workflows", "ci.yml"), "on: push\n")
+	write(filepath.Join(root, ".ssh", "id_ed25519"), "secret")
+	write(filepath.Join(root, "docs", "id_rsa"), "secret")
+	write(filepath.Join(root, "docs", ".env.local"), "SECRET=1")
+	write(filepath.Join(root, "docs", "credentials.json"), "{}")
+	write(filepath.Join(root, "docs", "notes.db"), "sqlite")
 	write(filepath.Join(root, ".env"), "SECRET=1")
 	write(filepath.Join(root, ".git", "config"), "[core]")
 	write(filepath.Join(other, "o.txt"), "outside")
@@ -52,32 +60,45 @@ func TestResolvePreview(t *testing.T) {
 		"README":                               "text/plain; charset=utf-8",
 		"../Makefile":                          "text/plain; charset=utf-8",
 		"a.zip":                                "application/octet-stream",
+		"../a.exe":                             "application/octet-stream",
+		"../Makefile.am":                       "application/octet-stream",
+		"notes.db":                             "application/octet-stream",
 	}
 	for path, typ := range good {
-		file, got, err := resolvePreview(roots, cwd, home, path)
+		file, got, err := resolvePreview(roots, false, cwd, home, path)
 		if err != nil || got != typ || !strings.HasPrefix(file, base) {
 			t.Errorf("%s: %v %q %q", path, err, got, file)
 		}
 	}
 	bad := []string{
 		"", "../../elsewhere/o.txt", filepath.Join(other, "o.txt"), "../link.txt", "../dir/o.txt",
-		"../.env", "../.git/config", "../key.pem", "../id.crt", "../a.exe", "../x.env", "../Makefile.am", "plans", "..", "nothere.md",
+		"../.env", "../.git/config", "../key.pem", "../id.crt", "../x.env", "plans", "..", "nothere.md",
+		"../.github/workflows/ci.yml", "../.ssh/id_ed25519", "id_rsa", ".env.local", "credentials.json",
 		"plans/a.md\n", strings.Repeat("a/", 600) + "a.md", "~/../elsewhere/o.txt", "/etc/passwd",
 	}
 	for _, path := range bad {
-		if file, _, err := resolvePreview(roots, cwd, home, path); err == nil {
+		if file, _, err := resolvePreview(roots, false, cwd, home, path); err == nil {
 			t.Errorf("%q served as %s", path, file)
 		}
 	}
-	if _, _, err := resolvePreview(roots, "", home, "plans/a.md"); err == nil {
+	// With hidden allowed, .github opens; the secrets stay shut.
+	if _, got, err := resolvePreview(roots, true, cwd, home, "../.github/workflows/ci.yml"); err != nil || got != "text/plain; charset=utf-8" {
+		t.Errorf("hidden allowed, ci.yml: %v %q", err, got)
+	}
+	for _, path := range []string{"../.ssh/id_ed25519", "../.git/config", "../.env", ".env.local", "credentials.json", "../key.pem"} {
+		if file, _, err := resolvePreview(roots, true, cwd, home, path); err == nil {
+			t.Errorf("hidden allowed, %q served as %s", path, file)
+		}
+	}
+	if _, _, err := resolvePreview(roots, false, "", home, "plans/a.md"); err == nil {
 		t.Error("no cwd, served")
 	}
-	if _, _, err := resolvePreview(nil, cwd, home, "plans/a.md"); err == nil {
+	if _, _, err := resolvePreview(nil, false, cwd, home, "plans/a.md"); err == nil {
 		t.Error("no roots, served")
 	}
 	big := filepath.Join(root, "docs", "big.log")
 	os.WriteFile(big, make([]byte, 8<<20+1), 0o600)
-	if _, _, err := resolvePreview(roots, cwd, home, "big.log"); err == nil {
+	if _, _, err := resolvePreview(roots, false, cwd, home, "big.log"); err == nil {
 		t.Error("9 MiB served")
 	}
 }

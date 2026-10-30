@@ -46,7 +46,7 @@ func repoRoot(roots []string, cwd string) (string, error) {
 		}
 		dir = parent
 	}
-	if _, ok := underRoot(roots, dir); ok {
+	if _, ok := underRoot(roots, dir, false); ok {
 		return dir, nil
 	}
 	for _, root := range roots {

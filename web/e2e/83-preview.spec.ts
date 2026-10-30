@@ -113,8 +113,8 @@ test('83 security: what the host refuses says so; a click sends no input; reader
   await expect(screen.locator('a.mx-path-link[data-path="../.env"]')).toHaveCount(0);
   for (const p of ['../.secrets.json', '../../nothere.md']) {
     await screen.locator(`a.mx-path-link[data-path="${p}"]`).last().click();
-    await expect(page.getByTestId('picture-error')).toHaveText(
-      'the host does not preview this file',
+    await expect(page.getByTestId('picture-error')).toContainText(
+      'the host does not serve this file',
     );
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('picture')).toHaveCount(0, { timeout: 3000 });

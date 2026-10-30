@@ -83,6 +83,7 @@ muxway agent run                       # the default tmux server of this user
 muxway agent run --tmux-name work      # a server started with tmux -L work
 muxway agent run --inbox default --allow-sessions
 muxway agent run --preview ~/work --preview ~/notes   # files under these, previewed by writers
+muxway agent run --preview ~/work --preview-hidden    # .github and such too; never .git, .ssh, .env
 ```
 
 Run it as the user who owns the tmux server, as a service (a systemd user

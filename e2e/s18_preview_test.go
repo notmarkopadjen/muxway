@@ -34,6 +34,8 @@ func previewEnv(t *testing.T, roots ...string) (*env, string, string) {
 	write(filepath.Join(root, "key.pem"), "secret")
 	write(filepath.Join(root, "id.crt"), "cert")
 	write(filepath.Join(root, "a.exe"), "MZ")
+	os.MkdirAll(filepath.Join(root, ".github"), 0o700)
+	write(filepath.Join(root, ".github", "ci.yml"), "on: push\n")
 	write(filepath.Join(root, "Makefile"), "all:\n")
 	write(filepath.Join(root, "docs", "tx.py"), "x = 1\n")
 	write(filepath.Join(root, "docs", "a.diff"), "--- a\n+++ b\n")
@@ -47,6 +49,10 @@ func previewEnv(t *testing.T, roots ...string) (*env, string, string) {
 	t.Setenv("HOME", home)
 	var args []string
 	for _, r := range roots {
+		if strings.HasPrefix(r, "--") {
+			args = append(args, r)
+			continue
+		}
 		args = append(args, "--preview", strings.NewReplacer("ROOT", root, "HOME", home).Replace(r))
 	}
 	e := newEnv(t)
@@ -94,7 +100,7 @@ func TestSec141_OnlyAFileUnderARootIsServed(t *testing.T) {
 	full := e.token("full", []string{host + "/*"}, []string{host + "/*"})
 	for _, path := range []string{
 		"../../elsewhere/o.txt", "/etc/passwd", "../link.txt", "../.env", "../.git/config",
-		"../key.pem", "../id.crt", "../a.exe", "../Makefile.am", "plans", "..", "nothere.md", "~/notes/todo.txt", filepath.Join(root, "..", "elsewhere", "o.txt"),
+		"../key.pem", "../id.crt", "../.github/ci.yml", "plans", "..", "nothere.md", "~/notes/todo.txt", filepath.Join(root, "..", "elsewhere", "o.txt"),
 	} {
 		r := e.preview(full, shell0, path)
 		expect(t, r, http.StatusNotFound, path)
@@ -154,6 +160,7 @@ func TestFlow143_PathsResolveFromThePaneAndHome(t *testing.T) {
 		{"a.diff", "text/plain; charset=utf-8", "--- a\n+++ b\n"},
 		{"../Makefile", "text/plain; charset=utf-8", "all:\n"},
 		{"a.zip", "application/octet-stream", "PK"},
+		{"../a.exe", "application/octet-stream", "MZ"},
 	} {
 		r := e.preview(full, shell0, c.path)
 		expect(t, r, http.StatusOK, c.path)
@@ -161,5 +168,20 @@ func TestFlow143_PathsResolveFromThePaneAndHome(t *testing.T) {
 			t.Fatalf("%s: %q %q", c.path, r.header.Get("Content-Type"), r.body)
 		}
 		time.Sleep(520 * time.Millisecond)
+	}
+}
+
+// 173
+func TestFlow173_HiddenFilesNeedTheFlagAndSecretsStayShut(t *testing.T) {
+	e, _, _ := previewEnv(t, "ROOT", "--preview-hidden")
+	full := e.token("full", []string{host + "/*"}, []string{host + "/*"})
+	r := e.preview(full, shell0, "../.github/ci.yml")
+	expect(t, r, http.StatusOK, "a hidden directory with the flag")
+	if r.body != "on: push\n" || r.header.Get("Content-Type") != "text/plain; charset=utf-8" {
+		t.Fatalf("ci.yml: %q %q", r.header.Get("Content-Type"), r.body)
+	}
+	for _, path := range []string{"../.env", "../.git/config", "../key.pem", "../id.crt"} {
+		time.Sleep(520 * time.Millisecond)
+		expect(t, e.preview(full, shell0, path), http.StatusNotFound, path)
 	}
 }

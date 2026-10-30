@@ -17,8 +17,7 @@ import (
 
 // What a window shows, by extension (the list is the protocol's, in
 // docs/protocol/v1.md): every text as plain text, images and PDF as
-// themselves, archives and office files as a download. Keys, certificates
-// and executables are left out on purpose.
+// themselves; anything else under a root is a download.
 const textTypes = `txt md markdown rst adoc org tex bib diff patch
 csv tsv json jsonl ndjson json5 jsonc geojson ipynb log
 yaml yml toml ini cfg conf properties props lock
@@ -64,26 +63,58 @@ var previewNames = func() map[string]bool {
 	return m
 }()
 
-// previewType is the type a file is served as, by its extension or, with
-// none, by its name; "" when it is not shown.
+// Never served, under any root: what carries a secret the usual way, by
+// extension, by file name, and by the hidden directory it lives in.
+const deniedExts = `env pem key crt cer der p12 pfx jks keystore kdbx ovpn asc gpg pgp tfstate`
+const deniedNames = `.env .netrc .npmrc .yarnrc .pypirc .htpasswd .htaccess .pgpass .my.cnf .git-credentials credentials id_rsa id_dsa id_ecdsa id_ed25519`
+const deniedDirs = `.git .ssh .gnupg .aws .azure .gcloud .kube .docker .config .password-store .terraform .vault`
+
+var deniedExt, deniedName, deniedDir = set(deniedExts), set(deniedNames), set(deniedDirs)
+
+func set(words string) map[string]bool {
+	m := map[string]bool{}
+	for _, w := range strings.Fields(words) {
+		m[w] = true
+	}
+	return m
+}
+
+// secretName says whether a file is kept out by its name alone.
+func secretName(base string) bool {
+	l := strings.ToLower(base)
+	if deniedName[l] || deniedExt[strings.TrimPrefix(filepath.Ext(l), ".")] {
+		return true
+	}
+	for _, p := range []string{".env.", ".credentials", ".secret", "credentials.", "secrets."} {
+		if strings.HasPrefix(l, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// previewType is the type a file is served as: a shown type by its
+// extension or, with none, by its name; anything else as a download.
 func previewType(file string) string {
 	base := filepath.Base(file)
 	if ext := filepath.Ext(base); ext != "" {
-		return previewTypes[strings.ToLower(ext[1:])]
-	}
-	if previewNames[strings.ToLower(base)] {
+		if typ := previewTypes[strings.ToLower(ext[1:])]; typ != "" {
+			return typ
+		}
+	} else if previewNames[strings.ToLower(base)] {
 		return plainText
 	}
-	return ""
+	return "application/octet-stream"
 }
 
 var errNoPreview = errors.New("not previewed")
 
 // resolvePreview turns a path as printed into the file it names, from the
 // pane's directory, and says whether that file may be served: under one
-// of the roots once every symlink is followed, no dot component below the
-// root, a regular file of a type a window shows, at most wire.MaxFile.
-func resolvePreview(roots []string, cwd, home, path string) (string, string, error) {
+// of the roots once every symlink is followed, no hidden component below
+// the root unless the owner allows them, never a secret by name, a
+// regular file of at most wire.MaxFile.
+func resolvePreview(roots []string, hidden bool, cwd, home, path string) (string, string, error) {
 	if !wire.ValidPath(path) || cwd == "" {
 		return "", "", errNoPreview
 	}
@@ -100,13 +131,10 @@ func resolvePreview(roots []string, cwd, home, path string) (string, string, err
 	if err != nil {
 		return "", "", errNoPreview
 	}
-	if _, ok := underRoot(roots, file); !ok {
+	if _, ok := underRoot(roots, file, hidden); !ok || secretName(filepath.Base(file)) {
 		return "", "", errNoPreview
 	}
 	typ := previewType(file)
-	if typ == "" {
-		return "", "", errNoPreview
-	}
 	info, err := os.Stat(file)
 	if err != nil || !info.Mode().IsRegular() || info.Size() > wire.MaxFile {
 		return "", "", errNoPreview
@@ -115,9 +143,10 @@ func resolvePreview(roots []string, cwd, home, path string) (string, string, err
 }
 
 // underRoot says whether a resolved path lies below one of the roots, and
-// answers its path from there: not the root itself, and with no dot
-// component, so nothing hidden is ever shown.
-func underRoot(roots []string, file string) (string, bool) {
+// answers its path from there: not the root itself, and with no hidden
+// component unless hidden is allowed; a hidden directory that keeps
+// secrets the usual way (.git, .ssh, .config, …) is never entered.
+func underRoot(roots []string, file string, hidden bool) (string, bool) {
 	for _, root := range roots {
 		real, err := filepath.EvalSymlinks(root)
 		if err != nil {
@@ -128,7 +157,7 @@ func underRoot(roots []string, file string) (string, bool) {
 			continue
 		}
 		for _, part := range strings.Split(rel, string(filepath.Separator)) {
-			if strings.HasPrefix(part, ".") {
+			if strings.HasPrefix(part, ".") && (!hidden || deniedDir[strings.ToLower(part)]) {
 				return "", false
 			}
 		}
@@ -153,7 +182,7 @@ func (a *Agent) preview(ctx context.Context, req wire.Request) (string, string, 
 		return "", "", nil, wire.ErrTmux
 	}
 	home, _ := os.UserHomeDir()
-	file, typ, err := resolvePreview(a.cfg.Preview, cwd, home, req.Path)
+	file, typ, err := resolvePreview(a.cfg.Preview, a.cfg.PreviewHidden, cwd, home, req.Path)
 	if err != nil {
 		return "", "", nil, wire.ErrNoFile
 	}

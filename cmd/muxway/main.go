@@ -419,6 +419,7 @@ func runAgent(cmd string, args []string) error {
 			preview = append(preview, abs)
 			return nil
 		})
+		previewHidden := fs.Bool("preview-hidden", false, "serve hidden files and directories under the preview roots too (.github, .vscode); never .git, .ssh, .config, .env and the like")
 		if err := fs.Parse(args); err != nil {
 			return err
 		}
@@ -439,6 +440,7 @@ func runAgent(cmd string, args []string) error {
 			cfg.InboxMaxFiles = *inboxMax
 		}
 		cfg.Preview = preview
+		cfg.PreviewHidden = *previewHidden
 		a, err := agent.New(cfg, key, tmux.Server{Socket: *socket, Name: *name}, logger())
 		if err != nil {
 			return err

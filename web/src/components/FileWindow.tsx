@@ -271,7 +271,7 @@ export function FileWindow({
               {got.error === 'not_found'
                 ? 'name' in shown
                   ? 'gone from the host'
-                  : 'the host does not preview this file'
+                  : "the host does not serve this file: outside its agent's --preview directories, hidden (--preview-hidden), a secret, or gone"
                 : got.error}
             </span>
           ) : got.kind === 'image' ? (

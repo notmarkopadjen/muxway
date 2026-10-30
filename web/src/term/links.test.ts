@@ -143,21 +143,22 @@ describe('findPaths', () => {
       '~/dl/report.xlsx',
       'a/b.PY',
     ]);
-    expect(findPaths('see src/Makefile.am, Makefile and bin/a.exe')).toEqual([]);
+    // Anything else under a root is a download: any extension links.
+    expect(
+      findPaths('see src/Makefile.am, Makefile, bin/a.exe and out/x.md.bak').map((p) => p[2]),
+    ).toEqual(['src/Makefile.am', 'bin/a.exe', 'out/x.md.bak']);
   });
-  it('leaves bare names, other extensions and the insides of words', () => {
+  it('leaves bare names, secrets and the insides of words', () => {
     for (const s of [
       'README.md',
       'notes.txt in the dir',
-      'docs/plans/x.md.bak',
-      'bin/run.exe',
       'keys/agent.key',
       'certs/host.crt',
       'config/x.env',
-      'src/Makefile.am',
-      'a/b.mdx',
-      'docs/plans/x.md5',
+      'a/.env',
+      'infra/prod.tfstate',
       'x/y.md-',
+      '/usr/local',
     ])
       expect(findPaths(s), s).toEqual([]);
   });

@@ -46,8 +46,10 @@ type Config struct {
 	// Inbox is where files clients send are written; empty, none are taken.
 	Inbox         string `json:"-"`
 	InboxMaxFiles int    `json:"-"`
-	// Preview holds the directories under which a writer may read files.
-	Preview []string `json:"-"`
+	// Preview holds the directories under which a writer may read files;
+	// PreviewHidden lets hidden files and directories under them be read too.
+	Preview       []string `json:"-"`
+	PreviewHidden bool     `json:"-"`
 }
 
 func configPath(dir string) string { return filepath.Join(dir, "agent.json") }
@@ -203,7 +205,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 	// Said once, so the owner sees what writers may read, with this process's rights.
 	if len(a.cfg.Preview) > 0 {
-		a.log.Info("preview roots, read as this user; git status and diff run for repositories under them", "roots", a.cfg.Preview)
+		a.log.Info("preview roots, read as this user; git status and diff run for repositories under them", "roots", a.cfg.Preview, "hidden", a.cfg.PreviewHidden)
 	}
 	if a.cfg.Dir != "" {
 		ln, err := a.listenNotify()

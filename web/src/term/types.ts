@@ -1,7 +1,8 @@
-// The files a host previews, by extension or by name: the protocol's list
-// (docs/protocol/v1.md), the one the agent applies. The matcher underlines
-// a path that ends in one of them; the inbox sends any text of the list as
-// plain text.
+// The files a host shows, by extension or by name: the protocol's list
+// (docs/protocol/v1.md), the one the agent applies; anything else under a
+// root is a download, but the secrets named here, which the host never
+// serves and the matcher never underlines. The inbox sends any text of the
+// list as plain text.
 
 export const TEXT_EXTS = `txt md markdown rst adoc org tex bib diff patch
 csv tsv json jsonl ndjson json5 jsonc geojson ipynb log
@@ -24,6 +25,9 @@ export const TEXT_NAMES =
 license licence notice readme changelog changes authors contributors copying todo install version codeowners`.split(
     /\s+/,
   );
+
+export const DENIED_EXTS =
+  `env pem key crt cer der p12 pfx jks keystore kdbx ovpn asc gpg pgp tfstate`.split(/\s+/);
 
 export const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif'];
 export const OTHER_EXTS = [
@@ -60,7 +64,7 @@ export function isTextName(name: string): boolean {
 
 const alternation = (list: string[]) => [...list].sort((a, b) => b.length - a.length).join('|');
 
-// The alternations of a previewable path's end, for a matcher: the
-// extensions and the names without one. Case does not matter.
-export const EXT_ALT = alternation([...TEXT_EXTS, ...IMAGE_EXTS, ...OTHER_EXTS]);
+// The alternations for a matcher: the extensions a host keeps out, and the
+// names it shows without one. Case does not matter.
+export const DENIED_ALT = alternation(DENIED_EXTS);
 export const NAME_ALT = alternation(TEXT_NAMES);

@@ -1,7 +1,7 @@
 // Finds the web addresses in a line of plain text so the screen can make
 // them links. Only http and https: whatever else a pane prints is text.
 
-import { EXT_ALT, NAME_ALT } from './types';
+import { DENIED_ALT, NAME_ALT } from './types';
 
 export type Link = [start: number, end: number, href: string];
 
@@ -53,11 +53,11 @@ export function findFiles(line: string): FileLink[] {
   return out;
 }
 
-// A path a program printed, of a file a window can show: a run of path
-// characters with a slash in it, or from ~, ending in one of the
-// extensions the host previews, or in a name it knows without one. Where
-// it leads is the host's to say.
-const ext = `\\.(?:${EXT_ALT})(?!\\.?[\\w/-])`;
+// A path a program printed, of a file the host serves: a run of path
+// characters with a slash in it, or from ~, ending in an extension that
+// is not a secret's, or in a name the host shows without one. Where it
+// leads is the host's to say.
+const ext = `\\.(?!(?:${DENIED_ALT})(?!\\.?[\\w/-]))[a-z0-9_]{1,8}(?!\\.?[\\w/-])`;
 const name = `(?:${NAME_ALT})(?![\\w./-])`;
 const path = new RegExp(
   `(?<![\\w./~-])(?:` +
