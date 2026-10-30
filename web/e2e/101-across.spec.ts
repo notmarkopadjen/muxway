@@ -92,12 +92,12 @@ test('101 the strip inside a tile edge and e / E lay it across the whole view', 
   await expect(tile(SHELL0).getByTestId('edge-right')).toHaveCount(0);
   await expect(tile(SHELL0).getByTestId('edge-top')).toHaveCount(1);
   // E on the focused tile (SHELL0) lays it down the whole height instead.
+  // The move is drawn: the tiles take their places a frame later.
   await page.keyboard.press('E');
-  const tall = await box(tile(SHELL0));
-  expect(tall.height).toBeGreaterThan(area.height - 12);
-  expect(tall.width).toBeLessThan(area.width / 2 + 12);
+  await expect.poll(async () => (await box(tile(SHELL0))).height).toBeGreaterThan(area.height - 12);
+  expect((await box(tile(SHELL0))).width).toBeLessThan(area.width / 2 + 12);
   // e brings it across again.
   await page.keyboard.press('e');
-  expect((await box(tile(SHELL0))).width).toBeGreaterThan(area.width - 12);
+  await expect.poll(async () => (await box(tile(SHELL0))).width).toBeGreaterThan(area.width - 12);
   await leave(page, request);
 });

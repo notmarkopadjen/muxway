@@ -26,6 +26,7 @@ import { AddMenu } from '../components/AddMenu';
 import { Closing } from '../components/Closing';
 import { FileWindow, type Shown } from '../components/FileWindow';
 import { useFit } from '../term/useFit';
+import { drawn, nameFor, useMoving } from '../term/drawn';
 import {
   next as nextPreset,
   options as presetOptions,
@@ -104,6 +105,7 @@ function Tree(props: TreeProps) {
   const { onFile, onPath, onCopied, onPrompt } = props;
   const box = useRef<HTMLDivElement>(null);
   const lens = useLens();
+  const moving = useMoving();
   if (node.kind === 'pane') {
     if (arr.hidden.includes(node.id)) return null;
     const pc = panes.get(node.id);
@@ -124,6 +126,8 @@ function Tree(props: TreeProps) {
         data-pane={node.id}
         data-state={state}
         data-focused={focused === node.id ? '' : undefined}
+        data-moving={moving.on ? '' : undefined}
+        style={moving.on ? { viewTransitionName: nameFor(node.id) } : undefined}
         onDoubleClick={() => onZoom(node.id)}
       >
         <div
@@ -145,7 +149,7 @@ function Tree(props: TreeProps) {
           <button
             type="button"
             title="hide here (x)"
-            onClick={() => setArr((a) => ({ ...a, hidden: [...a.hidden, node.id] }))}
+            onClick={() => drawn(() => setArr((a) => ({ ...a, hidden: [...a.hidden, node.id] })))}
           >
             ×
           </button>
@@ -228,13 +232,28 @@ export function WindowPage() {
   const windowId = data.data?.panes[0]?.pane.window_id ?? win;
   const key = storageKey(host, session, windowId);
   const [arr, setArrState] = useState<Arrangement>(() => fresh(''));
+  // ▦ moves the host's panes: the layout shown stays pinned until the
+  // host's new one is here, which is then drawn as a move.
+  const [pinned, setPinned] = useState<string | null>(null);
+  const shownLayout = pinned ?? layout;
+  useEffect(() => {
+    if (pinned === null || layout === pinned) return;
+    // From a task: an effect cannot flush the marks into the DOM itself.
+    const t = window.setTimeout(() => drawn(() => setPinned(null)), 0);
+    return () => window.clearTimeout(t);
+  }, [layout, pinned]);
+  useEffect(() => {
+    if (pinned === null) return;
+    const t = window.setTimeout(() => setPinned(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [pinned]);
   const tree = useMemo(() => {
     try {
-      return layout ? parseLayout(layout) : null;
+      return shownLayout ? parseLayout(shownLayout) : null;
     } catch {
       return null;
     }
-  }, [layout]);
+  }, [shownLayout]);
   const panes = useMemo(
     () => new Map((data.data?.panes ?? []).map((pc) => [pc.pane.pane_id, pc])),
     [data.data],
@@ -279,7 +298,7 @@ export function WindowPage() {
     const id = stripPanes.find((p) => p.address === address)?.pane_id;
     if (!id) return;
     if (arr.hidden.includes(id))
-      setArr((a) => ({ ...a, hidden: a.hidden.filter((h) => h !== id) }));
+      drawn(() => setArr((a) => ({ ...a, hidden: a.hidden.filter((h) => h !== id) })));
     move(id);
   };
   const writable = focusedPane?.mode === 'write';
@@ -336,6 +355,7 @@ export function WindowPage() {
       weights.shown = [0.85, 0.15];
     }
     setPreset(p);
+    setPinned(shownLayout);
     const layout = tilesLayout(node, weights, [...visible, ...hidden]);
     // The window takes one resize a second: right after a fit or a
     // release the layout waits its turn.
@@ -345,14 +365,16 @@ export function WindowPage() {
         .catch((err) => {
           if (err instanceof ApiError && err.status === 429 && tries > 1)
             window.setTimeout(() => send(tries - 1), 1100);
-          else
+          else {
+            setPinned(null);
             toast.push({
               kind: 'refused',
               title: err instanceof ApiError ? err.code : 'hub unreachable',
             });
+          }
         });
     void send(3);
-  }, [arrangeable, preset, visible, panes, fitVia, qc, host, session, win, toast]);
+  }, [arrangeable, preset, visible, panes, fitVia, qc, host, session, win, toast, shownLayout]);
   useEffect(() => {
     setHeading({ pane: focusedPane, place: `window ${host}/${session}/${win}` });
     return () => setHeading({ place: '' });
@@ -362,12 +384,12 @@ export function WindowPage() {
   // Except with fit on, when the host's sizes are the browser's own: a
   // change of sizes alone keeps the arrangement, a change of shape resets.
   useEffect(() => {
-    if (!layout || arr.layout === layout) return;
+    if (!shownLayout || arr.layout === shownLayout) return;
     setArrState((a) => {
       if (fit && a.layout && tree) {
         try {
           if (sameShape(parseLayout(a.layout), tree)) {
-            const next = { ...a, layout };
+            const next = { ...a, layout: shownLayout };
             save(key, next);
             return next;
           }
@@ -375,9 +397,9 @@ export function WindowPage() {
           /* a layout that never parsed resets below */
         }
       }
-      return load(key, layout);
+      return load(key, shownLayout);
     });
-  }, [layout, key, arr.layout, fit, tree]);
+  }, [shownLayout, key, arr.layout, fit, tree]);
   const setArr = useCallback(
     (f: (a: Arrangement) => Arrangement) => {
       setArrState((a) => {
@@ -399,10 +421,11 @@ export function WindowPage() {
       if (ev.key === ']') by(1);
       else if (ev.key === '[') by(-1);
       else if ((ev.key === 'z' || ev.key === 'Enter') && focus) open(focus);
-      else if (ev.key === 'x' && focus) setArr((a) => ({ ...a, hidden: [...a.hidden, focus] }));
-      else if (ev.key === '0') setArr(() => fresh(layout));
+      else if (ev.key === 'x' && focus)
+        drawn(() => setArr((a) => ({ ...a, hidden: [...a.hidden, focus] })));
+      else if (ev.key === '0') drawn(() => setArr(() => fresh(layout)));
       else if (ev.key === 'l' && arrangeable) arrange();
-      else if (ev.key === '=' && tree) setArr((a) => equalised(a, tree));
+      else if (ev.key === '=' && tree) drawn(() => setArr((a) => equalised(a, tree)));
       else if (ev.key === '+' && focus) {
         setArr((a) => ({
           ...a,
@@ -538,14 +561,14 @@ export function WindowPage() {
               id: 'equalise',
               glyph: '⊞',
               label: 'equal shares',
-              onClick: () => tree && setArr((a) => equalised(a, tree)),
+              onClick: () => tree && drawn(() => setArr((a) => equalised(a, tree))),
               title: 'equal shares (=)',
             },
             {
               id: 'reset',
               glyph: '↺',
               label: "the host's layout",
-              onClick: () => setArr(() => fresh(layout)),
+              onClick: () => drawn(() => setArr(() => fresh(layout))),
               title: "the host's layout (0)",
             },
           ]}

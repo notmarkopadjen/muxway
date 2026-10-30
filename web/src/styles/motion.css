@@ -294,29 +294,162 @@
   }
 }
 
-/* Zoom: the tile grows into the whole view, or shrinks back to its
-   place, as a view transition on that tile alone; the rest of the page
-   does not cross-fade. */
-.mx-tile[data-zooming] {
-  view-transition-name: mx-zoom;
+/* Moves are drawn (term/drawn.ts): while one is on every tile or cell
+   carries a view-transition-name, the zoomed tile mx-zoom, so the browser
+   snapshots them before and after and animates between. The snapshots
+   keep their size and are clipped to the travelling box, as a terminal
+   is, not stretched. A tile that moves slides to its place with a
+   retrace; one that leaves switches off to a line; one that comes powers
+   on; the zoomed tile's picture collapses to a bright line, the line
+   travels, and the new picture opens where it lands. The page itself
+   cuts. */
+@keyframes mx-switch-off {
+  0% {
+    transform: scaleY(1);
+    filter: brightness(1);
+    opacity: 1;
+  }
+  40% {
+    transform: scaleY(1.02);
+    filter: brightness(2.5);
+    opacity: 1;
+  }
+  85% {
+    transform: scaleY(0.006);
+    filter: brightness(6);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(0.006);
+    filter: brightness(6);
+    opacity: 0;
+  }
 }
+@keyframes mx-tune-in {
+  0% {
+    transform: scaleY(1);
+    filter: brightness(1);
+  }
+  20% {
+    transform: scaleY(0.006);
+    filter: brightness(5);
+  }
+  55% {
+    transform: scaleY(0.006);
+    filter: brightness(5);
+  }
+  85% {
+    transform: scaleY(1.02);
+    filter: brightness(1.6);
+  }
+  100% {
+    transform: scaleY(1);
+    filter: brightness(1);
+  }
+}
+@keyframes mx-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+::view-transition-group(*) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--mx-ease-out);
+}
+::view-transition-image-pair(*) {
+  overflow: clip;
+}
+::view-transition-old(*),
+::view-transition-new(*) {
+  width: 100%;
+  height: 100%;
+  object-fit: none;
+  object-position: top left;
+}
+::view-transition-old(*) {
+  animation: mx-fade-out 160ms linear both;
+}
+::view-transition-new(*) {
+  animation: mx-resync 320ms var(--mx-ease-out) both;
+}
+::view-transition-old(*):only-child {
+  animation: mx-switch-off 220ms var(--mx-ease-out) both;
+  transform-origin: center;
+}
+::view-transition-new(*):only-child {
+  animation: mx-power-on 320ms var(--mx-ease-crt) both;
+  transform-origin: center;
+}
+::view-transition-group(mx-zoom) {
+  animation-duration: 360ms;
+  animation-timing-function: var(--mx-ease-crt);
+}
+::view-transition-image-pair(mx-zoom) {
+  animation: mx-tune-in 360ms var(--mx-ease-out) both;
+  transform-origin: center;
+}
+/* The pictures swap while the pair is a line. */
+::view-transition-old(mx-zoom) {
+  animation: mx-fade-out 40ms linear 140ms both;
+}
+::view-transition-new(mx-zoom) {
+  animation: mx-fade-in 40ms linear 140ms both;
+}
+::view-transition-group(root),
+::view-transition-image-pair(root),
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
 }
-::view-transition-group(mx-zoom) {
-  animation-duration: 240ms;
-  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+/* Syncing: the size is asked and the pane not yet at it. The header's word
+   blinks, the held picture dims and a soft band rolls down it like a tube
+   tuning in; off, the word alone. */
+@keyframes mx-tune {
+  from {
+    background-position: 0 -40%;
+  }
+  to {
+    background-position: 0 140%;
+  }
 }
-::view-transition-old(mx-zoom),
-::view-transition-new(mx-zoom) {
-  animation-duration: 240ms;
+.mx-sync {
+  color: var(--mx-ink-dim);
+  animation: mx-blink 1s steps(1) infinite;
 }
-:root[data-motion='off'] .mx-tile[data-zooming] {
-  view-transition-name: none;
+.mx-tile[data-syncing] .mx-screen {
+  filter: brightness(0.85);
+}
+.mx-tile[data-syncing] > .mx-tile-body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--mx-ink) 16%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 100% 28%;
+  background-repeat: no-repeat;
+  animation: mx-tune 900ms linear infinite;
+}
+:root[data-motion='off'] .mx-sync {
+  animation: none;
+}
+:root[data-motion='off'] .mx-tile[data-syncing] > .mx-tile-body::after {
+  display: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .mx-tile[data-zooming] {
-    view-transition-name: none;
+  .mx-sync {
+    animation: none;
+  }
+  .mx-tile[data-syncing] > .mx-tile-body::after {
+    display: none;
   }
 }

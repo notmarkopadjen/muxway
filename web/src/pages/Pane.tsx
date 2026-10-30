@@ -1,6 +1,5 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { flushSync } from 'react-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { queryClient } from '../query';
 import { useQueryClient } from '@tanstack/react-query';
@@ -27,6 +26,7 @@ import { PaneTitle } from '../components/PaneTitle';
 import { Tabs } from '../components/Tabs';
 import { useToast } from '../components/Toast';
 import { noteChange, noteOwn, useLens } from '../term/lens';
+import { drawn, nameFor, useMoving } from '../term/drawn';
 import { inOrder, move, step } from '../term/order';
 import { setTabOrder, useTabOrder } from '../settings';
 import { Screen } from '../term/Screen';
@@ -83,25 +83,6 @@ interface Kept {
   weights: Weights;
 }
 let unzoomed: Kept | null = null;
-// The tile on its way to the whole view or back, named for the browser's
-// view transition. The tiles mount anew on the way, so it lives outside
-// React and the tiles watch it.
-let zoomingNow: string | null = null;
-const zoomWatchers = new Set<() => void>();
-function setZoomingNow(a: string | null) {
-  zoomingNow = a;
-  zoomWatchers.forEach((fn) => fn());
-}
-function useZoomingNow() {
-  return useSyncExternalStore(
-    (fn) => {
-      zoomWatchers.add(fn);
-      return () => zoomWatchers.delete(fn);
-    },
-    () => zoomingNow,
-    () => null,
-  );
-}
 let carried: Kept | null = null;
 // The pane to focus once the tiles of a new count are up.
 let focusNext: string | null = null;
@@ -210,7 +191,7 @@ function Tile(props: TileProps) {
   const pointer = useRef('mouse');
   const { address, focused, several, refitTick, dragging, alone, zoomable, windowFit } = props;
   const pane = usePane(address, focused ? 1_000 : 2_000);
-  const zoomingTile = useZoomingNow();
+  const moving = useMoving();
   const box = useRef<HTMLDivElement>(null);
   const p = pane.data?.pane;
   const writable = p?.mode === 'write';
@@ -263,6 +244,10 @@ function Tile(props: TileProps) {
     (fitted.cols !== asked.cols ||
       fitted.rows !== asked.rows ||
       (!settled && Date.now() - sentAt > HOLD_FRAME_MS));
+  // Syncing: the size is asked and the pane not yet at it; the header says
+  // so and the picture is drawn tuning in, so the held frame does not read
+  // as stuck.
+  const syncing = fitting && !settled && !held;
   useEffect(() => {
     if (refitTick) refit();
   }, [refitTick, refit]);
@@ -339,7 +324,10 @@ function Tile(props: TileProps) {
       data-focused={focused ? '' : undefined}
       data-fit={writable ? (fit ? '1' : '0') : undefined}
       data-held={held ? '' : undefined}
-      data-zooming={zoomingTile === address ? '' : undefined}
+      data-syncing={syncing ? '' : undefined}
+      data-moving={moving.on ? '' : undefined}
+      data-zooming={moving.zoom === address ? '' : undefined}
+      style={moving.on ? { viewTransitionName: nameFor(address, moving.zoom) } : undefined}
       onDragOver={(e) => {
         if (dragging && dragging !== address) {
           e.preventDefault();
@@ -392,6 +380,15 @@ function Tile(props: TileProps) {
                 data-testid="held"
               >
                 held
+              </span>
+            )}
+            {syncing && (
+              <span
+                className="mx-sync"
+                title="waiting for the host at this size"
+                data-testid="syncing"
+              >
+                sync
               </span>
             )}
             {st !== 'quiet' && (
@@ -724,16 +721,18 @@ function Tiles({ addresses }: { addresses: string[] }) {
     const rest = close(addresses, a);
     if (layout === 'custom' && rest.length > 1)
       carried = { panes: rest, layout, custom: prune(shape, addresses.indexOf(a)), weights: {} };
-    go(rest, [...minimised, a]);
+    drawn(() => go(rest, [...minimised, a]));
   };
   // Back from the row as one more tile, focused; with four open it takes
   // the focused tile's place, as a tab does.
   const restore = (a: string) => {
     const rest = minimised.filter((m) => m !== a);
-    if (addresses.length < MAX_TILES) {
-      focusNext = a;
-      go([...addresses, a], rest);
-    } else go(replace(addresses, index, a), rest);
+    drawn(() => {
+      if (addresses.length < MAX_TILES) {
+        focusNext = a;
+        go([...addresses, a], rest);
+      } else go(replace(addresses, index, a), rest);
+    });
   };
   const answer = async (a: string, yes: boolean) => {
     setAsking(null);
@@ -947,11 +946,11 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // of count mounts the tiles anew and they are taken up there.
   const go = useCallback(
     (next: string[], keep = minimised) => {
-      if (next === addresses) return;
+      if (next === addresses) return Promise.resolve();
       const rest = keep.filter((a) => !next.includes(a));
       minimisedKept = { panes: next, minimised: rest };
       if (next.length === addresses.length) setMinimised(rest);
-      navigate({ to: '/p/$', params: { _splat: routeFor(next) }, replace: true });
+      return navigate({ to: '/p/$', params: { _splat: routeFor(next) }, replace: true });
     },
     [addresses, minimised, navigate],
   );
@@ -1016,7 +1015,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
       } else if (/^[1-4]$/.test(ev.key) && Number(ev.key) <= n) setFocusedIndex(Number(ev.key) - 1);
       else if (ev.key === 'l' && several && (!oneWindow || movable)) {
         touch();
-        setLayout((l) => next(l, n));
+        drawn(() => setLayout((l) => next(l, n)));
       } else if (asking && (ev.key === 'y' || ev.key === 'n')) void answer(asking, ev.key === 'y');
       else if (ev.key === 'x' && hostCloses(focused) && writable) setAsking(focused);
       else if (ev.key === 'x' && several) closeTile(focused);
@@ -1032,7 +1031,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
       } else if (ev.key === 'r' && writable) setRefitTick((t) => t + 1);
       else if (ev.key === '=' && several && (!oneWindow || movable)) {
         touch();
-        setWeights({});
+        drawn(() => setWeights({}));
       } else if (ev.key === 'g' && writable && hostPreviews(focused)) setChanges((c) => !c);
       else if (ev.key === 'i' && writable) enterDirect();
       else if (ev.key === ':') focusLine();
@@ -1125,36 +1124,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // their places and arrangement; from a pane opened alone, the window's
   // panes side by side in the window's order, up to four; a window of one
   // pane shows its mirror layout instead.
-  // The zoom is drawn: the tile grows into the whole view, or shrinks
-  // back to its place, as the browser's view transition, unless effects
-  // are off.
+  // The zoom is drawn (drawn.ts): the tile switches off to a line that
+  // travels to its new place and opens there, unless effects are off.
   const animated = useCallback((address: string, change: () => void) => {
-    const doc = document as Document & {
-      startViewTransition?: (update: () => Promise<void>) => { finished: Promise<void> };
-    };
-    if (!doc.startViewTransition || document.documentElement.dataset.motion === 'off') {
-      change();
-      return;
-    }
-    // The name is in the DOM before the transition takes its picture.
-    flushSync(() => setZoomingNow(address));
-    const over = () => setZoomingNow(null);
-    try {
-      doc
-        .startViewTransition(
-          () =>
-            new Promise<void>((resolve) => {
-              change();
-              requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-            }),
-        )
-        .finished.then(over, over);
-    } catch {
-      // No transition after all: the change at once, the mark cleared.
-      change();
-      over();
-    }
-    window.setTimeout(over, 1500);
+    drawn(change, address);
   }, []);
   const zoom = useCallback(
     (p: Pane) => {
@@ -1201,9 +1174,11 @@ function Tiles({ addresses }: { addresses: string[] }) {
       return;
     }
     touch();
-    setCustom(across(shape, i, key, wrap, first));
-    setLayout('custom');
-    setWeights({});
+    drawn(() => {
+      setCustom(across(shape, i, key, wrap, first));
+      setLayout('custom');
+      setWeights({});
+    });
   };
   const spread = (i: number, axis: 'w' | 'h') => {
     const r = places.get(i);
@@ -1301,13 +1276,15 @@ function Tiles({ addresses }: { addresses: string[] }) {
           }
           touch();
           if (dragging && dragging !== a && zone !== 'swap') {
-            setCustom(dropOn(shape, addresses.indexOf(dragging), i, zone));
-            setLayout('custom');
-            setWeights({});
+            drawn(() => {
+              setCustom(dropOn(shape, addresses.indexOf(dragging), i, zone));
+              setLayout('custom');
+              setWeights({});
+            });
             setDragging(null);
             return;
           }
-          if (dragging && dragging !== a) go(swap(addresses, dragging, a));
+          if (dragging && dragging !== a) drawn(() => go(swap(addresses, dragging, a)));
           setDragging(null);
         }}
         onZoom={zoom}
@@ -1372,7 +1349,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
                     label: 'arrange',
                     onClick: () => {
                       touch();
-                      setLayout((l) => next(l, n));
+                      drawn(() => setLayout((l) => next(l, n)));
                     },
                     disabled: !!oneWindow && !movable,
                     title:
@@ -1386,7 +1363,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
                     label: 'equal',
                     onClick: () => {
                       touch();
-                      setWeights({});
+                      drawn(() => setWeights({}));
                     },
                     disabled: !!oneWindow && !movable,
                     title:

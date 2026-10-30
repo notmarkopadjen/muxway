@@ -161,7 +161,11 @@ tiles, each fits its own pane and the host sorts the neighbours out,
 as above. A size the host would not give, because another tile's fit
 shares the axis (two tiles whose panes are stacked ask for different
 widths: the later one sets both), leaves that tile saying *held* in its
-header, drawn scaled to its box, until its box changes. The focus plays
+header, drawn scaled to its box, until its box changes. While a tile
+waits for the host to give the size it asked (after a zoom, say) it
+keeps its last picture and says *sync* in its header, the picture a
+little dim with a soft band rolling down it; the live picture snaps
+back when the pane is at size. The focus plays
 no part in any of this: moving it between tiles sends nothing. Every
 fitted pane is released when the view is left. In the
 window view, fit sizes the whole
@@ -370,7 +374,9 @@ sequenceDiagram
   arrangement and shares, focused on it. A pane opened alone brings the
   window's panes side by side in the window's order, up to four (a
   window of one pane shows its mirror layout instead). `w` opens the
-  window's mirror layout.
+  window's mirror layout. The zoom is drawn like a channel change: the
+  tile switches off to a bright line that travels to its new place and
+  opens there (see *Look and motion*).
 - A pane that exits (`exit` in its shell, say) leaves the view by
   itself within a second, with a toast saying which: among tiles the
   others close up, alone it takes you back to the list, or to the first
@@ -688,10 +694,40 @@ a tube, and so does every window over it (help, the hubs, go to a pane,
 the keyboard), which powers off the same way backwards; scanlines and a faint vignette stay, glow sits on borders,
 headings and anything focused, new lines in a pane burn in, badges for
 questions and permissions pulse, and a theme switch re-syncs the
-picture. All of it is CSS driven by tokens in `web/src/styles/tokens.css`
+picture. Every move of the tiles is drawn as the browser's view
+transition (`web/src/term/drawn.ts`): while a move is on each tile, or
+each cell of the window view, carries a `view-transition-name` (the
+zoomed tile `mx-zoom`), and the stylesheet animates the snapshots: a
+tile that moves slides to its place with a brightness retrace, one that
+leaves switches off to a line, one that comes powers on, and the zoomed
+tile switches off, travels as a line and opens where it lands. That
+covers the zoom, a header dropped on a tile or a divider, `l`, `=`,
+`e` / `E`, a tile minimised or restored, and in the window view `=`,
+`↺`, a pane hidden or brought back and `▦` (the host's new layout is
+drawn when it arrives). Divider drags follow the pointer and are not
+drawn. A tile waiting for its size says *sync* with a band rolling down
+its picture. All of it is CSS driven by tokens in `web/src/styles/tokens.css`
 and `motion.css`.
 `m` turns the effects off, and the operating system's reduced-motion
-preference does the same.
+preference does the same: moves then cut, and *sync* is the word alone.
+
+```mermaid
+sequenceDiagram
+    participant U as owner
+    participant V as pane view
+    participant B as browser
+    participant H as host
+    U->>V: double-click a tile
+    V->>V: every tile named, this one mx-zoom
+    V->>B: startViewTransition(change)
+    B->>B: picture of the named tiles
+    V->>V: change: one tile in the view
+    B->>B: picture again, 360 ms of switch off, travel, tune in
+    V->>H: resize (fit), as before
+    Note over V: the tile says sync, a band rolls over its last picture
+    H-->>V: the pane at size, with the next listing
+    Note over V: sync gone, the live picture
+```
 
 ## Running without it
 
