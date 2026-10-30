@@ -199,11 +199,21 @@ change; the 99-held spec stays as it is and is run with the suite.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan, deviations explained here. Three: tmux's
+  default `extended-keys-format` is xterm's, so Shift+Enter reaches the
+  program as `ESC [ 27 ; 2 ; 13 ~` rather than CSI u unless the owner
+  set `csi-u`; Claude Code takes both, and test 9 accepts either. The
+  agent refuses a pane whose process changed under its id, so test 9
+  runs the plain program in a second pane. The suite's Go package
+  passed fifteen minutes with the new fits, so `scripts/e2e.sh` gives
+  it thirty.
+- [x] Security rules (AGENTS.md section 2) hold: a fit grows a window by
+  what the pane and the floor need, bounded by the request limits; the
+  layout grown is tmux's own; the key grammar is unchanged.
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Docs and diagrams updated
 
 ## Test run
 
-Link to the recorded run: result, commit, logs, screenshots.
+[Run 20261030-170621-68109ad](https://github.com/notmarkopadjen/muxway/issues/171):
+passed, 167 tests, at 68109ad.
