@@ -154,3 +154,34 @@ Android `look.md` and `pane-view.md`.
 3. Specs 4 to 7; dist rebuilt.
 4. Android: `Links`, `Code`, the palette, the sheet, docs, tests.
 5. Docs; the run recorded.
+
+---
+
+## Review (after implementation)
+
+- [x] Diff matches the plan. Deviations: the browser keeps the list in
+  one module (`web/src/term/types.ts`) and the Android matcher and
+  scanner table are generated from the browser's sources, so the three
+  copies are one; `.diff` and `.patch` reuse the changes window's diff
+  view; the inbox's refused-type spec now sends an executable, since a
+  shell script is text of the list and goes through as plain text.
+- [x] Security rules hold: roots, the dot rule, symlink resolution and
+  the one refusal code untouched; keys, certificates, `env`,
+  executables and databases named out; every text type plain with
+  `nosniff`; archives as `application/octet-stream`; the mapper sends
+  nothing for the paste chords; a pasted file still passes the inbox's
+  type, size and sniff checks.
+- [x] Privacy check: `scripts/prepush-check.sh` clean, diff read; the
+  census in the commit message is counts of extensions only.
+- [x] Docs: protocol, `preview.md`, `direct.md`, `attachments.md`,
+  `web-client.md`, the guideline (the hues decision, the paste chords),
+  the Android `look.md` and `pane-view.md`.
+
+## Test run
+
+Go end-to-end 143 and the security test of 18 extended; browser specs
+83 (the Makefile), 86 (the Python file, four computed colours, the
+scanlines above the window) and 104 (Ctrl+V, Shift+Insert) added; 80
+changed. Android `LinksTest` and `CodeTest` extended. Run
+`20261030-090640-1b0a7db`: 159 passed, recorded as
+[#166](https://github.com/notmarkopadjen/muxway/issues/166).
