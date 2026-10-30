@@ -241,6 +241,68 @@ func (c *layoutCell) scale(w, h, x, y int) error {
 	return nil
 }
 
+// shift moves the cell and everything in it.
+func (c *layoutCell) shift(dx, dy int) {
+	c.x += dx
+	c.y += dy
+	for _, child := range c.children {
+		child.shift(dx, dy)
+	}
+}
+
+// grow makes the pane id dw wider and dh taller and the root with it:
+// along a split's axis the siblings after the pane move over, across it
+// they take the new size, in their old proportions. Nothing else changes.
+// False when the pane is not in the layout.
+func (c *layoutCell) grow(id, dw, dh int) bool {
+	if c.kind == 0 {
+		if c.id != id {
+			return false
+		}
+		c.w += dw
+		c.h += dh
+		return true
+	}
+	for i, child := range c.children {
+		if !child.grow(id, dw, dh) {
+			continue
+		}
+		for j, s := range c.children {
+			switch {
+			case j == i:
+			case c.kind == '{':
+				if j > i {
+					s.shift(dw, 0)
+				}
+				s.scale(s.w, s.h+dh, s.x, s.y)
+			default:
+				if j > i {
+					s.shift(0, dh)
+				}
+				s.scale(s.w+dw, s.h, s.x, s.y)
+			}
+		}
+		c.w += dw
+		c.h += dh
+		return true
+	}
+	return false
+}
+
+// GrowLayout is the layout with the pane dw columns wider and dh rows
+// taller, its neighbours as they were, and the window's size after it.
+func GrowLayout(layout, paneID string, dw, dh int) (string, int, int, error) {
+	root, err := parseLayout(layout)
+	if err != nil {
+		return "", 0, 0, err
+	}
+	id, err := strconv.Atoi(strings.TrimPrefix(paneID, "%"))
+	if err != nil || !root.grow(id, dw, dh) {
+		return "", 0, 0, fmt.Errorf("layout: %s is not in the window", paneID)
+	}
+	return root.String(), root.w, root.h, nil
+}
+
 // LayoutPanes lists the pane ids a layout names, as "%<n>", sorted.
 func LayoutPanes(layout string) ([]string, error) {
 	root, err := parseLayout(layout)

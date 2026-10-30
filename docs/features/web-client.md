@@ -145,8 +145,10 @@ so its neighbours are not squeezed; a pane that is alone in its window
 sizes the window without a zoom. With several tiles, each *pane* on the
 host becomes the columns and rows that fit its tile: where it spans its
 window, the window is sized; where it shares the window with neighbours,
-they give or take the difference, and the window grows before any pane
-of it would go under 20 columns or 5 rows; the host remembers the size
+the window grows by what the pane lacks and the pane's own cell takes
+it, so no neighbour is squeezed, or the neighbours take what it gives
+up, and a pane left under 20 columns or 5 rows is grown the same way;
+the host remembers the size
 each pane of the window was given and gives it again when a sibling is
 fitted, so the second fit does not take the first one's size. Tiles that are every pane of
 one window fit the window as one, laid out as the tiles are, the way the

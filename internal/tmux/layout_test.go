@@ -36,6 +36,43 @@ func TestLayoutPanes(t *testing.T) {
 	}
 }
 
+func TestGrowMovesOnlyTheSiblingsInTheWay(t *testing.T) {
+	s := "dddb,200x50,0,0{100x50,0,0[100x25,0,0,1,100x24,0,26,3],99x50,101,0,2}"
+	// The right pane wider: the left column keeps its width.
+	root, _ := parseLayout(s)
+	if !root.grow(2, 10, 0) {
+		t.Fatal("pane 2 not found")
+	}
+	if got := root.String(); got[5:] != "210x50,0,0{100x50,0,0[100x25,0,0,1,100x24,0,26,3],109x50,101,0,2}" {
+		t.Fatalf("right grown: %s", got)
+	}
+	// The top left pane wider and taller: its column widens, the pane
+	// under it widens with it and moves down, the right pane moves over
+	// and takes the height.
+	root, _ = parseLayout(s)
+	if !root.grow(1, 7, 3) {
+		t.Fatal("pane 1 not found")
+	}
+	if got := root.String(); got[5:] != "207x53,0,0{107x53,0,0[107x28,0,0,1,107x24,0,29,3],99x53,108,0,2}" {
+		t.Fatalf("top left grown: %s", got)
+	}
+	// The bottom left pane taller: the top one stays, the right pane
+	// takes the height.
+	root, _ = parseLayout(s)
+	root.grow(3, 0, 4)
+	if got := root.String(); got[5:] != "200x54,0,0{100x54,0,0[100x25,0,0,1,100x28,0,26,3],99x54,101,0,2}" {
+		t.Fatalf("bottom left grown: %s", got)
+	}
+	// Grown and written, tmux's own checksum: the string round-trips.
+	again, err := parseLayout(root.String())
+	if err != nil || again.String() != root.String() {
+		t.Fatalf("round trip: %v", err)
+	}
+	if root.grow(9, 1, 1) {
+		t.Fatal("a pane not in the layout grew")
+	}
+}
+
 func TestScaleLayoutKeepsProportions(t *testing.T) {
 	// Two stacked panes on the left, one on the right, in a 200x50 window.
 	s := "dddb,200x50,0,0{100x50,0,0[100x25,0,0,1,100x24,0,26,3],99x50,101,0,2}"

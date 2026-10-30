@@ -231,6 +231,23 @@ func (s Server) paste(ctx context.Context, paneID, text string) error {
 	return nil
 }
 
+// EnableExtendedKeys turns the server's extended-keys option on when it
+// is off, so a modified key (S-Enter) reaches a program that asked for
+// modified keys instead of losing its modifier. "on" and "always" are
+// left alone. Says whether it changed anything; an error is tmux's,
+// an older one has no such option.
+func (s Server) EnableExtendedKeys(ctx context.Context) (bool, error) {
+	out, err := s.run(ctx, "show-options", "-s", "-v", "extended-keys")
+	if err != nil {
+		return false, err
+	}
+	if v := strings.TrimSpace(string(out)); v != "" && v != "off" {
+		return false, nil
+	}
+	_, err = s.run(ctx, "set-option", "-s", "extended-keys", "on")
+	return err == nil, err
+}
+
 // ErrNoMouse: the program in the pane did not ask for the mouse, so the
 // bytes would be typed as text.
 var ErrNoMouse = errors.New("no mouse mode in the pane")
@@ -373,12 +390,12 @@ type Size struct{ Cols, Rows int }
 
 // ResizePane makes one pane cols × rows. On an axis the pane spans, its
 // window is sized, as for a window alone; on an axis it shares, the
-// neighbours give or take, and the window grows before any of them goes
-// under the floor. Nothing shrinks the window below what it has. The
-// other panes of the window that were fitted (others) are given their
-// sizes again first, so growing the window for this one, which scales
-// every pane, does not take theirs; this pane is sized last and wins
-// where two cannot both be had, and a few rounds settle the rest.
+// window grows by what the pane lacks and the pane's own cell takes it,
+// or the neighbours take what it gives up, and any pane left under the
+// floor is grown the same way. Nothing shrinks the window below what it
+// has. The other panes of the window that were fitted (others) are given
+// their sizes again first; this pane is sized last and wins where two
+// cannot both be had, and a few rounds settle the rest.
 func (s Server) ResizePane(ctx context.Context, paneID string, cols, rows int, others map[string]Size) error {
 	// A pane shown beside a sibling is no longer alone: the zoom goes.
 	s.unzoom(ctx, paneID)
@@ -390,37 +407,37 @@ func (s Server) ResizePane(ctx context.Context, paneID string, cols, rows int, o
 		if err := s.resizePaneOnce(ctx, paneID, cols, rows); err != nil {
 			return err
 		}
-		// Growing the window scales every pane alike, so the window is
-		// grown by what brings the smallest pane up to the floor; the
-		// panes are then sized again and the surplus goes to a neighbour.
-		out, err := s.run(ctx, "list-panes", "-t", paneID,
-			"-F", "#{pane_id} #{window_width} #{window_height} #{pane_width} #{pane_height}")
+		out, err := s.run(ctx, "list-panes", "-t", paneID, "-F", "#{pane_id} #{pane_width} #{pane_height}")
 		if err != nil {
 			return err
 		}
-		var ww, wh, nw, nh int
-		kept := true
+		layout, err := s.WindowLayout(ctx, paneID)
+		if err != nil {
+			return err
+		}
+		var ww, wh int
+		grown, kept := false, true
 		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 			var id string
 			var w, h int
-			if _, err := fmt.Sscan(line, &id, &ww, &wh, &w, &h); err != nil {
+			if _, err := fmt.Sscan(line, &id, &w, &h); err != nil {
 				continue
 			}
-			if w < floorCols {
-				nw = max(nw, (ww*floorCols+w-1)/w+1)
-			}
-			if h < floorRows {
-				nh = max(nh, (wh*floorRows+h-1)/h+1)
+			if w < floorCols || h < floorRows {
+				if layout, ww, wh, err = GrowLayout(layout, id, max(0, floorCols-w), max(0, floorRows-h)); err != nil {
+					return err
+				}
+				grown = true
 			}
 			if sz, ok := others[id]; ok && (w != sz.Cols || h != sz.Rows) {
 				kept = false
 			}
 		}
-		if (nw == 0 && nh == 0 && kept) || round == 3 {
+		if (!grown && kept) || round == 3 {
 			return nil
 		}
-		if nw != 0 || nh != 0 {
-			if err := s.ResizeWindow(ctx, paneID, max(nw, ww), max(nh, wh), "", false); err != nil {
+		if grown {
+			if err := s.ResizeWindow(ctx, paneID, ww, wh, layout, false); err != nil {
 				return err
 			}
 		}
@@ -448,7 +465,25 @@ func (s Server) resizePaneOnce(ctx context.Context, paneID string, cols, rows in
 	}
 	nw, nh := axis(cols, pw, ww), axis(rows, ph, wh)
 	if nw != ww || nh != wh {
-		if err := s.ResizeWindow(ctx, paneID, nw, nh, "", false); err != nil {
+		// What the pane lacks on a shared axis goes to its own cell, so the
+		// neighbours keep theirs; a spanning axis scales as a window does.
+		layout, err := s.WindowLayout(ctx, paneID)
+		if err != nil {
+			return err
+		}
+		dw, dh := 0, 0
+		if pw < ww {
+			dw = max(0, nw-ww)
+		}
+		if ph < wh {
+			dh = max(0, nh-wh)
+		}
+		if dw > 0 || dh > 0 {
+			if layout, _, _, err = GrowLayout(layout, paneID, dw, dh); err != nil {
+				return err
+			}
+		}
+		if err := s.ResizeWindow(ctx, paneID, nw, nh, layout, false); err != nil {
 			return err
 		}
 	}

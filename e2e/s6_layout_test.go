@@ -496,3 +496,123 @@ func TestFlow172_AWindowWhoseFitterLeftIsGivenBack(t *testing.T) {
 		t.Fatal("window still zoomed after its fitter left")
 	}
 }
+
+func paneWidths(t *testing.T, ts *tmuxServer, window string) []int {
+	t.Helper()
+	var widths []int
+	for _, f := range strings.Fields(ts.must("list-panes", "-t", window, "-F", "#{pane_width}")) {
+		var n int
+		fmt.Sscan(f, &n)
+		widths = append(widths, n)
+	}
+	return widths
+}
+
+func windowWidth(t *testing.T, ts *tmuxServer, window string) int {
+	t.Helper()
+	var w int
+	fmt.Sscan(strings.Split(ts.windowSize(window), "x")[0], &w)
+	return w
+}
+
+// 174: one pane zoomed through a window fit leaves its siblings a few
+// columns each; a sibling fitted next must get its size from the window
+// growing, not from a neighbour squeezed to a column, and the floor rule
+// adds what a pane lacks rather than multiplying the window.
+func TestFlow174_AFitAfterAZoomGrowsOnlyItsOwnPane(t *testing.T) {
+	e, ts, _ := basic(t)
+	for i := 0; i < 3; i++ {
+		ts.title(ts.must("split-window", "-h", "-t", "work:0.0", "-P", "-F", "#{pane_id}", shell()))
+	}
+	ts.must("select-layout", "-t", "work:0", "even-horizontal")
+	e.expose(ts, "work", "--write")
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	expect(t, e.resize(tok, host+"/work/0.1", `{"cols":80,"rows":24,"scope":"window","zoom":true}`), http.StatusOK, "zoom")
+	time.Sleep(1100 * time.Millisecond)
+	expect(t, e.resize(tok, host+"/work/0.2", `{"cols":40,"rows":24}`), http.StatusOK, "sibling fit")
+	widths := paneWidths(t, ts, "work:0")
+	if len(widths) != 4 || widths[2] != 40 {
+		t.Fatalf("after the fit the panes are %v", widths)
+	}
+	for _, w := range widths {
+		if w < 20 {
+			t.Fatalf("a pane was squeezed to %d columns: %v", w, widths)
+		}
+	}
+	if ww := windowWidth(t, ts, "work:0"); ww > 80+40 {
+		t.Fatalf("the window grew to %d columns for a 40-column fit: %v", ww, widths)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	expect(t, e.resize(tok, host+"/work/0.2", `{"fit":"auto"}`), http.StatusOK, "release")
+}
+
+// 175: two siblings fitted in turn, a row more or less each time, as two
+// tiles do when the focus moves: the window's width does not move.
+func TestFlow175_AlternatingFitsKeepTheWindowWidth(t *testing.T) {
+	e, ts, _ := basic(t)
+	for i := 0; i < 3; i++ {
+		ts.title(ts.must("split-window", "-h", "-t", "work:0.0", "-P", "-F", "#{pane_id}", shell()))
+	}
+	ts.must("select-layout", "-t", "work:0", "even-horizontal")
+	e.expose(ts, "work", "--write")
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	a, b := host+"/work/0.1", host+"/work/0.2"
+	expect(t, e.resize(tok, a, `{"cols":40,"rows":24}`), http.StatusOK, "first fit")
+	time.Sleep(1100 * time.Millisecond)
+	expect(t, e.resize(tok, b, `{"cols":40,"rows":24}`), http.StatusOK, "second fit")
+	settled := windowWidth(t, ts, "work:0")
+	for i, step := range []struct {
+		pane string
+		rows int
+	}{{a, 23}, {a, 24}, {b, 23}, {b, 24}, {a, 23}, {b, 23}} {
+		time.Sleep(1100 * time.Millisecond)
+		expect(t, e.resize(tok, step.pane, fmt.Sprintf(`{"cols":40,"rows":%d}`, step.rows)), http.StatusOK, "fit")
+		if ww := windowWidth(t, ts, "work:0"); ww != settled {
+			t.Fatalf("fit %d: the window went from %d to %d columns: %v", i, settled, ww, paneWidths(t, ts, "work:0"))
+		}
+	}
+	if widths := paneWidths(t, ts, "work:0"); widths[1] != 40 || widths[2] != 40 {
+		t.Fatalf("the fitted panes are %v", widths)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	expect(t, e.resize(tok, a, `{"fit":"auto"}`), http.StatusOK, "release")
+}
+
+// 176: a pane in a stacked column fitted wider widens its column; the
+// pane across from the column keeps its width.
+func TestFlow176_AFitInAStackWidensItsColumnOnly(t *testing.T) {
+	e, ts, _ := basic(t)
+	ts.title(ts.must("split-window", "-h", "-t", "work:0.0", "-P", "-F", "#{pane_id}", shell()))
+	ts.title(ts.must("split-window", "-v", "-t", "work:0.0", "-P", "-F", "#{pane_id}", shell()))
+	e.expose(ts, "work", "--write")
+	before := paneWidths(t, ts, "work:0")
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	expect(t, e.resize(tok, shell0, fmt.Sprintf(`{"cols":%d,"rows":14}`, before[0]+21)), http.StatusOK, "fit")
+	after := paneWidths(t, ts, "work:0")
+	if after[0] != before[0]+21 || after[1] != after[0] || after[2] != before[2] {
+		t.Fatalf("widths went from %v to %v", before, after)
+	}
+	if ww := windowWidth(t, ts, "work:0"); ww != 121 {
+		t.Fatalf("the window is %d wide", ww)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")
+}
+
+// 177: a pane fitted narrower on a shared axis gives the difference to
+// its neighbour; the window stays.
+func TestFlow177_ANarrowerFitGivesToTheNeighbour(t *testing.T) {
+	e, ts, _ := basic(t)
+	ts.title(ts.must("split-window", "-h", "-t", "work:0.0", "-P", "-F", "#{pane_id}", shell()))
+	e.expose(ts, "work", "--write")
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	expect(t, e.resize(tok, shell0, `{"cols":30,"rows":30}`), http.StatusOK, "fit")
+	if widths := paneWidths(t, ts, "work:0"); widths[0] != 30 || widths[1] != 69 {
+		t.Fatalf("the panes are %v", widths)
+	}
+	if got := ts.windowSize("work:0"); got != "100x30" {
+		t.Fatalf("the window is %s", got)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")
+}
