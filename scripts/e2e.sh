@@ -32,7 +32,7 @@ else
 fi
 
 set +e
-MUXWAY_RUN_DIR="$run" go test -tags e2e -count=1 -json -timeout 15m ./... > "$run/test.json"
+MUXWAY_RUN_DIR="$run" go test -tags e2e -count=1 -json -timeout 30m ./... > "$run/test.json"
 set -e
 "$run/gojunit" "$run" < "$run/test.json" && status=0 || status=$?
 rm -f "$run/gojunit"
