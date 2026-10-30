@@ -255,4 +255,6 @@ navigation so the drawn change can wait for it.
 
 ## Test run
 
-Link to the recorded run: result, commit, logs, screenshots.
+[Run 20261030-184127](https://github.com/notmarkopadjen/muxway/issues/173):
+passed, 167 tests (123 browser specs), at 577fa7c; spec 108 green,
+specs 75 and 99 unchanged and green.
