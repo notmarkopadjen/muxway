@@ -310,42 +310,96 @@ var named = map[string]string{
 const chordChars = "abcdefghijklmnopqrstuvwxyz0123456789`-=[]\\',./"
 
 func KeyName(key string) (string, bool) {
-	if len(key) > 16 {
+	k, ok := parseKey(key)
+	if !ok {
 		return "", false
 	}
+	return k.String(), true
+}
+
+type keyName struct {
+	ctrl, meta, shift bool
+	base              string // tmux's name
+}
+
+func (k keyName) String() string {
+	var b strings.Builder
+	if k.ctrl {
+		b.WriteString("C-")
+	}
+	if k.meta {
+		b.WriteString("M-")
+	}
+	if k.shift {
+		b.WriteString("S-")
+	}
+	b.WriteString(k.base)
+	return b.String()
+}
+
+func parseKey(key string) (keyName, bool) {
+	if len(key) > 16 {
+		return keyName{}, false
+	}
+	var k keyName
 	rest := key
-	ctrl, meta, shift := false, false, false
 	if strings.HasPrefix(rest, "C-") {
-		ctrl, rest = true, rest[2:]
+		k.ctrl, rest = true, rest[2:]
 	}
 	if strings.HasPrefix(rest, "M-") {
-		meta, rest = true, rest[2:]
+		k.meta, rest = true, rest[2:]
 	}
 	if strings.HasPrefix(rest, "S-") {
-		shift, rest = true, rest[2:]
+		k.shift, rest = true, rest[2:]
 	}
-	mods := key[:len(key)-len(rest)]
 	if name, ok := named[rest]; ok {
-		return mods + name, true
+		k.base = name
+		return k, true
 	}
-	if len(rest) == 1 && strings.IndexByte(chordChars, rest[0]) >= 0 && (ctrl || meta) && !shift {
-		return mods + rest, true
+	if len(rest) == 1 && strings.IndexByte(chordChars, rest[0]) >= 0 && (k.ctrl || k.meta) && !k.shift {
+		k.base = rest
+		return k, true
 	}
-	return "", false
+	return keyName{}, false
+}
+
+// shiftedOnlyExtended: keys whose shifted form exists only as an extended
+// key. The cursor and function keys carry Shift in their classic
+// encoding; these do not, so a program that did not ask for extended
+// keys cannot be given S-Enter. tmux 3.5 sends it the plain key then;
+// tmux 3.4 types the name "S-Enter" as text.
+var shiftedOnlyExtended = map[string]bool{
+	"Enter": true, "Tab": true, "BTab": true, "BSpace": true, "Escape": true, "Space": true,
+	"KP0": true, "KP1": true, "KP2": true, "KP3": true, "KP4": true, "KP5": true, "KP6": true,
+	"KP7": true, "KP8": true, "KP9": true, "KP/": true, "KP*": true, "KP-": true, "KP+": true,
+	"KP.": true, "KPEnter": true,
+}
+
+// extendedKeysWanted says whether the pane's program asked for extended
+// keys. tmux 3.5's pane_key_mode reads Ext 1 or Ext 2 then and VT10x
+// otherwise; older tmux has no such format and the answer is no.
+func (s Server) extendedKeysWanted(ctx context.Context, paneID string) bool {
+	out, err := s.run(ctx, "display-message", "-p", "-t", paneID, "#{pane_key_mode}")
+	return err == nil && strings.HasPrefix(strings.TrimSpace(string(out)), "Ext")
 }
 
 // SendKey sends one key a client named, count times when count is above
-// one; KeyName says which.
+// one; KeyName says which. A shifted key only an extended-keys program
+// can take goes without its Shift to a program that did not ask, as a
+// terminal would send it.
 func (s Server) SendKey(ctx context.Context, paneID, key string, count int) error {
-	k, ok := KeyName(key)
+	k, ok := parseKey(key)
 	if !ok {
 		return fmt.Errorf("unknown key")
+	}
+	if k.shift && shiftedOnlyExtended[k.base] && !s.extendedKeysWanted(ctx, paneID) {
+		k.shift = false
 	}
 	args := []string{"send-keys", "-t", paneID}
 	if count > 1 {
 		args = append(args, "-N", strconv.Itoa(count))
 	}
-	_, err := s.run(ctx, append(args, k)...)
+	_, err := s.run(ctx, append(args, k.String())...)
 	return err
 }
 

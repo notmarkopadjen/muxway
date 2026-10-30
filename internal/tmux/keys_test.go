@@ -29,3 +29,21 @@ func TestKeyNameRefusesTheRest(t *testing.T) {
 		}
 	}
 }
+
+func TestShiftIsDroppedOnlyWhereTmuxHasNoClassicForm(t *testing.T) {
+	for key, want := range map[string]string{
+		"S-Enter": "Enter", "C-S-Enter": "C-Enter", "M-S-Tab": "M-Tab", "S-Space": "Space", "S-KPEnter": "KPEnter",
+		"S-Up": "S-Up", "C-M-S-F5": "C-M-S-F5", "S-Delete": "S-DC", "S-Home": "S-Home",
+	} {
+		k, ok := parseKey(key)
+		if !ok {
+			t.Fatalf("%q refused", key)
+		}
+		if k.shift && shiftedOnlyExtended[k.base] {
+			k.shift = false
+		}
+		if got := k.String(); got != want {
+			t.Errorf("%q to a plain program: %q, want %q", key, got, want)
+		}
+	}
+}

@@ -212,6 +212,14 @@ change; the 99-held spec stays as it is and is run with the suite.
   layout grown is tmux's own; the key grammar is unchanged.
 - [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
 - [x] Docs and diagrams updated
+- [x] Follow-up, 2026-10-30: on tmux 3.4 (Ubuntu 24.04, the CI runner)
+  `send-keys S-Enter` to a program that did not ask for modified keys
+  types the text `S-Enter`; tmux 3.5 sends a plain Enter and has the
+  `pane_key_mode` format. The agent now reads that format before a
+  shifted key with no classic encoding (Enter, Tab, Space, Backspace,
+  Escape, the keypad) and drops the Shift for a program that did not
+  ask, or on a tmux without the format. Test 9 expects a plain Enter
+  everywhere on such a tmux.
 
 ## Test run
 

@@ -91,10 +91,13 @@ unit, see [operations](#operations)). `--tmux-socket` or `--tmux-name` pick
 a tmux server other than the default. Once the server answers, the agent
 turns its `extended-keys` option on if it is off, so a modified key a
 client sends (`Shift+Enter`, which Claude Code takes as a new line)
-reaches a program that asked for modified keys; a program that did not
-ask gets the plain key as before. `on` and `always` are left as set; a
-tmux older than 3.2 has no such option, which the agent logs once. The
-agent's state is its `--dir`
+reaches a program that asked for modified keys. Before sending such a
+key the agent asks tmux whether the pane's program asked (`pane_key_mode`,
+tmux 3.5 and newer) and sends the plain key to a program that did not,
+as a terminal would; a tmux before 3.5 cannot say, so there every program
+gets the plain key and Shift+Enter is an Enter. `on` and `always` are left as
+set; a tmux older than 3.2 has no such option, which the agent logs once.
+The agent's state is its `--dir`
 (default `muxway/agent` under the configuration directory, or
 `MUXWAY_DIR`), mode 700:
 

@@ -100,7 +100,10 @@ func extendedKeys(ts *tmuxServer) string {
 // 178: the agent turns tmux's extended-keys on, so Shift+Enter reaches a
 // program that asked for modified keys as a modified key and a program
 // that did not ask still gets a plain Enter. The pane's process may
-// change once only, so the plain program gets a pane of its own.
+// change once only, so the plain program gets a pane of its own. A tmux
+// before 3.5 cannot say which program asked (no pane_key_mode), so the
+// agent sends every program a plain Enter rather than let tmux type the
+// key's name as text.
 func TestFlow178_ShiftEnterReachesAProgramThatAsked(t *testing.T) {
 	e, ts, _ := basic(t)
 	waitFor(t, "extended-keys on", func() bool { return extendedKeys(ts) == "on" })
@@ -113,10 +116,17 @@ func TestFlow178_ShiftEnterReachesAProgramThatAsked(t *testing.T) {
 	waitFor(t, "the second pane listed", func() bool { return e.get(tok, "/v1/panes/"+second).status == http.StatusOK })
 	// Modified Enter in either encoding tmux has (extended-keys-format):
 	// xterm's, the default, or CSI u.
+	modified := []string{`\x1b[27;2;13~`, `\x1b[13;2u`}
+	if mode := strings.TrimSpace(ts.must("display-message", "-p", "-t", "work:0.0", "#{pane_key_mode}")); mode == "" {
+		t.Log("tmux has no pane_key_mode: Shift+Enter is a plain Enter everywhere")
+		modified = []string{`\r`}
+	} else if !strings.HasPrefix(mode, "Ext") {
+		t.Fatalf("the asking pane's key mode is %q", mode)
+	}
 	for _, c := range []struct {
 		key   string
 		bytes []string
-	}{{"S-Enter", []string{`\x1b[27;2;13~`, `\x1b[13;2u`}}, {"Enter", []string{`\r`}}} {
+	}{{"S-Enter", modified}, {"Enter", []string{`\r`}}} {
 		before := len(readKeys(asking))
 		expect(t, e.input(tok, shell0, map[string]string{"key": c.key}), http.StatusNoContent, c.key)
 		waitFor(t, c.key, func() bool { return len(readKeys(asking)) > before })
