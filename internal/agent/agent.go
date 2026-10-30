@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -178,6 +179,32 @@ type Agent struct {
 	made       map[string]time.Time            // pane id -> when a split made it, while the hub may still undo it
 	sessions   map[string]bool                 // session ids started for clients
 	sess       *secure.Session                 // current connection to the hub, nil while away
+	extKeys    bool                            // tmux's extended-keys seen to, or given up on
+}
+
+// ensureExtendedKeys turns tmux's extended-keys on once the server
+// answers, so Shift+Enter and the like reach the programs that ask for
+// modified keys. A tmux without the option is told of once.
+func (a *Agent) ensureExtendedKeys(ctx context.Context) {
+	a.mu.Lock()
+	done := a.extKeys
+	a.mu.Unlock()
+	if done {
+		return
+	}
+	changed, err := a.tmux.EnableExtendedKeys(ctx)
+	if err != nil && strings.Contains(err.Error(), "no server running") {
+		return
+	}
+	a.mu.Lock()
+	a.extKeys = true
+	a.mu.Unlock()
+	switch {
+	case err != nil:
+		a.log.Warn("tmux extended-keys not set; Shift+Enter and other modified keys will not reach the programs that ask for them", "err", err)
+	case changed:
+		a.log.Info("tmux extended-keys turned on: modified keys reach the programs that ask for them")
+	}
 }
 
 // New prepares an agent; Run connects it.
@@ -207,6 +234,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	if len(a.cfg.Preview) > 0 {
 		a.log.Info("preview roots, read as this user; git status and diff run for repositories under them", "roots", a.cfg.Preview, "hidden", a.cfg.PreviewHidden)
 	}
+	a.ensureExtendedKeys(ctx)
 	if a.cfg.Dir != "" {
 		ln, err := a.listenNotify()
 		if err != nil {
@@ -747,6 +775,8 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 	if skipped > 0 {
 		a.log.Warn("tmux panes skipped", "count", skipped, "err", tmux.ErrUnparsed)
 	}
+	// The server may have come up after the agent did.
+	a.ensureExtendedKeys(ctx)
 	a.mu.Lock()
 	alive := map[string]bool{}
 	for i := range panes {

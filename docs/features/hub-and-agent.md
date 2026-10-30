@@ -88,7 +88,13 @@ muxway agent run --preview ~/work --preview-hidden    # .github and such too; ne
 
 Run it as the user who owns the tmux server, as a service (a systemd user
 unit, see [operations](#operations)). `--tmux-socket` or `--tmux-name` pick
-a tmux server other than the default. The agent's state is its `--dir`
+a tmux server other than the default. Once the server answers, the agent
+turns its `extended-keys` option on if it is off, so a modified key a
+client sends (`Shift+Enter`, which Claude Code takes as a new line)
+reaches a program that asked for modified keys; a program that did not
+ask gets the plain key as before. `on` and `always` are left as set; a
+tmux older than 3.2 has no such option, which the agent logs once. The
+agent's state is its `--dir`
 (default `muxway/agent` under the configuration directory, or
 `MUXWAY_DIR`), mode 700:
 
