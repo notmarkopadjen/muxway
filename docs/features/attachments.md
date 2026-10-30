@@ -46,7 +46,10 @@ see [preview](preview.md).
 
 The types: PNG, JPEG, GIF and WebP images, PDF, plain text, Markdown,
 JSON and zip archives, up to 8 MiB each; an archive is kept as it came,
-never unpacked. Files are kept a day. On a host whose agent runs
+never unpacked. Any other text file, a `.py`, a `.cs`, a `.csv`, by the
+browser's type or by an extension of [the preview
+list](preview.md), goes as plain text and lands as `.txt`: the host
+names a file by its type, never by what the client called it. Files are kept a day. On a host whose agent runs
 without `--inbox` there is no `⇪`, and a paste or a drop answers with a
 toast, `no inbox on alice-laptop: its agent needs --inbox`, and sends
 nothing. On Android an image pasted into the line, a file picked with

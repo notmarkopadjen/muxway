@@ -30,6 +30,17 @@
   --mx-glow-box-strong: 0 0 6px var(--mx-glow), 0 0 22px var(--mx-glow-soft);
   --mx-text-glow: var(--mx-glow-text);
 
+  /* code: the one place a second hue carries meaning (owner, 2026-10-30) */
+  --mx-syn-comment: var(--mx-ink-dim);
+  --mx-syn-string: #a8e6a0;
+  --mx-syn-number: #3ad6ff;
+  --mx-syn-keyword: #ff7a1a;
+  --mx-syn-name: #c68cff;
+  --mx-syn-punct: var(--mx-ink-dim);
+  --mx-syn-glow:
+    0 0 2px color-mix(in srgb, currentColor 60%, transparent),
+    0 0 8px color-mix(in srgb, currentColor 30%, transparent);
+
   --mx-motion-fast: 120ms;
   --mx-motion-medium: 260ms;
   --mx-motion-slow: 600ms;

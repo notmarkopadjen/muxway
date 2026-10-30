@@ -1698,25 +1698,28 @@ button.mx-window:focus-visible {
   tab-size: 4;
 }
 .mx-code .k-comment {
-  color: var(--mx-ink-dim);
+  color: var(--mx-syn-comment);
   font-style: italic;
 }
 .mx-code .k-string {
-  color: var(--mx-accent);
+  color: var(--mx-syn-string);
+  text-shadow: var(--mx-syn-glow);
 }
 .mx-code .k-number {
-  color: var(--mx-accent);
+  color: var(--mx-syn-number);
+  text-shadow: var(--mx-syn-glow);
 }
 .mx-code .k-keyword {
-  color: var(--mx-ink);
+  color: var(--mx-syn-keyword);
   font-weight: bold;
+  text-shadow: var(--mx-syn-glow);
 }
 .mx-code .k-name {
-  color: var(--mx-ink);
-  text-shadow: var(--mx-glow-text-strong);
+  color: var(--mx-syn-name);
+  text-shadow: var(--mx-syn-glow);
 }
 .mx-code .k-punct {
-  color: var(--mx-ink-dim);
+  color: var(--mx-syn-punct);
 }
 /* Markdown rendered: the terminal's type, headings in the pixel face */
 .mx-md {

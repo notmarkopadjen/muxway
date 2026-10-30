@@ -143,6 +143,33 @@ test('104 a held key and a paste coalesce: few requests, none over fifty, the pa
   await expectTyped(request, 'hello');
 });
 
+test('104 Ctrl+V and Shift+Insert paste: nothing goes to the pane as a key, the paste types its text', async ({
+  page,
+  request,
+}) => {
+  test.skip(!KEYS, 'needs the key echo pane');
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await signIn(page);
+  await page.goto(`/p/${SHELL0}`);
+  await settled(page);
+  await page.getByTestId('screen').click();
+  await expect(page.locator('form.mx-input')).toHaveAttribute('data-direct', '');
+  const bodies = watchInput(page);
+  await page.keyboard.press('Control+v');
+  await page.keyboard.press('Shift+Insert');
+  await page.keyboard.type('pv');
+  await expectTyped(request, 'pv');
+  expect(bodies.filter((b) => b.key !== undefined)).toEqual([]);
+  // The browser's paste event, with text, types it as one request.
+  await page.evaluate(() => {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', 'from the clipboard');
+    window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+  });
+  await expectTyped(request, 'from the clipboard');
+  expect(bodies.filter((b) => b.text === 'from the clipboard')).toHaveLength(1);
+});
+
 test('104 security: a read-only pane has no direct typing', async ({ page }) => {
   test.skip(KEYS, 'the main environment has the read-only pane');
   await signIn(page);

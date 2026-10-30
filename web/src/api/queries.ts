@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError, target } from './client';
 import { joinAddress, originOfHub, splitAddress, useHubs, type Hub } from '../hubs';
 import { noteOwn } from '../term/lens';
+import { extOf, isTextName } from '../term/types';
 import type {
   AuthMethods,
   Changes,
@@ -364,7 +365,11 @@ export const FILE_TYPES: Record<string, string> = {
 export function fileType(f: File): string | null {
   const known = Object.values(FILE_TYPES);
   if (known.includes(f.type)) return f.type;
-  return FILE_TYPES[f.name.split('.').pop()?.toLowerCase() ?? ''] ?? null;
+  const byName = FILE_TYPES[extOf(f.name)];
+  if (byName) return byName;
+  // Any other text lands as plain text: the host names a file by its type.
+  if (f.type.startsWith('text/') || isTextName(f.name)) return 'text/plain';
+  return null;
 }
 
 // sendFile hands a file to the pane's host; the answer is where it went.

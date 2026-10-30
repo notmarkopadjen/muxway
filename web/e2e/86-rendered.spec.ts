@@ -109,3 +109,44 @@ test('86 code and JSON show with their colours', async ({ page, request }, info)
   await page.keyboard.press('Escape');
   await control(request, '/send', { target: 'work:0.0', text: 'clear' });
 });
+
+test('86 a Python file: comments, keywords and strings in three colours of their own, the filters over them', async ({
+  page,
+  request,
+}, info) => {
+  test.skip(!PREVIEW, 'no preview root in this environment');
+  await signIn(page);
+  await openPane(page, SHELL0);
+  await settled(page);
+  await control(request, '/send', { target: 'work:0.0', text: 'echo see ./tx.py end' });
+  const screen = page.getByTestId('screen');
+  await expect(screen).toContainText('./tx.py end', { timeout: 5000 });
+  await screen.locator('a.mx-path-link[data-path="./tx.py"]').last().click();
+  const text = page.getByTestId('picture-text');
+  await expect(text).toHaveAttribute('data-lang', 'py');
+  await expect(text.locator('.k-comment').first()).toHaveText('# a script');
+  await expect(text.locator('.k-keyword').first()).toHaveText('def');
+  await expect(text.locator('.k-string').first()).toHaveText('"ok"');
+  await expect(text.locator('.k-number').first()).toHaveText('42');
+  const colour = (sel: string) =>
+    text
+      .locator(sel)
+      .first()
+      .evaluate((el) => getComputedStyle(el).color);
+  const colours = await Promise.all(
+    ['.k-comment', '.k-keyword', '.k-string', '.k-number'].map(colour),
+  );
+  expect(new Set(colours).size).toBe(4);
+  const ink = await screen.evaluate((el) => getComputedStyle(el).color);
+  for (const c of colours) expect(c).not.toBe(ink);
+  // The scanlines stay above the window.
+  const above = await page.evaluate(() => {
+    const z = (sel: string) => parseInt(getComputedStyle(document.querySelector(sel)!).zIndex, 10);
+    return z('.mx-scanlines') > z('.mx-picture-back');
+  });
+  expect(above).toBe(true);
+  await shot(page, info, '86-colours');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('picture')).toHaveCount(0, { timeout: 3000 });
+  await control(request, '/send', { target: 'work:0.0', text: 'clear' });
+});

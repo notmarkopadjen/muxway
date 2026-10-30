@@ -86,8 +86,8 @@ nothing but the hub to talk to.
    In a pane whose program has the mouse, a numbered choice (Claude
    Code's `❯ 1. Yes`, `2. No`) shows the hand, since a click picks it.
    Where the host's agent has an inbox and the pane is writable, `⇪` sits
-   on the line too: a file picked with it, pasted (a screenshot) or
-   dropped anywhere on the view goes to the host, and its path lands on
+   on the line too: a file picked with it, pasted (a screenshot, a
+   text file) or dropped anywhere on the view goes to the host, and its path lands on
    the line, focused and unsent (see [attachments](attachments.md)).
    A path of the inbox printed in the pane is a link as well, and on a
    host with preview roots any path of a file the host shows: a click

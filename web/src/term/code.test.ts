@@ -89,6 +89,13 @@ describe('tokenize', () => {
     expect(languageOf('x.yml')).toBe('yaml');
     expect(languageOf('x.md')).toBeUndefined();
     expect(languageOf('cobol')).toBeUndefined();
+    expect(languageOf('src/Makefile')).toBe('make');
+    expect(languageOf('Dockerfile')).toBe('dockerfile');
+    expect(languageOf('Views/Index.cshtml')).toBe('html');
+    expect(languageOf('main.tf')).toBe('hcl');
+    expect(languageOf('run.ps1')).toBe('ps1');
+    expect(languageOf('a.ipynb')).toBe('json');
+    expect(languageOf('x.csv')).toBeUndefined();
   });
   it('cuts runs into lines', () => {
     expect(
@@ -100,6 +107,75 @@ describe('tokenize', () => {
       [{ kind: 'comment', text: '/* a' }],
       [{ kind: 'comment', text: 'b */' }],
       [{ kind: 'text', text: 'x' }],
+    ]);
+  });
+
+  it('knows the languages a project adds: ruby, powershell, make, dockerfile, ini, batch, vb', () => {
+    expect(kinds('rb', "def go # run\n  puts 'hi'\nend")).toEqual([
+      'keyword:def',
+      'text: go ',
+      'comment:# run',
+      'text:\n  puts ',
+      "string:'hi'",
+      'text:\n',
+      'keyword:end',
+    ]);
+    expect(kinds('ps1', '$x = Get-Item "a" # c')).toEqual([
+      'name:$x',
+      'text: ',
+      'punct:=',
+      'text: Get',
+      'punct:-',
+      'text:Item ',
+      'string:"a"',
+      'text: ',
+      'comment:# c',
+    ]);
+    expect(kinds('make', 'all: $(SRC)\n\t@echo ${X} # done')).toEqual([
+      'name:all',
+      'punct::',
+      'text: ',
+      'name:$(SRC)',
+      'text:\n\t@echo ',
+      'name:${X}',
+      'text: ',
+      'comment:# done',
+    ]);
+    expect(kinds('dockerfile', 'FROM alpine\nRUN echo $HOME')).toEqual([
+      'keyword:FROM',
+      'text: alpine\n',
+      'keyword:RUN',
+      'text: echo ',
+      'name:$HOME',
+    ]);
+    expect(kinds('ini', '; c\n[unit]\nkey = 1')).toEqual([
+      'comment:; c',
+      'text:\n',
+      'punct:[',
+      'text:unit',
+      'punct:]',
+      'text:\n',
+      'name:key',
+      'text: ',
+      'punct:=',
+      'text: ',
+      'number:1',
+    ]);
+    expect(kinds('bat', 'REM note\necho off')).toEqual([
+      'comment:REM note',
+      'text:\n',
+      'keyword:echo',
+      'text: ',
+      'keyword:off',
+    ]);
+    expect(kinds('vb', '\' c\nDim s = "x"')).toEqual([
+      "comment:' c",
+      'text:\n',
+      'keyword:Dim',
+      'text: s ',
+      'punct:=',
+      'text: ',
+      'string:"x"',
     ]);
   });
 });

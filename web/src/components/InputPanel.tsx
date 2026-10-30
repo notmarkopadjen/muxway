@@ -221,9 +221,10 @@ export function InputPanel({
       if (canFile) void sendFiles(files);
       else toast.push({ kind: 'file', title: `no inbox on ${pane.host}: its agent needs --inbox` });
     };
+    // While typing direct the focus may be anywhere on the page.
     const onPaste = (e: ClipboardEvent) => {
       const files = [...(e.clipboardData?.files ?? [])];
-      if (!files.length) return;
+      if (!files.length || !(direct || zone.contains(e.target as Node))) return;
       e.preventDefault();
       take(files);
     };
@@ -235,11 +236,11 @@ export function InputPanel({
       e.preventDefault();
       take([...(e.dataTransfer?.files ?? [])]);
     };
-    zone.addEventListener('paste', onPaste);
+    window.addEventListener('paste', onPaste);
     zone.addEventListener('dragover', onOver);
     zone.addEventListener('drop', onDrop);
     return () => {
-      zone.removeEventListener('paste', onPaste);
+      window.removeEventListener('paste', onPaste);
       zone.removeEventListener('dragover', onOver);
       zone.removeEventListener('drop', onDrop);
     };

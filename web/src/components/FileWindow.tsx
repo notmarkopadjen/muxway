@@ -89,6 +89,7 @@ export function FileWindow({
   const view = usePreview();
   const name = fileNameOf(shown);
   const markdown = /\.(md|markdown)$/i.test(name);
+  const patch = /\.(diff|patch)$/i.test(name);
   const lang = languageOf(name);
   // A change's path is the repository's; the file is read by its whole path.
   const change = 'change' in shown ? shown.change?.kind : undefined;
@@ -286,6 +287,8 @@ export function FileWindow({
               {render(got.text, { onFile, onPath })}
               {got.cut ? <p className="mx-dim">… cut at 1 MiB; the download has the rest</p> : null}
             </div>
+          ) : got.kind === 'text' && patch ? (
+            <DiffView diff={{ diff: got.text, binary: false, cut: got.cut }} />
           ) : got.kind === 'text' && lang ? (
             <div className="mx-picture-text" data-testid="picture-text" data-lang={lang}>
               <Code

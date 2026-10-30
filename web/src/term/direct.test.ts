@@ -44,6 +44,10 @@ describe('keyToBody', () => {
     expect(keyToBody(k('é', { ctrlKey: true }))).toBeNull();
     expect(keyToBody(k('C', { ctrlKey: true, shiftKey: true }))).toBeNull();
     expect(keyToBody(k('V', { ctrlKey: true, shiftKey: true }))).toBeNull();
+    expect(keyToBody(k('v', { ctrlKey: true }))).toBeNull();
+    expect(keyToBody(k('Insert', { shiftKey: true }))).toBeNull();
+    expect(keyToBody(k('v', { ctrlKey: true, altKey: true }))).toEqual({ key: 'C-M-v' });
+    expect(keyToBody(k('Insert', { ctrlKey: true }))).toEqual({ key: 'C-Insert' });
     expect(keyToBody(k('c', { ctrlKey: true }), true)).toBeNull();
     expect(keyToBody(k('c', { ctrlKey: true }), false)).toEqual({ key: 'C-c' });
     expect(keyToBody(k('t', { metaKey: true }))).toBeNull();

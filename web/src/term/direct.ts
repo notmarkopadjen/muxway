@@ -58,6 +58,8 @@ export function keyToBody(ev: KeyLike, selected = false): Body | null {
     if (C && S) return null;
     const ch = ev.key.toLowerCase();
     if (!CHAR.test(ch)) return null;
+    // Ctrl+V pastes, as in a terminal: the browser's paste event follows.
+    if (C && !M && ch === 'v') return null;
     if (C && ch === 'c' && selected) return null;
     return { key: `${C ? 'C-' : ''}${M ? 'M-' : ''}${ch}` };
   }
@@ -65,6 +67,7 @@ export function keyToBody(ev: KeyLike, selected = false): Body | null {
   if (!name && /^F([1-9]|1[0-2])$/.test(ev.key) && !BROWSER_F.has(ev.key)) name = ev.key;
   if (!name) return null;
   if (name === 'Tab' && S && !C && !M) return { key: 'BTab' };
+  if (name === 'Insert' && S && !C && !M) return null;
   return { key: `${C ? 'C-' : ''}${M ? 'M-' : ''}${S ? 'S-' : ''}${name}` };
 }
 

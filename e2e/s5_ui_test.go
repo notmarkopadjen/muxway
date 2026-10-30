@@ -55,6 +55,8 @@ func TestUI_WebClient(t *testing.T) {
 	os.WriteFile(filepath.Join(preview, "docs", "page.html"), []byte("<b>bold?</b><script>alert(1)</script>\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, "docs", "note.pdf"), []byte("%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 100]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, "docs", "shot.png"), png2, 0o600)
+	os.WriteFile(filepath.Join(preview, "docs", "tx.py"), []byte("# a script\ndef run(n):\n    return \"ok\" * n + str(42)\n"), 0o600)
+	os.WriteFile(filepath.Join(preview, "docs", "Makefile"), []byte("all:\n\t@echo built\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, ".env"), []byte("SECRET=1\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, "run.sh"), []byte("#!/bin/sh\n"), 0o600)
 	// The root is a repository with a change of each kind, for the changes window.

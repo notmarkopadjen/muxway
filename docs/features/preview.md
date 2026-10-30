@@ -17,11 +17,13 @@ muxway agent run --preview ~/work --preview ~/notes
 ```
 
 In the browser, on a writable pane of that host, a run of text that
-looks like a path, with a slash in it or from `~`, and ends in one of
-`txt md markdown csv tsv json log yaml yml toml ini xml html png jpg
-jpeg gif webp pdf` or a source type (`js jsx ts tsx cs go py rb rs java
-kt kts c h cpp hpp sh bash zsh fish sql css scss less`, shown as text,
-never run), is underlined. A click opens the window: the bar has
+looks like a path, with a slash in it or from `~`, and ends in a type
+the host shows, by extension or by name (the list is in [the
+protocol](../protocol/v1.md#get-v1panesaddresspreviewpath): every
+source, script, markup, data, config and template type a project holds,
+`Makefile`, `Dockerfile`, `LICENSE` and such without one, images, PDF,
+and archives and office files as a download only)
+is underlined. A click opens the window: the bar has
 the path, the size, for a text its line count, `⤓` and `×`; `Escape`,
 `×` or a click outside closes it. A relative path is taken from the
 directory the pane's shell is in, `~` from the agent's home. What the
@@ -34,11 +36,22 @@ and the host's file paths as links; `plain` in the bar shows the source
 instead, and the choice is remembered by the browser for every Markdown
 file. The rendering builds elements from the parsed text and never from
 HTML, so a tag or a script in a file is shown as the text it is. Code
-files show with their colours: comments dim, strings and numbers in the
-accent, keywords bold, keys and tags bright, from a small scanner per
-language (JSON, YAML, TOML, JavaScript, TypeScript, C#, Go, Python,
-shell, SQL, Rust, Java, Kotlin, C and C++, HTML and XML, CSS); a
-language it does not know is shown plain.
+files show with their colours, the one place a second hue carries
+meaning (the owner's decision of 2026-10-30): comments dim and italic,
+strings, numbers, keywords (bold too) and names (keys, tags, `$vars`)
+each in a hue of its own per theme, punctuation dim, every run glowing
+in its colour under the screen's scanlines and vignette. A small
+scanner per language classifies the runs (JSON, YAML, TOML, INI,
+JavaScript, TypeScript, C#, Go, Python, Ruby, PHP, Lua, Perl, R, Julia,
+Swift, Dart, Scala, Groovy, Haskell, Elixir, Erlang, OCaml and F#,
+Visual Basic, PowerShell, batch, Rust, Java, Kotlin, C and C++, Zig,
+Nim, D, the Lisps, TeX, Fortran, assembly, shell, make, Dockerfile,
+CMake, SQL, protobuf, GraphQL, HCL, Nix, `.http`, HTML, XML and the
+templates, CSS); a language it does not know is shown plain. A `.diff`
+or `.patch` opens in the diff view of [changes](changes.md): added rows
+in the ok colour, removed rows dim and struck. A type with no preview,
+an archive or an office file, says `no preview for this type; ⤓
+downloads it`.
 
 ![a plan rendered over the pane](images/web-preview-rendered.png)
 ![code with its colours](images/web-preview-code.png) A click on the link
@@ -60,7 +73,7 @@ sequenceDiagram
     C->>H: GET /v1/panes/{address}/preview?path=docs/plans/a.md
     H->>H: write grant? writable pane? path sane? two a second?
     H->>A: read-path {pane, path}
-    A->>A: roots? pane's cwd + path, symlinks followed, under a root? no dot component? regular, ≤ 8 MiB, a shown type?
+    A->>A: roots? pane's cwd + path, symlinks followed, under a root? no dot component? regular, ≤ 8 MiB, a shown type by extension or name?
     A-->>H: {type, data} or no_file
     H-->>C: 200 the file, nosniff, no-store, or 404
     C->>P: window: preview, size, ⤓ download
@@ -88,10 +101,12 @@ from panes to files, by the owner's explicit decision (2026-10-26):
   result must lie under a root; `..` and absolute paths are fine because
   the check is on the result. Any component starting with a dot below
   the root is refused, so `.env`, `.git`, `.ssh` are never served. The
-  extension list keeps keys, binaries and scripts out; every text type
-  is served as plain text with `nosniff`, so HTML or SVG never render as
-  a page, and the browser shows the file from a blob of its own (the
-  policy allows `img-src blob:` and `frame-src blob:`).
+  type list keeps keys, certificates, executables and databases out;
+  every text type, scripts and markup included, is served as plain text
+  with `nosniff`, so HTML, SVG or a Razor page never render as a page,
+  and the browser shows the file from a blob of its own (the policy
+  allows `img-src blob:` and `frame-src blob:`). An archive or an
+  office file is `application/octet-stream`, shown only as its download.
 - **One refusal** (`404 not_found`) for everything the host will not
   serve, so the endpoint cannot be used to map the host. Two a second
   per principal.

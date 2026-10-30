@@ -9,6 +9,10 @@
   --mx-glow-soft: rgba(57, 255, 20, 0.35);
   --mx-accent: #b6ff9e;
   --mx-ok: #39ff14;
+  --mx-syn-string: #ffd36b;
+  --mx-syn-number: #3ad6ff;
+  --mx-syn-keyword: #ff7a1a;
+  --mx-syn-name: #c68cff;
 }
 
 /* paper: dark ink on a pale canvas; glow becomes a soft shadow */
@@ -30,6 +34,11 @@
   --mx-glow-text-strong: 0 0 1px var(--mx-glow);
   --mx-glow-box: 2px 2px 0 var(--mx-ink-faint);
   --mx-glow-box-strong: 0 0 0 2px var(--mx-accent);
+  --mx-syn-string: #0b5d1e;
+  --mx-syn-number: #0b4f8a;
+  --mx-syn-keyword: #9a5b00;
+  --mx-syn-name: #5b2d8a;
+  --mx-syn-glow: none;
 }
 
 /* Tints for the key bar's groups and the command row's tones. They are

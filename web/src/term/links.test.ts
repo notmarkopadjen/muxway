@@ -126,6 +126,25 @@ describe('findPaths', () => {
       [1, 31, 'muxway-android/docs/plans/x.md'],
     ]);
   });
+  it('knows the types of a project: sources, markup, config, archives, names without an extension', () => {
+    const line =
+      'src/tx.py ./Views/Home/Index.cshtml api/v1.proto ops/main.tf web/icon.svg scripts/run.ps1 out/a.diff src/Makefile ./Dockerfile /opt/x/LICENSE ~/dl/report.xlsx a/b.PY';
+    expect(findPaths(line).map((p) => p[2])).toEqual([
+      'src/tx.py',
+      './Views/Home/Index.cshtml',
+      'api/v1.proto',
+      'ops/main.tf',
+      'web/icon.svg',
+      'scripts/run.ps1',
+      'out/a.diff',
+      'src/Makefile',
+      './Dockerfile',
+      '/opt/x/LICENSE',
+      '~/dl/report.xlsx',
+      'a/b.PY',
+    ]);
+    expect(findPaths('see src/Makefile.am, Makefile and bin/a.exe')).toEqual([]);
+  });
   it('leaves bare names, other extensions and the insides of words', () => {
     for (const s of [
       'README.md',
@@ -133,6 +152,9 @@ describe('findPaths', () => {
       'docs/plans/x.md.bak',
       'bin/run.exe',
       'keys/agent.key',
+      'certs/host.crt',
+      'config/x.env',
+      'src/Makefile.am',
       'a/b.mdx',
       'docs/plans/x.md5',
       'x/y.md-',

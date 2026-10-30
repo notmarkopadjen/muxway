@@ -41,7 +41,8 @@ What a key becomes:
 | a printable character, alone or with Shift, a dead key's result, an IME's composed text | the text |
 | `Ctrl` + a char of the grammar (`a`–`z`, digits, `` ` - = [ ] \ ' , . / ``), `Alt` likewise | `C-x`, `M-x`, `C-M-x`; `Ctrl+C` with text selected on the page is the browser's copy instead |
 | `Enter`, `Tab`, `Backspace`, `Escape`, the arrows, `PageUp` `PageDown` `Home` `End` `Insert` `Delete`, `F1`–`F10`, with `C-` `M-` `S-`; `Shift+Tab` | the key by its name, `BTab` for Shift+Tab |
-| a paste | the text as one request, tabs as two spaces, control characters dropped; a file to the inbox, its path typed |
+| `Ctrl+V`, `Shift+Insert`, `Ctrl+Shift+V` | nothing: the terminal's paste is the browser's, and its paste event follows |
+| a paste | the text as one request, tabs as two spaces, control characters dropped; a file to the inbox, its path typed, wherever the focus is while typing direct |
 | `Ctrl+Shift` + a letter, `Ctrl+T` `W` `N` `Tab`, `F5` `F11` `F12`, the OS key, `CapsLock`, a key under composition | nothing: the browser's |
 
 A held key is a few requests, not one per repeat: the client queues
@@ -105,6 +106,8 @@ and `"repeat": true` in the hosts listing for an agent that takes it.
   the status bar and the block cursor; keys go to the focused tile only;
   a read-only tile focused ends it.
 - **Clipboard.** Nothing is read without a paste the person made.
+  `Ctrl+V` and `Shift+Insert` send no key: a program in the pane never
+  hears a paste chord, it gets the text.
 - **Limits.** The per-principal rate stands as the backstop; the
   client's queue keeps a held key under it. Audit lines as before, with
   `count` on a key; never the text.

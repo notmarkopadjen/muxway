@@ -20,6 +20,15 @@ func TestResolvePreview(t *testing.T) {
 	write(filepath.Join(root, "docs", "shot.PNG"), "png")
 	write(filepath.Join(root, "run.sh"), "#!/bin/sh\n")
 	write(filepath.Join(root, "key.pem"), "secret")
+	write(filepath.Join(root, "id.crt"), "cert")
+	write(filepath.Join(root, "a.exe"), "MZ")
+	write(filepath.Join(root, "x.env"), "SECRET=1")
+	write(filepath.Join(root, "Makefile"), "all:\n")
+	write(filepath.Join(root, "Makefile.am"), "all:\n")
+	write(filepath.Join(root, "docs", "tx.py"), "x = 1\n")
+	write(filepath.Join(root, "docs", "a.diff"), "--- a\n+++ b\n")
+	write(filepath.Join(root, "docs", "a.zip"), "PK")
+	write(filepath.Join(root, "docs", "README"), "read me")
 	write(filepath.Join(root, ".env"), "SECRET=1")
 	write(filepath.Join(root, ".git", "config"), "[core]")
 	write(filepath.Join(other, "o.txt"), "outside")
@@ -38,6 +47,11 @@ func TestResolvePreview(t *testing.T) {
 		"shot.PNG":                             "image/png",
 		"../run.sh":                            "text/plain; charset=utf-8",
 		"~/notes/todo.txt":                     "text/plain; charset=utf-8",
+		"tx.py":                                "text/plain; charset=utf-8",
+		"a.diff":                               "text/plain; charset=utf-8",
+		"README":                               "text/plain; charset=utf-8",
+		"../Makefile":                          "text/plain; charset=utf-8",
+		"a.zip":                                "application/octet-stream",
 	}
 	for path, typ := range good {
 		file, got, err := resolvePreview(roots, cwd, home, path)
@@ -47,7 +61,7 @@ func TestResolvePreview(t *testing.T) {
 	}
 	bad := []string{
 		"", "../../elsewhere/o.txt", filepath.Join(other, "o.txt"), "../link.txt", "../dir/o.txt",
-		"../.env", "../.git/config", "../key.pem", "plans", "..", "nothere.md",
+		"../.env", "../.git/config", "../key.pem", "../id.crt", "../a.exe", "../x.env", "../Makefile.am", "plans", "..", "nothere.md",
 		"plans/a.md\n", strings.Repeat("a/", 600) + "a.md", "~/../elsewhere/o.txt", "/etc/passwd",
 	}
 	for _, path := range bad {

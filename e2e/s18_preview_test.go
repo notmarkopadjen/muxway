@@ -32,6 +32,12 @@ func previewEnv(t *testing.T, roots ...string) (*env, string, string) {
 	write(filepath.Join(root, "docs", "page.html"), "<script>alert(1)</script>")
 	write(filepath.Join(root, "run.sh"), "#!/bin/sh\n")
 	write(filepath.Join(root, "key.pem"), "secret")
+	write(filepath.Join(root, "id.crt"), "cert")
+	write(filepath.Join(root, "a.exe"), "MZ")
+	write(filepath.Join(root, "Makefile"), "all:\n")
+	write(filepath.Join(root, "docs", "tx.py"), "x = 1\n")
+	write(filepath.Join(root, "docs", "a.diff"), "--- a\n+++ b\n")
+	write(filepath.Join(root, "docs", "a.zip"), "PK")
 	write(filepath.Join(root, ".env"), "SECRET=1")
 	write(filepath.Join(root, ".git", "config"), "[core]")
 	write(filepath.Join(base, "elsewhere", "o.txt"), "outside")
@@ -88,7 +94,7 @@ func TestSec141_OnlyAFileUnderARootIsServed(t *testing.T) {
 	full := e.token("full", []string{host + "/*"}, []string{host + "/*"})
 	for _, path := range []string{
 		"../../elsewhere/o.txt", "/etc/passwd", "../link.txt", "../.env", "../.git/config",
-		"../key.pem", "plans", "..", "nothere.md", "~/notes/todo.txt", filepath.Join(root, "..", "elsewhere", "o.txt"),
+		"../key.pem", "../id.crt", "../a.exe", "../Makefile.am", "plans", "..", "nothere.md", "~/notes/todo.txt", filepath.Join(root, "..", "elsewhere", "o.txt"),
 	} {
 		r := e.preview(full, shell0, path)
 		expect(t, r, http.StatusNotFound, path)
@@ -144,6 +150,10 @@ func TestFlow143_PathsResolveFromThePaneAndHome(t *testing.T) {
 		{"page.html", "text/plain; charset=utf-8", "<script>alert(1)</script>"},
 		{"../run.sh", "text/plain; charset=utf-8", "#!/bin/sh\n"},
 		{"~/notes/todo.txt", "text/plain; charset=utf-8", "todo"},
+		{"tx.py", "text/plain; charset=utf-8", "x = 1\n"},
+		{"a.diff", "text/plain; charset=utf-8", "--- a\n+++ b\n"},
+		{"../Makefile", "text/plain; charset=utf-8", "all:\n"},
+		{"a.zip", "application/octet-stream", "PK"},
 	} {
 		r := e.preview(full, shell0, c.path)
 		expect(t, r, http.StatusOK, c.path)

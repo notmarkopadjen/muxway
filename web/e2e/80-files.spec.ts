@@ -81,11 +81,11 @@ test('80 the picker sends each file in turn; a type the host does not take is re
   await page.waitForTimeout(2100);
   await page.getByTestId('file-picker').setInputFiles([
     { name: 'a.png', mimeType: 'image/png', buffer: PNG },
-    { name: 'evil.sh', mimeType: 'application/x-sh', buffer: Buffer.from('#!/bin/sh\n') },
+    { name: 'evil.exe', mimeType: 'application/octet-stream', buffer: Buffer.from('MZ') },
   ]);
   const input = page.getByTestId('input');
   await expect.poll(async () => paths(await input.inputValue()).length, { timeout: 8000 }).toBe(1);
-  await expect(page.getByTestId('toast').filter({ hasText: 'evil.sh' })).toContainText(
+  await expect(page.getByTestId('toast').filter({ hasText: 'evil.exe' })).toContainText(
     'not a type the host takes',
   );
   await input.fill('');

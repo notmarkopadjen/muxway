@@ -15,38 +15,66 @@ import (
 // agent reads with its own rights, so the roots are the owner's choice;
 // nothing hidden is ever served, and only the types a window can show.
 
-var previewTypes = map[string]string{
-	"txt": "text/plain; charset=utf-8", "md": "text/plain; charset=utf-8", "markdown": "text/plain; charset=utf-8",
-	"csv": "text/plain; charset=utf-8", "tsv": "text/plain; charset=utf-8", "json": "text/plain; charset=utf-8",
-	"log": "text/plain; charset=utf-8", "yaml": "text/plain; charset=utf-8", "yml": "text/plain; charset=utf-8",
-	"toml": "text/plain; charset=utf-8", "ini": "text/plain; charset=utf-8", "xml": "text/plain; charset=utf-8",
-	"html": "text/plain; charset=utf-8",
-	"js":   "text/plain; charset=utf-8",
-	"jsx":  "text/plain; charset=utf-8",
-	"ts":   "text/plain; charset=utf-8",
-	"tsx":  "text/plain; charset=utf-8",
-	"cs":   "text/plain; charset=utf-8",
-	"go":   "text/plain; charset=utf-8",
-	"py":   "text/plain; charset=utf-8",
-	"rb":   "text/plain; charset=utf-8",
-	"rs":   "text/plain; charset=utf-8",
-	"java": "text/plain; charset=utf-8",
-	"kt":   "text/plain; charset=utf-8",
-	"kts":  "text/plain; charset=utf-8",
-	"c":    "text/plain; charset=utf-8",
-	"h":    "text/plain; charset=utf-8",
-	"cpp":  "text/plain; charset=utf-8",
-	"hpp":  "text/plain; charset=utf-8",
-	"sh":   "text/plain; charset=utf-8",
-	"bash": "text/plain; charset=utf-8",
-	"zsh":  "text/plain; charset=utf-8",
-	"fish": "text/plain; charset=utf-8",
-	"sql":  "text/plain; charset=utf-8",
-	"css":  "text/plain; charset=utf-8",
-	"scss": "text/plain; charset=utf-8",
-	"less": "text/plain; charset=utf-8",
-	"png":  "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp",
-	"pdf": "application/pdf",
+// What a window shows, by extension (the list is the protocol's, in
+// docs/protocol/v1.md): every text as plain text, images and PDF as
+// themselves, archives and office files as a download. Keys, certificates
+// and executables are left out on purpose.
+const textTypes = `txt md markdown rst adoc org tex bib diff patch
+csv tsv json jsonl ndjson json5 jsonc geojson ipynb log
+yaml yml toml ini cfg conf properties props lock
+xml xsd xsl xslt dtd plist svg html htm xhtml css scss sass less styl
+js jsx mjs cjs ts tsx vue svelte astro coffee
+cs csx cshtml razor csproj vbproj fsproj sln targets nuspec pubxml xaml axaml resx config
+go mod sum py pyi pyx pxd pxi rb erb rake gemspec
+rs java kt kts gradle groovy scala sbt clj cljs cljc edn el scm rkt lisp
+c h cpp hpp cc cxx hh hxx inl cu cuh m mm
+swift dart php pl pm lua r rmd jl hs lhs ex exs erl hrl ml mli fs fsx fsi vb pas d nim zig v cr elm
+sh bash zsh fish ps1 psm1 psd1 bat cmd awk
+sql graphql gql proto tf tfvars hcl nix cmake mk
+http rest ics webmanifest map service timer socket mount
+tpl tmpl mako jinja jinja2 j2 hbs mustache ejs njk liquid
+f f90 f95 f03 for s asm glsl hlsl vert frag sol wat`
+
+// Files a project names without an extension, matched without case.
+const textNames = `makefile gnumakefile dockerfile containerfile jenkinsfile vagrantfile gemfile rakefile procfile brewfile
+license licence notice readme changelog changes authors contributors copying todo install version codeowners`
+
+const plainText = "text/plain; charset=utf-8"
+
+var previewTypes = func() map[string]string {
+	m := map[string]string{
+		"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp",
+		"bmp": "image/bmp", "ico": "image/x-icon", "avif": "image/avif",
+		"pdf": "application/pdf",
+	}
+	for _, e := range strings.Fields(textTypes) {
+		m[e] = plainText
+	}
+	for _, e := range strings.Fields("zip gz tgz tar 7z docx xlsx pptx odt ods odp") {
+		m[e] = "application/octet-stream"
+	}
+	return m
+}()
+
+var previewNames = func() map[string]bool {
+	m := map[string]bool{}
+	for _, n := range strings.Fields(textNames) {
+		m[n] = true
+	}
+	return m
+}()
+
+// previewType is the type a file is served as, by its extension or, with
+// none, by its name; "" when it is not shown.
+func previewType(file string) string {
+	base := filepath.Base(file)
+	if ext := filepath.Ext(base); ext != "" {
+		return previewTypes[strings.ToLower(ext[1:])]
+	}
+	if previewNames[strings.ToLower(base)] {
+		return plainText
+	}
+	return ""
 }
 
 var errNoPreview = errors.New("not previewed")
@@ -75,8 +103,8 @@ func resolvePreview(roots []string, cwd, home, path string) (string, string, err
 	if _, ok := underRoot(roots, file); !ok {
 		return "", "", errNoPreview
 	}
-	typ, ok := previewTypes[strings.ToLower(strings.TrimPrefix(filepath.Ext(file), "."))]
-	if !ok {
+	typ := previewType(file)
+	if typ == "" {
 		return "", "", errNoPreview
 	}
 	info, err := os.Stat(file)

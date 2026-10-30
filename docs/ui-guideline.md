@@ -152,6 +152,17 @@ glyph carries the state there; the hue follows it. Working stays dim and
 quiet plain, so the three states stay apart. The exception is the watch's
 alone: every screen that is looked at on purpose inverts.
 
+**Code is the other exception** (decided by the owner on 2026-10-30):
+in a file shown over the pane and in a fenced block of rendered
+Markdown, strings, numbers, keywords and names each carry a hue of
+their own, per theme, and glow in it; comments and punctuation stay the
+dim ink, keywords bold as well. The hues are the key rows' tints
+(amber: strings pale green `#a8e6a0`, numbers cyan `#3ad6ff`, keywords
+orange `#ff7a1a`, names violet `#c68cff`; green: strings yellow
+`#ffd36b`, the rest the same; paper: `#0b5d1e`, `#0b4f8a`, `#9a5b00`,
+`#5b2d8a`, no glow). The screen's filters lie over the window as over
+everything. Nothing else on a page is coloured by the hue.
+
 Pixel font (Press Start 2P) for the brand and panel titles, monospace
 for everything else. Effects, on by default and off by a setting: glow,
 scanlines, vignette, power-on, pulsing marks, inverted selection. Sharp
@@ -172,7 +183,7 @@ The same action on every client, triggered the way the device does it.
 | scroll a program that has the mouse | wheel over it | drag | — |
 | copy a block of the screen (a bar's rows, a bullet and its rows, a result), without its markers | hover it, click `⧉` at its first row | long press | — |
 | type into the pane: with a fine pointer a click on the screen turns direct typing on; a tap on the row its program waits on (the cursor's row) focuses the line | click (direct typing), tap (the line) | tap | — |
-| direct typing: every key to the focused pane as pressed, `Esc` included; the prompt shows `▮`, the status bar says so, the cursor is drawn as a block; a read-only tile focused ends it | `i`, a click on the tile, `▮`; `Shift+Esc`, a click on the line or `▮` leaves | a hardware keyboard with the *hardware keyboard* setting on, while the line is not focused (the status line says `direct`); a tap on the line leaves, back from the line returns | — |
+| direct typing: every key to the focused pane as pressed, `Esc` included, but `Ctrl+V` and `Shift+Insert`, which paste as in a terminal (text to the pane, a file to the inbox); the prompt shows `▮`, the status bar says so, the cursor is drawn as a block; a read-only tile focused ends it | `i`, a click on the tile, `▮`; `Shift+Esc`, a click on the line or `▮` leaves | a hardware keyboard with the *hardware keyboard* setting on, while the line is not focused (the status line says `direct`); a tap on the line leaves, back from the line returns | — |
 | next arrangement | `l`, `▦` | `▦` | — |
 | equal shares in every split (the host follows for one window's tiles with fit on) | `=`, `⊞` | `▦` held | — |
 | close the pane on its host, asking on the header (`y` / `n`), where the agent allows it and the pane is writable; elsewhere close the tile | `x`, `×` | `×` | — |
@@ -191,7 +202,7 @@ The same action on every client, triggered the way the device does it.
 | a new session on a host | `+ session`, `S`; the selector lists it | `+ session` | — |
 | a command of the row | click | tap | — |
 | open a link printed in a pane | click | tap | — |
-| see a file printed in a pane (inbox, or under the host's preview roots) | click: a window over the page with `⤓` download, `Esc` closes; Markdown rendered with a `rendered` / `plain` switch, code with its colours (web) | tap: a sheet; Markdown rendered as the terminal would draw it, with a *plain* switch; the host's paths in it are links | — |
+| see a file printed in a pane (inbox, or under the host's preview roots; the types are the protocol's list, sources, markup, config and templates, `Makefile` and such without an extension, images, PDF, archives as a download) | click: a window over the page with `⤓` download, `Esc` closes; Markdown rendered with a `rendered` / `plain` switch, code with its colours, a `.diff` as a diff | tap: a sheet; Markdown rendered as the terminal would draw it, with a *plain* switch; code with its colours; the host's paths in it are links | — |
 | the changes window: git's view of the pane's repository over the tile, docked to its right edge, the tile's size kept; a folder tree with `+` added or untracked (ok colour), `~` modified, `−` deleted (dim, struck), `→` renamed, `!` conflict (warn, bold), `●` staged; the branch and counts in its bar; a click on a file opens the file window with a `diff` / `file` switch | `g`, `⎇` or the count in the tile's header opens and closes, `Esc` or `×` closes, `_` folds it to its bar | the count in the tile's header opens it as a sheet; back or `×` closes; a file opens the file sheet with its `diff` / `file` switch | — |
 | a new line in the input | `Shift+Enter` | `Shift+Enter` on a hardware keyboard | — |
 | take a completion | `Tab`, click | tap | — |

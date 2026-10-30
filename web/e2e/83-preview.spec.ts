@@ -162,3 +162,24 @@ test('83 security: what the host refuses says so; a click sends no input; reader
   // The screen is left clean for the next spec.
   await control(request, '/send', { target: 'work:0.0', text: 'clear' });
 });
+
+test('83 a file named without an extension, a Makefile, is a link and opens as text', async ({
+  page,
+  request,
+}) => {
+  test.skip(!PREVIEW, 'no preview root in this environment');
+  await signIn(page);
+  await openPane(page, SHELL0);
+  await settled(page);
+  await control(request, '/send', { target: 'work:0.0', text: 'echo see ./Makefile now' });
+  const screen = page.getByTestId('screen');
+  await expect(screen).toContainText('./Makefile now', { timeout: 5000 });
+  await screen.locator('a.mx-path-link[data-path="./Makefile"]').last().click();
+  const text = page.getByTestId('picture-text');
+  await expect(text).toHaveAttribute('data-lang', 'make');
+  await expect(text).toContainText('@echo built');
+  await expect(page.getByTestId('picture-size')).toContainText('2 lines');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('picture')).toHaveCount(0, { timeout: 3000 });
+  await control(request, '/send', { target: 'work:0.0', text: 'clear' });
+});
