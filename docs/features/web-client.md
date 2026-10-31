@@ -878,8 +878,9 @@ begins something (`/init`, `/resume`, `/plan`, `claude`, `codex`,
 `gemini`), blue for what only tells (`/help`, `/status`, `git status`,
 `ls`, …), amber for the rest. A starter that launches an AI CLI
 (`claude`, `codex`, `agy`) carries that CLI's mark, on the row and in the
-completion list above the line; a Codex pane gets its slash commands as
-a Claude pane does, with the mark at the row's head. The tints are theme tokens
+completion list above the line; a Codex or an Antigravity pane gets its
+slash commands as a Claude pane does, with the mark at the row's head,
+and the completion list offers them while the first word is typed. The tints are theme tokens
 (`--mx-tint-*` in `web/src/styles/themes.css`), one set per theme.
 
 The microphone button `◉` on the input line works two ways: hold it and

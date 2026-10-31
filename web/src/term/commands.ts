@@ -23,7 +23,7 @@ export interface Command {
 }
 
 export interface Row {
-  kind: 'claude' | 'codex' | 'shell';
+  kind: 'claude' | 'codex' | 'antigravity' | 'shell';
   commands: Command[];
 }
 
@@ -78,6 +78,32 @@ export const CODEX_COMMANDS: Command[] = [
   fill('/mention'),
 ];
 
+// Antigravity CLI's slash commands, from its reference.
+export const AGY_COMMANDS: Command[] = [
+  at('/clear', 'danger'),
+  at('/exit', 'danger'),
+  at('/rewind', 'danger'),
+  at('/resume', 'start'),
+  fill('/plan', 'start'),
+  fill('/goal', 'start'),
+  fill('/grill-me', 'start'),
+  at('/diff', 'info'),
+  at('/context', 'info'),
+  at('/usage', 'info'),
+  at('/model', 'info'),
+  fill('/effort'),
+  fill('/rename'),
+  fill('/learn'),
+  at('/tasks', 'info'),
+  at('/agents', 'info'),
+  at('/skills', 'info'),
+  at('/permissions', 'info'),
+  at('/hooks', 'info'),
+  at('/mcp', 'info'),
+  at('/config', 'info'),
+  at('/help', 'info'),
+];
+
 export const SHELL_COMMANDS: Command[] = [
   at('exit', 'danger'),
   at('htop', 'info'),
@@ -122,6 +148,7 @@ export function commandsFor(p: Pick<Pane, 'command' | 'title'>, recent: string[]
   const agent = describe(p).agent;
   if (agent === 'claude') return { kind: 'claude', commands: CLAUDE_COMMANDS };
   if (agent === 'codex') return { kind: 'codex', commands: CODEX_COMMANDS };
+  if (agent === 'antigravity') return { kind: 'antigravity', commands: AGY_COMMANDS };
   if (!isShell(p.command)) return null;
   const extra = recent
     .filter((r) => !SHELL_COMMANDS.some((c) => c.text === r))

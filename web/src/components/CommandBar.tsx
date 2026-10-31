@@ -5,7 +5,12 @@ import { AgentMark } from './PaneTitle';
 // One row of commands for the program in the focused pane, scrolling
 // sideways like the tab strip. The agent's mark or a prompt sign says
 // whose commands they are; a starter carries the mark of what it starts.
-const ROW_NAMES = { claude: 'Claude Code', codex: 'Codex', shell: 'shell' } as const;
+const ROW_NAMES = {
+  claude: 'Claude Code',
+  codex: 'Codex',
+  antigravity: 'Antigravity',
+  shell: 'shell',
+} as const;
 
 export function CommandBar({
   row,
