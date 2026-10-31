@@ -21,6 +21,7 @@ import type { Mouse, Pane, PaneContent } from '../api/types';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
 import { LensMark } from '../components/Lens';
+import { Choices } from '../components/Choices';
 import { MinimisedRow } from '../components/Minimised';
 import { PaneTitle } from '../components/PaneTitle';
 import { Tabs } from '../components/Tabs';
@@ -399,6 +400,9 @@ function Tile(props: TileProps) {
                 <LensMark status={st} attention={p.attention} withWord />
                 {p.attention?.text ? `: ${p.attention.text}` : ''}
               </span>
+            )}
+            {st === 'waiting' && (
+              <Choices address={address} attention={p.attention} writable={p.mode === 'write'} />
             )}
           </>
         )}

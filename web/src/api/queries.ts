@@ -235,6 +235,28 @@ export function useWindow(host: string, session: string, window: string) {
 }
 
 // A click, a key or text to the pane, on its own hub.
+// An answer to a question a pane asked with fixed choices: a write, and
+// the pane's attention goes with it.
+export function useAnswer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ address, choice }: { address: string; choice: string }) => {
+      const t = target(address);
+      return api<void>(`/v1/panes/${t.address}/answer`, {
+        method: 'POST',
+        body: JSON.stringify({ choice }),
+        hub: t.hub,
+      });
+    },
+    onSuccess: (_v, { address }) => {
+      qc.invalidateQueries({ queryKey: keys.pane(address) });
+      const { hub, address: bare } = splitAddress(address);
+      qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
+      qc.invalidateQueries({ queryKey: keys.tree(bare.split('/')[0], hub) });
+    },
+  });
+}
+
 export function sendInput(
   address: string,
   body: { text: string } | { key: string; count?: number } | { mouse: Mouse },

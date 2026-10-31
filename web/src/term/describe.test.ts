@@ -37,3 +37,31 @@ group('describe', () => {
     expect(describe({ command: 'bash', title: 'a ✳ b' }).agent).toBeUndefined();
   });
 });
+
+group('describe: the other harnesses', () => {
+  it('names them by their command', () => {
+    expect(describe({ command: 'codex', title: 'codex' })).toEqual({
+      agent: 'codex',
+      name: 'Codex',
+      status: '',
+    });
+    expect(describe({ command: 'opencode', title: 'muxway' })).toEqual({
+      agent: 'opencode',
+      name: 'OpenCode',
+      status: 'muxway',
+    });
+    expect(describe({ command: 'cursor-agent', title: '' }).agent).toBe('cursor');
+    expect(label({ command: 'aider', title: 'aider' })).toBe('aider');
+  });
+
+  it('finds the ones under an interpreter by their title', () => {
+    expect(describe({ command: 'node', title: 'Gemini - ~/work' })).toEqual({
+      agent: 'gemini',
+      name: 'Gemini',
+      status: 'Gemini - ~/work',
+    });
+    expect(describe({ command: 'node', title: 'copilot' }).agent).toBe('copilot');
+    expect(describe({ command: 'bash', title: 'gemini notes' }).agent).toBeUndefined();
+    expect(describe({ command: 'node', title: 'server.js' }).agent).toBeUndefined();
+  });
+});

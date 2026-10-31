@@ -2,10 +2,10 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { Pane } from '../api/types';
 import { describe, label } from './describe';
 
-// The Claude Code lens, as the Android client has it: a pane is waiting
-// for its owner (the listing carries a notification), working (Claude
-// Code's last event was `working`, or its content changed in the last
-// ten seconds while a tile reads it), or quiet. The last event kind per
+// The lens, as the Android client has it: a pane running an AI agent is
+// waiting for its owner (the listing carries a notification), working
+// (the agent's last event was `working`, or its content changed in the
+// last ten seconds while a tile reads it), or quiet. The last event kind per
 // pane comes from the shell's event stream, the change time from the
 // tile that reads the pane. tmux's own activity flag is not used: it is
 // the window's, shared by every pane in it.
@@ -20,12 +20,12 @@ export function status(
   changedAt: number | undefined,
   now: number,
 ): Status {
-  const claude = describe(p).agent === 'claude';
+  const agent = !!describe(p).agent;
   const recent = changedAt !== undefined && now - changedAt >= 0 && now - changedAt < RECENT_MS;
   // An idle notice while the screen still moves is the program's own
   // background work, not a pane waiting for its owner.
-  if (p.attention && !(p.attention.kind === 'idle' && claude && recent)) return 'waiting';
-  if (claude && (lastKind === 'working' || recent)) return 'working';
+  if (p.attention && !(p.attention.kind === 'idle' && agent && recent)) return 'waiting';
+  if (agent && (lastKind === 'working' || recent)) return 'working';
   return 'quiet';
 }
 
@@ -51,7 +51,7 @@ export function word(s: Status, kind?: string): string {
   return '';
 }
 
-// A tab's name: what Claude wrote into the title, else what runs there.
+// A tab's name: what the agent wrote into the title, else what runs there.
 export function tabName(p: Pick<Pane, 'command' | 'title'>): string {
   const d = describe(p);
   return d.agent ? d.status || d.name : label(p);

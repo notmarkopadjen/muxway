@@ -17,6 +17,8 @@ import { Help } from './Help';
 import { Hubs } from './Hubs';
 import { shownName, splitAddress, useHubs } from '../hubs';
 import { Palette } from '../components/Palette';
+import { Inbox, waiting } from '../components/Inbox';
+import { useAllPanes, useAnswer } from '../api/queries';
 import { HeaderSlot } from './HeaderSlot';
 import { Profile } from './Profile';
 import { Closing } from '../components/Closing';
@@ -66,6 +68,10 @@ export function Shell() {
   const location = useLocation();
   const [help, setHelp] = useState(false);
   const [palette, setPalette] = useState(false);
+  const [inbox, setInbox] = useState(false);
+  const all = useAllPanes(signedIn);
+  const waitingCount = waiting(all.data).length;
+  const answer = useAnswer();
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   useEffect(() => onPaletteRequest(() => setPalette(true)), []);
   const [hubsOpen, setHubsOpen] = useState(false);
@@ -112,6 +118,10 @@ export function Shell() {
         meta: pane ? e.address : undefined,
         text: e.text,
         onClick: () => navigate({ to: '/p/$', params: { _splat: e.address } }),
+        actions: e.choices?.map((c) => ({
+          label: c,
+          onClick: () => answer.mutate({ address: e.address, choice: c }),
+        })),
       });
       flash();
       if (getNotify() && document.visibilityState === 'hidden') {
@@ -125,7 +135,7 @@ export function Shell() {
         }
       }
     },
-    [toast, navigate, flash, known],
+    [toast, navigate, flash, known, answer],
   );
   useEventStream(onEvent, signedIn);
 
@@ -147,6 +157,7 @@ export function Shell() {
       const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
       if (ev.key === 'Escape') {
         if (palette) setPalette(false);
+        else if (inbox) setInbox(false);
         else if (hubsOpen) setHubsOpen(false);
         else if (help) setHelp(false);
         else if (typing) (target as HTMLElement).blur();
@@ -159,6 +170,13 @@ export function Shell() {
         ev.preventDefault();
       } else if (ev.key === 'p' && signedIn) {
         setPalette(true);
+        ev.preventDefault();
+      } else if (ev.key === 'I' && signedIn) {
+        setInbox((v) => !v);
+        ev.preventDefault();
+      } else if (ev.key === 'o' && signedIn && !inbox) {
+        const oldest = waiting(all.data)[0];
+        if (oldest) navigate({ to: '/p/$', params: { _splat: oldest.address } });
         ev.preventDefault();
       } else if (ev.key === 'H') {
         setHubsOpen((h) => !h);
@@ -179,7 +197,18 @@ export function Shell() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [help, palette, hubsOpen, signedIn, location.pathname, navigate, toast, heading.pane]);
+  }, [
+    help,
+    palette,
+    inbox,
+    hubsOpen,
+    signedIn,
+    location.pathname,
+    navigate,
+    toast,
+    heading.pane,
+    all.data,
+  ]);
 
   return (
     <>
@@ -191,6 +220,17 @@ export function Shell() {
           <span className="mx-hub" data-testid="hub-here">
             {shownName(hubs[0])}
           </span>
+        )}
+        {signedIn && waitingCount > 0 && (
+          <button
+            type="button"
+            className="mx-inbox-count"
+            title="the inbox: every pane that waits for you (I)"
+            data-testid="inbox-count"
+            onClick={() => setInbox(true)}
+          >
+            ⚑ {waitingCount}
+          </button>
         )}
         <div className="mx-header-slot" ref={setSlot} />
         <span className="mx-crumb" data-testid="crumb">
@@ -246,6 +286,9 @@ export function Shell() {
       </Closing>
       <Closing open={palette}>
         <Palette onClose={() => setPalette(false)} />
+      </Closing>
+      <Closing open={inbox}>
+        <Inbox onClose={() => setInbox(false)} />
       </Closing>
     </>
   );
