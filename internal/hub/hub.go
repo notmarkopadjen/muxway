@@ -243,6 +243,11 @@ func sanePanes(panes []tmux.Pane) {
 		if p.CursorX < 1 || p.CursorX > p.Width || p.CursorY < 1 || p.CursorY > p.Height {
 			p.CursorX, p.CursorY = 0, 0
 		}
+		// Choices come only with a question, and only a valid list.
+		if p.Attention != nil && p.Attention.Choices != nil &&
+			(p.Attention.Kind != wire.KindQuestion || !wire.ValidChoices(p.Attention.Choices)) {
+			p.Attention.Choices = nil
+		}
 	}
 }
 

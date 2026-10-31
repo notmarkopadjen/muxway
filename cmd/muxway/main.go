@@ -569,6 +569,9 @@ func runAsk(args []string) error {
 	if *timeout < 0 || *timeout > agent.MaxAskWait {
 		return fmt.Errorf("--timeout: up to %s", agent.MaxAskWait)
 	}
+	if *timeout == 0 {
+		*timeout = agent.MaxAskWait
+	}
 	answer, err := agent.Exchange(*dir, agent.NotifyRequest{Pane: *pane, Kind: wire.KindQuestion, Text: *text,
 		Choices: choices, Ask: true, Timeout: int(timeout.Seconds())})
 	if err != nil {
