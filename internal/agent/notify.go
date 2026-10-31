@@ -145,6 +145,10 @@ func (a *Agent) Notify(ctx context.Context, req NotifyRequest, source string) st
 	a.mu.Lock()
 	if source == sourceHook {
 		a.hooked[p.PaneID] = true
+		// The hooks spoke: whatever the watcher raised is theirs to settle now.
+		if w := a.watched[p.PaneID]; w != nil {
+			w.state, w.ownPrompt = "", false
+		}
 	}
 	// Claude Code's idle notice does not know about background work; while
 	// that runs, the pane is not waiting for its owner.

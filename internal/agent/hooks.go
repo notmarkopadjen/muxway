@@ -15,7 +15,7 @@ import (
 // or a model's answer never does.
 
 // Harnesses muxway prints hooks for, in the order the help lists them.
-var Harnesses = []string{"claude-code", "codex", "gemini", "copilot", "opencode"}
+var Harnesses = []string{"claude-code", "codex", "gemini", "copilot", "opencode", "agy"}
 
 // KnownHarness reports whether hooks exist for name.
 func KnownHarness(name string) bool {
@@ -26,6 +26,10 @@ func KnownHarness(name string) bool {
 	}
 	return false
 }
+
+// SelfKinded harnesses have no hook payload worth reading: their printed
+// configuration names the kind in the command itself.
+func SelfKinded(harness string) bool { return harness == "opencode" || harness == "agy" }
 
 // ParseHook reads one harness's hook payload. ok is false for events that
 // do not concern the owner.
@@ -139,6 +143,8 @@ func HookConfig(harness, command string) (config []byte, where string, err error
 		return copilotHooks(command), "~/.copilot/hooks/muxway.json", nil
 	case "opencode":
 		return opencodePlugin(command), "~/.config/opencode/plugins/muxway.ts", nil
+	case "agy":
+		return agyHooks(command), "~/.gemini/config/hooks.json (merge: add the \"muxway\" key beside the others)", nil
 	}
 	return nil, "", fmt.Errorf("no hooks for %q; one of %s", harness, strings.Join(Harnesses, ", "))
 }
@@ -176,6 +182,21 @@ func copilotHooks(command string) []byte {
 	entry := []map[string]any{{"type": "command", "bash": command, "timeoutSec": 10}}
 	return indent(map[string]any{"version": 1, "hooks": map[string]any{
 		"UserPromptSubmit": entry, "Notification": entry, "Stop": entry, "SessionEnd": entry,
+	}})
+}
+
+// agyHooks: Antigravity CLI's ~/.gemini/config/hooks.json, a named hook
+// with handlers under each lifecycle event; its payload does not name
+// the event, so each handler carries its kind. PreInvocation fires
+// before every model call (working, again and again, which is fine) and
+// Stop when the turn ends; a permission has no event, the watcher sees it.
+func agyHooks(command string) []byte {
+	handler := func(kind string) []map[string]any {
+		return []map[string]any{{"type": "command", "command": command + " --kind " + kind, "timeout": 10}}
+	}
+	return indent(map[string]any{"muxway": map[string]any{
+		"PreInvocation": handler(wire.KindWorking),
+		"Stop":          handler(wire.KindDone),
 	}})
 }
 

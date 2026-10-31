@@ -398,9 +398,29 @@ func TestWatcherReportsAHarnessWithoutHooks(t *testing.T) {
 	if e.attention(full, shell0) != "done" {
 		t.Fatal("no done attention")
 	}
-	// Nothing from the hooked pane or the plain shell, and no screen text anywhere.
+	// The hooked pane: no working, no done from the watcher, but the prompt
+	// its hooks said nothing about is raised, and taken back once it is
+	// answered on the host. Nothing from the plain shell, and no screen
+	// text anywhere.
+	hooked := func() []string {
+		var out []string
+		for _, ev := range e.events(full, fmt.Sprintf("?after=%d&limit=100", start)).Events {
+			if ev.Address == host+"/work/0.1" {
+				out = append(out, ev.Kind+":"+ev.Text)
+			}
+		}
+		return out
+	}
+	waitFor(t, "the hooked pane's prompt", func() bool { k := hooked(); return len(k) == 1 && k[0] == "permission:asks for a permission" })
+	ts.must("send-keys", "-t", "work:0.1", "-l", "1")
+	ts.must("send-keys", "-t", "work:0.1", "Enter")
+	waitFor(t, "the hooked pane's prompt cleared", func() bool { k := hooked(); return len(k) == 2 && k[1] == "working:" })
+	time.Sleep(10 * time.Second)
+	if k := hooked(); len(k) != 2 {
+		t.Fatalf("the watcher spoke for a hooked pane beyond its prompt: %v", k)
+	}
 	for _, ev := range e.events(full, fmt.Sprintf("?after=%d&limit=100", start)).Events {
-		if ev.Address != shell0 {
+		if ev.Address != shell0 && ev.Address != host+"/work/0.1" {
 			t.Fatalf("an event for %s: %+v", ev.Address, ev)
 		}
 		if strings.Contains(ev.Text, "step") || strings.Contains(ev.Text, "proceed") {

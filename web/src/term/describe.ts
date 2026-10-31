@@ -5,7 +5,16 @@ import type { Pane } from '../api/types';
 // the pane title; the tmux names step back to second place.
 
 export type Agent =
-  'claude' | 'codex' | 'gemini' | 'opencode' | 'copilot' | 'aider' | 'goose' | 'amp' | 'cursor';
+  | 'claude'
+  | 'codex'
+  | 'gemini'
+  | 'antigravity'
+  | 'opencode'
+  | 'copilot'
+  | 'aider'
+  | 'goose'
+  | 'amp'
+  | 'cursor';
 
 export interface Description {
   agent?: Agent;
@@ -22,6 +31,7 @@ const CLAUDE = /^[✳✶✻✽✢]\s*/u;
 const AGENTS: [Agent, string, RegExp | null][] = [
   ['codex', 'Codex', null],
   ['gemini', 'Gemini', /\bgemini\b/i],
+  ['antigravity', 'Antigravity', /\bantigravity\b/i],
   ['opencode', 'OpenCode', null],
   ['copilot', 'Copilot', /\bcopilot\b/i],
   ['aider', 'aider', null],
@@ -32,6 +42,7 @@ const AGENTS: [Agent, string, RegExp | null][] = [
 const COMMANDS: Record<string, Agent> = {
   codex: 'codex',
   gemini: 'gemini',
+  agy: 'antigravity',
   opencode: 'opencode',
   copilot: 'copilot',
   aider: 'aider',

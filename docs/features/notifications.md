@@ -41,6 +41,7 @@ muxway hooks codex           # ~/.codex/hooks.json
 muxway hooks gemini          # ~/.gemini/settings.json
 muxway hooks copilot         # ~/.copilot/hooks/muxway.json
 muxway hooks opencode        # ~/.config/opencode/plugins/muxway.ts
+muxway hooks agy             # ~/.gemini/config/hooks.json (Antigravity CLI)
 ```
 
 prints the harness's own configuration shape (merge the `hooks` key with
@@ -57,6 +58,7 @@ pass `--dir` to `hooks` if the agent uses another one.
 | gemini | `BeforeAgent` | `Notification` `ToolPermission`, its message | | `AfterAgent` | `SessionEnd` |
 | copilot | `UserPromptSubmit` | `Notification` `permission_prompt`, its message | `elicitation_dialog` | `Stop` | `SessionEnd` |
 | opencode | `message.updated`, a user message | `permission.asked` | | `session.idle` | |
+| agy (Antigravity CLI) | `PreInvocation` | none: the [watcher](#the-watcher) sees the prompt | | `Stop` | |
 
 "Cleared" is a `working` notification with no text: the attention goes
 when the harness exits. Only a harness's own notice to its user travels
@@ -65,7 +67,9 @@ input or a model's answer never does (Codex's `Stop` carries
 `last_assistant_message`; the event carries nothing). Copilot's hooks are
 registered under their PascalCase names so the payload names its event.
 OpenCode has no hook command: its plugin calls `muxway notify --kind`
-itself from the events it sees. Claude Code is the harness tested daily;
+itself from the events it sees; Antigravity's payload does not name its
+event, so each of its handlers carries the kind in the command the same
+way. Claude Code is the harness tested daily;
 the other parsers are built from the harnesses' documentation and
 tested on payloads shaped as it describes.
 
@@ -122,9 +126,10 @@ A harness without hooks, or whose hooks are not installed, still shows
 up: every two seconds the agent reads the visible screen of each exposed
 pane that runs a known harness and tells the hub when its state changes.
 Known harnesses, by `pane_current_command`: `claude`, `codex`, `gemini`,
-`opencode`, `copilot`, `aider`, `goose`, `amp`, `cursor-agent`; Claude
-Code by the spark it leads its title with, and Gemini and Copilot by
-their names in the title when they run under `node`.
+`agy` (Antigravity CLI), `opencode`, `copilot`, `aider`, `goose`, `amp`,
+`cursor-agent`; Claude Code by the spark it leads its title with, and
+Gemini, Antigravity and Copilot by their names in the title when they
+run under `node`.
 
 ```mermaid
 stateDiagram-v2
@@ -144,9 +149,13 @@ stateDiagram-v2
   (`? for shortcuts`, `Esc to cancel`) aside. Box frames are read through.
 - The texts are fixed phrases: `asks for a permission`, `asks a question`,
   `finished`. A row of the screen never travels.
-- **Hooks win.** A pane that has sent a notification over the socket since
-  the agent started is left to its hooks: the watcher forgets it and
-  never second-guesses a harness that speaks for itself.
+- **Hooks win** for working and done. A pane that has sent a
+  notification over the socket since the agent started leaves those to
+  its hooks: the watcher never says a hooked pane is working or
+  finished. A **prompt** on such a pane is still reported while the
+  hooks have said nothing about it (not every harness has a hook for a
+  permission: Antigravity has none), and the watcher takes it back when
+  the screen moves on; a prompt the hooks did report is left alone.
 - A harness sitting quietly at its prompt when the agent starts has
   nothing to report; a prompt already on the screen is reported at once.
 - `muxway agent run --watch=false` turns it off. On, it costs one

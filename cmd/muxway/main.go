@@ -36,7 +36,7 @@ agent pair      pair this machine with a hub
 agent run       run the agent
 notify          tell the agent that this pane needs attention
 ask             ask the owner a question with fixed answers, wait for one
-hooks           print a harness's hooks that call notify: claude-code, codex, gemini, copilot, opencode
+hooks           print a harness's hooks that call notify: claude-code, codex, gemini, copilot, opencode, agy
 expose          make a session, window or pane reachable
 unexpose        remove a mark
 exposed         list what is reachable
@@ -529,9 +529,9 @@ func runHooks(args []string) error {
 	}
 	// The directory is spelled out: hooks run in the harness's environment,
 	// which may resolve the default differently from this shell. OpenCode's
-	// plugin passes the kind itself.
+	// plugin and Antigravity's handlers pass the kind themselves.
 	cmd := exe + " notify --from " + harness + " --dir " + *dir
-	if harness == "opencode" {
+	if agent.SelfKinded(harness) {
 		cmd = exe + " notify --dir " + *dir
 	}
 	config, where, err := agent.HookConfig(harness, cmd)

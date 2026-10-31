@@ -123,6 +123,27 @@ func TestHookConfigs(t *testing.T) {
 			t.Errorf("opencode plugin lacks %q:\n%s", want, raw)
 		}
 	}
+	// Antigravity: a named hook, the kind in each handler's command.
+	raw, where, err = HookConfig("agy", "/usr/local/bin/muxway notify --dir /d")
+	if err != nil || !strings.Contains(where, ".gemini/config/hooks.json") {
+		t.Fatal(err, where)
+	}
+	var agy map[string]map[string][]struct {
+		Type    string
+		Command string
+		Timeout int
+	}
+	if err := json.Unmarshal(raw, &agy); err != nil {
+		t.Fatal(err)
+	}
+	mx := agy["muxway"]
+	if len(mx["PreInvocation"]) != 1 || mx["PreInvocation"][0].Command != "/usr/local/bin/muxway notify --dir /d --kind working" ||
+		len(mx["Stop"]) != 1 || mx["Stop"][0].Command != "/usr/local/bin/muxway notify --dir /d --kind done" || mx["Stop"][0].Timeout != 10 {
+		t.Errorf("agy: %s", raw)
+	}
+	if !SelfKinded("agy") || !SelfKinded("opencode") || SelfKinded("codex") {
+		t.Error("self-kinded harnesses")
+	}
 	if _, _, err := HookConfig("vim", cmd); err == nil {
 		t.Error("an unknown harness got a config")
 	}

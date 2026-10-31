@@ -51,6 +51,11 @@ group('describe: the other harnesses', () => {
       status: 'muxway',
     });
     expect(describe({ command: 'cursor-agent', title: '' }).agent).toBe('cursor');
+    expect(describe({ command: 'agy', title: 'notes' })).toEqual({
+      agent: 'antigravity',
+      name: 'Antigravity',
+      status: 'notes',
+    });
     expect(label({ command: 'aider', title: 'aider' })).toBe('aider');
   });
 

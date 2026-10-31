@@ -19,6 +19,8 @@ func TestDetectHarness(t *testing.T) {
 		{"codex", "codex", "codex"},
 		{"gemini", "", "gemini"},
 		{"node", "Gemini - ~/work", "gemini"},
+		{"agy", "notes", "agy"},
+		{"node", "Antigravity CLI", "agy"},
 		{"node", "copilot", "copilot"},
 		{"opencode", "x", "opencode"},
 		{"aider", "", "aider"},
@@ -83,6 +85,21 @@ Allow command?
 	plainShell = `alice@laptop:~/work$ make test
 ok
 alice@laptop:~/work$ `
+	// Antigravity CLI at rest: a bare > between rules, the hints under it.
+	agyIdle = `      ▄▀▀▄        Antigravity CLI 1.4.12
+     ▀▀▀▀▀▀       alice@example.com (Google AI Pro)
+ ┃ Verbosity now defaults to medium
+ ┃ esc to dismiss
+────────────────────────────────────────────
+>
+────────────────────────────────────────────
+? for shortcuts                                      Gemini · medium`
+	agyPermission = `Allow run_command: make test?
+ ● 1. Yes, once
+   2. Yes, always
+   3. No
+────────────────────────────────────────────
+? for shortcuts                                      Gemini · medium`
 )
 
 func TestClassify(t *testing.T) {
@@ -100,6 +117,8 @@ func TestClassify(t *testing.T) {
 		{"aider", aiderPermission, "", false},
 		{"gemini", geminiPermission, "permission", false},
 		{"claude", plainShell, "", false},
+		{"agy", agyIdle, "", true},
+		{"agy", agyPermission, "permission", false},
 		{"claude", "", "", false},
 	}
 	for _, c := range cases {
@@ -157,4 +176,41 @@ func TestWatchPane(t *testing.T) {
 	if kind, _ := a.watchPane(q, h, claudeQuestion, now); kind != wire.KindQuestion {
 		t.Fatalf("first look at a question: %q", kind)
 	}
+}
+
+// A pane whose hooks have spoken keeps working and done to them; the
+// watcher still raises a prompt the hooks said nothing about, and takes
+// it back when the screen moves on.
+func TestWatchPaneHooked(t *testing.T) {
+	a := &Agent{log: slog.New(slog.DiscardHandler), attention: map[string]tmux.Attention{}, watched: map[string]*watched{}, hooked: map[string]bool{"%1": true}, asks: map[string]*pendingAsk{}}
+	h := detectHarness("agy", "")
+	p := tmux.Pane{PaneID: "%1", Command: "agy", Mode: tmux.ModeWrite}
+	now := time.Unix(1_700_000_000, 0)
+	step := func(screen string, after time.Duration, want string) {
+		t.Helper()
+		now = now.Add(after)
+		if kind, _ := a.watchPane(p, h, screen, now); kind != want {
+			t.Fatalf("hooked, after %s:\n%s\ngot %q, want %q", after, screen, kind, want)
+		}
+	}
+	// The screen moving says nothing: the hooks report working.
+	step(agyIdle, 0, "")
+	step(agyIdle+"\nmore", 2*time.Second, "")
+	step(agyIdle+"\nmore\nand more", 2*time.Second, "")
+	// Still for long at the prompt: no done either.
+	step(agyIdle, 10*time.Second, "")
+	// A prompt the hooks did not report: raised, once.
+	step(agyPermission, 2*time.Second, wire.KindPermission)
+	step(agyPermission, 2*time.Second, "")
+	// Answered on the host: the watcher clears what it raised, once.
+	step(agyIdle, 2*time.Second, wire.KindWorking)
+	step(agyIdle+"\nx", 2*time.Second, "")
+	// A prompt the hooks did report (attention already there) is left alone.
+	a.attention["%1"] = tmux.Attention{Kind: wire.KindPermission, At: now.Unix(), Text: "from the hook"}
+	step(agyPermission, 2*time.Second, "")
+	// The hooks spoke again (a working notification): the watcher's own
+	// marks are reset, so a prompt it had raised is not cleared by it.
+	delete(a.attention, "%1")
+	a.watched["%1"].state, a.watched["%1"].ownPrompt = "", false
+	step(agyIdle, 2*time.Second, "")
 }

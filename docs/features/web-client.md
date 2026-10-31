@@ -421,8 +421,9 @@ line is on the page.
 A lens knows one AI coding agent's screen and tells the rest of the
 client what its pane is up to. The client names Claude Code as
 [above](#what-a-pane-is-called) and the other harnesses by their command
-(Codex, Gemini, OpenCode, Copilot, aider, goose, Amp, Cursor; Gemini and
-Copilot by their names in the title when they run under `node`); the
+(Codex, Gemini, Antigravity, OpenCode, Copilot, aider, goose, Amp,
+Cursor; Gemini, Antigravity and Copilot by their names in the title when
+they run under `node`); the
 Claude Code lens, which reshapes the screen, is the one there is. A pane
 of any named agent is **waiting for you** when the listing carries a
 notification; **working** when the last event the hub sent for it was

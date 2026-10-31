@@ -258,6 +258,13 @@ questions), new `docs/features/inbox.md` and `docs/features/driving.md`,
       after a first full run lost a key in spec 84's burst to an event
       stream that re-subscribed on every render; the hub also drops
       choices a listing carries outside a valid question (`sanePanes`).
+      After the owner started Antigravity CLI (`agy`) in a pane and saw
+      nothing: `agy` joined the harness tables (hooks in
+      `~/.gemini/config/hooks.json`, `PreInvocation` → working, `Stop` →
+      done, no permission event), and the "hooks win" rule was narrowed
+      to working and done: the watcher still raises a prompt on a hooked
+      pane while the hooks have said nothing about it, and takes it back
+      when the screen moves on.
       The plan itself was not approved before the code: the owner asked
       for one issue and one PR to review together.
 - [x] Security rules (AGENTS.md section 2) hold: answers are writes with

@@ -40,8 +40,8 @@ Android: `Lens.name`, `Pane.name`.
 
 A lens knows one AI coding agent's screen and says what its pane is up
 to. Every client names the same harnesses from the pane's command and
-title (Claude, Codex, Gemini, OpenCode, Copilot, aider, goose, Amp,
-Cursor; the Claude Code lens, which reshapes the screen, is the one
+title (Claude, Codex, Gemini, Antigravity, OpenCode, Copilot, aider,
+goose, Amp, Cursor; the Claude Code lens, which reshapes the screen, is the one
 there is) and paints with the same three states and the same marks.
 
 | State | When | Glyph | Word | Paint |

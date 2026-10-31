@@ -43,6 +43,10 @@ var harnesses = []harness{
 	{name: "gemini", title: regexp.MustCompile(`(?i)\bgemini\b`),
 		permission: regexp.MustCompile(`(?i)allow execution|do you want to (proceed|allow)|apply this change`),
 		question:   regexp.MustCompile(`\?\s*$`), prompt: promptRow},
+	// Antigravity CLI, Google's successor to Gemini CLI.
+	{name: "agy", title: regexp.MustCompile(`(?i)\bantigravity\b`),
+		permission: regexp.MustCompile(`(?i)allow|approve|do you want to (proceed|allow|run)|run this command`),
+		question:   regexp.MustCompile(`\?\s*$`), prompt: promptRow},
 	{name: "copilot", title: regexp.MustCompile(`(?i)\bcopilot\b`),
 		permission: regexp.MustCompile(`(?i)allow|approve|confirm|do you want to`),
 		question:   regexp.MustCompile(`\?\s*$`), prompt: promptRow},

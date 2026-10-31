@@ -51,7 +51,8 @@ directories the host's owner opened for it.</td>
 <td><strong>Your AI agent calls you.</strong> An AI coding agent in a pane tells muxway,
 through its hooks, when it asks a question, wants a permission, has
 gone idle or has finished: <code>muxway hooks</code> prints them for
-Claude Code, Codex, Gemini CLI, Copilot CLI and OpenCode, and a watcher
+Claude Code, Codex, Gemini CLI, Antigravity CLI, Copilot CLI and
+OpenCode, and a watcher
 on the host reads the screen of a harness without hooks. The pane
 lights up in every client, the phone and the watch buzz, the glasses
 show a banner, the inbox lists what waits across your machines, oldest

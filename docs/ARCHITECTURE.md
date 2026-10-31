@@ -51,7 +51,8 @@ flowchart LR
   shows alike, and what belongs to one device, is in
   [ui-guideline.md](ui-guideline.md).
 - **Notifications**: a process in a pane, such as the hooks of an AI
-  coding agent (Claude Code, Codex, Gemini CLI, Copilot CLI, OpenCode),
+  coding agent (Claude Code, Codex, Gemini CLI, Antigravity CLI, Copilot
+  CLI, OpenCode),
   runs `muxway notify`; for a harness without hooks the agent's watcher
   reads the screen; the agent marks the pane and the hub tells clients,
   and lists what waits in `GET /v1/inbox`. A process can also ask a
@@ -195,7 +196,7 @@ sequenceDiagram
 
 Any AI coding agent's hook or wrapper enters at `muxway notify`
 (`muxway hooks <harness>` prints the configuration for Claude Code,
-Codex, Gemini CLI, Copilot CLI and OpenCode); the flow below shows Claude
+Codex, Gemini CLI, Antigravity CLI, Copilot CLI and OpenCode); the flow below shows Claude
 Code's hook.
 
 ```mermaid
