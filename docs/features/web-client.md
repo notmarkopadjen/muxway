@@ -128,7 +128,11 @@ status Claude writes into the title follows (`Claude · fixing the
 build`); it is recognised by its command, or by the spark Claude Code
 puts first in its title when it runs under another command. The tmux
 address, session and window names come second, dimmed, so you can still
-tell panes apart.
+tell panes apart. The other AI CLIs are named too (Codex, Gemini,
+Antigravity, OpenCode, Copilot, aider, goose, Amp, Cursor), and Codex
+and Antigravity carry marks of their own, a hexagon and a lifted
+chevron, in the list, the tabs, the headers and the add menu, as
+Claude's spark does.
 
 ![a pane running Claude](images/web-titles.png)
 
@@ -872,7 +876,10 @@ and `F1` to `F12`. Commands are tinted by tone the same way: red for
 what throws work away (`/clear`, `/exit`, `exit`), green for what
 begins something (`/init`, `/resume`, `/plan`, `claude`, `codex`,
 `gemini`), blue for what only tells (`/help`, `/status`, `git status`,
-`ls`, …), amber for the rest. The tints are theme tokens
+`ls`, …), amber for the rest. A starter that launches an AI CLI
+(`claude`, `codex`, `agy`) carries that CLI's mark, on the row and in the
+completion list above the line; a Codex pane gets its slash commands as
+a Claude pane does, with the mark at the row's head. The tints are theme tokens
 (`--mx-tint-*` in `web/src/styles/themes.css`), one set per theme.
 
 The microphone button `◉` on the input line works two ways: hold it and

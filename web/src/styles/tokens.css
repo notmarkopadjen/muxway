@@ -19,6 +19,8 @@
   --mx-warn: var(--mx-ink);
   --mx-bad: #ff3b3b;
   --mx-claude: #d97757;
+  --mx-codex: #2fbf9a;
+  --mx-antigravity: #7aa2ff;
   --mx-ok: #ffb000;
   --mx-scanline: rgba(0, 0, 0, 0.22);
   --mx-vignette: rgba(0, 0, 0, 0.55);

@@ -987,8 +987,8 @@ button.mx-window:focus-visible {
 .mx-painted[data-state='working'] .mx-mode,
 .mx-painted[data-state='waiting'] .mx-attention,
 .mx-painted[data-state='working'] .mx-attention,
-.mx-painted[data-state='waiting'] .mx-mark-claude,
-.mx-painted[data-state='working'] .mx-mark-claude {
+.mx-painted[data-state='waiting'] .mx-mark,
+.mx-painted[data-state='working'] .mx-mark {
   color: var(--mx-bg);
   text-shadow: none;
   filter: none;

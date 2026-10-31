@@ -29,6 +29,7 @@ client's `AGENTS.md` points here.
 |---|---|
 | name | what runs in the pane: the command, then what the program says about itself in the title when that adds something (`vim · notes.md`) |
 | Claude Code | recognised by its command or by the spark it puts first in its title; named *Claude*, with its mark; the status it writes (the "codename") follows: `Claude · fixing the build` |
+| the other AI CLIs | recognised by their command (Codex, Gemini, Antigravity `agy`, OpenCode, Copilot, aider, goose, Amp, Cursor) or their name in the title under an interpreter; named, and Codex and Antigravity have marks of their own (a hexagon, a lifted chevron) wherever Claude's spark shows; the title follows as the status |
 | tab | the codename alone for Claude Code, else the name |
 | place | the tmux address `host/session/window.pane`, dimmed, second to the name |
 | status style | the codename and any program status are set in *italics*, dimmer than the name |

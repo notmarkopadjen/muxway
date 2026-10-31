@@ -4,7 +4,7 @@ import { usePane } from '../api/queries';
 import { describe } from '../term/describe';
 import { tabName, useLens } from '../term/lens';
 import { LensMark } from './Lens';
-import { ClaudeMark } from './PaneTitle';
+import { AgentMark } from './PaneTitle';
 
 // The minimised row: the tiles taken out of the arrangement, each a tab
 // painted with its state, still read every two seconds so its glyph keeps
@@ -56,7 +56,7 @@ function MinimisedTab({
       onClick={onClick}
       title={`${address} · minimised, a click brings it back`}
     >
-      {p && describe(p).agent === 'claude' && <ClaudeMark />}
+      {p && <AgentMark agent={describe(p).agent} />}
       {st !== 'quiet' && <LensMark status={st} attention={p?.attention} />}
       <span className="mx-tab-name">{p ? tabName(p) : address.split('/').slice(1).join('/')}</span>
     </button>

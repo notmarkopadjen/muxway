@@ -650,3 +650,19 @@ button:disabled {
   cursor: pointer;
   text-shadow: 0 0 8px var(--mx-warn);
 }
+.mx-mark-codex {
+  color: var(--mx-codex);
+  filter: drop-shadow(0 0 3px var(--mx-codex));
+}
+.mx-mark-antigravity {
+  color: var(--mx-antigravity);
+  filter: drop-shadow(0 0 3px var(--mx-antigravity));
+}
+/* a starter's mark on its button, and in the completion list */
+.mx-cmdbar button .mx-mark,
+.mx-complete .mx-mark {
+  width: 0.9em;
+  height: 0.9em;
+  vertical-align: -0.1em;
+  margin-right: 4px;
+}
