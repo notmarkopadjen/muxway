@@ -216,6 +216,10 @@ The features: [web client](docs/features/web-client.md),
 |---|---|
 | <img src="docs/images/glasses.png" alt="Claude Code through the lens on the glasses" width="576"> | <img src="docs/images/midp.jpg" alt="A Nokia 6310i held in front of a laptop, Claude Code through the lens on its screen" width="226"> |
 
+| Wear OS: the watch face says how many panes wait | Wear OS: a pane's tail on the wrist, record a reply |
+|---|---|
+| <img src="https://github.com/notmarkopadjen/muxway-android/raw/main/docs/images/watch-complications.png" alt="A round watch face with a muxway complication: 6 panes, 2 waiting" width="240"> | <img src="https://github.com/notmarkopadjen/muxway-android/raw/main/docs/images/watch-record.png" alt="The tail of a dotnet test pane on a round watch, with a microphone to record a reply" width="240"> |
+
 The clients are one product: [docs/ui-guideline.md](docs/ui-guideline.md)
 says what every client shows and which key or gesture does what.
 
