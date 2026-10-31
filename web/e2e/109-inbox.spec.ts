@@ -122,6 +122,7 @@ test('109 the lens shows another harness working and the watcher says so', async
     timeout: 10_000,
   });
   await expect(row).toContainText('Codex');
+  await expect(row.locator('.mx-mark-codex')).toBeVisible();
   // The watcher sees the screen move and the hub says working.
   await expect(row).toHaveAttribute('data-state', 'working', { timeout: 15_000 });
   await shot(page, info, '109-lens-codex');
