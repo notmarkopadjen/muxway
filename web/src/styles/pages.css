@@ -1431,6 +1431,13 @@ button.mx-window:focus-visible {
   border: 1px solid var(--mx-warn);
   color: var(--mx-warn);
   padding: var(--mx-gap);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mx-gap);
+}
+.mx-admin-secret-text {
+  flex: 1 1 26ch;
+  min-width: 0;
 }
 .mx-admin-secret code {
   display: block;
@@ -1438,6 +1445,15 @@ button.mx-window:focus-visible {
   color: var(--mx-ink);
   word-break: break-all;
   user-select: all;
+}
+/* The code is black on white whatever the theme: a scanner needs it so. */
+.mx-qr {
+  flex: 0 0 auto;
+  display: block;
+  background: #fff;
+}
+.mx-admin-secret > .mx-toggles {
+  flex-basis: 100%;
 }
 .mx-admin-label {
   display: grid;

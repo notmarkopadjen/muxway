@@ -239,7 +239,7 @@ A new action gets a row here before it gets a key anywhere.
 | browser notifications, tab title flash | the browser's own channels |
 | font size for fit (`?` then *font*) | the cell the host is sized by; Android uses its *text* setting |
 | hubs as peers (`H`, `⇄`) | a browser keeps a session per origin, so every hub in the hubs box signs the person in on its own page, once; the page then lists and opens the panes of every hub it is signed in on, through the hubs' peer rule (`--peer`, see `docs/features/web-client.md`, *Several hubs*); the list is kept per hub page and carried along only as names and addresses |
-| the full admin page (`/admin`): access log, tokens and users with *create* and *revoke*, clients, address lists with *save* and *unlock* | minting a token means typing grant patterns, and a wrong address list shuts the owner out: both want a keyboard and a large screen; the phone has the read side (§3) |
+| the full admin page (`/admin`): access log, tokens and users with *create* (the new secret shown once, with its connect code for the phone to scan) and *revoke*, clients, address lists with *save* and *unlock* | minting a token means typing grant patterns, and a wrong address list shuts the owner out: both want a keyboard and a large screen; the phone has the read side (§3) |
 | keyboard shortcuts as the primary interface | keyboard first |
 | direct typing (`i`, a click on the tile): keys to the pane as pressed | a soft keyboard composes words, so Android keeps the line and its key row; with its *hardware keyboard* setting on, a hardware keyboard's keys go direct while the line is not focused (§1.6) |
 
@@ -249,7 +249,7 @@ Feature page: `docs/features/web-client.md`.
 
 | Feature | Why only here |
 |---|---|
-| connect screen, connect code (QR) | a phone has a camera and no keyboard worth typing a token on |
+| connect screen, connect code (QR; drawn by the web admin page when a token is created, or by `scripts/connect-qr.py`) | a phone has a camera and no keyboard worth typing a token on |
 | hubs list with a token per hub, all in use | the app holds the tokens itself, in the keystore, and lists every hub's panes together (§1.3); a connect code adds a hub |
 | settings screen (*every*, *lines*, *text*, *reflow*, *block screenshots*, *hardware keyboard*, *effects*) | the device's own constraints |
 | swipe between panes, pinch zoom, drag to page a full-screen program | touch |
