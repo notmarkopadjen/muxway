@@ -44,6 +44,8 @@ type Config struct {
 	AllowSessions bool `json:"-"`
 	// AllowClose lets clients close writable panes, whatever runs in them.
 	AllowClose bool `json:"-"`
+	// Expose names the sessions marked whenever they exist: name -> mode.
+	Expose map[string]string `json:"-"`
 	// Inbox is where files clients send are written; empty, none are taken.
 	Inbox         string `json:"-"`
 	InboxMaxFiles int    `json:"-"`
@@ -171,7 +173,7 @@ type Agent struct {
 	log    *slog.Logger
 
 	mu        sync.Mutex
-	seen      map[string]int // pane id -> process id when first seen exposed
+	seen      map[string]process // pane id -> its process when first seen exposed
 	attention map[string]tmux.Attention
 	asks      map[string]*pendingAsk // pane id -> the question waiting for an answer
 	hooked    map[string]bool        // panes that notified over the socket: the watcher leaves them alone
@@ -184,6 +186,7 @@ type Agent struct {
 	fitters    map[string]map[string]bool      // window id -> the panes that fitted it; all gone, the window is given back
 	made       map[string]time.Time            // pane id -> when a split made it, while the hub may still undo it
 	sessions   map[string]bool                 // session ids started for clients
+	standing   map[string]bool                 // sessions given their standing mark, by id and creation time
 	sess       *secure.Session                 // current connection to the hub, nil while away
 	extKeys    bool                            // tmux's extended-keys seen to, or given up on
 }
@@ -223,8 +226,8 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 		return nil, err
 	}
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
-		seen: map[string]int{}, attention: map[string]tmux.Attention{}, background: map[string]bool{}, resized: map[string]time.Time{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{},
-		made: map[string]time.Time{}, sessions: map[string]bool{}, asks: map[string]*pendingAsk{}, hooked: map[string]bool{}, watched: map[string]*watched{}}, nil
+		seen: map[string]process{}, attention: map[string]tmux.Attention{}, background: map[string]bool{}, resized: map[string]time.Time{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{},
+		made: map[string]time.Time{}, sessions: map[string]bool{}, standing: map[string]bool{}, asks: map[string]*pendingAsk{}, hooked: map[string]bool{}, watched: map[string]*watched{}}, nil
 }
 
 // Run keeps a connection to the hub until ctx ends, and listens for
@@ -791,6 +794,7 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 	}
 	// The server may have come up after the agent did.
 	a.ensureExtendedKeys(ctx)
+	a.applyStanding(ctx, panes)
 	a.mu.Lock()
 	alive := map[string]bool{}
 	for i := range panes {
@@ -803,6 +807,12 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 	for id := range a.attention {
 		if !alive[id] {
 			delete(a.attention, id)
+		}
+	}
+	// A pane id comes back after the server restarts, with a new process.
+	for id := range a.seen {
+		if !alive[id] {
+			delete(a.seen, id)
 		}
 	}
 	for id, q := range a.asks {
@@ -855,16 +865,21 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 	return panes, nil
 }
 
+// process is what ran in a pane when it was first seen: its pid, and the
+// tmux server's, since a restarted server hands out the same pane ids.
+type process struct{ pid, server int }
+
 // sameProcess refuses a pane whose process changed under the same id.
 func (a *Agent) sameProcess(p tmux.Pane) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	pid, ok := a.seen[p.PaneID]
-	if !ok {
-		a.seen[p.PaneID] = p.PID
+	now := process{p.PID, p.ServerPID}
+	was, ok := a.seen[p.PaneID]
+	if !ok || was.server != now.server {
+		a.seen[p.PaneID] = now
 		return true
 	}
-	return pid == p.PID
+	return was == now
 }
 
 func (a *Agent) clearAttention(paneID string) {
