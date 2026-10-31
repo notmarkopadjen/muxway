@@ -186,7 +186,7 @@ type Agent struct {
 	fitters    map[string]map[string]bool      // window id -> the panes that fitted it; all gone, the window is given back
 	made       map[string]time.Time            // pane id -> when a split made it, while the hub may still undo it
 	sessions   map[string]bool                 // session ids started for clients
-	standing   map[string]bool                 // sessions given their standing mark, by id and creation time
+	standing   map[string]bool                 // sessions given their standing mark, by server, id and creation time
 	sess       *secure.Session                 // current connection to the hub, nil while away
 	extKeys    bool                            // tmux's extended-keys seen to, or given up on
 }

@@ -43,6 +43,7 @@ func (a *Agent) applyStanding(ctx context.Context, panes []tmux.Pane) {
 	key := func(p tmux.Pane) string { return fmt.Sprintf("%d/%s@%d", p.ServerPID, p.SessionID, p.SessionCreated) }
 	alive := map[string]bool{}
 	marked := map[string]string{}
+	keys := map[string]string{}
 	a.mu.Lock()
 	for _, p := range panes {
 		k := key(p)
@@ -53,6 +54,7 @@ func (a *Agent) applyStanding(ctx context.Context, panes []tmux.Pane) {
 		}
 		a.standing[k] = true
 		marked[p.SessionID] = mode
+		keys[p.SessionID] = k
 	}
 	for k := range a.standing {
 		if !alive[k] {
@@ -62,6 +64,10 @@ func (a *Agent) applyStanding(ctx context.Context, panes []tmux.Pane) {
 	a.mu.Unlock()
 	for id, mode := range marked {
 		if err := a.tmux.MarkSession(ctx, id, mode); err != nil {
+			// Forgotten, so the next listing tries again.
+			a.mu.Lock()
+			delete(a.standing, keys[id])
+			a.mu.Unlock()
 			a.log.Warn("standing mark not set", "session_id", id, "err", err)
 			continue
 		}
