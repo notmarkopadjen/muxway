@@ -33,6 +33,7 @@ export const keys = {
     ['window', host, session, window] as const,
   panes: ['panes'] as const,
   panesOf: (hub?: string) => (hub ? (['panes', hub] as const) : (['panes'] as const)),
+  inboxOf: (hub?: string) => (hub ? (['inbox', hub] as const) : (['inbox'] as const)),
   transcriber: ['transcriber'] as const,
   admin: ['admin'] as const,
   files: (address: string) => ['files', address] as const,
@@ -252,6 +253,7 @@ export function useAnswer() {
       qc.invalidateQueries({ queryKey: keys.pane(address) });
       const { hub, address: bare } = splitAddress(address);
       qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
+      qc.invalidateQueries({ queryKey: keys.inboxOf(hub) });
       qc.invalidateQueries({ queryKey: keys.tree(bare.split('/')[0], hub) });
     },
   });
@@ -285,6 +287,34 @@ export function useAllPanes(enabled: boolean) {
   return useMemo(
     () => ({
       data: lists[0]?.data === undefined ? undefined : lists.flatMap((l) => l.data ?? []),
+    }),
+    [lists],
+  );
+}
+
+// The inbox of every hub in the box: the panes that wait for their owner,
+// oldest first. Its own query, polled slowly and never invalidated by
+// input, so the header's count costs a request every few seconds and
+// nothing per key.
+export function useInbox(enabled: boolean) {
+  const lists = useHubLists(
+    keys.inboxOf,
+    (h, own) =>
+      api<{ inbox: Pane[] | null }>('/v1/inbox', own ? {} : { hub: h.url }).then((v) =>
+        (v.inbox ?? []).map((p) =>
+          own ? p : { ...p, address: joinAddress(h.name, p.address), hub: h.name },
+        ),
+      ),
+    { enabled, refetchInterval: 5_000 },
+  );
+  return useMemo(
+    () => ({
+      data:
+        lists[0]?.data === undefined
+          ? undefined
+          : lists
+              .flatMap((l) => l.data ?? [])
+              .sort((a, b) => (a.attention?.at ?? 0) - (b.attention?.at ?? 0)),
     }),
     [lists],
   );

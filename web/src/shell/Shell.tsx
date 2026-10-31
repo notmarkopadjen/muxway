@@ -17,8 +17,8 @@ import { Help } from './Help';
 import { Hubs } from './Hubs';
 import { shownName, splitAddress, useHubs } from '../hubs';
 import { Palette } from '../components/Palette';
-import { Inbox, waiting } from '../components/Inbox';
-import { useAllPanes, useAnswer } from '../api/queries';
+import { Inbox } from '../components/Inbox';
+import { useAnswer, useInbox } from '../api/queries';
 import { HeaderSlot } from './HeaderSlot';
 import { Profile } from './Profile';
 import { Closing } from '../components/Closing';
@@ -69,9 +69,11 @@ export function Shell() {
   const [help, setHelp] = useState(false);
   const [palette, setPalette] = useState(false);
   const [inbox, setInbox] = useState(false);
-  const all = useAllPanes(signedIn);
-  const waitingCount = waiting(all.data).length;
-  const answer = useAnswer();
+  const inboxList = useInbox(signedIn);
+  const waitingCount = inboxList.data?.length ?? 0;
+  // mutate keeps its identity; the mutation object does not, and onEvent
+  // must stay the same or the event stream re-subscribes on every render.
+  const { mutate: answerQuestion } = useAnswer();
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   useEffect(() => onPaletteRequest(() => setPalette(true)), []);
   const [hubsOpen, setHubsOpen] = useState(false);
@@ -120,7 +122,7 @@ export function Shell() {
         onClick: () => navigate({ to: '/p/$', params: { _splat: e.address } }),
         actions: e.choices?.map((c) => ({
           label: c,
-          onClick: () => answer.mutate({ address: e.address, choice: c }),
+          onClick: () => answerQuestion({ address: e.address, choice: c }),
         })),
       });
       flash();
@@ -135,7 +137,7 @@ export function Shell() {
         }
       }
     },
-    [toast, navigate, flash, known, answer],
+    [toast, navigate, flash, known, answerQuestion],
   );
   useEventStream(onEvent, signedIn);
 
@@ -175,7 +177,7 @@ export function Shell() {
         setInbox((v) => !v);
         ev.preventDefault();
       } else if (ev.key === 'o' && signedIn && !inbox) {
-        const oldest = waiting(all.data)[0];
+        const oldest = inboxList.data?.[0];
         if (oldest) navigate({ to: '/p/$', params: { _splat: oldest.address } });
         ev.preventDefault();
       } else if (ev.key === 'H') {
@@ -207,7 +209,7 @@ export function Shell() {
     navigate,
     toast,
     heading.pane,
-    all.data,
+    inboxList.data,
   ]);
 
   return (

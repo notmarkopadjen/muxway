@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
-import { useAllPanes } from '../api/queries';
+import { useInbox } from '../api/queries';
 import type { Pane } from '../api/types';
 import { Badge } from './Badge';
 import { Box } from './Box';
@@ -27,7 +27,7 @@ export function ago(at: number, now = Date.now()): string {
 }
 
 export function Inbox({ onClose }: { onClose: () => void }) {
-  const panes = useAllPanes(true);
+  const panes = useInbox(true);
   const navigate = useNavigate();
   const rows = useMemo(() => waiting(panes.data), [panes.data]);
   const [sel, setSel] = useState(0);
