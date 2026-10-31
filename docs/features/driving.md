@@ -74,6 +74,28 @@ result with `isError`, so the agent reads the code and goes on. It reads
 the same client directory and environment as `muxway client`. No
 dependency beyond the standard library.
 
+```mermaid
+sequenceDiagram
+    participant AI as AI agent (MCP client)
+    participant M as muxway mcp
+    participant H as Hub
+    participant A as Agent on the other host
+    AI->>M: tools/call wait {address}
+    M->>H: GET /v1/inbox, then GET /v1/events?wait=30 (Bearer token)
+    H-->>M: question with choices on that pane
+    M-->>AI: "host/work/1.0  question  deploy?  choices: yes | no"
+    AI->>M: tools/call answer {address, choice: "yes"}
+    M->>H: POST /v1/panes/.../answer
+    H->>A: answer, grants checked, audited
+    A-->>H: ok
+    M-->>AI: "answered"
+```
+
+A reviewer agent on a laptop, for example, holds a token with read on a
+build host and write on one pane there: it waits on that pane, reads
+what the agent there printed, answers its question, and types the next
+instruction, every step in the hub's audit log under its own token.
+
 ## `muxway skill`
 
 ```sh

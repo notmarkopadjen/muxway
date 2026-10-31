@@ -457,6 +457,8 @@ itself look like an agent or look busy.
 
 ![the lens](images/web-lens.png)
 
+![a Codex pane in the list, marked, working through the host's watcher](images/web-lens-codex.png)
+
 A question asked with fixed answers (`muxway ask`, see
 [notifications](notifications.md#questions-with-fixed-answers)) shows
 its choices as buttons: on the pane's header after the kind and text, in

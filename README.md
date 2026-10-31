@@ -9,8 +9,10 @@ phone. Security first: a tmux pane is a shell.
 ![Four panes from two machines on one screen: an AI agent asking for a permission tall on the left, a build above a log and a docker host on the right](docs/images/tiles.png)
 
 > Young, and used daily by its author. The hub, the agent, the protocol,
-> the web client, notifications from AI coding agents and sign-in with
-> OpenID Connect are all in; the
+> the web client, sign-in with OpenID Connect, and the agent side, hooks
+> for Claude Code, Codex, Gemini CLI, Antigravity CLI, Copilot CLI and
+> OpenCode, a watcher for the rest, questions with fixed answers, the
+> inbox, a command-line client and an MCP server, are all in; the
 > [Android](https://github.com/notmarkopadjen/muxway-android),
 > [glasses](https://github.com/notmarkopadjen/muxway-glasses-even) and
 > [Java ME](https://github.com/notmarkopadjen/muxway-midp) clients are
@@ -168,6 +170,26 @@ curl -H "Authorization: Bearer $TOKEN" -H "Accept: text/plain" \
 [Hub and agent](docs/features/hub-and-agent.md) has the flags, the
 service units, the reverse proxy, backups and token rotation.
 
+## For the AI agents in your panes
+
+An agent in a pane is the pane muxway is for, so it gets its own side of
+the product:
+
+```sh
+muxway hooks claude-code | codex | gemini | agy | copilot | opencode   # its hooks call muxway notify
+muxway agent run                       # the watcher reads the screens of the rest, on by default
+muxway ask --text "deploy to staging?" --choice yes --choice no         # blocks until you pick, on any device
+muxway skill > .claude/skills/muxway/SKILL.md                          # the guide an agent reads
+```
+
+And with a token of its own, narrow as you like, an agent drives muxway
+back: `muxway client panes | inbox | read | send | key | answer | wait |
+events`, or the same seven operations as MCP tools with `muxway mcp`, so
+an agent on one machine can watch, wait on and type into a pane on
+another. See [notifications](docs/features/notifications.md),
+[the inbox](docs/features/inbox.md) and
+[driving muxway](docs/features/driving.md).
+
 ## The web client
 
 Served by the hub, nothing to install. The pane list groups every host
@@ -176,11 +198,25 @@ you may reach; a badge marks a pane that needs you.
 ![The pane list: two hosts, their sessions and windows, an AI agent's pane waiting for a permission](docs/images/panes.png)
 
 A pane running an AI agent is named by what the agent says it is doing,
+with its mark (Claude's spark, Codex's hexagon, Antigravity's chevron),
 the header carries its question, and the command row offers the agent's
-slash commands; a shell's gets its recent lines. The Claude Code lens is
-the one there is today.
+slash commands, Claude Code's, Codex's or Antigravity's; a shell's row
+starts them, each starter with its mark, and keeps the shell's recent
+lines.
 
 ![A single pane with Claude Code asking whether to run a git commit](docs/images/claude.png)
+
+![A shell's command row: exit, htop, then claude, codex and agy with their marks, then git](docs/features/images/web-command-row.png)
+
+Every pane that waits for you, on every host, is one list: the inbox
+(`I`), oldest first, with a question's choices as buttons; `o` opens the
+oldest. A question an agent asked with `muxway ask` is answered from the
+toast, the pane's header or the inbox, and the agent gets the pick
+without a keystroke in its pane.
+
+| The inbox | A question with fixed answers |
+|---|---|
+| ![the inbox window: two waiting panes, oldest first](docs/features/images/web-inbox.png) | ![a toast with a question and its three choices as buttons](docs/features/images/web-choices.png) |
 
 Amber by default; phosphor green, and paper for daylight.
 

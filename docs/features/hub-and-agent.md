@@ -5,7 +5,11 @@
 A **hub** is where clients connect. An **agent** runs on each machine with
 tmux and keeps an outbound connection to the hub. Together they let a
 client list the panes a host's owner exposed, read them, and type into
-them. See [the architecture](../ARCHITECTURE.md) for the diagrams.
+them; the AI agents in those panes call for their owner through the
+agent, ask questions and, with a token, drive muxway themselves (see
+[notifications](notifications.md), [the inbox](inbox.md) and
+[driving muxway](driving.md)). See [the architecture](../ARCHITECTURE.md)
+for the diagrams.
 
 ## Running a hub
 
@@ -106,7 +110,7 @@ The agent's state is its `--dir`
 |---|---|
 | `agent.json` | the hub's URL and public key, this host's alias, the path of the extra CA if one was given |
 | `agent.key` | the agent's Ed25519 key, the one the hub pinned at pairing |
-| `notify.sock` | the socket the AI CLI hooks post attention events to (see [notifications](notifications.md)) |
+| `notify.sock` | the socket the AI CLI hooks post attention events to, and `muxway ask` holds a question open on (see [notifications](notifications.md)) |
 | `inbox/` | files clients hand a pane's program, with `--inbox default` (see [attachments](attachments.md)) |
 
 Losing `agent.key` means pairing again: the hub knows the host by that key

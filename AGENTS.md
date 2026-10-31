@@ -2,7 +2,7 @@
 
 Rules for anyone, human or AI agent, working on this repository. Read all of it before changing anything.
 
-muxway lets you reach your tmux sessions from anywhere: a browser, an Android phone, smart glasses, even a 2002 feature phone. A small **agent** on each machine exposes the tmux panes its owner marks; a **hub** connects clients to agents over authenticated, encrypted channels; clients list panes, read them and type into them. Agents for AI coding CLIs that run in tmux add notifications: a client is told when an agent asks a question or finishes.
+muxway lets you reach your tmux sessions from anywhere: a browser, an Android phone, smart glasses, even a 2002 feature phone. A small **agent** on each machine exposes the tmux panes its owner marks; a **hub** connects clients to agents over authenticated, encrypted channels; clients list panes, read them and type into them. The AI coding CLIs that run in tmux (Claude Code, Codex, Gemini CLI, Antigravity CLI, Copilot CLI, OpenCode) have their own side: their hooks, or the agent's watcher, tell every client when one asks a question, wants a permission, idles or finishes; the inbox lists what waits across hosts; a process in a pane can ask its owner a question with fixed answers and get the pick back; and with a token an agent drives muxway from the command line or over MCP.
 
 ## 1. Privacy: nothing personal ever reaches GitHub
 
