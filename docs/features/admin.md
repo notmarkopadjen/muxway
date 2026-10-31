@@ -41,8 +41,18 @@ Signed in with it, the web client shows **admin** in the header. The page
   an admin, and until when. **revoke** (after a confirmation) ends the
   token and every session it signed in at once. The form creates a token:
   name, read and write patterns (separated by spaces or commas), a
-  lifetime, admin or not. Its secret is shown **once**, with **copy**, and
-  is gone from the page at **done**; the page never stores it.
+  lifetime, admin or not. Its secret is shown **once**, with **copy** and
+  as a **connect code**, a QR code the phone app scans (*≡ hubs*, *scan
+  code*) to add this hub with the token; both are gone from the page at
+  **done**, and the page never stores them.
+
+  ![a created token, its secret and connect code](images/web-admin-connect-code.png)
+
+  The code holds `muxway://connect?hub=<this hub's origin>&token=<secret>`,
+  the same code the Android repository's `scripts/connect-qr.py` prints
+  in a terminal. It is drawn black on white whatever the theme, since a
+  scanner needs the contrast, beside the secret when the box is wide
+  enough and under it when not.
 - **clients**: signed-in browsers (`web`) and bearer clients (by the
   first word of their `User-Agent`: `muxway-android`, `muxway-midp`, …),
   with their principal, address, how long ago they started and were last
@@ -135,6 +145,11 @@ rest. The endpoints are in the [protocol](../protocol/v1.md#admin).
   listed without their hashes.
 - A session is named to admins by a separate random handle, not by its
   cookie.
+- The connect code is the secret, drawn: anyone who can photograph the
+  screen while the box is open has the token, as they would have the text.
+  Create a token with nobody looking and press **done**. The code is
+  built in the browser from the hub's answer; its markup carries no text,
+  title or label with the token, and it goes with the secret at **done**.
 - The lists are parsed strictly and stored atomically; the deny list wins.
   The self-lockout check uses the address the hub sees, proxy aware. The
   socket is the way back in.
