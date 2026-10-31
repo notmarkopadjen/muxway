@@ -104,7 +104,7 @@ sequenceDiagram
     P->>A: {"pane":"%3","kind":"question","text":"deploy?","choices":["yes","no"],"ask":true} over notify.sock
     A->>A: exposed? record attention with choices, keep the connection
     A->>H: event question, choices
-    H-->>C: event; the listing's attention carries choices
+    H-->>C: event, the listing's attention carries choices
     C->>H: POST /v1/panes/alice-laptop/work/1.0/answer {"choice":"yes"}
     H->>H: write grant? choice clean?
     H->>A: {"op":"answer","actor","pane":"%3","choice":"yes"}

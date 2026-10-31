@@ -75,7 +75,7 @@ Allow command?
 	codexIdle = `codex: done, the build passes.
 
 › `
-	aiderPermission = `Add src/main.py to the chat? (Y)es/(N)o/(D)on't ask again [Yes]: `
+	aiderPermission  = `Add src/main.py to the chat? (Y)es/(N)o/(D)on't ask again [Yes]: `
 	geminiPermission = `Allow execution of: 'npm test'?
  ● 1. Yes, allow once
    2. Yes, allow always

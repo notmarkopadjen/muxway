@@ -39,14 +39,15 @@ Android: `Lens.name`, `Pane.name`.
 ### 1.2 The lens
 
 A lens knows one AI coding agent's screen and says what its pane is up
-to; the Claude Code lens is the one there is, and another agent gets a
-lens of its own. Every client paints with the same three states and the
-same marks.
+to. Every client names the same harnesses from the pane's command and
+title (Claude, Codex, Gemini, OpenCode, Copilot, aider, goose, Amp,
+Cursor; the Claude Code lens, which reshapes the screen, is the one
+there is) and paints with the same three states and the same marks.
 
 | State | When | Glyph | Word | Paint |
 |---|---|---|---|---|
 | waiting | the listing carries a notification, except an `idle` one while the screen still moves (then: working) | `!` permission, `?` question, `z` idle, `✓` done | the kind | the theme's ink, inverted (ink ground, background letters), pulsing |
-| working | the Claude Code lens: last event `working`, or the open pane's screen changed in the last 10 s; a change the client caused (first read, its own resize or input) does not count; on start the client reads the hub's recent events | `⟳`: a turning ring, drawn, the same in every font | `working` | dim |
+| working | a named harness: last event `working`, or the open pane's screen changed in the last 10 s; a change the client caused (first read, its own resize or input) does not count; on start the client reads the hub's recent events | `⟳`: a turning ring, drawn, the same in every font | `working` | dim |
 | quiet | otherwise | none | none | plain |
 
 Selection is never a colour: an open or focused element has a border
@@ -198,6 +199,9 @@ The same action on every client, triggered the way the device does it.
 | zoom: one pane alone, then back to the tiles it came from, in their places and arrangement (or, opened alone, the window's panes side by side in the window's order); on the web the tile switches off to a line that travels to its new place and opens there, unless effects are off | `z`, `⊡`, double-click a tile, its header or its tab | `⊡`, double-tap a header | — |
 | the window view (mirror layout) | `w` | — | — |
 | go to a pane | `p`, `≡` among the pane buttons | the strip | — |
+| the inbox: every pane that waits, oldest first, with its kind, text and a question's choices; `Enter` opens the pane | `I`, the `⚑ n` count beside the brand | — (follow-up) | `GET /v1/inbox` in text mode |
+| open the oldest waiting pane | `o` | — (follow-up) | — |
+| answer a question asked with fixed choices (`muxway ask`): the choice goes to the asking process, nothing is typed into the pane; disabled where you may not write | a button on the pane's header, in the toast, in the inbox row | — (follow-up) | — (follow-up) |
 | one more pane beside the focused one, a new session, or an existing pane as one more tile: the add menu | `+` after the tabs (and the `+` key) | `+` after the tabs; `+ pane`, `+ session` in the list too | — |
 | minimise a tile to the row above the keys; bring it back | `_` on the header, `-` key; a click on the row's tab | `_` on the header; a tap on the row's tab | — |
 | swap two tiles, or split a tile's place | drag a header onto a tile's middle, or its edge | long-press a header and drop it onto a tile's middle, or its edge | — |
