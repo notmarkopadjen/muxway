@@ -86,6 +86,7 @@ for hubs with a private certificate.
 muxway agent run                       # the default tmux server of this user
 muxway agent run --tmux-name work      # a server started with tmux -L work
 muxway agent run --inbox default --allow-sessions
+muxway agent run --expose work=write   # mark the session "work" whenever it exists
 muxway agent run --preview ~/work --preview ~/notes   # files under these, previewed by writers
 muxway agent run --preview ~/work --preview-hidden    # .github and such too; never .git, .ssh, .env
 muxway agent run --watch=false         # do not read the screens of AI harnesses without hooks
@@ -117,7 +118,10 @@ Losing `agent.key` means pairing again: the hub knows the host by that key
 and refuses any other, so `muxway hub agents remove <alias>` on the hub,
 then a new code. `--allow-sessions` and `--allow-close` let clients with a
 write grant start sessions and close panes; both are off by default (see
-[new panes and sessions](new-panes.md)). `--preview <dir>`, repeatable,
+[new panes and sessions](new-panes.md)). `--expose <session>=<mode>`,
+repeatable, marks a session of that exact name whenever one exists, so a
+session started again after it ended needs no second `muxway expose`
+(see [standing marks](exposing-panes.md#standing-marks)). `--preview <dir>`, repeatable,
 lets clients with a write grant read files under that directory when a
 pane prints their paths (see [preview](preview.md)) and see the changes of
 a repository under it with read-only `git status` and `git diff` run by

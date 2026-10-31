@@ -151,7 +151,7 @@ muxway hub pair-code --host alice-laptop
 # on the machine with tmux (3.5 or newer, so Shift+Enter reaches the programs)
 muxway agent pair <code>
 muxway agent run &
-muxway expose -t work:1.0 --write --name build
+muxway expose -t work:1.0 --write --name build   # or run the agent with --expose work=write
 muxway hooks claude-code   # hooks so Claude Code in a pane can call for you (also codex, gemini, copilot, opencode)
 
 # back on the hub: a token for a client

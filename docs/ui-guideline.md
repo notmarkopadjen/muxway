@@ -194,7 +194,7 @@ The same action on every client, triggered the way the device does it.
 | direct typing: every key to the focused pane as pressed, `Esc` included, but `Ctrl+V` and `Shift+Insert`, which paste as in a terminal (text to the pane, a file to the inbox); the prompt shows `▮`, the status bar says so, the cursor is drawn as a block; a read-only tile focused ends it | `i`, a click on the tile, `▮`; `Shift+Esc`, a click on the line or `▮` leaves | a hardware keyboard with the *hardware keyboard* setting on, while the line is not focused (the status line says `direct`); a tap on the line leaves, back from the line returns | — |
 | next arrangement | `l`, `▦` | `▦` | — |
 | equal shares in every split (the host follows for one window's tiles with fit on) | `=`, `⊞` | `▦` held | — |
-| close the pane on its host, asking on the header (`y` / `n`), where the agent allows it and the pane is writable; elsewhere close the tile | `x`, `×` | `×` | — |
+| close the pane on its host, asking on the header (`y` / `n`; `close the pane on <host>?`, or `end session <session> on <host>?` for the last pane of its session), where the agent allows it and the pane is writable; elsewhere close the tile | `x`, `×` | `×` | — |
 | fit on / off, again | `f`, `r`, button | `⤢` tap, hold | — |
 | fit every tile | `F` | — | — |
 | zoom: one pane alone, then back to the tiles it came from, in their places and arrangement (or, opened alone, the window's panes side by side in the window's order); on the web the tile switches off to a line that travels to its new place and opens there, unless effects are off | `z`, `⊡`, double-click a tile, its header or its tab | `⊡`, double-tap a header | — |

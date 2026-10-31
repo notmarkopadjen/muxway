@@ -80,10 +80,16 @@ muxway agent run --allow-close        # let clients close writable panes (defaul
 
 In a tile's header `×`, or `x` on the focused tile, asks on the header
 itself: `close the pane on alice-laptop? y n`. `y` closes the pane on the
-host, ending what runs in it, and the tile leaves; `n` keeps it. A
-read-only pane, or a host whose agent runs without `--allow-close`, is
-never asked about: there `×` and `x` close the tile in this browser only,
-and the button's title says so.
+host, ending what runs in it, and the tile leaves; `n` keeps it. For the
+only pane of its session the question is `end session work on
+alice-laptop? y n`, because tmux ends a session with its last pane, and
+with it any mark set on it (a [standing
+mark](exposing-panes.md#standing-marks) comes back with the next session
+of the name). The agent says which pane is the last (`"last": true` in
+the listing), counting panes it does not expose too. A read-only pane, or
+a host whose agent runs without `--allow-close`, is never asked about:
+there `×` and `x` close the tile in this browser only, and the button's
+title says so.
 
 ```mermaid
 sequenceDiagram
@@ -118,6 +124,9 @@ sequenceDiagram
   result and the new pane's id; never a pane's content.
 - The undo, `kill-pane`, is the hub's alone and reaches only a pane the
   agent made within the last 30 seconds.
+- `last` tells a client that a session has no other pane, exposed or
+  not: a count, not content, and what the client would learn the moment
+  it closed the pane.
 - Closing a pane ends whatever runs there, so it needs the owner's
   `--allow-close` (off by default), a write grant and a writable mark, and
   the client asks its person first. It shares the creation rate limit
