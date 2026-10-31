@@ -17,6 +17,7 @@ const KEYS: [string, string][] = [
   ['Enter', 'open the selected pane, or the picked ones side by side'],
   ['Esc', 'back to the panes; or leave the input line (first closing its completion list)'],
   ['p', 'go to a pane or window, or start a session'],
+  ['I / o', 'the inbox: every pane that waits for you, oldest first / open the oldest'],
   ['+ / S', "one more pane in the selected row's window / a new session on its host"],
   ['/', 'filter panes'],
   ['f', 'fit: the host pane (window view: the window) follows this box, at the chosen font'],

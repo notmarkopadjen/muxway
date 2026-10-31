@@ -5,6 +5,7 @@ export interface Attention {
   kind: Exclude<Kind, 'working'>;
   at: number;
   text?: string;
+  choices?: string[]; // a question asked with fixed answers (muxway ask)
 }
 
 export interface Pane {
@@ -43,6 +44,7 @@ export interface Host {
   keys?: number; // 2: the agent takes the whole key grammar
   preview?: boolean; // the agent serves files under roots its owner named
   repeat?: boolean; // the agent takes a count with a key
+  ask?: boolean; // the agent takes answers to questions
   hub?: string; // as on a pane
 }
 
@@ -91,6 +93,7 @@ export interface Event {
   alias?: string;
   kind: Kind;
   text?: string;
+  choices?: string[];
 }
 
 export interface Events {

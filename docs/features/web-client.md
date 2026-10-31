@@ -16,8 +16,10 @@ nothing but the hub to talk to.
    box, `*` when you may type there, what runs in the pane with its
    state, and the address; offline hosts are dimmed. A badge marks a pane
    that needs you: `?` question, `!` permission, `…` idle, `✓` done, and
-   the word follows (`! permission`); a Claude Code pane that is busy
+   the word follows (`! permission`); an AI agent's pane that is busy
    shows `⟳ working` (see [the lens](#the-lens)). A click opens the pane.
+   `I` opens the [inbox](inbox.md), every waiting pane oldest first, and
+   `o` the oldest of them; `⚑ n` beside the brand counts them.
    The pick box, `space` on the highlighted row, or a click while
    something is picked gathers up to four panes; a bar under the list
    then offers **open N side by side**. Each window has a button, `▦ 0:
@@ -417,17 +419,20 @@ with the place after it, and sits level with the key row while an input
 line is on the page.
 
 A lens knows one AI coding agent's screen and tells the rest of the
-client what its pane is up to. The one there is, the Claude Code lens,
-recognises Claude Code as [above](#what-a-pane-is-called); another agent
-would get a lens of its own. A pane is **waiting for you** when the
-listing carries a notification; **working** when the last event the hub
-sent for it was `working` (the hook on a submitted prompt) or, while a
-tile reads it, its screen changed in the last ten seconds; **quiet**
-otherwise. A change this client caused does not count: the first read of
+client what its pane is up to. The client names Claude Code as
+[above](#what-a-pane-is-called) and the other harnesses by their command
+(Codex, Gemini, OpenCode, Copilot, aider, goose, Amp, Cursor; Gemini and
+Copilot by their names in the title when they run under `node`); the
+Claude Code lens, which reshapes the screen, is the one there is. A pane
+of any named agent is **waiting for you** when the listing carries a
+notification; **working** when the last event the hub sent for it was
+`working` (the hook on a submitted prompt, or the host's watcher seeing
+the screen move) or, while a tile reads it, its screen changed in the
+last ten seconds; **quiet** otherwise. A change this client caused does not count: the first read of
 a tile, the reflow after its own resize, the echo of its own input. On
 load the client reads the hub's recent events, so a pane that was
 working before the page opened shows so at once. Panes that are not
-Claude's show notifications the same way and never show "working".
+an agent's show notifications the same way and never show "working".
 tmux's own activity flag is not used: it is the window's, shared by
 every pane in it.
 
@@ -443,9 +448,17 @@ stateDiagram-v2
 
 The lens reads three fields the client already renders as text (title,
 command, notification kind) and one number. A pane can at most make
-itself look like Claude Code or look busy.
+itself look like an agent or look busy.
 
 ![the lens](images/web-lens.png)
+
+A question asked with fixed answers (`muxway ask`, see
+[notifications](notifications.md#questions-with-fixed-answers)) shows
+its choices as buttons: on the pane's header after the kind and text, in
+the toast that announces it, and in the inbox row. A click sends the
+choice to the asking process through `POST .../answer`; nothing is typed
+into the pane, and the attention goes. On a pane you may not write to the
+buttons are disabled.
 
 ## The window view
 
@@ -664,6 +677,7 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `K` | the keyboard: a window with a full terminal board for the focused pane (see [the keyboard](keyboard.md)); `Esc` closes it |
 | `v` | speak: record a clip for the hub's transcriber, onto the input line; held, it records until released; tapped, `v` again stops; `Esc` drops it |
 | `p` | selector: go to a pane or window, or start a session on a host |
+| `I` / `o` | the [inbox](inbox.md): every pane that waits for you, oldest first; `Enter` opens the selected one / open the oldest waiting pane |
 | `+` | the list: one more pane in the selected row's window; it opens. Tiles: the add menu |
 | `-` | tiles: minimise the focused tile to the row above the keys; a click on its tab there, or its entry in the add menu, brings it back |
 | `S` | a new session on the selected row's host (or the first that allows it): a one-line form, `Enter` starts, `Esc` cancels |

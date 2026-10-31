@@ -16,6 +16,8 @@ export interface ToastItem {
   meta?: string;
   text?: string;
   onClick?: () => void;
+  // Fixed answers a question offers, taken without opening the pane.
+  actions?: { label: string; onClick: () => void }[];
 }
 
 interface ToastApi {
@@ -57,6 +59,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             {t.title}
             {t.meta && <span className="mx-dim"> {t.meta}</span>}
             {t.text && <span className="mx-text">{t.text}</span>}
+            {t.actions && (
+              <span className="mx-choices" data-testid="toast-choices">
+                {t.actions.map((a) => (
+                  <button
+                    key={a.label}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      dismiss(t.id);
+                      a.onClick();
+                    }}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+              </span>
+            )}
           </div>
         ))}
       </div>

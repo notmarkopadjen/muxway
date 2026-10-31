@@ -5,6 +5,7 @@ package wire
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/notmarkopadjen/muxway/internal/tmux"
 )
@@ -24,6 +25,7 @@ const (
 	OpReadPath   = "read-path"   // a file under the owner's preview roots, by a path as printed
 	OpGitStatus  = "git-status"  // the changes of the pane's repository, when it lies under a root
 	OpGitDiff    = "git-diff"    // one changed file's diff against the last commit
+	OpAnswer     = "answer"      // a client picks one of the choices a question offered
 )
 
 // Request from hub to agent. Actor is the id of the client token the hub
@@ -65,6 +67,8 @@ type Request struct {
 	// Path of a file to preview, as a pane printed it; or of a change to
 	// diff, as the status listed it.
 	Path string `json:"path,omitempty"`
+	// Choice, with answer, is the answer picked among the question's choices.
+	Choice string `json:"choice,omitempty"`
 }
 
 // Mouse is one click or wheel notch at a cell, 1-based.
@@ -121,6 +125,8 @@ type Response struct {
 	Data []byte `json:"data,omitempty"`
 	// Preview, with a list, says the agent serves files under its roots.
 	Preview bool `json:"preview,omitempty"`
+	// Ask, with a list, says the agent takes answers to questions.
+	Ask bool `json:"ask,omitempty"`
 	// Changes of the pane's repository; Diff of one of them, Binary when
 	// git has no text for it, Cut when it was longer than MaxDiff.
 	Changes *Changes `json:"changes,omitempty"`
@@ -166,7 +172,8 @@ const (
 	ErrExists     = "exists"
 	ErrTooMany    = "too_many"
 	ErrInboxFull  = "inbox_full"
-	ErrNoFile     = "no_file" // no such file in the inbox
+	ErrNoFile     = "no_file"     // no such file in the inbox
+	ErrNoQuestion = "no_question" // an answer for a pane with no question pending
 )
 
 // Limits shared by hub and agent.
@@ -235,6 +242,37 @@ const (
 
 // MaxEventText caps the text that travels with an event, in characters.
 const MaxEventText = 200
+
+// A question's fixed answers: how many at most, how long each, and what a
+// choice may not contain (the text-mode separator).
+const (
+	MinChoices   = 2
+	MaxChoices   = 8
+	MaxChoiceLen = 40
+)
+
+// ValidChoice is one answer as a client may pick it: clean, 1 to
+// MaxChoiceLen characters, without the separator.
+func ValidChoice(s string) bool {
+	n := len([]rune(s))
+	return n >= 1 && n <= MaxChoiceLen && CleanText(s) == s && !strings.Contains(s, "|")
+}
+
+// ValidChoices is a question's list: MinChoices to MaxChoices distinct
+// valid choices.
+func ValidChoices(cs []string) bool {
+	if len(cs) < MinChoices || len(cs) > MaxChoices {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, c := range cs {
+		if !ValidChoice(c) || seen[c] {
+			return false
+		}
+		seen[c] = true
+	}
+	return true
+}
 
 // KnownKind reports whether a kind is one of the fixed list.
 func KnownKind(k string) bool {

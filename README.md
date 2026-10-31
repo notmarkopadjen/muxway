@@ -50,11 +50,24 @@ directories the host's owner opened for it.</td>
 <td valign="top"><img src="docs/images/icons/notify.png" width="54" alt=""></td>
 <td><strong>Your AI agent calls you.</strong> An AI coding agent in a pane tells muxway,
 through its hooks, when it asks a question, wants a permission, has
-gone idle or has finished. The pane lights up in every client, the
-phone and the watch buzz, the glasses show a banner, and you answer
-from wherever you are: a tap, a key, a few typed words, a spoken
-reply. Claude Code is the agent tested so far; another needs its hooks
-to call <code>muxway notify</code> on the host, and a lens for its screen.</td>
+gone idle or has finished: <code>muxway hooks</code> prints them for
+Claude Code, Codex, Gemini CLI, Copilot CLI and OpenCode, and a watcher
+on the host reads the screen of a harness without hooks. The pane
+lights up in every client, the phone and the watch buzz, the glasses
+show a banner, the inbox lists what waits across your machines, oldest
+first, and you answer from wherever you are: a tap, a key, a few typed
+words, a spoken reply. An agent can also ask you a question with fixed
+answers (<code>muxway ask</code>) and get your pick back without a
+keystroke in its pane. Claude Code is the harness tested daily.</td>
+</tr>
+<tr>
+<td valign="top"><img src="docs/images/icons/keys.png" width="54" alt=""></td>
+<td><strong>Agents drive it too.</strong> <code>muxway client</code> is the API from
+the command line (panes, inbox, read, send, answer, wait), <code>muxway
+mcp</code> serves the same as MCP tools, and <code>muxway skill</code>
+prints the guide an agent in a pane reads, so an agent on one machine
+can watch, wait on and type into a pane on another, with a token that
+names exactly which.</td>
 </tr>
 <tr>
 <td valign="top"><img src="docs/images/icons/clients.png" width="54" alt=""></td>
@@ -136,7 +149,7 @@ muxway hub pair-code --host alice-laptop
 muxway agent pair <code>
 muxway agent run &
 muxway expose -t work:1.0 --write --name build
-muxway hooks claude-code   # hooks so Claude Code in a pane can call for you
+muxway hooks claude-code   # hooks so Claude Code in a pane can call for you (also codex, gemini, copilot, opencode)
 
 # back on the hub: a token for a client
 muxway hub token create --name phone --read 'alice-laptop/*' --write 'alice-laptop/@build'
@@ -195,6 +208,8 @@ The features: [web client](docs/features/web-client.md),
 [keyboard](docs/features/keyboard.md),
 [direct typing](docs/features/direct.md),
 [notifications](docs/features/notifications.md),
+[the inbox](docs/features/inbox.md),
+[driving muxway from a script or an agent](docs/features/driving.md),
 [sign-in](docs/features/sign-in.md),
 [attachments](docs/features/attachments.md),
 [preview](docs/features/preview.md),

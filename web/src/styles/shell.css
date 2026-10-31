@@ -637,3 +637,16 @@ button:disabled {
 .mx-header-slot .mx-tools {
   margin-left: auto;
 }
+
+/* how many panes wait, beside the brand; opens the inbox */
+.mx-inbox-count {
+  flex: none;
+  margin-left: var(--mx-gap-2);
+  padding: 0 6px;
+  border: 1px solid var(--mx-warn);
+  color: var(--mx-warn);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  text-shadow: 0 0 8px var(--mx-warn);
+}

@@ -4,8 +4,11 @@ import type { Pane } from '../api/types';
 // says about itself. An AI CLI is named, with the status it writes into
 // the pane title; the tmux names step back to second place.
 
+export type Agent =
+  'claude' | 'codex' | 'gemini' | 'opencode' | 'copilot' | 'aider' | 'goose' | 'amp' | 'cursor';
+
 export interface Description {
-  agent?: 'claude';
+  agent?: Agent;
   name: string;
   status: string;
 }
@@ -14,11 +17,42 @@ export interface Description {
 // it is on.
 const CLAUDE = /^[✳✶✻✽✢]\s*/u;
 
+// The other harnesses, by their command; the ones that run under an
+// interpreter by their name in the title.
+const AGENTS: [Agent, string, RegExp | null][] = [
+  ['codex', 'Codex', null],
+  ['gemini', 'Gemini', /\bgemini\b/i],
+  ['opencode', 'OpenCode', null],
+  ['copilot', 'Copilot', /\bcopilot\b/i],
+  ['aider', 'aider', null],
+  ['goose', 'goose', null],
+  ['amp', 'Amp', null],
+  ['cursor', 'Cursor', null],
+];
+const COMMANDS: Record<string, Agent> = {
+  codex: 'codex',
+  gemini: 'gemini',
+  opencode: 'opencode',
+  copilot: 'copilot',
+  aider: 'aider',
+  goose: 'goose',
+  amp: 'amp',
+  'cursor-agent': 'cursor',
+};
+const INTERPRETERS = new Set(['node', 'bun', 'deno', 'python', 'python3', 'uv']);
+
 export function describe(p: Pick<Pane, 'command' | 'title'>): Description {
   const title = p.title.trim();
   if (p.command === 'claude' || CLAUDE.test(title)) {
     const status = title.replace(CLAUDE, '').trim();
     return { agent: 'claude', name: 'Claude', status: status === p.command ? '' : status };
+  }
+  const byCommand = COMMANDS[p.command];
+  for (const [agent, name, inTitle] of AGENTS) {
+    if (byCommand === agent || (inTitle && INTERPRETERS.has(p.command) && inTitle.test(title))) {
+      const status = title === p.command || title.toLowerCase() === name.toLowerCase() ? '' : title;
+      return { agent, name, status };
+    }
   }
   return { name: p.command, status: title === p.command ? '' : title };
 }

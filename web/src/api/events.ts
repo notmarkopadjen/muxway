@@ -35,6 +35,7 @@ export function useEventStream(onEvent: (e: Event, live: boolean) => void, enabl
             if (live) {
               qc.invalidateQueries({ queryKey: keys.tree(e.host, name) });
               qc.invalidateQueries({ queryKey: keys.panesOf(name) });
+              qc.invalidateQueries({ queryKey: keys.inboxOf(name) });
             }
             onEvent(e, live);
           }
