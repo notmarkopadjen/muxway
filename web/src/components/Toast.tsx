@@ -50,6 +50,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             className="mx-toast"
             data-testid="toast"
+            data-kind={t.kind}
             onClick={() => {
               dismiss(t.id);
               t.onClick?.();

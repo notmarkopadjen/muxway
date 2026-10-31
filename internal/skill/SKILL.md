@@ -52,5 +52,12 @@ read and which you may type into; a refusal is `read_only` or `not_found`.
 Read a pane before you type into it, and never paste secrets: every write
 is audit-logged on its host.
 
+What you type into another pane is shown to your owner as a conversation
+between your pane and that one: `send`, `key` and `answer` name the pane
+they come from (yours, by default), the hub records who said what to
+whom, and every client draws the two panes chained. `muxway client talk`
+prints that record, `--follow` keeps printing it, so you can see what
+the other panes are saying.
+
 As MCP tools (`muxway mcp` in your MCP configuration): `list_panes`,
-`inbox`, `read_pane`, `send_text`, `send_key`, `answer`, `wait`.
+`inbox`, `read_pane`, `send_text`, `send_key`, `answer`, `wait`, `talk`.

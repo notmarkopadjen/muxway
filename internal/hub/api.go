@@ -43,6 +43,7 @@ func (h *Hub) routes() http.Handler {
 	mux.HandleFunc("GET /v1/panes", h.withPrincipal(h.handlePanes))
 	mux.HandleFunc("GET /v1/events", h.withPrincipal(h.handleEvents))
 	mux.HandleFunc("GET /v1/inbox", h.withPrincipal(h.handleInbox))
+	mux.HandleFunc("GET /v1/talk", h.withPrincipal(h.handleTalk))
 	mux.HandleFunc("GET /v1/transcribe", h.withPrincipal(h.handleTranscribeProbe))
 	mux.HandleFunc("POST /v1/transcribe", h.withPrincipal(h.handleTranscribe))
 	mux.HandleFunc("GET /v1/panes/{host}/{path...}", h.withPrincipal(h.handleRead))
@@ -210,6 +211,9 @@ type PaneView struct {
 	Host    string `json:"host"`
 	Address string `json:"address"`
 	tmux.Pane
+	// Talk: the panes this one talked with lately, among those the
+	// principal may read.
+	Talk []TalkPartner `json:"talk,omitempty"`
 }
 
 func view(host string, t Principal, p tmux.Pane) PaneView {
@@ -311,6 +315,7 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 			out = append(out, view(host, t, p))
 		}
 	}
+	h.withTalk(r.Context(), t, out)
 	if wantsText(r) {
 		// Command and title are what a program in the pane chose; the rest is ASCII already.
 		w.Header().Set("Content-Type", text.ContentType(charset))
@@ -431,6 +436,11 @@ func (h *Hub) handleTree(w http.ResponseWriter, r *http.Request, t Principal) {
 		}
 		win := s.Windows[len(s.Windows)-1]
 		win.Panes = append(win.Panes, view(host, t, p))
+	}
+	for _, s := range sessions {
+		for _, win := range s.Windows {
+			h.withTalk(r.Context(), t, win.Panes)
+		}
 	}
 	reply(w, map[string]any{"host": host, "sessions": sessions})
 }
@@ -614,8 +624,9 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 		rows := text.Wrap(text.Fold(resp.Content, charset), width, lines)
 		body = text.Encode(strings.Join(rows, "\n")+"\n", charset)
 	} else {
-		v := view(r.PathValue("host"), t, p)
-		body, _ = json.Marshal(map[string]any{"pane": v, "content": resp.Content, "trimmed": resp.Trimmed})
+		vs := []PaneView{view(r.PathValue("host"), t, p)}
+		h.withTalk(r.Context(), t, vs)
+		body, _ = json.Marshal(map[string]any{"pane": vs[0], "content": resp.Content, "trimmed": resp.Trimmed})
 	}
 	sum := sha256.Sum256(body)
 	etag := `"` + hex.EncodeToString(sum[:8]) + `"`
@@ -639,6 +650,8 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		Key   string      `json:"key"`
 		Count *int        `json:"count"`
 		Mouse *wire.Mouse `json:"mouse"`
+		// From: the pane the sender runs in; a click is never from a pane.
+		From *origin `json:"from"`
 	}
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
 	dec.DisallowUnknownFields()
@@ -680,6 +693,10 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		fail(w, http.StatusBadRequest, "bad_input")
 		return
 	}
+	if in.From != nil && in.Mouse != nil {
+		fail(w, http.StatusBadRequest, "bad_input")
+		return
+	}
 	host := r.PathValue("host")
 	a, p, status := h.locate(r.Context(), t, host, path)
 	if status == http.StatusServiceUnavailable {
@@ -700,12 +717,30 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		fail(w, http.StatusBadRequest, "bad_input")
 		return
 	}
-	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpInput, Actor: t.ID, Pane: p.PaneID, Text: in.Text, Key: in.Key, Count: count, Mouse: in.Mouse})
+	var from tmux.Pane
+	if in.From != nil {
+		var status int
+		var code string
+		if from, status, code = h.origin(r.Context(), t, in.From); status != 0 {
+			h.log.Info("audit input", "token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID,
+				"from", in.From.Host+"/"+in.From.PaneID, "result", "bad_origin")
+			fail(w, status, code)
+			return
+		}
+	}
+	req := wire.Request{Op: wire.OpInput, Actor: t.ID, Pane: p.PaneID, Text: in.Text, Key: in.Key, Count: count, Mouse: in.Mouse}
+	if in.From != nil {
+		req.From = in.From.Host + "/" + from.PaneID
+	}
+	resp, err := a.request(r.Context(), req)
 	if err != nil {
 		fail(w, http.StatusServiceUnavailable, "host_offline")
 		return
 	}
 	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID}
+	if req.From != "" {
+		attrs = append(attrs, "from", req.From)
+	}
 	switch {
 	case in.Text != nil:
 		attrs = append(attrs, "text_bytes", len(*in.Text))
@@ -725,6 +760,18 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	h.log.Info("audit input", append(attrs, "result", "ok")...)
 	a.forget()
+	if in.From != nil {
+		switch {
+		case in.Text != nil:
+			h.said(t, in.From, from, host, p, "text", *in.Text, len(*in.Text))
+		default:
+			key := in.Key
+			if count > 1 {
+				key = fmt.Sprintf("%s ×%d", in.Key, count)
+			}
+			h.said(t, in.From, from, host, p, "key", key, 0)
+		}
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 

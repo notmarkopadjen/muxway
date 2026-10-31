@@ -91,6 +91,7 @@ var Tools = []Tool{
 		"address":         str("the pane's address; empty for any pane"),
 		"timeout_seconds": num("how long to wait at most, default 300, at most 3600"),
 	})},
+	{"talk", "What panes said to panes lately: every write that named the pane it came from, oldest first, with who sent it, where, the kind (text, key, answer) and the text.", schema(map[string]any{})},
 }
 
 // Server answers one client over in and out.
@@ -195,6 +196,19 @@ func (s *Server) call(ctx context.Context, name string, raw json.RawMessage) (st
 	switch name {
 	case "list_panes":
 		return s.Client.Text(ctx, "/v1/panes")
+	case "talk":
+		entries, _, err := s.Client.Talk(ctx, 0, 0, 100)
+		if err != nil {
+			return "", err
+		}
+		if len(entries) == 0 {
+			return "no pane talked to another lately", nil
+		}
+		var b strings.Builder
+		for _, e := range entries {
+			fmt.Fprintf(&b, "%d\t%s → %s\t%s\t%s\n", e.At, e.From.Address, e.To.Address, e.Kind, strings.NewReplacer("\t", " ", "\n", " ").Replace(e.Text))
+		}
+		return b.String(), nil
 	case "inbox":
 		panes, err := s.Client.Inbox(ctx)
 		if err != nil {
@@ -221,11 +235,11 @@ func (s *Server) call(ctx context.Context, name string, raw json.RawMessage) (st
 		if a.Address == "" || a.Text == "" {
 			return "", errors.New("address and text are required")
 		}
-		if err := s.Client.Input(ctx, a.Address, map[string]string{"text": a.Text}); err != nil {
+		if err := s.Client.Input(ctx, a.Address, map[string]any{"text": a.Text}); err != nil {
 			return "", err
 		}
 		if a.Enter {
-			if err := s.Client.Input(ctx, a.Address, map[string]string{"key": "Enter"}); err != nil {
+			if err := s.Client.Input(ctx, a.Address, map[string]any{"key": "Enter"}); err != nil {
 				return "", err
 			}
 		}

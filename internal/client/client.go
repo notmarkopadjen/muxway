@@ -27,6 +27,24 @@ type Client struct {
 	Hub   string
 	token string
 	http  *http.Client
+	// From is the pane this client runs in, if any: every input and
+	// answer names it, so the owner sees the exchange between the panes.
+	From *Origin
+}
+
+// Origin is a pane a write comes from: a host and a tmux pane id.
+type Origin struct {
+	Host   string `json:"host"`
+	PaneID string `json:"pane_id"`
+}
+
+// ParseOrigin reads host/%id.
+func ParseOrigin(s string) (*Origin, error) {
+	host, id, ok := strings.Cut(s, "/")
+	if !ok || host == "" || !strings.HasPrefix(id, "%") || strings.Contains(id, "/") {
+		return nil, fmt.Errorf("origin: not host/%%id: %q", s)
+	}
+	return &Origin{Host: host, PaneID: id}, nil
 }
 
 // Config is client.json in the client directory; the token lives beside
@@ -211,16 +229,60 @@ func (c *Client) Read(ctx context.Context, address string, lines int) (string, e
 	return c.Text(ctx, path)
 }
 
-// Input sends text, a key or a mouse event to a pane.
-func (c *Client) Input(ctx context.Context, address string, body any) error {
+// Input sends text or a key to a pane, from the client's pane when it has one.
+func (c *Client) Input(ctx context.Context, address string, body map[string]any) error {
+	if c.From != nil {
+		body["from"] = c.From
+	}
 	_, err := c.Do(ctx, http.MethodPost, "/v1/panes/"+address+"/input", "", body)
 	return err
 }
 
 // Answer picks one of a question's choices.
 func (c *Client) Answer(ctx context.Context, address, choice string) error {
-	_, err := c.Do(ctx, http.MethodPost, "/v1/panes/"+address+"/answer", "", map[string]string{"choice": choice})
+	body := map[string]any{"choice": choice}
+	if c.From != nil {
+		body["from"] = c.From
+	}
+	_, err := c.Do(ctx, http.MethodPost, "/v1/panes/"+address+"/answer", "", body)
 	return err
+}
+
+// Talk is one entry of the hub's talk feed: a write from one pane to another.
+type Talk struct {
+	Seq   uint64 `json:"seq"`
+	At    int64  `json:"at"`
+	Actor struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"actor"`
+	From  TalkEnd `json:"from"`
+	To    TalkEnd `json:"to"`
+	Kind  string  `json:"kind"`
+	Bytes int     `json:"bytes,omitempty"`
+	Text  string  `json:"text"`
+}
+
+// TalkEnd is one side of a talk entry.
+type TalkEnd struct {
+	Host    string `json:"host"`
+	Address string `json:"address"`
+	PaneID  string `json:"pane_id"`
+	Alias   string `json:"alias,omitempty"`
+}
+
+// Talk returns the feed after cursor, as Events does.
+func (c *Client) Talk(ctx context.Context, after uint64, wait, limit int) ([]Talk, uint64, error) {
+	path := fmt.Sprintf("/v1/talk?wait=%d&limit=%d", wait, limit)
+	if after > 0 {
+		path += fmt.Sprintf("&after=%d", after)
+	}
+	var v struct {
+		Talk []Talk `json:"talk"`
+		Next uint64 `json:"next"`
+	}
+	err := c.JSON(ctx, path, &v)
+	return v.Talk, v.Next, err
 }
 
 // Events returns the events after cursor, waiting up to wait seconds for

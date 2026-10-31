@@ -15,9 +15,12 @@ import {
   useInput,
   usePane,
   usePaneCached,
+  useTalk,
 } from '../api/queries';
-import { splitAddress } from '../hubs';
-import type { Mouse, Pane, PaneContent } from '../api/types';
+import { joinAddress, splitAddress } from '../hubs';
+import type { Mouse, Pane, PaneContent, TalkPartner } from '../api/types';
+import { ChainMark, fresh } from '../components/TalkMark';
+import { nameOf } from '../components/Talk';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
 import { LensMark } from '../components/Lens';
@@ -181,6 +184,14 @@ interface TileProps {
   // the tile across the whole view, its width or its height.
   edges?: Edges;
   onSpread?: (axis: 'w' | 'h') => void;
+  // Talk: the name of a pane this one talked with, and laying it beside.
+  partnerName: (p: TalkPartner) => string;
+  onBeside: (p: TalkPartner) => void;
+}
+
+// The leaves of a tile tree: the tiles' indexes under it.
+function leavesOf(t: TileNode): number[] {
+  return typeof t === 'number' ? [t] : t.children.flatMap(leavesOf);
 }
 
 type Edge = 'left' | 'right' | 'top' | 'bottom';
@@ -374,6 +385,24 @@ function Tile(props: TileProps) {
               </span>
             </span>
             <span className={`mx-mode ${p.mode}`}>{p.mode}</span>
+            {p.talk && p.talk.length > 0 && (
+              <button
+                type="button"
+                className="mx-talk-link"
+                data-testid="talk-link"
+                data-fresh={fresh(p.talk) ? '' : undefined}
+                title={`talks with ${p.talk.map(props.partnerName).join(', ')}: lay it beside (L)`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  props.onBeside(p.talk![0]);
+                }}
+              >
+                <ChainMark fresh={fresh(p.talk)} />
+                <span className="mx-talk-with">
+                  {p.talk.length > 1 ? p.talk.length : props.partnerName(p.talk[0])}
+                </span>
+              </button>
+            )}
             {held && (
               <span
                 className="mx-warn"
@@ -564,10 +593,12 @@ interface TreeProps {
   // their split, first or last.
   dragging: boolean;
   onAcross?: (key: string, wrap: 'h' | 'v', first: boolean) => void;
+  // Two tiles talked lately: the divider between them is their chain.
+  linked: (a: number, b: number) => boolean;
 }
 
 function Tree(props: TreeProps) {
-  const { node, weights, setWeights, tile, dragging, onAcross } = props;
+  const { node, weights, setWeights, tile, dragging, onAcross, linked } = props;
   const box = useRef<HTMLDivElement>(null);
   const [over, setOver] = useState<boolean | null>(null);
   if (typeof node === 'number') return <>{tile(node)}</>;
@@ -613,6 +644,9 @@ function Tree(props: TreeProps) {
               dropping={dragging}
               onOver={setOver}
               onDropHere={onAcross && ((first) => onAcross(node.key, wrap, first))}
+              chained={leavesOf(c).some((x) =>
+                leavesOf(node.children[i + 1]).some((y) => linked(x, y)),
+              )}
             />
           )}
         </div>
@@ -758,6 +792,70 @@ function Tiles({ addresses }: { addresses: string[] }) {
     (why: string) => toast.push({ kind: 'refused', title: why }),
     [toast],
   );
+  // Talk: a partner's address as this page names it (a peer's panes carry
+  // the hub's name), when the tiles were focused last, and laying the
+  // partner beside a tile: swapped next to it when open, opened there
+  // when not; with four open it takes the place of the tile focused
+  // longest ago among the others.
+  const withHub = (a: string, partner: string) => joinAddress(splitAddress(a).hub, partner);
+  const focusedAt = useRef(new Map<string, number>());
+  useEffect(() => {
+    focusedAt.current.set(focused, Date.now());
+  }, [focused]);
+  const beside = (a: string, partner: string) => {
+    const i = addresses.indexOf(a);
+    if (partner === a || i < 0) return;
+    const j = addresses.indexOf(partner);
+    const slot = i + 1 < n ? i + 1 : i - 1;
+    if (j >= 0) {
+      setFocusedIndex(i);
+      if (Math.abs(j - i) !== 1) drawn(() => go(swap(addresses, partner, addresses[slot])));
+      return;
+    }
+    if (n < MAX_TILES) {
+      focusNext = a;
+      go([...addresses.slice(0, i + 1), partner, ...addresses.slice(i + 1)]);
+      return;
+    }
+    let victim = slot;
+    let oldest = Infinity;
+    for (const [k, x] of addresses.entries()) {
+      const at = focusedAt.current.get(x) ?? 0;
+      if (k !== i && at < oldest) {
+        oldest = at;
+        victim = k;
+      }
+    }
+    setFocusedIndex(i);
+    drawn(() => go(replace(addresses, victim, partner)));
+  };
+  const linked = (x: number, y: number) => {
+    const pa = (all.data ?? []).find((p) => p.address === addresses[x]);
+    return !!pa?.talk?.some((tp) => withHub(addresses[x], tp.address) === addresses[y]);
+  };
+  // A new entry that touches an open tile shows as a toast.
+  const talk = useTalk(true);
+  const seenTalk = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const list = talk.data;
+    if (!list) return;
+    const key = (e: { hub?: string; seq: number }) => `${e.hub ?? ''}:${e.seq}`;
+    if (!seenTalk.current) {
+      seenTalk.current = new Set(list.map(key));
+      return;
+    }
+    for (const e of list) {
+      const k = key(e);
+      if (seenTalk.current.has(k)) continue;
+      seenTalk.current.add(k);
+      if (!addresses.includes(e.from.address) && !addresses.includes(e.to.address)) continue;
+      toast.push({
+        kind: 'talk',
+        title: `${nameOf(all.data, e.from.address, e.from.pane_id)} → ${nameOf(all.data, e.to.address, e.to.pane_id)}`,
+        text: e.kind === 'text' ? e.text : `${e.kind}: ${e.text}`,
+      });
+    }
+  }, [talk.data]);
 
   // A new count resets the arrangement to one that fits it, unless zooming
   // out or closing a tile brings back the tiles as they were.
@@ -1038,6 +1136,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
         drawn(() => setWeights({}));
       } else if (ev.key === 'g' && writable && hostPreviews(focused)) setChanges((c) => !c);
       else if (ev.key === 'i' && writable) enterDirect();
+      else if (ev.key === 'L' && focusedPane?.talk?.length)
+        beside(focused, withHub(focused, focusedPane.talk[0].address));
       else if (ev.key === ':') focusLine();
       else if (ev.key === 'z' && focusedPane) zoom(focusedPane);
       else if (ev.key === 'w' && focusedPane && !focusedPane.hub)
@@ -1295,6 +1395,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
         refused={refused}
         edges={edgesOf(i)}
         onSpread={rearrangeable ? (axis) => spread(i, axis) : undefined}
+        partnerName={(tp) => nameOf(all.data, withHub(a, tp.address), tp.pane_id)}
+        onBeside={(tp) => beside(a, withHub(a, tp.address))}
       />
     );
   };
@@ -1451,6 +1553,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
           }}
           tile={tile}
           dragging={!!dragging}
+          linked={linked}
           onAcross={
             dragging
               ? (key, wrap, first) => {

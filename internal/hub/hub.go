@@ -45,6 +45,7 @@ type Hub struct {
 	log      *slog.Logger
 	limits   *limiter
 	events   *eventLog
+	talk     *talkLog
 	sessions *sessions
 	logs     *logRingBuf
 	refused  refusals
@@ -83,7 +84,7 @@ func New(cfg Config, log *slog.Logger) (*Hub, error) {
 	}
 	logs := newLogRing()
 	log = slog.New(&ringHandler{next: log.Handler(), ring: logs})
-	return &Hub{cfg: cfg, key: key, store: store, log: log, limits: newLimiter(), events: newEventLog(),
+	return &Hub{cfg: cfg, key: key, store: store, log: log, limits: newLimiter(), events: newEventLog(), talk: newTalkLog(),
 		sessions: newSessions(cfg.SessionTTL), logs: logs, agents: map[string]*agentConn{}, codes: map[string]*pairCode{}}, nil
 }
 

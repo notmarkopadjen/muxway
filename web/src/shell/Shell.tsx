@@ -18,7 +18,9 @@ import { Hubs } from './Hubs';
 import { shownName, splitAddress, useHubs } from '../hubs';
 import { Palette } from '../components/Palette';
 import { Inbox } from '../components/Inbox';
-import { useAnswer, useInbox } from '../api/queries';
+import { recent, Talk } from '../components/Talk';
+import { ChainMark } from '../components/TalkMark';
+import { useAnswer, useInbox, useTalk } from '../api/queries';
 import { HeaderSlot } from './HeaderSlot';
 import { Profile } from './Profile';
 import { Closing } from '../components/Closing';
@@ -71,6 +73,10 @@ export function Shell() {
   const [inbox, setInbox] = useState(false);
   const inboxList = useInbox(signedIn);
   const waitingCount = inboxList.data?.length ?? 0;
+  // Talk: what panes said to panes in the last ten minutes.
+  const [talkOpen, setTalkOpen] = useState(false);
+  const talkList = useTalk(signedIn);
+  const talkCount = recent(talkList.data).length;
   // mutate keeps its identity; the mutation object does not, and onEvent
   // must stay the same or the event stream re-subscribes on every render.
   const { mutate: answerQuestion } = useAnswer();
@@ -160,6 +166,7 @@ export function Shell() {
       if (ev.key === 'Escape') {
         if (palette) setPalette(false);
         else if (inbox) setInbox(false);
+        else if (talkOpen) setTalkOpen(false);
         else if (hubsOpen) setHubsOpen(false);
         else if (help) setHelp(false);
         else if (typing) (target as HTMLElement).blur();
@@ -179,6 +186,9 @@ export function Shell() {
       } else if (ev.key === 'o' && signedIn && !inbox) {
         const oldest = inboxList.data?.[0];
         if (oldest) navigate({ to: '/p/$', params: { _splat: oldest.address } });
+        ev.preventDefault();
+      } else if (ev.key === 'T' && signedIn) {
+        setTalkOpen((v) => !v);
         ev.preventDefault();
       } else if (ev.key === 'H') {
         setHubsOpen((h) => !h);
@@ -203,6 +213,7 @@ export function Shell() {
     help,
     palette,
     inbox,
+    talkOpen,
     hubsOpen,
     signedIn,
     location.pathname,
@@ -232,6 +243,17 @@ export function Shell() {
             onClick={() => setInbox(true)}
           >
             ⚑ {waitingCount}
+          </button>
+        )}
+        {signedIn && talkCount > 0 && (
+          <button
+            type="button"
+            className="mx-talk-count"
+            title="talk: what panes said to panes lately (T)"
+            data-testid="talk-count"
+            onClick={() => setTalkOpen(true)}
+          >
+            <ChainMark /> {talkCount}
           </button>
         )}
         <div className="mx-header-slot" ref={setSlot} />
@@ -291,6 +313,9 @@ export function Shell() {
       </Closing>
       <Closing open={inbox}>
         <Inbox onClose={() => setInbox(false)} />
+      </Closing>
+      <Closing open={talkOpen}>
+        <Talk onClose={() => setTalkOpen(false)} />
       </Closing>
     </>
   );

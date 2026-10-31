@@ -914,6 +914,9 @@ func (a *Agent) audit(req wire.Request, code string, extra ...any) {
 	if req.Choice != "" {
 		attrs = append(attrs, "choice_bytes", len(req.Choice))
 	}
+	if req.From != "" {
+		attrs = append(attrs, "from", req.From)
+	}
 	if req.Op == wire.OpResize {
 		if req.Fit != "" {
 			attrs = append(attrs, "fit", req.Fit)

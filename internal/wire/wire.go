@@ -69,6 +69,9 @@ type Request struct {
 	Path string `json:"path,omitempty"`
 	// Choice, with answer, is the answer picked among the question's choices.
 	Choice string `json:"choice,omitempty"`
+	// From names the pane an input or an answer came from, host/pane id,
+	// for the audit log.
+	From string `json:"from,omitempty"`
 }
 
 // Mouse is one click or wheel notch at a cell, 1-based.

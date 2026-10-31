@@ -54,7 +54,8 @@ func (h *Hub) handleAnswer(w http.ResponseWriter, r *http.Request, t Principal) 
 	host := r.PathValue("host")
 	path, _ := strings.CutSuffix(r.PathValue("path"), "/answer")
 	var in struct {
-		Choice string `json:"choice"`
+		Choice string  `json:"choice"`
+		From   *origin `json:"from"`
 	}
 	if !decodeBody(w, r, &in) {
 		return
@@ -78,7 +79,20 @@ func (h *Hub) handleAnswer(w http.ResponseWriter, r *http.Request, t Principal) 
 		fail(w, http.StatusForbidden, "read_only")
 		return
 	}
-	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpAnswer, Actor: t.ID, Pane: p.PaneID, Choice: in.Choice})
+	var from tmux.Pane
+	req := wire.Request{Op: wire.OpAnswer, Actor: t.ID, Pane: p.PaneID, Choice: in.Choice}
+	if in.From != nil {
+		var status int
+		var code string
+		if from, status, code = h.origin(r.Context(), t, in.From); status != 0 {
+			h.log.Info("audit answer", append(attrs, "from", in.From.Host+"/"+in.From.PaneID, "result", "bad_origin")...)
+			fail(w, status, code)
+			return
+		}
+		req.From = in.From.Host + "/" + from.PaneID
+		attrs = append(attrs, "from", req.From)
+	}
+	resp, err := a.request(r.Context(), req)
 	a.forget()
 	if err != nil {
 		fail(w, http.StatusServiceUnavailable, "host_offline")
@@ -91,5 +105,8 @@ func (h *Hub) handleAnswer(w http.ResponseWriter, r *http.Request, t Principal) 
 		return
 	}
 	h.log.Info("audit answer", append(attrs, "result", "ok")...)
+	if in.From != nil {
+		h.said(t, in.From, from, host, p, "answer", in.Choice, 0)
+	}
 	w.WriteHeader(http.StatusNoContent)
 }

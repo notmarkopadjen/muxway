@@ -1992,3 +1992,88 @@ button.mx-window:focus-visible {
   display: flex;
   margin: var(--mx-gap) 0 0;
 }
+
+/* talk: two panes chained, in the talk hue (the second exception to one
+   hue per theme, with code: a relation between two panes, drawn across
+   their divider) */
+.mx-mark-talk {
+  color: var(--mx-talk);
+  filter: drop-shadow(0 0 3px var(--mx-talk));
+}
+.mx-tile-head .mx-talk-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  color: var(--mx-talk);
+  font-family: var(--mx-mono);
+  text-shadow: 0 0 6px var(--mx-talk);
+  min-width: 0;
+  flex-shrink: 6;
+}
+.mx-tile-head .mx-talk-link[data-fresh] {
+  border-color: var(--mx-talk);
+}
+.mx-tile-head .mx-talk-with {
+  max-width: 10em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mx-painted[data-state='waiting'] .mx-talk-link,
+.mx-painted[data-state='working'] .mx-talk-link {
+  color: var(--mx-bg);
+  text-shadow: none;
+}
+.mx-divider-talk::before {
+  content: '';
+  position: absolute;
+  background: var(--mx-talk);
+  box-shadow: 0 0 6px var(--mx-talk);
+}
+.mx-divider-h.mx-divider-talk::before {
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+}
+.mx-divider-v.mx-divider-talk::before {
+  left: 0;
+  right: 0;
+  top: 3px;
+  height: 2px;
+}
+.mx-divider-chain {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 2px;
+  line-height: 0;
+  background: var(--mx-bg);
+  border: 1px solid var(--mx-talk);
+}
+.mx-divider-chain .mx-mark {
+  width: 14px;
+  height: 14px;
+}
+.mx-talk-list li {
+  grid-template-columns: 1.6em auto 1fr auto;
+  align-items: center;
+  gap: var(--mx-gap);
+}
+.mx-talk-list .mx-talk-who {
+  white-space: nowrap;
+}
+.mx-talk-list .mx-talk-name {
+  color: var(--mx-talk);
+}
+.mx-talk-list .mx-talk-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mx-toast[data-kind='talk'] .mx-kind {
+  color: var(--mx-talk);
+  text-shadow: 0 0 6px var(--mx-talk);
+}

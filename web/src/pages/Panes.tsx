@@ -15,6 +15,7 @@ import type { Host, Me, Pane } from '../api/types';
 import { Box } from '../components/Box';
 import { LensMark } from '../components/Lens';
 import { PaneTitle } from '../components/PaneTitle';
+import { ChainMark } from '../components/TalkMark';
 import { useToast } from '../components/Toast';
 import { label } from '../term/describe';
 import { mayWriteOn } from '../term/grants';
@@ -280,6 +281,7 @@ function HostTree({
                         <LensMark status={st} attention={p.attention} />
                         <span className="mx-meta">
                           <PaneTitle pane={p} />
+                          {p.talk?.length ? <ChainMark /> : null}
                         </span>
                         <span className="mx-addr">
                           {p.alias && <span className="mx-dim">@{p.alias} </span>}

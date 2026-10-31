@@ -14,6 +14,7 @@ import type {
   Pane,
   PaneContent,
   Resize,
+  Talk,
   Tree,
   WindowContent,
 } from './types';
@@ -34,6 +35,7 @@ export const keys = {
   panes: ['panes'] as const,
   panesOf: (hub?: string) => (hub ? (['panes', hub] as const) : (['panes'] as const)),
   inboxOf: (hub?: string) => (hub ? (['inbox', hub] as const) : (['inbox'] as const)),
+  talkOf: (hub?: string) => (hub ? (['talk', hub] as const) : (['talk'] as const)),
   transcriber: ['transcriber'] as const,
   admin: ['admin'] as const,
   files: (address: string) => ['files', address] as const,
@@ -315,6 +317,37 @@ export function useInbox(enabled: boolean) {
           : lists
               .flatMap((l) => l.data ?? [])
               .sort((a, b) => (a.attention?.at ?? 0) - (b.attention?.at ?? 0)),
+    }),
+    [lists],
+  );
+}
+
+// The talk feed of every hub: what panes said to panes, the last hundred
+// entries, oldest first. A peer's addresses carry its name.
+export function useTalk(enabled: boolean) {
+  const lists = useHubLists(
+    keys.talkOf,
+    (h, own) =>
+      api<{ talk: Talk[] | null }>('/v1/talk?limit=100', own ? {} : { hub: h.url }).then((v) =>
+        (v.talk ?? []).map((e) =>
+          own
+            ? e
+            : {
+                ...e,
+                hub: h.name,
+                from: { ...e.from, address: joinAddress(h.name, e.from.address) },
+                to: { ...e.to, address: joinAddress(h.name, e.to.address) },
+              },
+        ),
+      ),
+    { enabled, refetchInterval: 5_000 },
+  );
+  return useMemo(
+    () => ({
+      data:
+        lists[0]?.data === undefined
+          ? undefined
+          : lists.flatMap((l) => l.data ?? []).sort((a, b) => a.at - b.at || a.seq - b.seq),
     }),
     [lists],
   );

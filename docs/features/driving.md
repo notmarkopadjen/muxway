@@ -29,6 +29,7 @@ muxway client answer alice-laptop/work/0.0 yes
 muxway client wait alice-laptop/work/0.0 --timeout 20m
 muxway client wait                       # any pane
 muxway client events --follow
+muxway client talk --follow              # what panes said to panes
 ```
 
 `connect` checks the token against the hub (`GET /v1/me`) and keeps the
@@ -47,9 +48,16 @@ refusal is the hub's code on stderr and exit 1: `read_only` for a write
 the token may not make, `not_found` for a pane it may not see,
 `bad_input` for a key outside the grammar or a choice not offered.
 
+`send`, `key` and `answer` name the pane they come from: by default the
+pane the command runs in (`$TMUX_PANE`, on the host the agent directory
+here is paired as; `--agent-dir` points elsewhere), or `--from HOST/%ID`
+or `$MUXWAY_FROM`; `--from none` sends as nobody. The owner then sees
+the write as a conversation between the two panes, and `talk` prints
+that record; see [talk](talk.md).
+
 ## `muxway mcp`
 
-The same seven operations as [MCP](https://modelcontextprotocol.io) tools
+The same eight operations as [MCP](https://modelcontextprotocol.io) tools
 over stdio, for an AI agent's MCP configuration:
 
 ```sh
@@ -67,12 +75,15 @@ claude mcp add muxway -- muxway mcp            # Claude Code
 | `send_key` | press a named key (`address`, `key`, `count`) |
 | `answer` | answer a question with one of its choices (`address`, `choice`) |
 | `wait` | block until a pane, or any pane, needs its owner (`address`, `timeout_seconds`, at most 3600) |
+| `talk` | what panes said to panes lately: who, to whom, the kind and the text |
 
 Newline-delimited JSON-RPC 2.0, protocol `2025-06-18`, `initialize`,
 `tools/list`, `tools/call` and `ping`; a refusal by the hub is a tool
 result with `isError`, so the agent reads the code and goes on. It reads
-the same client directory and environment as `muxway client`. No
-dependency beyond the standard library.
+the same client directory and environment as `muxway client`, and the
+same `--from` and `--agent-dir`: it runs in the pane of the agent that
+started it, so its writes come from that pane. No dependency beyond the
+standard library.
 
 ```mermaid
 sequenceDiagram
@@ -103,8 +114,9 @@ mkdir -p .claude/skills/muxway && muxway skill > .claude/skills/muxway/SKILL.md
 ```
 
 prints the short guide an agent in a pane reads: how to notify its owner,
-how to ask a question with fixed answers (`muxway ask`), and how to reach
-other panes with `muxway client` or the MCP tools. The source is
+how to ask a question with fixed answers (`muxway ask`), how to reach
+other panes with `muxway client` or the MCP tools, and that what it
+types there is shown to its owner as talk between the panes. The source is
 [`internal/skill/SKILL.md`](../../internal/skill/SKILL.md).
 
 ## Security considerations
@@ -120,4 +132,6 @@ other panes with `muxway client` or the MCP tools. The source is
 - The MCP server speaks to one local process over its own stdin and
   stdout; it listens on nothing.
 - Every write goes through the hub's audit log like any client's, with
-  `X-Muxway-Client: cli`.
+  `X-Muxway-Client: cli`, and names the pane it came from when it runs
+  in one; the hub takes that origin only among the panes the token may
+  read (see [talk](talk.md)).

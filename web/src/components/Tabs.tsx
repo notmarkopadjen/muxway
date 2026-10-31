@@ -4,6 +4,7 @@ import { describe } from '../term/describe';
 import { tabName, useLens } from '../term/lens';
 import { LensMark } from './Lens';
 import { AgentMark } from './PaneTitle';
+import { ChainMark } from './TalkMark';
 
 // The strip: one tab per pane, painted with its state. Open tabs are
 // bordered, the focused one thick and bold, a hidden one dimmed. With
@@ -167,6 +168,7 @@ export function Tabs({
               }
             >
               {pane && <AgentMark agent={describe(pane).agent} />}
+              {pane?.talk?.length ? <ChainMark /> : null}
               {st !== 'quiet' && <LensMark status={st} attention={pane?.attention} />}
               <span className="mx-tab-name">
                 {pane ? tabName(pane) : address.split('/').slice(1).join('/')}

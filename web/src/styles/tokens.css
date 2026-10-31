@@ -19,6 +19,8 @@
   --mx-warn: var(--mx-ink);
   --mx-bad: #ff3b3b;
   --mx-claude: #d97757;
+  /* talk: two panes chained, a red toward the ink; the alert red stays for errors */
+  --mx-talk: #ff5c3a;
   --mx-codex: #2fbf9a;
   --mx-antigravity: #7aa2ff;
   --mx-ok: #ffb000;
