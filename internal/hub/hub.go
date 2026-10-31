@@ -169,6 +169,7 @@ type agentConn struct {
 	inbox   bool // the agent takes files for its panes
 	preview bool // the agent serves files under its roots
 	repeat  bool // the agent takes a count with a key
+	ask     bool // the agent takes answers to questions
 	evts    bucket
 	warned  time.Time
 }
@@ -228,7 +229,7 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 	}
 	sanePanes(r.Panes)
 	a.mu.Lock()
-	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys
+	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys, a.ask = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys, r.Ask
 	a.mu.Unlock()
 	return r.Panes, nil
 }
@@ -253,6 +254,16 @@ func (a *agentConn) takesFiles(ctx context.Context) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.inbox
+}
+
+// asks says, from the agent's listing, whether the agent answers questions.
+func (a *agentConn) asks(ctx context.Context) bool {
+	if _, err := a.panes(ctx); err != nil {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.ask
 }
 
 // previews says, from the agent's listing, whether the agent has preview roots.
@@ -339,7 +350,8 @@ func (h *Hub) acceptEvent(a *agentConn, ev wire.Event) {
 	valid := wire.KnownKind(ev.Kind) && wire.ValidEventText(ev.Text) && paneID.MatchString(p.PaneID) &&
 		p.Exposed() && p.WindowIndex >= 0 && p.PaneIndex >= 0 &&
 		cleanName(p.SessionName) && cleanName(p.WindowName) && cleanName(p.Title) && cleanName(p.Command) &&
-		(p.Alias == "" || hostName.MatchString(p.Alias))
+		(p.Alias == "" || hostName.MatchString(p.Alias)) &&
+		(p.Attention == nil || p.Attention.Choices == nil || (ev.Kind == wire.KindQuestion && wire.ValidChoices(p.Attention.Choices)))
 	if !valid {
 		h.log.Warn("event refused", "host", a.host, "pane", p.PaneID, "kind", ev.Kind)
 		return

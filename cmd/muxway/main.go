@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -20,6 +21,7 @@ import (
 	"github.com/notmarkopadjen/muxway/internal/auth"
 	"github.com/notmarkopadjen/muxway/internal/hub"
 	"github.com/notmarkopadjen/muxway/internal/tmux"
+	"github.com/notmarkopadjen/muxway/internal/wire"
 )
 
 const usage = `muxway: your tmux, from anywhere
@@ -33,10 +35,14 @@ hub access      list or change the address lists
 agent pair      pair this machine with a hub
 agent run       run the agent
 notify          tell the agent that this pane needs attention
-hooks           print the Claude Code hooks that call notify
+ask             ask the owner a question with fixed answers, wait for one
+hooks           print a harness's hooks that call notify: claude-code, codex, gemini, copilot, opencode
 expose          make a session, window or pane reachable
 unexpose        remove a mark
 exposed         list what is reachable
+client          a hub from the command line: panes, inbox, read, send, key, answer, wait, events
+mcp             the same as MCP tools over stdio, for an AI agent's MCP configuration
+skill           print the guide an AI agent in a pane reads to use muxway
 
 Run "muxway <command> -h" for the flags of a command.
 `
@@ -69,6 +75,8 @@ func signals() (context.Context, context.CancelFunc) {
 
 type list []string
 
+func jsonMarshal(v any) ([]byte, error) { return json.Marshal(v) }
+
 func (l *list) String() string     { return strings.Join(*l, ",") }
 func (l *list) Set(s string) error { *l = append(*l, s); return nil }
 
@@ -94,6 +102,14 @@ func run(args []string) error {
 		return runNotify(args[1:])
 	case "hooks":
 		return runHooks(args[1:])
+	case "ask":
+		return runAsk(args[1:])
+	case "client":
+		return runClient(args[1:])
+	case "mcp":
+		return runMCP(args[1:])
+	case "skill":
+		return runSkill(args[1:])
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 		return nil
@@ -419,6 +435,7 @@ func runAgent(cmd string, args []string) error {
 			preview = append(preview, abs)
 			return nil
 		})
+		watch := fs.Bool("watch", true, "read the screens of panes that run a known AI harness and report their state when no hook does")
 		previewHidden := fs.Bool("preview-hidden", false, "serve hidden files and directories under the preview roots too (.github, .vscode); never .git, .ssh, .config, .env and the like")
 		if err := fs.Parse(args); err != nil {
 			return err
@@ -441,6 +458,7 @@ func runAgent(cmd string, args []string) error {
 		}
 		cfg.Preview = preview
 		cfg.PreviewHidden = *previewHidden
+		cfg.Watch = *watch
 		a, err := agent.New(cfg, key, tmux.Server{Socket: *socket, Name: *name}, logger())
 		if err != nil {
 			return err
@@ -460,11 +478,11 @@ func runNotify(args []string) error {
 	pane := fs.String("pane", os.Getenv("TMUX_PANE"), "pane id, default $TMUX_PANE")
 	kind := fs.String("kind", "", "question, permission, idle, done or working")
 	text := fs.String("text", "", "a short line about it")
-	from := fs.String("from", "", "claude-code: read a Claude Code hook payload from stdin")
+	from := fs.String("from", "", "read a harness's hook payload from stdin: "+strings.Join(agent.Harnesses, ", "))
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	hook := *from == "claude-code"
+	hook := *from != ""
 	quiet := func(err error) error {
 		if hook && err != nil {
 			fmt.Fprintln(os.Stderr, "muxway notify:", err)
@@ -472,20 +490,19 @@ func runNotify(args []string) error {
 		}
 		return err
 	}
-	switch *from {
-	case "claude-code":
+	if hook {
+		if !agent.KnownHarness(*from) {
+			return fmt.Errorf("unknown source %q; one of %s", *from, strings.Join(agent.Harnesses, ", "))
+		}
 		raw, err := io.ReadAll(io.LimitReader(os.Stdin, 1<<20))
 		if err != nil {
 			return quiet(err)
 		}
-		k, t, ok := agent.ClaudeHook(raw)
+		k, t, ok := agent.ParseHook(*from, raw)
 		if !ok {
 			return nil
 		}
 		*kind, *text = k, t
-	case "":
-	default:
-		return fmt.Errorf("unknown source %q; the only one is claude-code", *from)
 	}
 	if *pane == "" {
 		return quiet(fmt.Errorf("not inside tmux and no --pane given"))
@@ -497,10 +514,11 @@ func runNotify(args []string) error {
 }
 
 func runHooks(args []string) error {
-	if len(args) == 0 || args[0] != "claude-code" {
-		return fmt.Errorf("hooks what? claude-code")
+	if len(args) == 0 || !agent.KnownHarness(args[0]) {
+		return fmt.Errorf("hooks what? one of %s", strings.Join(agent.Harnesses, ", "))
 	}
-	fs := flag.NewFlagSet("hooks claude-code", flag.ContinueOnError)
+	harness := args[0]
+	fs := flag.NewFlagSet("hooks "+harness, flag.ContinueOnError)
 	dir := fs.String("dir", defaultDir("agent"), "agent directory to pass to notify")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
@@ -509,11 +527,62 @@ func runHooks(args []string) error {
 	if err != nil {
 		exe = "muxway"
 	}
-	// The directory is spelled out: hooks run in Claude Code's environment,
-	// which may resolve the default differently from this shell.
-	cmd := exe + " notify --from claude-code --dir " + *dir
-	fmt.Fprintln(os.Stderr, "Add to ~/.claude/settings.json (merge the \"hooks\" key if it exists):")
-	os.Stdout.Write(agent.ClaudeHooks(cmd))
+	// The directory is spelled out: hooks run in the harness's environment,
+	// which may resolve the default differently from this shell. OpenCode's
+	// plugin passes the kind itself.
+	cmd := exe + " notify --from " + harness + " --dir " + *dir
+	if harness == "opencode" {
+		cmd = exe + " notify --dir " + *dir
+	}
+	config, where, err := agent.HookConfig(harness, cmd)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(os.Stderr, "Add to "+where+":")
+	os.Stdout.Write(config)
+	return nil
+}
+
+// runAsk puts a question with fixed answers on this pane and waits for
+// the answer: exit 0 with it on stdout, 2 when the time ran out, 3 when
+// the owner answered in the pane instead, 1 for anything else.
+func runAsk(args []string) error {
+	fs := flag.NewFlagSet("ask", flag.ContinueOnError)
+	dir := fs.String("dir", defaultDir("agent"), "agent directory")
+	pane := fs.String("pane", os.Getenv("TMUX_PANE"), "pane id, default $TMUX_PANE")
+	text := fs.String("text", "", "the question, a short line")
+	timeout := fs.Duration("timeout", 10*time.Minute, "how long to wait for an answer; 0 waits a day")
+	var choices list
+	fs.Var(&choices, "choice", "an answer to offer (repeat: 2 to 8, each 1 to 40 characters)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *pane == "" {
+		return fmt.Errorf("not inside tmux and no --pane given")
+	}
+	if *text == "" {
+		return fmt.Errorf("--text is required: the question")
+	}
+	if !wire.ValidChoices(choices) {
+		return fmt.Errorf("--choice: %d to %d distinct answers of 1 to %d characters, without | or control characters", wire.MinChoices, wire.MaxChoices, wire.MaxChoiceLen)
+	}
+	if *timeout < 0 || *timeout > agent.MaxAskWait {
+		return fmt.Errorf("--timeout: up to %s", agent.MaxAskWait)
+	}
+	answer, err := agent.Exchange(*dir, agent.NotifyRequest{Pane: *pane, Kind: wire.KindQuestion, Text: *text,
+		Choices: choices, Ask: true, Timeout: int(timeout.Seconds())})
+	if err != nil {
+		switch err.Error() {
+		case agent.AskTimeout:
+			fmt.Fprintln(os.Stderr, "muxway ask: no answer in time")
+			os.Exit(2)
+		case agent.AskTyped, agent.AskReplaced:
+			fmt.Fprintln(os.Stderr, "muxway ask: answered in the pane")
+			os.Exit(3)
+		}
+		return err
+	}
+	fmt.Println(answer)
 	return nil
 }
 

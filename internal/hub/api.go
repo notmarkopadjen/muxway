@@ -42,6 +42,7 @@ func (h *Hub) routes() http.Handler {
 	mux.HandleFunc("GET /v1/hosts/{host}/tree", h.withPrincipal(h.handleTree))
 	mux.HandleFunc("GET /v1/panes", h.withPrincipal(h.handlePanes))
 	mux.HandleFunc("GET /v1/events", h.withPrincipal(h.handleEvents))
+	mux.HandleFunc("GET /v1/inbox", h.withPrincipal(h.handleInbox))
 	mux.HandleFunc("GET /v1/transcribe", h.withPrincipal(h.handleTranscribeProbe))
 	mux.HandleFunc("POST /v1/transcribe", h.withPrincipal(h.handleTranscribe))
 	mux.HandleFunc("GET /v1/panes/{host}/{path...}", h.withPrincipal(h.handleRead))
@@ -237,6 +238,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		Keys     int    `json:"keys,omitempty"`
 		Preview  bool   `json:"preview,omitempty"`
 		Repeat   bool   `json:"repeat,omitempty"`
+		Ask      bool   `json:"ask,omitempty"`
 	}
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
@@ -246,6 +248,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 			v.Sessions, v.Close, v.Keys = a.startsSessions(r.Context()), a.closesPanes(r.Context()), a.keyGrammar()
 			v.Preview = a.previews(r.Context())
 			v.Repeat = a.repeats(r.Context())
+			v.Ask = a.asks(r.Context())
 		}
 		out = append(out, v)
 	}
@@ -335,6 +338,8 @@ type EventView struct {
 	Alias   string `json:"alias,omitempty"`
 	Kind    string `json:"kind"`
 	Text    string `json:"text,omitempty"`
+	// Choices of a question asked with fixed answers.
+	Choices []string `json:"choices,omitempty"`
 }
 
 // handleEvents returns the events after the client's cursor for panes the
@@ -363,8 +368,12 @@ func (h *Hub) handleEvents(w http.ResponseWriter, r *http.Request, t Principal) 
 	}
 	var out []EventView
 	for _, e := range events {
-		out = append(out, EventView{Seq: e.Seq, At: e.At, Host: e.Host, Address: e.Host + "/" + e.Pane.Address(),
-			PaneID: e.Pane.PaneID, Alias: e.Pane.Alias, Kind: e.Kind, Text: e.Text})
+		v := EventView{Seq: e.Seq, At: e.At, Host: e.Host, Address: e.Host + "/" + e.Pane.Address(),
+			PaneID: e.Pane.PaneID, Alias: e.Pane.Alias, Kind: e.Kind, Text: e.Text}
+		if e.Pane.Attention != nil && e.Kind == wire.KindQuestion {
+			v.Choices = e.Pane.Attention.Choices
+		}
+		out = append(out, v)
 	}
 	if wantsText(r) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -496,6 +505,8 @@ func statusFor(code string) (int, string) {
 		return http.StatusConflict, "too_many"
 	case wire.ErrNoFile:
 		return http.StatusNotFound, "not_found"
+	case wire.ErrNoQuestion:
+		return http.StatusConflict, "no_question"
 	}
 	return http.StatusBadGateway, "host_error"
 }
@@ -512,6 +523,10 @@ func (h *Hub) handlePost(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	if strings.HasSuffix(r.PathValue("path"), "/files") {
 		h.handleFile(w, r, t)
+		return
+	}
+	if strings.HasSuffix(r.PathValue("path"), "/answer") {
+		h.handleAnswer(w, r, t)
 		return
 	}
 	h.handleInput(w, r, t)

@@ -127,6 +127,8 @@ type Attention struct {
 	Kind string `json:"kind"`
 	At   int64  `json:"at"`
 	Text string `json:"text,omitempty"`
+	// Choices are the fixed answers of a question asked with muxway ask.
+	Choices []string `json:"choices,omitempty"`
 }
 
 var fields = []string{
