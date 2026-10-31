@@ -216,4 +216,8 @@ the private deployment notes.
 [Run 20261031-210307-d736b2d](https://github.com/notmarkopadjen/muxway/issues/189):
 passed, 194 tests, at `d736b2d`, with the ten new end-to-end tests
 (174 to 177 security, 178 to 183 flows) and spec 110's two tests with
-the screenshot `110-last-pane`.
+the screenshot `110-last-pane`. CI's run of that commit failed only in
+spec 98 (a used session name answered `rate limited`, not `exists`,
+because the test before it ends with a split under the same token inside
+the two-second creation window on a slow runner); the spec now waits the
+window out first.
