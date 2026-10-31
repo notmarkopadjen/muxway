@@ -115,9 +115,41 @@ test('95 a created token is shown once, copies, and revokes', async ({ page, con
   await page.getByTestId('token-copy').click();
   await expect(page.getByTestId('token-copy')).toHaveText('copied');
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(value);
+
+  // The connect code: a QR of a version that holds the payload, nothing of
+  // the token in its markup, beside the text when the box is wide, under it when not.
+  const qr = secret.getByTestId('qr');
+  await expect(qr).toBeVisible();
+  const modules = Number(await qr.getAttribute('data-modules'));
+  const version = (modules - 17) / 4;
+  expect(Number.isInteger(version) && version >= 1 && version <= 10).toBe(true);
+  const payload = `muxway://connect?hub=${new URL(page.url()).origin}&token=${value}`;
+  expect(version).toBeGreaterThanOrEqual(payload.length > 106 ? 7 : 5);
+  expect(await qr.evaluate((e) => e.outerHTML)).not.toContain(value.slice(4));
+  expect(await qr.evaluate((e) => e.textContent)).toBe('');
+  const text = secret.getByTestId('token-secret-value');
+  // beside the text, or under it when the box is narrow; inside the box either way
+  const placed = async () => {
+    const [t, q, b] = [
+      await text.boundingBox(),
+      await qr.boundingBox(),
+      await secret.boundingBox(),
+    ];
+    const inside = q!.x >= b!.x - 1 && q!.x + q!.width <= b!.x + b!.width + 1;
+    const beside = q!.x > t!.x + t!.width - 1 && q!.y < t!.y + t!.height;
+    const under = q!.y >= t!.y + t!.height - 1;
+    return inside && (beside ? 'beside' : under ? 'under' : 'astray');
+  };
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await expect.poll(placed).toBe('beside');
   await shot(page, test.info(), '95-token-once');
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await expect.poll(placed).not.toBe('astray');
+  await shot(page, test.info(), '95-token-once-narrow');
+
   await page.getByTestId('token-secret-done').click();
   await expect(secret).toHaveCount(0);
+  await expect(page.getByTestId('qr')).toHaveCount(0);
   expect(await page.content()).not.toContain(value);
   const stored = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
   expect(stored).not.toContain(value);

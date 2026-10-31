@@ -4,6 +4,8 @@ import { api, ApiError } from '../api/client';
 import { keys, useMe } from '../api/queries';
 import type { AdminOverview, AdminToken, LogRecord } from '../api/types';
 import { Box } from '../components/Box';
+import { Qr } from '../components/Qr';
+import { connectCode } from '../qr';
 import { setHeading } from '../shell/heading';
 
 // The admin page: the hub's log, its tokens and users, who is connected,
@@ -356,11 +358,18 @@ function TokensBox({ o }: { o: AdminOverview }) {
         </ul>
         {secret ? (
           <div className="mx-admin-secret" data-testid="token-secret" role="status">
-            <div>
-              token <b>{secret.token.name}</b>, until {day(secret.token.expires)}. it is shown only
-              now, never again:
+            <div className="mx-admin-secret-text">
+              <div>
+                token <b>{secret.token.name}</b>, until {day(secret.token.expires)}. it is shown
+                only now, never again:
+              </div>
+              <code data-testid="token-secret-value">{secret.secret}</code>
+              <div className="mx-dim">scan the code with the phone app: ≡ hubs, scan code</div>
             </div>
-            <code data-testid="token-secret-value">{secret.secret}</code>
+            <Qr
+              text={connectCode(location.origin, secret.secret)}
+              label="connect code for the phone app"
+            />
             <div className="mx-toggles">
               <button
                 type="button"
