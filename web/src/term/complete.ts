@@ -1,5 +1,5 @@
 import type { Pane } from '../api/types';
-import { CLAUDE_COMMANDS, isShell, SHELL_COMMANDS } from './commands';
+import { AGY_COMMANDS, CLAUDE_COMMANDS, CODEX_COMMANDS, SHELL_COMMANDS, isShell } from './commands';
 import { describe } from './describe';
 
 // Completion on the input line. The first word gets the program's own:
@@ -89,8 +89,10 @@ export function completions(
   const out: Offer[] = [];
   if (at.first) {
     let pool: string[] = [];
-    if (describe(p).agent === 'claude')
-      pool = [...CLAUDE_COMMANDS.map((c) => c.text.trim()), ...CLAUDE_SLASH];
+    const agent = describe(p).agent;
+    if (agent === 'claude') pool = [...CLAUDE_COMMANDS.map((c) => c.text.trim()), ...CLAUDE_SLASH];
+    else if (agent === 'codex') pool = CODEX_COMMANDS.map((c) => c.text.trim());
+    else if (agent === 'antigravity') pool = AGY_COMMANDS.map((c) => c.text.trim());
     else if (isShell(p.command)) pool = [...SHELL_COMMANDS.map((c) => c.text), ...recent];
     for (const c of pool)
       if (c.startsWith(at.word) && !out.some((o) => o.text === c))

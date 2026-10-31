@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { Pane } from '../api/types';
-import { describe } from './describe';
+import { describe, type Agent } from './describe';
 
 // The command row under the key bar: what the program in the focused pane
 // is driven with, one button each. Claude Code takes slash commands; a
@@ -18,14 +18,17 @@ export interface Command {
   text: string;
   send: boolean;
   tone: Tone;
+  // The agent a starter launches, for its mark on the button.
+  agent?: Agent;
 }
 
 export interface Row {
-  kind: 'claude' | 'shell';
+  kind: 'claude' | 'codex' | 'antigravity' | 'shell';
   commands: Command[];
 }
 
 const at = (text: string, tone: Tone = 'act'): Command => ({ label: text, text, send: true, tone });
+const starts = (text: string, agent: Agent): Command => ({ ...at(text, 'start'), agent });
 const fill = (text: string, tone: Tone = 'act'): Command => ({
   label: text,
   text: text + ' ',
@@ -60,14 +63,56 @@ export const CLAUDE_COMMANDS: Command[] = [
   at('/export'),
 ];
 
+// Codex CLI's slash commands.
+export const CODEX_COMMANDS: Command[] = [
+  at('/new', 'danger'),
+  at('/quit', 'danger'),
+  at('/compact'),
+  at('/model', 'info'),
+  at('/approvals', 'info'),
+  at('/status', 'info'),
+  at('/diff', 'info'),
+  at('/review'),
+  at('/init', 'start'),
+  at('/mcp', 'info'),
+  fill('/mention'),
+];
+
+// Antigravity CLI's slash commands, from its reference.
+export const AGY_COMMANDS: Command[] = [
+  at('/clear', 'danger'),
+  at('/exit', 'danger'),
+  at('/rewind', 'danger'),
+  at('/resume', 'start'),
+  fill('/plan', 'start'),
+  fill('/goal', 'start'),
+  fill('/grill-me', 'start'),
+  at('/diff', 'info'),
+  at('/context', 'info'),
+  at('/usage', 'info'),
+  at('/model', 'info'),
+  fill('/effort'),
+  fill('/rename'),
+  fill('/learn'),
+  at('/tasks', 'info'),
+  at('/agents', 'info'),
+  at('/skills', 'info'),
+  at('/permissions', 'info'),
+  at('/hooks', 'info'),
+  at('/mcp', 'info'),
+  at('/config', 'info'),
+  at('/help', 'info'),
+];
+
 export const SHELL_COMMANDS: Command[] = [
   at('exit', 'danger'),
   at('htop', 'info'),
-  at('claude', 'start'),
-  at('claude -c', 'start'),
-  at('claude --resume', 'start'),
-  at('codex', 'start'),
-  at('gemini', 'start'),
+  starts('claude', 'claude'),
+  starts('claude -c', 'claude'),
+  starts('claude --resume', 'claude'),
+  starts('codex', 'codex'),
+  starts('agy', 'antigravity'),
+  starts('gemini', 'gemini'),
   at('git status', 'info'),
   at('git diff', 'info'),
   at('git log --oneline -20', 'info'),
@@ -100,7 +145,10 @@ export function isShell(command: string): boolean {
 const LABEL = 24;
 
 export function commandsFor(p: Pick<Pane, 'command' | 'title'>, recent: string[]): Row | null {
-  if (describe(p).agent === 'claude') return { kind: 'claude', commands: CLAUDE_COMMANDS };
+  const agent = describe(p).agent;
+  if (agent === 'claude') return { kind: 'claude', commands: CLAUDE_COMMANDS };
+  if (agent === 'codex') return { kind: 'codex', commands: CODEX_COMMANDS };
+  if (agent === 'antigravity') return { kind: 'antigravity', commands: AGY_COMMANDS };
   if (!isShell(p.command)) return null;
   const extra = recent
     .filter((r) => !SHELL_COMMANDS.some((c) => c.text === r))

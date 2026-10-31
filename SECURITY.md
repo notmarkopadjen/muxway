@@ -47,7 +47,11 @@ repository. Reports are most welcome on:
   admin grant, address allow and deny lists;
 - transport: the agent's channel to the hub, TLS, headers, CORS;
 - input on its way into tmux: text, keys, mouse, resize, files for the
-  inbox;
+  inbox, answers to a question's choices;
+- the agent's socket for the processes in its panes (`muxway notify`,
+  `muxway ask`) and the watcher that reads the screens of AI harnesses;
+- the command-line client and the MCP server: how they hold and use a
+  token;
 - information leaks: a secret in a response, a log, an error, a listing;
 - rate limits and lockouts that can be bypassed;
 - the browser client: injection through pane content, stored credentials,
@@ -63,7 +67,11 @@ Some things are deliberate and documented in `docs/features/` and
 `AGENTS.md`: panes are opt-in and nothing is reachable until the host's
 owner marks it; the hub never sees a host's shell except through the
 agent's narrow operations; the file inbox is off unless the agent is
-started with `--inbox`. A report that one of these should be tightened is
+started with `--inbox`; the watcher reads only the visible screens of
+exposed panes that run a known AI harness and sends fixed phrases, never
+a row of the screen, and `--watch=false` turns it off; an answer to a
+question is a write with the same grants as input, checked against the
+choices the asking process gave. A report that one of these should be tightened is
 still welcome; it is handled as a design discussion rather than a
 vulnerability.
 

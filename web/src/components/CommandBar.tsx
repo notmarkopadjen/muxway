@@ -1,10 +1,17 @@
 import { useState } from 'react';
 import { SHELL_COMMANDS, type Command, type Row } from '../term/commands';
-import { ClaudeMark } from './PaneTitle';
+import { AgentMark } from './PaneTitle';
 
 // One row of commands for the program in the focused pane, scrolling
-// sideways like the tab strip. Claude's mark or a prompt sign says whose
-// commands they are.
+// sideways like the tab strip. The agent's mark or a prompt sign says
+// whose commands they are; a starter carries the mark of what it starts.
+const ROW_NAMES = {
+  claude: 'Claude Code',
+  codex: 'Codex',
+  antigravity: 'Antigravity',
+  shell: 'shell',
+} as const;
+
 export function CommandBar({
   row,
   disabled,
@@ -18,8 +25,8 @@ export function CommandBar({
   const fixed = row.kind === 'shell' ? SHELL_COMMANDS.length : row.commands.length;
   return (
     <div className="mx-cmdbar" data-testid="cmdbar" data-kind={row.kind}>
-      <span className="mx-cmdmark" title={row.kind === 'claude' ? 'Claude Code' : 'shell'}>
-        {row.kind === 'claude' ? <ClaudeMark /> : '$'}
+      <span className="mx-cmdmark" title={ROW_NAMES[row.kind]}>
+        {row.kind === 'shell' ? '$' : <AgentMark agent={row.kind} />}
       </span>
       {row.commands.map((c, i) => (
         <span key={c.text}>
@@ -38,6 +45,7 @@ export function CommandBar({
               onRun(c);
             }}
           >
+            <AgentMark agent={c.agent} />
             {c.label}
           </button>
         </span>

@@ -3,7 +3,7 @@ import type { Pane } from '../api/types';
 import { describe } from '../term/describe';
 import { tabName, useLens } from '../term/lens';
 import { LensMark } from './Lens';
-import { ClaudeMark } from './PaneTitle';
+import { AgentMark } from './PaneTitle';
 
 // The strip: one tab per pane, painted with its state. Open tabs are
 // bordered, the focused one thick and bold, a hidden one dimmed. With
@@ -166,7 +166,7 @@ export function Tabs({
                     : address) + (reorder ? ' · drag along the strip to reorder' : '')
               }
             >
-              {pane && describe(pane).agent === 'claude' && <ClaudeMark />}
+              {pane && <AgentMark agent={describe(pane).agent} />}
               {st !== 'quiet' && <LensMark status={st} attention={pane?.attention} />}
               <span className="mx-tab-name">
                 {pane ? tabName(pane) : address.split('/').slice(1).join('/')}

@@ -30,7 +30,7 @@ Every run writes `test-runs/<timestamp>-<commit>/` (ignored by git):
 | `results.xml` | JUnit XML, for tools |
 | `logs/<component>.log` | full log of hub, agent, tmux and test runner |
 | `screens/<test>/<step>.png` | UI tests: a screenshot per step and on failure |
-| `traces/<test>.zip` | UI tests: Playwright trace, opened with `npx playwright show-trace` |
+| `traces/<Go test>/<spec>/trace.zip` | UI tests: Playwright trace, opened with `npx playwright show-trace`; one directory per browser environment (`TestUI_WebClient`, `TestUI_Agents`, ...) |
 | `report/index.html` | HTML report of the run |
 
 UI tests drive the web client with Playwright. The specs live in
@@ -43,7 +43,12 @@ serves the cross-site attack page. A second Go test in the same file
 starts a hub with the transcription tests' stand-in transcriber and
 runs the microphone spec against it, with Chromium's fake microphone;
 the control endpoint there also breaks the transcriber and counts its
-calls. Screenshots land in `screens/<spec>/`, traces in `traces/`.
+calls. Further Go tests give a spec its own environment where it needs
+one: closing panes, arranging a window, the keyboard, and the agents
+environment for the inbox, questions with answers and the watcher, whose
+control endpoint starts a `muxway ask` in a pane and runs a stand-in
+harness under a real one's name. Screenshots land in `screens/<spec>/`,
+traces in `traces/<Go test>/<spec>/`.
 
 Locally the suite needs Node 22 and Chromium (`cd web && npm ci && npx
 playwright install chromium`); without Node, `scripts/e2e.sh` skips the

@@ -34,6 +34,12 @@ group('commands', () => {
     expect(SHELL_COMMANDS.every((c) => c.send)).toBe(true);
     expect(commandsFor({ command: 'vim', title: 'notes.md' }, [])).toBeNull();
     expect(commandsFor({ command: 'claude', title: 'claude' }, [])?.kind).toBe('claude');
+    expect(commandsFor({ command: 'codex', title: 'codex' }, [])?.kind).toBe('codex');
+    expect(commandsFor({ command: 'agy', title: 'notes' }, [])?.kind).toBe('antigravity');
+    expect(commandsFor({ command: 'opencode', title: 'x' }, [])).toBeNull();
+    expect(SHELL_COMMANDS.find((c) => c.text === 'codex')?.agent).toBe('codex');
+    expect(SHELL_COMMANDS.find((c) => c.text === 'agy')?.agent).toBe('antigravity');
+    expect(SHELL_COMMANDS.find((c) => c.text === 'htop')?.agent).toBeUndefined();
   });
 
   it('adds the lines sent recently after the fixed ones, newest first, without repeats', () => {

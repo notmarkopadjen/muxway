@@ -9,7 +9,7 @@ import { addRows } from '../term/addmenu';
 import { describe } from '../term/describe';
 import { tabName, useLens } from '../term/lens';
 import { LensMark } from './Lens';
-import { ClaudeMark } from './PaneTitle';
+import { AgentMark } from './PaneTitle';
 
 // `+` after the tabs: one more pane beside the focused one on its host, a
 // new session there, the panes minimised below, and every other readable
@@ -123,7 +123,7 @@ export function AddMenu({
         }}
       >
         <span className="mx-add-name">
-          {describe(p).agent === 'claude' && <ClaudeMark />}
+          <AgentMark agent={describe(p).agent} />
           {st !== 'quiet' && <LensMark status={st} attention={p.attention} />}
           {tabName(p)}
         </span>

@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -185,6 +186,30 @@ func TestUI_Keyboard(t *testing.T) {
 	runPlaywright(t, e, npx, webDir, grep, "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_KEYS=1")
 }
 
+// The inbox, questions with answers and the lens for another harness get
+// their own environment: the watcher works on the panes here, and a
+// question in flight must not meet another spec's typing. Spec 109 runs
+// here with MX_AGENTS set.
+func TestUI_Agents(t *testing.T) {
+	npx, webDir := uiTools(t)
+	if g := os.Getenv("MX_GREP"); g != "" {
+		if ok, _ := regexp.MatchString(g, "109-"); !ok {
+			t.Skip("MX_GREP leaves spec 109 out")
+		}
+	}
+	e := newEnv(t)
+	ts := newTmux(t)
+	a := e.pairAgent(host, ts)
+	ts.split("work:0.0")
+	ts.split("work:0.0")
+	e.expose(ts, "work:0.0", "--write")
+	e.expose(ts, "work:0.1", "--write")
+	e.expose(ts, "work:0.2")
+	full := e.token("browser", []string{"*"}, []string{"*"})
+	control := e.startControl(t, ts, a)
+	runPlaywright(t, e, npx, webDir, "109-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_AGENTS=1")
+}
+
 func uiTools(t *testing.T) (npx, webDir string) {
 	if os.Getenv("MUXWAY_SKIP_UI") != "" {
 		t.Skip("MUXWAY_SKIP_UI set")
@@ -204,7 +229,9 @@ func uiTools(t *testing.T) (npx, webDir string) {
 // reports each as a subtest.
 func runPlaywright(t *testing.T, e *env, npx, webDir, grep string, extraEnv ...string) {
 	screens := filepath.Join(runDir, "screens")
-	traces := filepath.Join(runDir, "traces")
+	// Playwright empties its output directory at the start of a run, so
+	// each environment's traces live under their own Go test's name.
+	traces := filepath.Join(runDir, "traces", t.Name())
 	os.MkdirAll(screens, 0o755)
 	os.MkdirAll(traces, 0o755)
 	report := filepath.Join(e.dir, "playwright.json")
@@ -379,6 +406,43 @@ func (e *env) startControl(t *testing.T, ts *tmuxServer, a *agentProc) string {
 		q := r.URL.Query()
 		out, err := e.notify(a, "--pane", q.Get("pane"), "--kind", q.Get("kind"), "--text", q.Get("text"))
 		text(w, out+fmt.Sprint(err))
+	})
+	// A question with fixed answers in a pane, and how it ended: "pending",
+	// or "<exit code> <answer>".
+	var asksMu sync.Mutex
+	asks := map[string]*askProc{}
+	mux.HandleFunc("/ask", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		p := e.ask(a, q.Get("pane"), "120s", q.Get("text"), strings.Split(q.Get("choices"), ",")...)
+		asksMu.Lock()
+		id := fmt.Sprint(len(asks) + 1)
+		asks[id] = p
+		asksMu.Unlock()
+		text(w, id)
+	})
+	mux.HandleFunc("/ask-result", func(w http.ResponseWriter, r *http.Request) {
+		asksMu.Lock()
+		p := asks[r.URL.Query().Get("id")]
+		asksMu.Unlock()
+		if p == nil {
+			text(w, "unknown")
+			return
+		}
+		select {
+		case <-p.done:
+			code, out := p.wait(t, time.Second)
+			text(w, fmt.Sprintf("%d %s", code, out))
+		default:
+			text(w, "pending")
+		}
+	})
+	// A stand-in harness in a pane, under a real one's name: it prints a
+	// line a second until stopped with C-c.
+	mux.HandleFunc("/fake-harness", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		ts.must("send-keys", "-t", q.Get("target"), "-l", "exec -a "+q.Get("name")+" bash -c 'clear; i=0; while true; do i=$((i+1)); echo \"tick $i\"; sleep 1; done'")
+		ts.must("send-keys", "-t", q.Get("target"), "Enter")
+		text(w, "ok")
 	})
 	// The transcriber stand-in, where the environment has one: how it answers
 	// the next clips, and how many it has had.

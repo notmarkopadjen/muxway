@@ -987,8 +987,8 @@ button.mx-window:focus-visible {
 .mx-painted[data-state='working'] .mx-mode,
 .mx-painted[data-state='waiting'] .mx-attention,
 .mx-painted[data-state='working'] .mx-attention,
-.mx-painted[data-state='waiting'] .mx-mark-claude,
-.mx-painted[data-state='working'] .mx-mark-claude {
+.mx-painted[data-state='waiting'] .mx-mark,
+.mx-painted[data-state='working'] .mx-mark {
   color: var(--mx-bg);
   text-shadow: none;
   filter: none;
@@ -1956,4 +1956,39 @@ button.mx-window:focus-visible {
   .mx-keyboard-bar {
     cursor: default;
   }
+}
+
+/* the inbox: a row per waiting pane, its question's choices at the end */
+.mx-inbox-list li {
+  grid-template-columns: 1.6em 1fr auto auto;
+  align-items: center;
+}
+.mx-inbox-list .mx-meta {
+  overflow-wrap: anywhere;
+}
+.mx-choices {
+  display: inline-flex;
+  gap: var(--mx-gap);
+  flex-wrap: wrap;
+  margin-left: var(--mx-gap);
+}
+.mx-choices button {
+  padding: 0 6px;
+  border: 1px solid var(--mx-warn);
+  color: var(--mx-warn);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+.mx-choices button:hover:not(:disabled) {
+  background: var(--mx-warn);
+  color: var(--mx-bg);
+}
+.mx-choices button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.mx-toast .mx-choices {
+  display: flex;
+  margin: var(--mx-gap) 0 0;
 }

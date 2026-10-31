@@ -54,7 +54,10 @@ refuses a pane whose process changed under the same pane id.
 ## Security considerations
 
 - **Read** shows everything the pane shows, including secrets printed on
-  screen and in scrollback (up to 2000 lines).
+  screen and in scrollback (up to 2000 lines). Exposure also lets the
+  pane's processes notify and ask through the agent, and the watcher read
+  its screen when a known AI harness runs there; an unexposed pane gets
+  none of it.
 - **Write** is a shell. Anything typed runs as the host's user. Prefer
   exposing single panes for writing over whole sessions.
 - **Write also allows resizing** the pane, or its window, from a client,

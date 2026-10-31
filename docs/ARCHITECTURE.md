@@ -29,17 +29,22 @@ flowchart LR
 ```
 
 - **Agent** (`muxway agent run`): runs next to a tmux server. It connects
-  out to its hub, so a host needs no open port. It answers three requests,
-  list, read and input, for the panes its owner exposed, and enforces
-  exposure and modes itself.
+  out to its hub, so a host needs no open port. It answers the hub's
+  requests for the panes its owner exposed (list, read, input, resize,
+  split, files, git's view, an answer to a question) and enforces
+  exposure and modes itself. It also listens on a socket for the
+  processes in its panes (`muxway notify`, `muxway ask`) and watches the
+  screens of the AI harnesses it knows.
 - **Hub** (`muxway hub serve`): the meeting point. It pairs agents,
-  authenticates clients by token, enforces each token's grants, and routes
-  requests to the right agent.
+  authenticates clients by token, enforces each token's grants, routes
+  requests to the right agent, keeps the event feed and lists what waits
+  in the inbox.
 - **Clients**: anything that speaks [the protocol](protocol/v1.md). Rich
   clients use JSON; small ones use **text mode**, which returns plain lines
   rewrapped to the width the client asks for, in UTF-8, Latin-1 or ASCII
-  (see [text mode](features/text-mode.md)). The native clients live in
-  their own repositories:
+  (see [text mode](features/text-mode.md)). `muxway client` and
+  `muxway mcp` are clients too, for scripts and for the AI agents
+  themselves. The native clients live in their own repositories:
   [muxway-android](https://github.com/notmarkopadjen/muxway-android),
   [muxway-glasses-even](https://github.com/notmarkopadjen/muxway-glasses-even)
   and [muxway-midp](https://github.com/notmarkopadjen/muxway-midp).
@@ -51,9 +56,17 @@ flowchart LR
   shows alike, and what belongs to one device, is in
   [ui-guideline.md](ui-guideline.md).
 - **Notifications**: a process in a pane, such as the hooks of an AI
-  coding agent (Claude Code is the one tested), runs
-  `muxway notify`; the agent marks the pane and the hub tells clients, see
-  [features/notifications.md](features/notifications.md).
+  coding agent (Claude Code, Codex, Gemini CLI, Antigravity CLI, Copilot
+  CLI, OpenCode),
+  runs `muxway notify`; for a harness without hooks the agent's watcher
+  reads the screen; the agent marks the pane and the hub tells clients,
+  and lists what waits in `GET /v1/inbox`. A process can also ask a
+  question with fixed answers (`muxway ask`) and get the answer back. See
+  [features/notifications.md](features/notifications.md) and
+  [features/inbox.md](features/inbox.md).
+- **Scripts and AI agents as clients**: `muxway client` is the API from
+  the command line, `muxway mcp` the same as MCP tools, `muxway skill`
+  the guide an agent reads; see [features/driving.md](features/driving.md).
 
 One binary, `muxway`, plays every role.
 
@@ -186,8 +199,10 @@ sequenceDiagram
 
 ### Notifications
 
-Any AI coding agent's hook or wrapper enters at `muxway notify`; the flow
-below shows Claude Code's hook, the one tested.
+Any AI coding agent's hook or wrapper enters at `muxway notify`
+(`muxway hooks <harness>` prints the configuration for Claude Code,
+Codex, Gemini CLI, Antigravity CLI, Copilot CLI and OpenCode); the flow below shows Claude
+Code's hook.
 
 ```mermaid
 sequenceDiagram
@@ -209,4 +224,42 @@ sequenceDiagram
     C->>H: POST /v1/panes/.../input {"text":"y"}
     H->>A: input %3
     A->>A: typed, attention cleared
+```
+
+### The watcher
+
+For a harness without hooks the agent reads the pane's visible screen
+every two seconds and reports a change of state with a fixed phrase; a
+pane whose hooks have spoken is left to them.
+
+```mermaid
+sequenceDiagram
+    participant T as tmux
+    participant A as Agent (watcher)
+    participant H as Hub
+    loop every 2 s, per exposed pane running a known harness
+        A->>T: capture-pane (visible screen)
+        A->>A: changed? a prompt at the bottom? still 8 s at the input prompt?
+        A->>H: event working / permission / question / done, on a change only
+    end
+```
+
+### A question with fixed answers
+
+```mermaid
+sequenceDiagram
+    participant P as muxway ask (in a pane)
+    participant A as Agent
+    participant H as Hub
+    participant C as Client
+    P->>A: question "deploy?", choices [yes, no], over notify.sock, held open
+    A->>H: event question with choices, the listing carries them
+    H-->>C: GET /v1/events, GET /v1/inbox
+    C->>H: POST /v1/panes/alice-laptop/work/1.0/answer {"choice": "yes"}
+    H->>H: write grant? the choice clean? audit
+    H->>A: answer %3 "yes"
+    A->>A: a question pending? "yes" among its choices? clear attention, audit
+    A-->>H: ok
+    H-->>C: 204
+    A-->>P: yes (stdout, exit 0)
 ```

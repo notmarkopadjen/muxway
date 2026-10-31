@@ -51,6 +51,9 @@ type Config struct {
 	// PreviewHidden lets hidden files and directories under them be read too.
 	Preview       []string `json:"-"`
 	PreviewHidden bool     `json:"-"`
+	// Watch reads the screens of panes that run a known AI harness and
+	// reports their state when no hook does.
+	Watch bool `json:"-"`
 }
 
 func configPath(dir string) string { return filepath.Join(dir, "agent.json") }
@@ -170,6 +173,9 @@ type Agent struct {
 	mu        sync.Mutex
 	seen      map[string]int // pane id -> process id when first seen exposed
 	attention map[string]tmux.Attention
+	asks      map[string]*pendingAsk // pane id -> the question waiting for an answer
+	hooked    map[string]bool        // panes that notified over the socket: the watcher leaves them alone
+	watched   map[string]*watched    // pane id -> what the watcher last saw there
 	// panes whose last turn ended with work still running in the background
 	background map[string]bool
 	resized    map[string]time.Time            // window id -> last resize applied
@@ -218,7 +224,7 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 	}
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
 		seen: map[string]int{}, attention: map[string]tmux.Attention{}, background: map[string]bool{}, resized: map[string]time.Time{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{},
-		made: map[string]time.Time{}, sessions: map[string]bool{}}, nil
+		made: map[string]time.Time{}, sessions: map[string]bool{}, asks: map[string]*pendingAsk{}, hooked: map[string]bool{}, watched: map[string]*watched{}}, nil
 }
 
 // Run keeps a connection to the hub until ctx ends, and listens for
@@ -242,6 +248,9 @@ func (a *Agent) Run(ctx context.Context) error {
 		}
 		go a.serveNotify(ctx, ln)
 		go func() { <-ctx.Done(); ln.Close() }()
+	}
+	if a.cfg.Watch {
+		go a.watch(ctx)
 	}
 	delay := time.Second
 	for {
@@ -340,6 +349,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		resp.Repeat = true
 		resp.Inbox = a.cfg.Inbox != ""
 		resp.Preview = len(a.cfg.Preview) > 0
+		resp.Ask = true
 	case wire.OpRead:
 		p, code := a.find(ctx, req.Pane)
 		if code != "" {
@@ -390,9 +400,13 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		}
 		if code == "" {
 			a.clearAttention(p.PaneID)
+			a.endAsk(ctx, p.PaneID, AskTyped, false)
 		}
 		resp.Error = code
 		a.audit(req, code)
+	case wire.OpAnswer:
+		resp.Error = a.answer(ctx, req)
+		a.audit(req, resp.Error)
 	case wire.OpResize:
 		resp.Error = a.resize(ctx, req)
 		a.audit(req, resp.Error)
@@ -785,9 +799,22 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 			panes[i].Attention = &att
 		}
 	}
+	var gone []*pendingAsk
 	for id := range a.attention {
 		if !alive[id] {
 			delete(a.attention, id)
+		}
+	}
+	for id, q := range a.asks {
+		if !alive[id] {
+			delete(a.asks, id)
+			gone = append(gone, q)
+		}
+	}
+	for id := range a.hooked {
+		if !alive[id] {
+			delete(a.hooked, id)
+			delete(a.watched, id)
 		}
 	}
 	// A window whose fitting panes are all gone (the shell exited) has no
@@ -817,6 +844,9 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 		}
 	}
 	a.mu.Unlock()
+	for _, q := range gone {
+		q.finish(askResult{err: AskGone})
+	}
 	for _, o := range orphans {
 		if err := a.tmux.ReleaseWindow(ctx, o.pane, o.layout); err != nil {
 			a.log.Warn("window release after its pane left", "err", err)
@@ -865,6 +895,9 @@ func (a *Agent) audit(req wire.Request, code string, extra ...any) {
 	}
 	if req.Name != "" {
 		attrs = append(attrs, "name", req.Name)
+	}
+	if req.Choice != "" {
+		attrs = append(attrs, "choice_bytes", len(req.Choice))
 	}
 	if req.Op == wire.OpResize {
 		if req.Fit != "" {

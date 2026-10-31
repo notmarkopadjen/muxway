@@ -54,3 +54,14 @@ describe('lens', () => {
     expect(changedAt(a)).toBe(now + 4_000);
   });
 });
+
+describe('lens: the other harnesses', () => {
+  it('shows a codex pane working on its event, and quiet for a shell', () => {
+    const now = 1_000_000;
+    expect(status({ command: 'codex', title: 'codex' }, 'working', undefined, now)).toBe('working');
+    expect(status({ command: 'codex', title: 'codex' }, undefined, now - 2000, now)).toBe(
+      'working',
+    );
+    expect(status({ command: 'bash', title: 'bash' }, 'working', now - 2000, now)).toBe('quiet');
+  });
+});

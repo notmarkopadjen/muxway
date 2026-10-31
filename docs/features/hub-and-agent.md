@@ -5,7 +5,11 @@
 A **hub** is where clients connect. An **agent** runs on each machine with
 tmux and keeps an outbound connection to the hub. Together they let a
 client list the panes a host's owner exposed, read them, and type into
-them. See [the architecture](../ARCHITECTURE.md) for the diagrams.
+them; the AI agents in those panes call for their owner through the
+agent, ask questions and, with a token, drive muxway themselves (see
+[notifications](notifications.md), [the inbox](inbox.md) and
+[driving muxway](driving.md)). See [the architecture](../ARCHITECTURE.md)
+for the diagrams.
 
 ## Running a hub
 
@@ -84,6 +88,7 @@ muxway agent run --tmux-name work      # a server started with tmux -L work
 muxway agent run --inbox default --allow-sessions
 muxway agent run --preview ~/work --preview ~/notes   # files under these, previewed by writers
 muxway agent run --preview ~/work --preview-hidden    # .github and such too; never .git, .ssh, .env
+muxway agent run --watch=false         # do not read the screens of AI harnesses without hooks
 ```
 
 Run it as the user who owns the tmux server, as a service (a systemd user
@@ -105,7 +110,7 @@ The agent's state is its `--dir`
 |---|---|
 | `agent.json` | the hub's URL and public key, this host's alias, the path of the extra CA if one was given |
 | `agent.key` | the agent's Ed25519 key, the one the hub pinned at pairing |
-| `notify.sock` | the socket the AI CLI hooks post attention events to (see [notifications](notifications.md)) |
+| `notify.sock` | the socket the AI CLI hooks post attention events to, and `muxway ask` holds a question open on (see [notifications](notifications.md)) |
 | `inbox/` | files clients hand a pane's program, with `--inbox default` (see [attachments](attachments.md)) |
 
 Losing `agent.key` means pairing again: the hub knows the host by that key
@@ -117,7 +122,10 @@ lets clients with a write grant read files under that directory when a
 pane prints their paths (see [preview](preview.md)) and see the changes of
 a repository under it with read-only `git status` and `git diff` run by
 the agent (see [changes](changes.md)); the agent reads them with its own
-rights, so choose roots the agent's user should show.
+rights, so choose roots the agent's user should show. `--watch`, on by
+default, reads the visible screens of exposed panes that run a known AI
+harness and reports working, a prompt or done when no hook does (see
+[the watcher](notifications.md#the-watcher)).
 
 ## Tokens
 
