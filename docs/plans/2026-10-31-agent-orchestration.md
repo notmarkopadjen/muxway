@@ -247,11 +247,39 @@ questions), new `docs/features/inbox.md` and `docs/features/driving.md`,
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan, deviations explained here: the watcher reads
+      the **visible screen** rather than the last 40 rows, since tmux's
+      history keeps a prompt that has scrolled away and the state would
+      never leave "waiting"; a canary string shaped like a token was
+      taken out of the answer test, since the secret scanner flagged it
+      over the whole outgoing history; the web client's header count is
+      its own `/v1/inbox` query rather than a view over the pane list,
+      and the event callback depends on the mutation's stable `mutate`,
+      after a first full run lost a key in spec 84's burst to an event
+      stream that re-subscribed on every render; the hub also drops
+      choices a listing carries outside a valid question (`sanePanes`).
+      The plan itself was not approved before the code: the owner asked
+      for one issue and one PR to review together.
+- [x] Security rules (AGENTS.md section 2) hold: answers are writes with
+      both grants checked on hub and agent and audited with sizes; asks
+      and notifications come over the mode 600 socket for exposed panes
+      only; the watcher sends fixed phrases; the client and the MCP
+      server have a token's rights and print it nowhere; no dependency
+      added.
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean (gitleaks and
+      the deny-list) on every push, and the diff read; the screenshots
+      come from the test environment.
+- [x] Docs and diagrams updated: `features/notifications.md`, new
+      `features/inbox.md` and `features/driving.md`, `protocol/v1.md`,
+      `ui-guideline.md`, `ARCHITECTURE.md`, the README, `hub-and-agent.md`,
+      `web-client.md`; every Mermaid block parsed with the library.
 
 ## Test run
 
-To be recorded.
+Run `20261031-131641-b45bd2d`: **passed**, 182 tests, 0 failed, at
+b45bd2d, recorded as
+[muxway#185](https://github.com/notmarkopadjen/muxway/issues/185); the
+run directory holds the logs, the screenshots `109-inbox`,
+`109-choices-toast`, `109-choices-pane`, `109-lens-codex` and the traces.
+An earlier full run at 310378d failed on spec 84's key burst (the event
+stream churn above), fixed in b45bd2d.
