@@ -229,7 +229,9 @@ func uiTools(t *testing.T) (npx, webDir string) {
 // reports each as a subtest.
 func runPlaywright(t *testing.T, e *env, npx, webDir, grep string, extraEnv ...string) {
 	screens := filepath.Join(runDir, "screens")
-	traces := filepath.Join(runDir, "traces")
+	// Playwright empties its output directory at the start of a run, so
+	// each environment's traces live under their own Go test's name.
+	traces := filepath.Join(runDir, "traces", t.Name())
 	os.MkdirAll(screens, 0o755)
 	os.MkdirAll(traces, 0o755)
 	report := filepath.Join(e.dir, "playwright.json")

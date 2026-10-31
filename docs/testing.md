@@ -30,7 +30,7 @@ Every run writes `test-runs/<timestamp>-<commit>/` (ignored by git):
 | `results.xml` | JUnit XML, for tools |
 | `logs/<component>.log` | full log of hub, agent, tmux and test runner |
 | `screens/<test>/<step>.png` | UI tests: a screenshot per step and on failure |
-| `traces/<test>.zip` | UI tests: Playwright trace, opened with `npx playwright show-trace` |
+| `traces/<Go test>/<spec>/trace.zip` | UI tests: Playwright trace, opened with `npx playwright show-trace`; one directory per browser environment (`TestUI_WebClient`, `TestUI_Agents`, ...) |
 | `report/index.html` | HTML report of the run |
 
 UI tests drive the web client with Playwright. The specs live in
