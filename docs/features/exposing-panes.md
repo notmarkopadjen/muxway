@@ -49,7 +49,61 @@ flowchart TD
 ```
 
 The agent re-reads the marks for every request. As a second guard it
-refuses a pane whose process changed under the same pane id.
+refuses a pane whose process changed under the same pane id on the same
+tmux server; a restarted server hands out the same ids with new
+processes, and those are taken afresh.
+
+## Standing marks
+
+Marks die with their session, so closing a session's last pane, or
+restarting tmux, leaves the next session of the same name unexposed until
+`muxway expose` runs again. A standing mark names a session on the
+agent's command line instead:
+
+```sh
+muxway agent run --expose work=write --expose notes=read
+```
+
+Whenever a session of that name exists, the agent sets the mark on it,
+the same `@muxway-mode` option, so `muxway exposed` and
+`tmux show-options` show it like one set by hand.
+
+- The name is exact, `[A-Za-z0-9_.-]{1,32}`: no patterns. The mode is
+  `read` or `write`. A bad value refuses to start.
+- A session is marked once: `muxway unexpose -t work` holds for as long
+  as that session lives, and a session of the name started later is
+  marked again. (The agent tells sessions apart by the tmux server's
+  pid, the session id and its creation time.)
+- The mark is a session mark, so `--deny` or `--write` on a window or a
+  pane inside it still wins, and an alias on a pane stays.
+- Each application is logged on the host: the session's name, id and
+  mode.
+
+```mermaid
+sequenceDiagram
+    participant O as Owner at the host
+    participant T as tmux
+    participant A as Agent with expose work=write
+    participant H as Hub
+    O->>T: tmux new -s work
+    H->>A: list
+    A->>T: list-panes -a
+    T-->>A: work ($3) has no mark
+    A->>T: set-option -t $3 @muxway-mode write
+    A->>A: remember $3, log it
+    A-->>H: the panes of work, mode write
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> Absent: no session named work
+    Absent --> Marked: session appears, the agent sets the mark
+    Marked --> Unmarked: owner runs unexpose
+    Unmarked --> Unmarked: the agent remembers it, sets nothing
+    Marked --> Absent: last pane closes, session ends
+    Unmarked --> Absent: session ends
+    Absent --> Marked: session appears again
+```
 
 ## Security considerations
 
@@ -65,6 +119,11 @@ refuses a pane whose process changed under the same pane id.
   the host, and the programs in them reflow; they go back to automatic
   sizing and their old layout when the client leaves. At most one resize
   per second per window, all audited.
+- **A standing mark** is the owner's standing decision, made where the
+  agent's other decisions are made (`--allow-sessions`, `--allow-close`):
+  the same power as running `muxway expose` after every tmux start. No
+  client can set, extend or ask for one, and only an exact name is
+  taken, so it never exposes a session the owner did not name.
 - **Write also allows splitting** a pane into two from a client, where the
   token's write grant covers the new pane as well. With `muxway agent run
   --allow-sessions`, a client with a write grant on the name may also

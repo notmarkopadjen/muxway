@@ -118,11 +118,14 @@ func TestUI_Microphone(t *testing.T) {
 // Closing panes needs an agent run with --allow-close; it gets its own
 // environment so no other spec's x reaches the host. Spec 89 runs here with
 // MX_CLOSE set; its without-the-flag case runs in the main environment.
+// Spec 110, the last pane of a session, runs here too.
 func TestUI_Close(t *testing.T) {
 	npx, webDir := uiTools(t)
 	if g := os.Getenv("MX_GREP"); g != "" {
-		if ok, _ := regexp.MatchString(g, "89-"); !ok {
-			t.Skip("MX_GREP leaves spec 89 out")
+		if ok89, _ := regexp.MatchString(g, "89-"); !ok89 {
+			if ok110, _ := regexp.MatchString(g, "110-"); !ok110 {
+				t.Skip("MX_GREP leaves specs 89 and 110 out")
+			}
 		}
 	}
 	e := newEnv(t)
@@ -133,9 +136,13 @@ func TestUI_Close(t *testing.T) {
 	e.expose(ts, "work:0.0", "--write")
 	e.expose(ts, "work:0.1", "--write")
 	e.expose(ts, "work:0.2")
+	// A session of one pane, for the last pane's question (spec 110).
+	ts.must("new-session", "-d", "-s", "solo", shell())
+	ts.title("solo:0.0")
+	e.expose(ts, "solo", "--write")
 	full := e.token("browser", []string{"*"}, []string{"*"})
 	control := e.startControl(t, ts, a)
-	runPlaywright(t, e, npx, webDir, "89-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_CLOSE=1")
+	runPlaywright(t, e, npx, webDir, "89-|110-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_CLOSE=1")
 }
 
 // One window's tiles kept in step with the window need a window whose

@@ -442,7 +442,7 @@ function Tile(props: TileProps) {
         )}
         {props.asking && p ? (
           <span className="mx-ask" data-testid="close-ask" onClick={(e) => e.stopPropagation()}>
-            close the pane on {p.host}?{' '}
+            {p.last ? `end session ${p.session} on ${p.host}?` : `close the pane on ${p.host}?`}{' '}
             <button type="button" data-testid="close-yes" onClick={() => props.onAnswer(true)}>
               y
             </button>{' '}

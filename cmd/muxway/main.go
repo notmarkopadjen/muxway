@@ -424,6 +424,15 @@ func runAgent(cmd string, args []string) error {
 		socket, name := tmuxFlags(fs)
 		sessions := fs.Bool("allow-sessions", false, "let clients with a write grant start new sessions, marked writable")
 		closes := fs.Bool("allow-close", false, "let clients with a write grant close writable panes, ending what runs in them")
+		expose := map[string]string{}
+		fs.Func("expose", "session=read|write: mark the session so whenever it exists (repeatable)", func(v string) error {
+			name, mode, err := agent.ParseExpose(v)
+			if err != nil {
+				return err
+			}
+			expose[name] = mode
+			return nil
+		})
 		inbox := fs.String("inbox", "", `directory for files clients send a writable pane ("default": inbox/ in --dir); off when empty`)
 		inboxMax := fs.Int("inbox-max-files", 0, "files the inbox holds at most (default 500)")
 		var preview []string
@@ -446,6 +455,7 @@ func runAgent(cmd string, args []string) error {
 		}
 		cfg.AllowSessions = *sessions
 		cfg.AllowClose = *closes
+		cfg.Expose = expose
 		if *inbox != "" {
 			path := *inbox
 			if path == "default" {

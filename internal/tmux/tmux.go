@@ -118,7 +118,11 @@ type Pane struct {
 	// The cursor's cell, 1-based, where the program waits for input.
 	CursorX int `json:"cursor_x,omitempty"`
 	CursorY int `json:"cursor_y,omitempty"`
-	PID     int `json:"-"`
+	// Last: the only pane of its session, so closing it ends the session.
+	Last           bool  `json:"last,omitempty"`
+	PID            int   `json:"-"`
+	ServerPID      int   `json:"-"`
+	SessionCreated int64 `json:"-"`
 }
 
 // Attention is what a pane is waiting for: set by a notification from a
@@ -137,7 +141,7 @@ var fields = []string{
 	"#{pane_width}", "#{pane_height}", "#{pane_title}", "#{pane_current_command}",
 	"#{window_activity}", "#{" + optMode + "}", "#{" + optAlias + "}", "#{pane_pid}",
 	"#{window_zoomed_flag}", "#{mouse_any_flag}#{mouse_button_flag}#{mouse_standard_flag}#{mouse_all_flag}",
-	"#{cursor_x}", "#{cursor_y}",
+	"#{cursor_x}", "#{cursor_y}", "#{session_created}", "#{pid}",
 }
 
 // List returns every pane of the server, marked or not. Lines it cannot
@@ -164,14 +168,22 @@ func (s Server) List(ctx context.Context) (panes []Pane, skipped int, err error)
 		}
 		atoi := func(s string) int { n, _ := strconv.Atoi(s); return n }
 		act, _ := strconv.ParseInt(f[14], 10, 64)
+		created, _ := strconv.ParseInt(f[22], 10, 64)
 		panes = append(panes, Pane{
 			SessionID: f[0], SessionName: f[1], WindowID: f[2], WindowIndex: atoi(f[3]), WindowName: f[4],
 			WindowLayout: f[5], WindowActive: f[6] == "1", PaneID: f[7], PaneIndex: atoi(f[8]),
 			PaneActive: f[9] == "1", Width: atoi(f[10]), Height: atoi(f[11]), Title: f[12], Command: f[13],
 			Activity: act, Mode: f[15], Alias: f[16], PID: atoi(f[17]),
 			Zoomed: f[18] == "1" && f[9] == "1", Mouse: strings.Contains(f[19], "1"),
-			CursorX: atoi(f[20]) + 1, CursorY: atoi(f[21]) + 1,
+			CursorX: atoi(f[20]) + 1, CursorY: atoi(f[21]) + 1, SessionCreated: created, ServerPID: atoi(f[23]),
 		})
+	}
+	count := map[string]int{}
+	for _, p := range panes {
+		count[p.SessionID]++
+	}
+	for i := range panes {
+		panes[i].Last = count[panes[i].SessionID] == 1
 	}
 	return panes, skipped, nil
 }
@@ -678,6 +690,12 @@ func (s Server) Mark(ctx context.Context, target, mode string) error {
 		args = append(args, "-t", target, optMode, mode)
 	}
 	_, err := s.run(ctx, args...)
+	return err
+}
+
+// MarkSession sets the mode on a session named by its id.
+func (s Server) MarkSession(ctx context.Context, sessionID, mode string) error {
+	_, err := s.run(ctx, "set-option", "-t", sessionID, optMode, mode)
 	return err
 }
 

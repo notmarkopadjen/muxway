@@ -33,6 +33,7 @@ export interface Pane {
   mouse?: boolean;
   cursor_x?: number; // the cursor's cell, 1-based, where the program waits
   cursor_y?: number;
+  last?: boolean; // the only pane of its session: closing it ends the session
   hub?: string; // the hub of the hubs box it came from; none for this page's own
 }
 

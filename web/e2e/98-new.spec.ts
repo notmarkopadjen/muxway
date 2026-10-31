@@ -92,6 +92,9 @@ test('98 new session: + session, a name, Enter opens its pane; a used name is re
 }, info) => {
   await signIn(page);
   await settled(page);
+  // One creation per two seconds per principal: the split that ended the
+  // test before may still be inside the window on a slow runner.
+  await page.waitForTimeout(2100);
   await page.getByTestId(`host-${HOST}`).getByTestId('new-session').click();
   const name = page.getByTestId('session-name');
   await expect(name).toBeFocused();
