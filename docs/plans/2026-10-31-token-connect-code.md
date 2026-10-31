@@ -174,4 +174,9 @@ Deviations:
 
 ## Test run
 
-Link to the recorded run: result, commit, logs, screenshots.
+- Full suite on the feature commit's tree: [#179](https://github.com/notmarkopadjen/muxway/issues/179),
+  168 tests, one failed: `65-selector`, the known flaky spec, which my
+  change does not touch; spec 95 with the code passed.
+- `65-selector` alone, same tree: [#180](https://github.com/notmarkopadjen/muxway/issues/180), passed.
+- Scanning the code from the test hub's page with the Android app is the
+  owner's manual check, to be noted on the run issue.
