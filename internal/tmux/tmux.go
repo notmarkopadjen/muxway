@@ -185,7 +185,12 @@ func (p Pane) Exposed() bool { return p.Mode == ModeRead || p.Mode == ModeWrite 
 // Blank rows at the bottom of the screen are left out, and counted, so a
 // client can still tell which row of the screen a row of the content is.
 func (s Server) Capture(ctx context.Context, paneID string, lines int, ansi, join bool) (string, int, error) {
-	args := []string{"capture-pane", "-p", "-t", paneID, "-S", "-" + strconv.Itoa(lines)}
+	args := []string{"capture-pane", "-p", "-t", paneID}
+	// With lines, that many rows back into the history; without, the
+	// visible screen alone, as the person at the host sees it.
+	if lines > 0 {
+		args = append(args, "-S", "-"+strconv.Itoa(lines))
+	}
 	if join {
 		args = append(args, "-J")
 	}
@@ -200,7 +205,7 @@ func (s Server) Capture(ctx context.Context, paneID string, lines int, ansi, joi
 	kept := strings.TrimRight(whole, "\n")
 	trimmed := strings.Count(whole[len(kept):], "\n")
 	all := strings.Split(kept, "\n")
-	if len(all) > lines {
+	if lines > 0 && len(all) > lines {
 		all = all[len(all)-lines:]
 	}
 	return strings.Join(all, "\n"), trimmed, nil

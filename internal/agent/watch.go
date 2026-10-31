@@ -9,15 +9,15 @@ import (
 	"github.com/notmarkopadjen/muxway/internal/wire"
 )
 
-// The watcher: every few seconds the agent reads the screen of each
-// exposed pane that runs a known harness and tells the hub when its
-// state changes, so a harness without hooks shows as working, waiting or
-// done. The texts are fixed phrases; a row of the screen never travels.
+// The watcher: every few seconds the agent reads the visible screen of
+// each exposed pane that runs a known harness (the screen, not the
+// history: a prompt that scrolled away is over) and tells the hub when
+// its state changes, so a harness without hooks shows as working,
+// waiting or done. The texts are fixed phrases; a row of the screen never travels.
 // A pane that has notified over the socket is left to its hooks.
 
 const (
 	watchEvery = 2 * time.Second
-	watchRows  = 40
 	// How long the screen stays still at the input prompt before a pane
 	// that was working counts as done.
 	watchStill = 8 * time.Second
@@ -69,7 +69,7 @@ func (a *Agent) watchOnce(ctx context.Context) {
 		if h == nil || hooked {
 			continue
 		}
-		content, _, err := a.tmux.Capture(ctx, p.PaneID, watchRows, false, true)
+		content, _, err := a.tmux.Capture(ctx, p.PaneID, 0, false, true)
 		if err != nil {
 			continue
 		}
