@@ -213,4 +213,7 @@ the private deployment notes.
 
 ## Test run
 
-Pending.
+[Run 20261031-210307-d736b2d](https://github.com/notmarkopadjen/muxway/issues/189):
+passed, 194 tests, at `d736b2d`, with the ten new end-to-end tests
+(174 to 177 security, 178 to 183 flows) and spec 110's two tests with
+the screenshot `110-last-pane`.
