@@ -154,7 +154,9 @@ export function Talk({
                 </span>
               </li>
             ))}
-            {rows.length === 0 && <li className="mx-dim">no pane talked to another lately</li>}
+            {rows.length === 0 && (
+              <li className="mx-dim mx-empty">no pane talked to another lately</li>
+            )}
           </ul>
           <form
             className="mx-talk-line"
