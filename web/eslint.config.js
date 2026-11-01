@@ -22,6 +22,25 @@ export default tseslint.config(
     },
   },
   {
+    // The service worker runs in its own scope, with its globals.
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+        Promise: 'readonly',
+        setTimeout: 'readonly',
+      },
+    },
+  },
+  {
+    // Build scripts run under Node.
+    files: ['scripts/*.mjs'],
+    languageOptions: { globals: { process: 'readonly', console: 'readonly', URL: 'readonly' } },
+  },
+  {
     files: ['src/**/*.{ts,tsx}', 'e2e/**/*.ts'],
     rules: {
       // Pane content and names are hostile text; they go through React's escaping, never markup.

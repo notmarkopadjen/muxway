@@ -75,6 +75,11 @@ flowchart LR
   handed over by the harness's hooks, never typed; see
   [features/mail.md](features/mail.md).
 
+- **The web client as an app**: the hub serves a manifest and a service
+  worker beside the embedded files, so a browser installs the client as
+  an app of its own; the worker keeps the client's files on the device
+  and never touches the API; see [features/web-client.md](features/web-client.md#installing-it).
+
 One binary, `muxway`, plays every role.
 
 ## The tmux model
