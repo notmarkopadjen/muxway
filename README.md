@@ -199,6 +199,12 @@ exchange in the messages window. See
 
 ## The web client
 
+The client installs as an app from the browser (a manifest and a
+service worker that keeps the client's own files, never the hub's
+answers): a standalone window with its icon on Android, desktop and the
+iPhone, and a shell that opens with no network and says the hub is
+unreachable. See [the web client](docs/features/web-client.md#installing-it).
+
 Served by the hub, nothing to install. The pane list groups every host
 you may reach; a badge marks a pane that needs you.
 

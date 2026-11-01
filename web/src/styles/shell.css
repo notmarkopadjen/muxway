@@ -687,3 +687,15 @@ button:disabled {
   font: inherit;
   cursor: pointer;
 }
+
+/* a new build waits: the status bar's line, a click reloads with it */
+.mx-status .mx-update {
+  margin-right: var(--mx-gap);
+  padding: 0 6px;
+  border: 1px solid var(--mx-ink);
+  background: transparent;
+  color: var(--mx-ink);
+  font: inherit;
+  cursor: pointer;
+  text-shadow: 0 0 6px var(--mx-ink);
+}

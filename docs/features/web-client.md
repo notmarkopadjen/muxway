@@ -750,6 +750,48 @@ sequenceDiagram
     Note over V: sync gone, the live picture
 ```
 
+## Installing it
+
+The client is an installable app: the hub serves a manifest and a
+service worker beside the client's files. In Chrome or Edge on a
+desktop or an Android phone, the address bar offers *Install muxway*
+(or the browser menu does); on an iPhone or iPad, Safari's share sheet
+has *Add to Home Screen*. The app then opens in a window of its own,
+without browser chrome, with the muxway icon and the theme's background
+as its window colour (the colour follows `t`).
+
+The worker keeps the client's own files on the device, the page, the
+scripts, the styles, the fonts and the icons, so the app opens at once,
+and with no network the shell still opens and its status bar says the
+hub is unreachable. It never reads, stores or answers a request to the
+API: panes, listings, files, tokens and the session cookie go to the
+hub as they always did, and nothing of them lands in any cache.
+
+![the shell opened with no network, the status bar says the hub is unreachable](images/web-pwa-offline.png)
+
+A new build of the client installs in the background and waits; the
+status bar then shows `new version · reload`, and a click reloads with
+it. Closing every window of the app and opening it again does the same.
+
+```mermaid
+sequenceDiagram
+    participant B as browser
+    participant SW as service worker
+    participant H as hub
+    B->>H: GET / (first open)
+    H-->>B: index.html, the policy allows worker-src self
+    B->>H: GET /sw.js
+    B->>SW: install
+    SW->>H: the page, the assets, the manifest, the icons
+    SW->>SW: cache mx-<stamp>
+    B->>H: GET /v1/panes (never through the cache)
+    Note over B: later, with no network
+    B->>SW: GET /p/alice-laptop/work/0.0
+    SW-->>B: the cached page and assets
+    B->>H: GET /v1/me
+    H-->>B: no answer, the shell says hub unreachable
+```
+
 ## Running without it
 
 `muxway hub serve --no-web` leaves `/` to native clients: with a sign-in
@@ -764,6 +806,14 @@ and embedded by `go build`, so `go install` needs no Node. CI rebuilds it
 and fails if the committed output differs from the sources.
 
 ## Security considerations
+
+- The service worker is script of the client's own origin under the
+  same policy (`worker-src 'self'`); it caches the client's files only
+  and steps aside for every request under `/v1/`, so no pane content,
+  listing, file, token or cookie is read by it or written to a cache.
+  A test reads the cache storage after a session and finds no such
+  entry. The hub serves `/sw.js` and the manifest with `no-cache`, so a
+  new build replaces the worker at the next open.
 
 - The client is a consumer of the API with the session cookie; it adds no
   endpoint. Its own risks are in the browser, and the hub's headers close

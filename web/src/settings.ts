@@ -36,6 +36,9 @@ export function applyRoot() {
   // The tab's icon in the theme's colours.
   const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
   if (icon) icon.href = theme === 'amber' ? '/icon.svg' : `/icon-${theme}.svg`;
+  // The installed app's window colour: the theme's background.
+  const colour = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (colour) colour.content = THEME_BG[theme];
 }
 
 // The font size a pane is read at, and the cell the host is sized by.
@@ -61,6 +64,9 @@ export function setTheme(t: Theme) {
   write('mx-theme', t);
   applyRoot();
 }
+// The backgrounds of the three themes, as tokens.css has them.
+const THEME_BG: Record<Theme, string> = { amber: '#0a0603', green: '#050806', paper: '#f1ead8' };
+
 export function cycleTheme(): Theme {
   const next = THEMES[(THEMES.indexOf(getTheme()) + 1) % THEMES.length];
   setTheme(next);
