@@ -343,6 +343,12 @@ var waiting = map[string]bool{"question": true, "permission": true, "idle": true
 // returns it as an event; what already waits in the inbox counts first.
 // It returns nil, nil when ctx ends first.
 func (c *Client) Wait(ctx context.Context, address string) (*Event, error) {
+	// The cursor comes before the inbox: whatever arrives after this
+	// point is in the feed, whatever came before is in the listing.
+	_, cursor, err := c.Events(ctx, 0, 0, 1)
+	if err != nil {
+		return nil, err
+	}
 	inbox, err := c.Inbox(ctx)
 	if err != nil {
 		return nil, err
@@ -352,10 +358,6 @@ func (c *Client) Wait(ctx context.Context, address string) (*Event, error) {
 			return &Event{At: p.Attention.At, Host: p.Host, Address: p.Address, Alias: p.Alias,
 				Kind: p.Attention.Kind, Text: p.Attention.Text, Choices: p.Attention.Choices}, nil
 		}
-	}
-	_, cursor, err := c.Events(ctx, 0, 0, 1)
-	if err != nil {
-		return nil, err
 	}
 	for ctx.Err() == nil {
 		events, next, err := c.Events(ctx, cursor, 30, 100)
