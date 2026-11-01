@@ -85,7 +85,27 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// The page asks the waiting worker to take over.
+// A release of a fitted pane, handed over by a page that goes away: a
+// keepalive request from a dying page is lost under a worker, the worker
+// itself may outlive the page. The resize's own second may still run, so
+// a 429 is tried again.
+function release(item, tries) {
+  return fetch(item.url, {
+    method: 'POST',
+    credentials: item.credentials,
+    headers: { 'X-Muxway-Client': 'web', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fit: 'auto' }),
+  })
+    .then((r) => {
+      if (r.status === 429 && tries > 1)
+        return new Promise((f) => setTimeout(f, 1100)).then(() => release(item, tries - 1));
+    })
+    .catch(() => {});
+}
+
+// The page asks the waiting worker to take over, or hands over releases.
 self.addEventListener('message', (event) => {
   if (event.data === 'mx-skip-waiting') self.skipWaiting();
+  else if (event.data && event.data.type === 'mx-release' && Array.isArray(event.data.items))
+    event.waitUntil(Promise.all(event.data.items.slice(0, 16).map((item) => release(item, 3))));
 });
