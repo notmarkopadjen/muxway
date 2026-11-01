@@ -59,7 +59,7 @@ func (h *Hub) isPeer(origin string) bool {
 }
 
 func corsPath(p string) bool {
-	for _, base := range []string{"/v1/hosts", "/v1/panes", "/v1/inbox", "/v1/events", "/v1/windows", "/v1/me", "/v1/transcribe"} {
+	for _, base := range []string{"/v1/hosts", "/v1/panes", "/v1/events", "/v1/inbox", "/v1/talk", "/v1/windows", "/v1/me", "/v1/transcribe"} {
 		if p == base || strings.HasPrefix(p, base+"/") {
 			return true
 		}

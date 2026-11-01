@@ -113,6 +113,7 @@ type Pane struct {
 	Mode         string     `json:"mode"`
 	Alias        string     `json:"alias,omitempty"`
 	Attention    *Attention `json:"attention,omitempty"`
+	Mail         *MailState `json:"mail,omitempty"`   // mail waiting for the pane's process
 	Zoomed       bool       `json:"zoomed,omitempty"` // shown alone in its window
 	Mouse        bool       `json:"mouse,omitempty"`  // the program asked for the mouse
 	// The cursor's cell, 1-based, where the program waits for input.
@@ -133,6 +134,13 @@ type Attention struct {
 	Text string `json:"text,omitempty"`
 	// Choices are the fixed answers of a question asked with muxway ask.
 	Choices []string `json:"choices,omitempty"`
+}
+
+// MailState is what a listing says of a pane's mailbox: how many mails
+// its process has not read, and when the newest came.
+type MailState struct {
+	Unread int   `json:"unread"`
+	At     int64 `json:"at"`
 }
 
 var fields = []string{

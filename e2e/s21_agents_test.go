@@ -652,7 +652,7 @@ func TestMCPServerSpeaksOverStdio(t *testing.T) {
 	}
 	io.WriteString(stdin, `{"jsonrpc":"2.0","method":"notifications/initialized"}`+"\n")
 	list := send(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)
-	if r, _ := list["result"].(map[string]any); r == nil || len(r["tools"].([]any)) != 7 {
+	if r, _ := list["result"].(map[string]any); r == nil || len(r["tools"].([]any)) != 11 {
 		t.Fatalf("tools/list: %v", list)
 	}
 	panes := send(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_panes","arguments":{}}}`)

@@ -34,7 +34,46 @@ export interface Pane {
   cursor_x?: number; // the cursor's cell, 1-based, where the program waits
   cursor_y?: number;
   last?: boolean; // the only pane of its session: closing it ends the session
+  talk?: TalkPartner[]; // the panes this one talked with in the last ten minutes
+  mail?: MailState; // mail its process has not read
   hub?: string; // the hub of the hubs box it came from; none for this page's own
+}
+
+// What waits in a pane's mailbox: how many unread, and when the newest came.
+export interface MailState {
+  unread: number;
+  at: number;
+}
+
+// A pane another pane talked with lately, at its current address.
+export interface TalkPartner {
+  address: string;
+  pane_id: string;
+  at: number;
+  way: 'to' | 'from' | 'both';
+}
+
+// One entry of the talk feed: a mail or a write from one pane to another.
+// A mail from a client that is not a pane has no `from`.
+export interface Talk {
+  seq: number;
+  at: number;
+  actor: { id: string; name: string };
+  from: TalkEnd | null;
+  to: TalkEnd;
+  kind: 'text' | 'key' | 'answer' | 'mail';
+  bytes?: number;
+  text: string;
+  id?: number; // a mail's id
+  reply_to?: number; // the mail a reply answers
+  hub?: string; // as on a pane
+}
+
+export interface TalkEnd {
+  host: string;
+  address: string;
+  pane_id: string;
+  alias?: string;
 }
 
 export interface Host {
@@ -46,6 +85,7 @@ export interface Host {
   preview?: boolean; // the agent serves files under roots its owner named
   repeat?: boolean; // the agent takes a count with a key
   ask?: boolean; // the agent takes answers to questions
+  mail?: boolean; // the agent holds mail for its panes
   hub?: string; // as on a pane
 }
 

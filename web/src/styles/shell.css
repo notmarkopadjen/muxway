@@ -666,3 +666,24 @@ button:disabled {
   vertical-align: -0.1em;
   margin-right: 4px;
 }
+
+/* the messages the owner has not looked at, beside the inbox's count; opens the messages window */
+.mx-talk-count[data-unseen] {
+  text-shadow: 0 0 8px var(--mx-talk);
+}
+.mx-talk-count:not([data-unseen]) {
+  opacity: 0.7;
+}
+.mx-talk-count {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: var(--mx-gap);
+  padding: 0 6px;
+  border: 1px solid var(--mx-talk);
+  color: var(--mx-talk);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}

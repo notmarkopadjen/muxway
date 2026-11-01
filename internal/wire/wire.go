@@ -26,6 +26,9 @@ const (
 	OpGitStatus  = "git-status"  // the changes of the pane's repository, when it lies under a root
 	OpGitDiff    = "git-diff"    // one changed file's diff against the last commit
 	OpAnswer     = "answer"      // a client picks one of the choices a question offered
+	OpMail       = "mail"        // a message for the pane's process, into its mailbox, never typed
+	OpMailList   = "mail-list"   // the mailbox of a pane, for a reader
+	OpReplied    = "replied"     // the hub's word on a reply the agent sent; nothing is answered
 )
 
 // Request from hub to agent. Actor is the id of the client token the hub
@@ -69,6 +72,45 @@ type Request struct {
 	Path string `json:"path,omitempty"`
 	// Choice, with answer, is the answer picked among the question's choices.
 	Choice string `json:"choice,omitempty"`
+	// From names the pane an input, an answer or a mail came from,
+	// host/pane id, for the audit log and the mail's header; Address is
+	// that pane's address when the mail was sent, for the reader.
+	From    string `json:"from,omitempty"`
+	Address string `json:"address,omitempty"`
+	// MailID is the id the hub gave a mail; with replied, Reply is the
+	// agent's own id for the reply and Result the code, "" for delivered.
+	MailID uint64 `json:"mail_id,omitempty"`
+	Reply  uint64 `json:"reply,omitempty"`
+	Result string `json:"result,omitempty"`
+}
+
+// Mail is one message held for a pane's process: who sent it, from
+// where, the text, and when the process read it.
+type Mail struct {
+	ID uint64 `json:"id"`
+	At int64  `json:"at"`
+	// Actor is the token's id, Name its name; a reply has "reply" for both.
+	Actor string `json:"actor"`
+	Name  string `json:"name"`
+	// From is the origin pane as host/%id, Address its address then;
+	// empty for a mail from a client that is not a pane.
+	From    string `json:"from,omitempty"`
+	Address string `json:"address,omitempty"`
+	Text    string `json:"text"`
+	ReadAt  int64  `json:"read_at,omitempty"`
+	ReplyTo uint64 `json:"reply_to,omitempty"`
+	// Replied: the pane's process answered this mail already.
+	Replied bool `json:"replied,omitempty"`
+}
+
+// Reply is the one other unsolicited message an agent sends: a pane's
+// process answers a mail it got. ID is the agent's, so the hub's word
+// (OpReplied) finds the waiting process.
+type Reply struct {
+	ID     uint64 `json:"id"`
+	Pane   string `json:"pane"`
+	MailID uint64 `json:"mail_id"`
+	Text   string `json:"text"`
 }
 
 // Mouse is one click or wheel notch at a cell, 1-based.
@@ -127,6 +169,11 @@ type Response struct {
 	Preview bool `json:"preview,omitempty"`
 	// Ask, with a list, says the agent takes answers to questions.
 	Ask bool `json:"ask,omitempty"`
+	// Mailbox, with a list, says the agent holds mail for its panes;
+	// Unread is a pane's count after a mail; Mail is a mailbox listed.
+	Mailbox bool   `json:"mailbox,omitempty"`
+	Unread  int    `json:"unread,omitempty"`
+	Mail    []Mail `json:"mail,omitempty"`
 	// Changes of the pane's repository; Diff of one of them, Binary when
 	// git has no text for it, Cut when it was longer than MaxDiff.
 	Changes *Changes `json:"changes,omitempty"`
@@ -162,18 +209,22 @@ const KeyGrammar = 2
 
 // Errors an agent returns. They are codes, never details.
 const (
-	ErrNotExposed = "not_exposed"
-	ErrReadOnly   = "read_only"
-	ErrBadInput   = "bad_input"
-	ErrUnknownOp  = "unknown_op"
-	ErrTmux       = "tmux_error"
-	ErrRateLimit  = "rate_limited"
-	ErrNotAllowed = "not_allowed" // the agent does not start sessions
-	ErrExists     = "exists"
-	ErrTooMany    = "too_many"
-	ErrInboxFull  = "inbox_full"
-	ErrNoFile     = "no_file"     // no such file in the inbox
-	ErrNoQuestion = "no_question" // an answer for a pane with no question pending
+	ErrNotExposed  = "not_exposed"
+	ErrReadOnly    = "read_only"
+	ErrBadInput    = "bad_input"
+	ErrUnknownOp   = "unknown_op"
+	ErrTmux        = "tmux_error"
+	ErrRateLimit   = "rate_limited"
+	ErrNotAllowed  = "not_allowed" // the agent does not start sessions
+	ErrExists      = "exists"
+	ErrTooMany     = "too_many"
+	ErrInboxFull   = "inbox_full"
+	ErrNoFile      = "no_file"      // no such file in the inbox
+	ErrNoQuestion  = "no_question"  // an answer for a pane with no question pending
+	ErrMailboxFull = "mailbox_full" // MaxMailbox mails held for the pane
+	ErrNoMail      = "no_mail"      // a reply to a mail the pane does not hold, or the hub forgot
+	ErrNoOrigin    = "no_origin"    // a reply to a mail that came from no pane
+	ErrReplied     = "replied"      // a second reply to the same mail
 )
 
 // Limits shared by hub and agent.
@@ -197,7 +248,26 @@ const (
 	// Changes a status lists, and the bytes a diff may run to.
 	MaxChanges = 2000
 	MaxDiff    = 1 << 20
+	// A mail's length in characters, and how many a pane holds.
+	MaxMailChars = 4000
+	MaxMailbox   = 50
 )
+
+// ValidMail reports whether a text may be mailed to a pane: UTF-8 without
+// control characters but newline and tab, 1 to MaxMailChars characters.
+func ValidMail(s string) bool {
+	n := 0
+	for _, r := range s {
+		n++
+		if r == '\n' || r == '\t' {
+			continue
+		}
+		if r < 0x20 || r == 0x7f || (r >= 0x80 && r <= 0x9f) || r == 0xfffd {
+			return false
+		}
+	}
+	return n >= 1 && n <= MaxMailChars
+}
 
 // A session a client starts has a short name of its own.
 var sessionName = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
@@ -298,6 +368,7 @@ type Event struct {
 type Notice struct {
 	Response
 	Event *Event `json:"event,omitempty"`
+	Reply *Reply `json:"reply,omitempty"`
 }
 
 // CleanText makes free text safe to travel and display: control characters

@@ -14,6 +14,7 @@ import type {
   Pane,
   PaneContent,
   Resize,
+  Talk,
   Tree,
   WindowContent,
 } from './types';
@@ -34,6 +35,7 @@ export const keys = {
   panes: ['panes'] as const,
   panesOf: (hub?: string) => (hub ? (['panes', hub] as const) : (['panes'] as const)),
   inboxOf: (hub?: string) => (hub ? (['inbox', hub] as const) : (['inbox'] as const)),
+  talkOf: (hub?: string) => (hub ? (['talk', hub] as const) : (['talk'] as const)),
   transcriber: ['transcriber'] as const,
   admin: ['admin'] as const,
   files: (address: string) => ['files', address] as const,
@@ -238,6 +240,27 @@ export function useWindow(host: string, session: string, window: string) {
 // A click, a key or text to the pane, on its own hub.
 // An answer to a question a pane asked with fixed choices: a write, and
 // the pane's attention goes with it.
+// A mail for a pane's process: held on its host, never typed.
+export function useMail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ address, text }: { address: string; text: string }) => {
+      const t = target(address);
+      return api<{ mail: { id: number; at: number } }>(`/v1/panes/${t.address}/mail`, {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+        hub: t.hub,
+      });
+    },
+    onSuccess: (_v, { address }) => {
+      const { hub } = splitAddress(address);
+      qc.invalidateQueries({ queryKey: keys.pane(address) });
+      qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
+      qc.invalidateQueries({ queryKey: keys.talkOf(hub) });
+    },
+  });
+}
+
 export function useAnswer() {
   const qc = useQueryClient();
   return useMutation({
@@ -315,6 +338,37 @@ export function useInbox(enabled: boolean) {
           : lists
               .flatMap((l) => l.data ?? [])
               .sort((a, b) => (a.attention?.at ?? 0) - (b.attention?.at ?? 0)),
+    }),
+    [lists],
+  );
+}
+
+// The talk feed of every hub: what panes said to panes, the last hundred
+// entries, oldest first. A peer's addresses carry its name.
+export function useTalk(enabled: boolean) {
+  const lists = useHubLists(
+    keys.talkOf,
+    (h, own) =>
+      api<{ talk: Talk[] | null }>('/v1/talk?limit=100', own ? {} : { hub: h.url }).then((v) =>
+        (v.talk ?? []).map((e) =>
+          own
+            ? e
+            : {
+                ...e,
+                hub: h.name,
+                from: e.from && { ...e.from, address: joinAddress(h.name, e.from.address) },
+                to: { ...e.to, address: joinAddress(h.name, e.to.address) },
+              },
+        ),
+      ),
+    { enabled, refetchInterval: 5_000 },
+  );
+  return useMemo(
+    () => ({
+      data:
+        lists[0]?.data === undefined
+          ? undefined
+          : lists.flatMap((l) => l.data ?? []).sort((a, b) => a.at - b.at || a.seq - b.seq),
     }),
     [lists],
   );
