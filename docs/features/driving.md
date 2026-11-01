@@ -26,10 +26,20 @@ muxway client read alice-laptop/work/0.0 --lines 50
 muxway client send alice-laptop/work/0.0 "make test" --enter
 muxway client key alice-laptop/work/0.0 C-c
 muxway client answer alice-laptop/work/0.0 yes
+muxway client mail alice-laptop/work/0.0 "run the tests and tell me"   # for its process, never typed
+muxway client mailbox alice-laptop/work/0.0   # what it holds, and whether it was read
 muxway client wait alice-laptop/work/0.0 --timeout 20m
 muxway client wait                       # any pane
 muxway client events --follow
 muxway client talk --follow              # what panes said to panes
+```
+
+And in a pane, through the agent on the same machine, without a token:
+
+```sh
+muxway mail                      # the mail left for this pane, then it counts as read
+muxway mail --wait --timeout 1h  # block until one comes
+muxway mail reply 7 "done, two warnings"
 ```
 
 `connect` checks the token against the hub (`GET /v1/me`) and keeps the
@@ -48,16 +58,17 @@ refusal is the hub's code on stderr and exit 1: `read_only` for a write
 the token may not make, `not_found` for a pane it may not see,
 `bad_input` for a key outside the grammar or a choice not offered.
 
-`send`, `key` and `answer` name the pane they come from: by default the
-pane the command runs in (`$TMUX_PANE`, on the host the agent directory
-here is paired as; `--agent-dir` points elsewhere), or `--from HOST/%ID`
-or `$MUXWAY_FROM`; `--from none` sends as nobody. The owner then sees
-the write as a conversation between the two panes, and `talk` prints
-that record; see [talk](talk.md).
+`send`, `key`, `answer` and `mail` name the pane they come from: by
+default the pane the command runs in (`$TMUX_PANE`, on the host the
+agent directory here is paired as; `--agent-dir` points elsewhere), or
+`--from HOST/%ID` or `$MUXWAY_FROM`; `--from none` sends as nobody. The
+owner then sees the write or the mail as a conversation between the two
+panes, and `talk` prints that record; see [talk](talk.md) and
+[mail](mail.md). Mail an agent, type into a shell.
 
 ## `muxway mcp`
 
-The same eight operations as [MCP](https://modelcontextprotocol.io) tools
+The same operations, eleven tools, as [MCP](https://modelcontextprotocol.io) tools
 over stdio, for an AI agent's MCP configuration:
 
 ```sh
@@ -76,6 +87,9 @@ claude mcp add muxway -- muxway mcp            # Claude Code
 | `answer` | answer a question with one of its choices (`address`, `choice`) |
 | `wait` | block until a pane, or any pane, needs its owner (`address`, `timeout_seconds`, at most 3600) |
 | `talk` | what panes said to panes lately: who, to whom, the kind and the text |
+| `mail` | leave a message for a pane's process, never typed (`address`, `text`) |
+| `mailbox` | the mail a pane holds, read and unread (`address`) |
+| `my_mail` | the unread mail for the pane this server runs in, then marked read; `timeout_seconds` waits for one |
 
 Newline-delimited JSON-RPC 2.0, protocol `2025-06-18`, `initialize`,
 `tools/list`, `tools/call` and `ping`; a refusal by the hub is a tool
@@ -114,8 +128,9 @@ mkdir -p .claude/skills/muxway && muxway skill > .claude/skills/muxway/SKILL.md
 ```
 
 prints the short guide an agent in a pane reads: how to notify its owner,
-how to ask a question with fixed answers (`muxway ask`), how to reach
-other panes with `muxway client` or the MCP tools, and that what it
+how to ask a question with fixed answers (`muxway ask`), how to read and
+answer its mail, how to reach other panes with `muxway client` or the
+MCP tools (mail an agent, type into a shell), and that what it mails or
 types there is shown to its owner as talk between the panes. The source is
 [`internal/skill/SKILL.md`](../../internal/skill/SKILL.md).
 

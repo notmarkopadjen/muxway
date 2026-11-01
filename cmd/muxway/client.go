@@ -26,11 +26,13 @@ read      ADDRESS [--lines N]                 the last lines of a pane
 send      ADDRESS TEXT [--enter]              type into a pane
 key       ADDRESS KEY [--count N]             press a key: Enter, C-c, M-x, F5...
 answer    ADDRESS CHOICE                      answer a question with one of its choices
+mail      ADDRESS TEXT                        leave a message for the pane's process; nothing is typed
+mailbox   ADDRESS [--json]                    the mail a pane holds, read and unread
 wait      [ADDRESS] [--timeout D] [--json]    until a pane (or any) needs its owner; exit 2 on timeout
 events    [--follow] [--json]                 the recent events, or a feed
 talk      [--follow] [--json]                 what panes said to panes lately, or a feed
 
-send, key and answer name the pane they come from (--from HOST/%ID): by
+send, key, answer and mail name the pane they come from (--from HOST/%ID): by
 default the pane this runs in, $TMUX_PANE on the host the agent directory
 names (--agent-dir), or $MUXWAY_FROM; --from none sends as nobody.
 MUXWAY_HUB, MUXWAY_TOKEN and MUXWAY_CA override what connect kept.
@@ -243,6 +245,45 @@ func runClient(args []string) error {
 			return err
 		}
 		return c.Answer(ctx, pos[0], pos[1])
+	case "mail":
+		from, agentDir := originFlags(fs)
+		if err := fs.Parse(flagsOnly); err != nil {
+			return err
+		}
+		if len(pos) != 2 {
+			return errors.New("mail ADDRESS TEXT")
+		}
+		c, err := writerFor(*dir, *from, *agentDir)
+		if err != nil {
+			return err
+		}
+		id, err := c.Mail(ctx, pos[0], pos[1])
+		if err != nil {
+			return err
+		}
+		fmt.Printf("mail %d\n", id)
+		return nil
+	case "mailbox":
+		if err := fs.Parse(flagsOnly); err != nil {
+			return err
+		}
+		if len(pos) != 1 {
+			return errors.New("mailbox ADDRESS")
+		}
+		c, err := clientFor(*dir)
+		if err != nil {
+			return err
+		}
+		accept := "text/plain"
+		if *asJSON {
+			accept = "application/json"
+		}
+		raw, err := c.Do(ctx, "GET", "/v1/panes/"+pos[0]+"/mail", accept, nil)
+		if err != nil {
+			return err
+		}
+		os.Stdout.Write(raw)
+		return nil
 	case "wait":
 		timeout := fs.Duration("timeout", 10*time.Minute, "how long to wait at most")
 		if err := fs.Parse(flagsOnly); err != nil {
@@ -352,7 +393,12 @@ func printTalk(entries []client.Talk, asJSON bool) error {
 			continue
 		}
 		text := strings.NewReplacer("\t", " ", "\n", " ").Replace(e.Text)
-		fmt.Printf("%d\t%d\t%s\t%s\t%s\t%s\n", e.Seq, e.At, e.From.Address, e.To.Address, e.Kind, text)
+		// The hub's own row: an empty origin for a mail from a client.
+		from := ""
+		if e.From != nil {
+			from = e.From.Address
+		}
+		fmt.Printf("%d\t%d\t%s\t%s\t%s\t%s\n", e.Seq, e.At, from, e.To.Address, e.Kind, text)
 	}
 	return nil
 }
@@ -399,7 +445,7 @@ func runMCP(args []string) error {
 	}
 	ctx, stop := signals()
 	defer stop()
-	return (&mcp.Server{Client: c, Name: "muxway"}).Serve(ctx, os.Stdin, os.Stdout)
+	return (&mcp.Server{Client: c, Name: "muxway", AgentDir: *agentDir, Pane: os.Getenv("TMUX_PANE")}).Serve(ctx, os.Stdin, os.Stdout)
 }
 
 // runSkill prints the guide an agent in a pane reads.

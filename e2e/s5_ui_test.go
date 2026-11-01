@@ -195,15 +195,19 @@ func TestUI_Keyboard(t *testing.T) {
 
 // The inbox, questions with answers and the lens for another harness get
 // their own environment: the watcher works on the panes here, and a
-// question in flight must not meet another spec's typing. Specs 109 and
-// 110 (talk between panes) run here with MX_AGENTS set.
+// question in flight must not meet another spec's typing. Specs 109,
+// 110 (talk between panes) and 111 (mail) run here with MX_AGENTS set.
 func TestUI_Agents(t *testing.T) {
 	npx, webDir := uiTools(t)
 	if g := os.Getenv("MX_GREP"); g != "" {
-		if ok, _ := regexp.MatchString(g, "109-"); !ok {
-			if ok, _ := regexp.MatchString(g, "110-"); !ok {
-				t.Skip("MX_GREP leaves specs 109 and 110 out")
+		in := false
+		for _, spec := range []string{"109-", "110-", "111-"} {
+			if ok, _ := regexp.MatchString(g, spec); ok {
+				in = true
 			}
+		}
+		if !in {
+			t.Skip("MX_GREP leaves specs 109, 110 and 111 out")
 		}
 	}
 	e := newEnv(t)
@@ -216,7 +220,7 @@ func TestUI_Agents(t *testing.T) {
 	e.expose(ts, "work:0.2")
 	full := e.token("browser", []string{"*"}, []string{"*"})
 	control := e.startControl(t, ts, a)
-	runPlaywright(t, e, npx, webDir, "109-|110-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_AGENTS=1")
+	runPlaywright(t, e, npx, webDir, "109-|110-|111-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_AGENTS=1")
 }
 
 func uiTools(t *testing.T) (npx, webDir string) {
@@ -410,6 +414,11 @@ func (e *env) startControl(t *testing.T, ts *tmuxServer, a *agentProc) string {
 			_, err := ts.run("select-pane", "-t", q.Get("target"), "-T", q.Get("name"))
 			text(w, fmt.Sprint(err))
 		}
+	})
+	// The process in a pane reads its mail, as muxway mail prints it.
+	mux.HandleFunc("/mail", func(w http.ResponseWriter, r *http.Request) {
+		out, _, _ := e.readMail(a, r.URL.Query().Get("pane"))
+		text(w, out)
 	})
 	mux.HandleFunc("/notify", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()

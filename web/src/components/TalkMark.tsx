@@ -17,6 +17,20 @@ export function ChainMark({ fresh = false }: { fresh?: boolean }) {
   );
 }
 
+// Mail waiting for a pane's process: the envelope and the count, in the
+// talk hue, on a tab, a row or a header.
+export function MailMark({ unread }: { unread: number }) {
+  return (
+    <span
+      className="mx-mail-count"
+      data-testid="mail-mark"
+      title={`${unread} unread mail for the process in this pane`}
+    >
+      ✉ {unread}
+    </span>
+  );
+}
+
 // A partner said something in the last few seconds: the mark pulses.
 export const FRESH_MS = 3_000;
 

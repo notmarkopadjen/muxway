@@ -45,6 +45,7 @@ type Hub struct {
 	log      *slog.Logger
 	limits   *limiter
 	events   *eventLog
+	mails    *mailIDs
 	talk     *talkLog
 	sessions *sessions
 	logs     *logRingBuf
@@ -84,7 +85,7 @@ func New(cfg Config, log *slog.Logger) (*Hub, error) {
 	}
 	logs := newLogRing()
 	log = slog.New(&ringHandler{next: log.Handler(), ring: logs})
-	return &Hub{cfg: cfg, key: key, store: store, log: log, limits: newLimiter(), events: newEventLog(), talk: newTalkLog(),
+	return &Hub{cfg: cfg, key: key, store: store, log: log, limits: newLimiter(), events: newEventLog(), talk: newTalkLog(), mails: newMailIDs(),
 		sessions: newSessions(cfg.SessionTTL), logs: logs, agents: map[string]*agentConn{}, codes: map[string]*pairCode{}}, nil
 }
 
@@ -171,6 +172,7 @@ type agentConn struct {
 	preview bool // the agent serves files under its roots
 	repeat  bool // the agent takes a count with a key
 	ask     bool // the agent takes answers to questions
+	mailbox bool // the agent holds mail for its panes
 	evts    bucket
 	warned  time.Time
 }
@@ -230,7 +232,7 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 	}
 	sanePanes(r.Panes)
 	a.mu.Lock()
-	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys, a.ask = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys, r.Ask
+	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys, a.ask, a.mailbox = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys, r.Ask, r.Mailbox
 	a.mu.Unlock()
 	return r.Panes, nil
 }
@@ -338,6 +340,12 @@ func (h *Hub) readLoop(ctx context.Context, a *agentConn) error {
 		}
 		if n.Event != nil && n.ID == 0 {
 			h.acceptEvent(a, *n.Event)
+			continue
+		}
+		// A reply needs the origin's agent, which may be this one: not
+		// on this loop.
+		if n.Reply != nil && n.ID == 0 {
+			go h.acceptReply(a, *n.Reply)
 			continue
 		}
 		a.mu.Lock()

@@ -248,7 +248,33 @@ func (c *Client) Answer(ctx context.Context, address, choice string) error {
 	return err
 }
 
-// Talk is one entry of the hub's talk feed: a write from one pane to another.
+// Mail leaves a message for a pane's process, never typed, from the
+// client's pane when it has one; it returns the mail's id.
+func (c *Client) Mail(ctx context.Context, address, text string) (uint64, error) {
+	body := map[string]any{"text": text}
+	if c.From != nil {
+		body["from"] = c.From
+	}
+	raw, err := c.Do(ctx, http.MethodPost, "/v1/panes/"+address+"/mail", "", body)
+	if err != nil {
+		return 0, err
+	}
+	var v struct {
+		Mail struct {
+			ID uint64 `json:"id"`
+		} `json:"mail"`
+	}
+	json.Unmarshal(raw, &v)
+	return v.Mail.ID, nil
+}
+
+// Mailbox lists a pane's mail in text mode, read and unread.
+func (c *Client) Mailbox(ctx context.Context, address string) (string, error) {
+	return c.Text(ctx, "/v1/panes/"+address+"/mail")
+}
+
+// Talk is one entry of the hub's talk feed: a write or a mail from one
+// pane to another. From is nil for a mail from a client that is not a pane.
 type Talk struct {
 	Seq   uint64 `json:"seq"`
 	At    int64  `json:"at"`
@@ -256,11 +282,21 @@ type Talk struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"actor"`
-	From  TalkEnd `json:"from"`
-	To    TalkEnd `json:"to"`
-	Kind  string  `json:"kind"`
-	Bytes int     `json:"bytes,omitempty"`
-	Text  string  `json:"text"`
+	From    *TalkEnd `json:"from"`
+	To      TalkEnd  `json:"to"`
+	Kind    string   `json:"kind"`
+	Bytes   int      `json:"bytes,omitempty"`
+	Text    string   `json:"text"`
+	ID      uint64   `json:"id,omitempty"`
+	ReplyTo uint64   `json:"reply_to,omitempty"`
+}
+
+// FromAddress is the origin's address, or "client" for a mail from none.
+func (t Talk) FromAddress() string {
+	if t.From == nil {
+		return "client"
+	}
+	return t.From.Address
 }
 
 // TalkEnd is one side of a talk entry.

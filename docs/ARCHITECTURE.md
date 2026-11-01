@@ -68,8 +68,12 @@ flowchart LR
   the command line, `muxway mcp` the same as MCP tools, `muxway skill`
   the guide an agent reads; see [features/driving.md](features/driving.md).
   A write from a pane names its origin; the hub keeps those as talk
-  entries, in memory like the events, and marks the two panes for every
-  client; see [features/talk.md](features/talk.md).
+  entries, in memory like the events, and marks the panes as a group for
+  every client; see [features/talk.md](features/talk.md). A message for
+  an agent is mail: held by the host agent in a mailbox per pane, beside
+  the questions waiting for answers, read over the agent's socket or
+  handed over by the harness's hooks, never typed; see
+  [features/mail.md](features/mail.md).
 
 One binary, `muxway`, plays every role.
 

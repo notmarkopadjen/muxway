@@ -1993,9 +1993,9 @@ button.mx-window:focus-visible {
   margin: var(--mx-gap) 0 0;
 }
 
-/* talk: two panes chained, in the talk hue (the second exception to one
-   hue per theme, with code: a relation between two panes, drawn across
-   their divider) */
+/* talk: panes that talk to each other, in the talk hue (the second
+   exception to one hue per theme, with code: a relation between panes,
+   drawn as one frame around them, like a browser's tab group) */
 .mx-mark-talk {
   color: var(--mx-talk);
   filter: drop-shadow(0 0 3px var(--mx-talk));
@@ -2003,27 +2003,55 @@ button.mx-window:focus-visible {
 .mx-tile-head .mx-talk-link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
   padding: 0 6px;
   color: var(--mx-talk);
-  font-family: var(--mx-mono);
-  text-shadow: 0 0 6px var(--mx-talk);
-  min-width: 0;
-  flex-shrink: 6;
-}
-.mx-tile-head .mx-talk-link[data-fresh] {
-  border-color: var(--mx-talk);
-}
-.mx-tile-head .mx-talk-with {
-  max-width: 10em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .mx-painted[data-state='waiting'] .mx-talk-link,
 .mx-painted[data-state='working'] .mx-talk-link {
   color: var(--mx-bg);
+}
+/* mail waiting for a pane's process: the envelope and the count */
+.mx-mail-count {
+  flex: none;
+  margin-left: 0.4em;
+  color: var(--mx-talk);
+  font-family: var(--mx-mono);
+  white-space: nowrap;
+  text-shadow: 0 0 6px var(--mx-talk);
+}
+.mx-painted[data-state='waiting'] .mx-mail-count,
+.mx-painted[data-state='working'] .mx-mail-count {
+  color: var(--mx-bg);
   text-shadow: none;
+}
+/* the frame on the strip: one around the run of a group's tabs, a step
+   stronger than the divider, with air between two groups */
+.mx-tab-group {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  padding: 2px 3px;
+  border: 2px solid var(--mx-talk);
+  box-shadow:
+    0 0 6px var(--mx-talk),
+    inset 0 0 6px color-mix(in srgb, var(--mx-talk) 25%, transparent);
+}
+.mx-tab-group + .mx-tab-group {
+  margin-left: 2em;
+}
+/* the frame on a tile of a group */
+.mx-tile[data-group] {
+  border-color: var(--mx-talk);
+  box-shadow: inset 0 0 0 1px var(--mx-talk);
+}
+.mx-tile[data-group][data-focused] {
+  box-shadow:
+    inset 0 0 0 1px var(--mx-talk),
+    0 0 8px var(--mx-talk);
+}
+/* a row of a group on the list: the frame's edge */
+.mx-pane-row[data-group] {
+  box-shadow: inset 3px 0 0 var(--mx-talk);
 }
 .mx-divider-talk::before {
   content: '';
@@ -2057,10 +2085,20 @@ button.mx-window:focus-visible {
   width: 14px;
   height: 14px;
 }
+/* the messages window: rows, a reply indented, a live row with the hue's edge */
 .mx-talk-list li {
   grid-template-columns: 1.6em auto 1fr auto;
   align-items: center;
   gap: var(--mx-gap);
+}
+.mx-talk-list li[data-live] {
+  box-shadow: inset 3px 0 0 var(--mx-talk);
+}
+.mx-talk-list li[data-reply] {
+  padding-left: 2em;
+}
+.mx-talk-list .mx-mail-glyph {
+  text-shadow: 0 0 6px var(--mx-talk);
 }
 .mx-talk-list .mx-talk-who {
   white-space: nowrap;
@@ -2072,6 +2110,31 @@ button.mx-window:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.mx-talk-line {
+  display: flex;
+  align-items: center;
+  gap: var(--mx-gap);
+  margin-top: var(--mx-gap);
+  padding-top: var(--mx-gap);
+  border-top: 1px solid var(--mx-ink-faint);
+}
+.mx-talk-line label {
+  white-space: nowrap;
+  color: var(--mx-talk);
+}
+.mx-talk-line input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 2px 6px;
+  color: var(--mx-ink);
+  background: var(--mx-bg);
+  border: 1px solid var(--mx-ink-faint);
+}
+.mx-talk-line input:focus {
+  outline: none;
+  border-color: var(--mx-talk);
 }
 .mx-toast[data-kind='talk'] .mx-kind {
   color: var(--mx-talk);

@@ -38,10 +38,17 @@ type talkEntry struct {
 	From      tmux.Pane
 	ToHost    string
 	To        tmux.Pane
-	Kind      string // text, key or answer
+	Kind      string // text, key, answer or mail
 	Bytes     int
 	Text      string
+	// MailID and ReplyTo, with a mail: the id the hub gave it, and the
+	// mail it answers. A mail from a client that is not a pane has no From.
+	MailID  uint64
+	ReplyTo uint64
 }
+
+// hasFrom says the entry came from a pane.
+func (e talkEntry) hasFrom() bool { return e.FromHost != "" }
 
 type talkLog struct {
 	mu   sync.Mutex
@@ -156,10 +163,25 @@ func (h *Hub) origin(ctx context.Context, t Principal, o *origin) (tmux.Pane, in
 // said records a write that came from a pane. The feed keeps the text,
 // the log only its size.
 func (h *Hub) said(t Principal, o *origin, from tmux.Pane, toHost string, to tmux.Pane, kind, text string, size int) {
-	e := h.talk.add(talkEntry{Actor: t.ID, ActorName: t.Name, FromHost: o.Host, From: from,
+	h.record(talkEntry{Actor: t.ID, ActorName: t.Name, FromHost: o.Host, From: from,
 		ToHost: toHost, To: to, Kind: kind, Bytes: size, Text: kept(text)})
-	h.log.Info("talk", "seq", e.Seq, "from", o.Host+"/"+from.PaneID, "to", toHost+"/"+to.PaneID,
-		"token", t.ID, "kind", kind, "bytes", size)
+}
+
+// record adds an entry to the feed and logs it without its text.
+func (h *Hub) record(e talkEntry) {
+	e = h.talk.add(e)
+	from := "client"
+	if e.hasFrom() {
+		from = e.FromHost + "/" + e.From.PaneID
+	}
+	attrs := []any{"seq", e.Seq, "from", from, "to", e.ToHost + "/" + e.To.PaneID, "token", e.Actor, "kind", e.Kind, "bytes", e.Bytes}
+	if e.MailID != 0 {
+		attrs = append(attrs, "mail", e.MailID)
+	}
+	if e.ReplyTo != 0 {
+		attrs = append(attrs, "reply_to", e.ReplyTo)
+	}
+	h.log.Info("talk", attrs...)
 }
 
 // TalkPartner is a pane another pane talked with lately, on the listing.
@@ -197,6 +219,9 @@ func (h *Hub) withTalk(ctx context.Context, t Principal, views []PaneView) {
 		v := &views[i]
 		partners := map[string]*TalkPartner{}
 		for _, e := range entries {
+			if !e.hasFrom() {
+				continue
+			}
 			var host, id, way string
 			switch {
 			case e.FromHost == v.Host && e.From.PaneID == v.PaneID:
@@ -245,14 +270,17 @@ type TalkEnd struct {
 
 // TalkView is one entry of the feed.
 type TalkView struct {
-	Seq   uint64  `json:"seq"`
-	At    int64   `json:"at"`
-	Actor actorID `json:"actor"`
-	From  TalkEnd `json:"from"`
-	To    TalkEnd `json:"to"`
-	Kind  string  `json:"kind"`
-	Bytes int     `json:"bytes,omitempty"`
-	Text  string  `json:"text"`
+	Seq   uint64   `json:"seq"`
+	At    int64    `json:"at"`
+	Actor actorID  `json:"actor"`
+	From  *TalkEnd `json:"from"`
+	To    TalkEnd  `json:"to"`
+	Kind  string   `json:"kind"`
+	Bytes int      `json:"bytes,omitempty"`
+	Text  string   `json:"text"`
+	// ID of a mail, and the mail a reply answers.
+	ID      uint64 `json:"id,omitempty"`
+	ReplyTo uint64 `json:"reply_to,omitempty"`
 }
 
 type actorID struct {
@@ -280,7 +308,7 @@ func (h *Hub) handleTalk(w http.ResponseWriter, r *http.Request, t Principal) {
 		return
 	}
 	visible := func(e talkEntry) bool {
-		return t.canSeeHost(e.FromHost) && t.canRead(e.FromHost, e.From) &&
+		return (!e.hasFrom() || (t.canSeeHost(e.FromHost) && t.canRead(e.FromHost, e.From))) &&
 			t.canSeeHost(e.ToHost) && t.canRead(e.ToHost, e.To)
 	}
 	deadline := time.Now().Add(time.Duration(wait) * time.Second)
@@ -293,14 +321,23 @@ func (h *Hub) handleTalk(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	out := []TalkView{}
 	for _, e := range entries {
-		out = append(out, TalkView{Seq: e.Seq, At: e.At, Actor: actorID{e.Actor, e.ActorName},
-			From: end(e.FromHost, e.From), To: end(e.ToHost, e.To), Kind: e.Kind, Bytes: e.Bytes, Text: e.Text})
+		v := TalkView{Seq: e.Seq, At: e.At, Actor: actorID{e.Actor, e.ActorName},
+			To: end(e.ToHost, e.To), Kind: e.Kind, Bytes: e.Bytes, Text: e.Text, ID: e.MailID, ReplyTo: e.ReplyTo}
+		if e.hasFrom() {
+			f := end(e.FromHost, e.From)
+			v.From = &f
+		}
+		out = append(out, v)
 	}
 	if wantsText(r) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		for _, v := range out {
 			text := strings.NewReplacer("\t", " ", "\n", " ").Replace(v.Text)
-			fmt.Fprintf(w, "%d\t%d\t%s\t%s\t%s\t%s\n", v.Seq, v.At, v.From.Address, v.To.Address, v.Kind, text)
+			from := ""
+			if v.From != nil {
+				from = v.From.Address
+			}
+			fmt.Fprintf(w, "%d\t%d\t%s\t%s\t%s\t%s\n", v.Seq, v.At, from, v.To.Address, v.Kind, text)
 		}
 		fmt.Fprintf(w, "next\t%d\n", next)
 		return

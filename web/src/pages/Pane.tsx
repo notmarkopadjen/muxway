@@ -15,11 +15,11 @@ import {
   useInput,
   usePane,
   usePaneCached,
-  useTalk,
 } from '../api/queries';
 import { joinAddress, splitAddress } from '../hubs';
 import type { Mouse, Pane, PaneContent, TalkPartner } from '../api/types';
-import { ChainMark, fresh } from '../components/TalkMark';
+import { ChainMark, MailMark } from '../components/TalkMark';
+import { groupsOf } from '../term/groups';
 import { nameOf } from '../components/Talk';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
@@ -184,9 +184,11 @@ interface TileProps {
   // the tile across the whole view, its width or its height.
   edges?: Edges;
   onSpread?: (axis: 'w' | 'h') => void;
-  // Talk: the name of a pane this one talked with, and laying it beside.
+  // Talk: the name of a pane this one talked with, laying it beside, and
+  // whether the tile is in a group (framed).
   partnerName: (p: TalkPartner) => string;
   onBeside: (p: TalkPartner) => void;
+  grouped?: boolean;
 }
 
 // The leaves of a tile tree: the tiles' indexes under it.
@@ -332,6 +334,7 @@ function Tile(props: TileProps) {
       data-drop={over ?? undefined}
       data-testid="tile"
       data-pane={address}
+      data-group={props.grouped ? '' : undefined}
       data-several={several ? '' : undefined}
       data-focused={focused ? '' : undefined}
       data-fit={writable ? (fit ? '1' : '0') : undefined}
@@ -390,19 +393,16 @@ function Tile(props: TileProps) {
                 type="button"
                 className="mx-talk-link"
                 data-testid="talk-link"
-                data-fresh={fresh(p.talk) ? '' : undefined}
                 title={`talks with ${p.talk.map(props.partnerName).join(', ')}: lay it beside (L)`}
                 onClick={(e) => {
                   e.stopPropagation();
                   props.onBeside(p.talk![0]);
                 }}
               >
-                <ChainMark fresh={fresh(p.talk)} />
-                <span className="mx-talk-with">
-                  {p.talk.length > 1 ? p.talk.length : props.partnerName(p.talk[0])}
-                </span>
+                <ChainMark />
               </button>
             )}
+            {p.mail && <MailMark unread={p.mail.unread} />}
             {held && (
               <span
                 className="mx-warn"
@@ -833,29 +833,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
     const pa = (all.data ?? []).find((p) => p.address === addresses[x]);
     return !!pa?.talk?.some((tp) => withHub(addresses[x], tp.address) === addresses[y]);
   };
-  // A new entry that touches an open tile shows as a toast.
-  const talk = useTalk(true);
-  const seenTalk = useRef<Set<string> | null>(null);
-  useEffect(() => {
-    const list = talk.data;
-    if (!list) return;
-    const key = (e: { hub?: string; seq: number }) => `${e.hub ?? ''}:${e.seq}`;
-    if (!seenTalk.current) {
-      seenTalk.current = new Set(list.map(key));
-      return;
-    }
-    for (const e of list) {
-      const k = key(e);
-      if (seenTalk.current.has(k)) continue;
-      seenTalk.current.add(k);
-      if (!addresses.includes(e.from.address) && !addresses.includes(e.to.address)) continue;
-      toast.push({
-        kind: 'talk',
-        title: `${nameOf(all.data, e.from.address, e.from.pane_id)} → ${nameOf(all.data, e.to.address, e.to.pane_id)}`,
-        text: e.kind === 'text' ? e.text : `${e.kind}: ${e.text}`,
-      });
-    }
-  }, [talk.data]);
+  // Which tiles are in a group, for their frame.
+  const groups = useMemo(() => groupsOf(all.data ?? []), [all.data]);
 
   // A new count resets the arrangement to one that fits it, unless zooming
   // out or closing a tile brings back the tiles as they were.
@@ -1397,6 +1376,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onSpread={rearrangeable ? (axis) => spread(i, axis) : undefined}
         partnerName={(tp) => nameOf(all.data, withHub(a, tp.address), tp.pane_id)}
         onBeside={(tp) => beside(a, withHub(a, tp.address))}
+        grouped={groups.has(a)}
       />
     );
   };

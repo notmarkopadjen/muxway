@@ -408,7 +408,7 @@ func TestClientAndMCPSpeakFromTheirPane(t *testing.T) {
 	send(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}`)
 	io.WriteString(stdin, `{"jsonrpc":"2.0","method":"notifications/initialized"}`+"\n")
 	list := send(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)
-	if r, _ := list["result"].(map[string]any); r == nil || len(r["tools"].([]any)) != 8 {
+	if r, _ := list["result"].(map[string]any); r == nil || len(r["tools"].([]any)) != 11 {
 		t.Fatalf("tools/list: %v", list)
 	}
 	if sent := send(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"send_text","arguments":{"address":"` + shell0 + `","text":"echo via-mcp-talk"}}}`); text(sent) != "sent" {

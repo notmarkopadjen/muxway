@@ -243,6 +243,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		Preview  bool   `json:"preview,omitempty"`
 		Repeat   bool   `json:"repeat,omitempty"`
 		Ask      bool   `json:"ask,omitempty"`
+		Mail     bool   `json:"mail,omitempty"`
 	}
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
@@ -253,6 +254,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 			v.Preview = a.previews(r.Context())
 			v.Repeat = a.repeats(r.Context())
 			v.Ask = a.asks(r.Context())
+			v.Mail = a.mails(r.Context())
 		}
 		out = append(out, v)
 	}
@@ -517,6 +519,8 @@ func statusFor(code string) (int, string) {
 		return http.StatusNotFound, "not_found"
 	case wire.ErrNoQuestion:
 		return http.StatusConflict, "no_question"
+	case wire.ErrMailboxFull:
+		return http.StatusConflict, "mailbox_full"
 	}
 	return http.StatusBadGateway, "host_error"
 }
@@ -537,6 +541,10 @@ func (h *Hub) handlePost(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	if strings.HasSuffix(r.PathValue("path"), "/answer") {
 		h.handleAnswer(w, r, t)
+		return
+	}
+	if strings.HasSuffix(r.PathValue("path"), "/mail") {
+		h.handleMail(w, r, t)
 		return
 	}
 	h.handleInput(w, r, t)
@@ -583,6 +591,10 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	if path, ok := strings.CutSuffix(r.PathValue("path"), "/git"); ok {
 		h.handleChanges(w, r, t, path)
+		return
+	}
+	if path, ok := strings.CutSuffix(r.PathValue("path"), "/mail"); ok {
+		h.handleMailbox(w, r, t, path)
 		return
 	}
 	if i := strings.LastIndex(r.PathValue("path"), "/files/"); i >= 0 {

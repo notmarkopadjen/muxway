@@ -667,7 +667,13 @@ button:disabled {
   margin-right: 4px;
 }
 
-/* how many times panes talked lately, beside the inbox's count; opens the talk window */
+/* the messages the owner has not looked at, beside the inbox's count; opens the messages window */
+.mx-talk-count[data-unseen] {
+  text-shadow: 0 0 8px var(--mx-talk);
+}
+.mx-talk-count:not([data-unseen]) {
+  opacity: 0.7;
+}
 .mx-talk-count {
   flex: none;
   display: inline-flex;
@@ -680,5 +686,4 @@ button:disabled {
   background: transparent;
   font: inherit;
   cursor: pointer;
-  text-shadow: 0 0 8px var(--mx-talk);
 }

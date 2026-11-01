@@ -66,7 +66,7 @@ keystroke in its pane. Claude Code is the harness tested daily.</td>
 <tr>
 <td valign="top"><img src="docs/images/icons/keys.png" width="54" alt=""></td>
 <td><strong>Agents drive it too.</strong> <code>muxway client</code> is the API from
-the command line (panes, inbox, read, send, answer, wait, talk), <code>muxway
+the command line (panes, inbox, read, send, answer, mail, wait, talk), <code>muxway
 mcp</code> serves the same as MCP tools, and <code>muxway skill</code>
 prints the guide an agent in a pane reads, so an agent on one machine
 can watch, wait on and type into a pane on another, with a token that
@@ -183,15 +183,19 @@ muxway skill > .claude/skills/muxway/SKILL.md                          # the gui
 ```
 
 And with a token of its own, narrow as you like, an agent drives muxway
-back: `muxway client panes | inbox | read | send | key | answer | wait |
-events | talk`, or the same eight operations as MCP tools with `muxway
+back: `muxway client panes | inbox | read | send | key | answer | mail |
+mailbox | wait | events | talk`, or the same as MCP tools with `muxway
 mcp`, so an agent on one machine can watch, wait on and type into a pane
-on another. A write from a pane names the pane it came from, and you
-see it as talk: the two panes chained on every client, the exchange in
-the talk window. See [notifications](docs/features/notifications.md),
+on another. A message for another agent is mail, held for that pane's
+process and never typed: it reads it with `muxway mail`, or its Stop
+hook hands it over when a turn ends, and it replies to the pane it came
+from. A write or a mail from a pane names the pane it came from, and
+you see it as talk: the panes framed as one group on every client, the
+exchange in the messages window. See
+[notifications](docs/features/notifications.md),
 [the inbox](docs/features/inbox.md),
-[driving muxway](docs/features/driving.md) and
-[talk](docs/features/talk.md).
+[driving muxway](docs/features/driving.md),
+[talk](docs/features/talk.md) and [mail](docs/features/mail.md).
 
 ## The web client
 

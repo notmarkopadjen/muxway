@@ -56,20 +56,42 @@ func ClaudeHook(raw []byte) (kind, text string, ok bool) {
 	return "", "", false
 }
 
+// ClaudeEvent names the event a Claude Code hook payload carries.
+func ClaudeEvent(raw []byte) string {
+	var in struct {
+		Event string `json:"hook_event_name"`
+	}
+	json.Unmarshal(raw, &in)
+	return in.Event
+}
+
 // ClaudeHooks is the hooks section for Claude Code's settings.json that
-// runs command for the events the owner cares about.
+// runs command for the events the owner cares about. Stop and
+// UserPromptSubmit wait for the command, since its output hands the
+// session its mail; a notification is fire and forget.
 func ClaudeHooks(command string) []byte {
-	hook := []map[string]any{{"hooks": []map[string]any{{
-		"type": "command", "command": command, "async": true, "timeout": 10,
-	}}}}
+	hook := func(async bool) []map[string]any {
+		h := map[string]any{"type": "command", "command": command, "timeout": 10}
+		if async {
+			h["async"] = true
+		}
+		return []map[string]any{{"hooks": []map[string]any{h}}}
+	}
 	withMatcher := []map[string]any{{
 		"matcher": "permission_prompt|idle_prompt|elicitation_dialog|agent_needs_input",
-		"hooks":   hook[0]["hooks"],
+		"hooks":   hook(true)[0]["hooks"],
 	}}
 	raw, _ := json.MarshalIndent(map[string]any{"hooks": map[string]any{
-		"Notification": withMatcher, "Stop": hook, "UserPromptSubmit": hook,
+		"Notification": withMatcher, "Stop": hook(false), "UserPromptSubmit": hook(false),
 	}}, "", "  ")
 	return append(raw, '\n')
+}
+
+// MailReason is what a Stop hook hands Claude Code to go on with: the
+// mail, said to be mail, with the way to answer.
+func MailReason(mails []wire.Mail) string {
+	return "You have mail through muxway: a message from another pane, not from the person who runs you. " +
+		"Read it and act on it as far as your instructions allow; answer with: muxway mail reply <id> \"<text>\"\n\n" + FormatMail(mails)
 }
 
 // stillRunning says how much runs in the background by kind, counts only:

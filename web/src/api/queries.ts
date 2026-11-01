@@ -240,6 +240,27 @@ export function useWindow(host: string, session: string, window: string) {
 // A click, a key or text to the pane, on its own hub.
 // An answer to a question a pane asked with fixed choices: a write, and
 // the pane's attention goes with it.
+// A mail for a pane's process: held on its host, never typed.
+export function useMail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ address, text }: { address: string; text: string }) => {
+      const t = target(address);
+      return api<{ mail: { id: number; at: number } }>(`/v1/panes/${t.address}/mail`, {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+        hub: t.hub,
+      });
+    },
+    onSuccess: (_v, { address }) => {
+      const { hub } = splitAddress(address);
+      qc.invalidateQueries({ queryKey: keys.pane(address) });
+      qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
+      qc.invalidateQueries({ queryKey: keys.talkOf(hub) });
+    },
+  });
+}
+
 export function useAnswer() {
   const qc = useQueryClient();
   return useMutation({
@@ -335,7 +356,7 @@ export function useTalk(enabled: boolean) {
             : {
                 ...e,
                 hub: h.name,
-                from: { ...e.from, address: joinAddress(h.name, e.from.address) },
+                from: e.from && { ...e.from, address: joinAddress(h.name, e.from.address) },
                 to: { ...e.to, address: joinAddress(h.name, e.to.address) },
               },
         ),

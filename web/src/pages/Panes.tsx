@@ -15,7 +15,8 @@ import type { Host, Me, Pane } from '../api/types';
 import { Box } from '../components/Box';
 import { LensMark } from '../components/Lens';
 import { PaneTitle } from '../components/PaneTitle';
-import { ChainMark } from '../components/TalkMark';
+import { MailMark } from '../components/TalkMark';
+import { groupsOf, pullTogether } from '../term/groups';
 import { useToast } from '../components/Toast';
 import { label } from '../term/describe';
 import { mayWriteOn } from '../term/grants';
@@ -177,6 +178,8 @@ function HostTree({
   }, [sessions, filter]);
   const key = hostKey(hub, host.name);
   useEffect(() => register(key, panes), [key, panes, register]);
+  // Rows of a group are kept together, with the frame's edge.
+  const groups = useMemo(() => groupsOf(panes), [panes]);
 
   return (
     <Box
@@ -247,7 +250,7 @@ function HostTree({
                       </button>
                     )}
                   </div>
-                  {ps.map((p) => {
+                  {pullTogether(ps, groups).map((p) => {
                     const st = lens.status(p);
                     const isPicked = picked.includes(p.address);
                     return (
@@ -258,6 +261,7 @@ function HostTree({
                         data-testid="pane-row"
                         data-address={p.address}
                         data-state={st === 'quiet' ? undefined : st}
+                        data-group={groups.get(p.address)}
                       >
                         <button
                           type="button"
@@ -281,7 +285,7 @@ function HostTree({
                         <LensMark status={st} attention={p.attention} />
                         <span className="mx-meta">
                           <PaneTitle pane={p} />
-                          {p.talk?.length ? <ChainMark /> : null}
+                          {p.mail && <MailMark unread={p.mail.unread} />}
                         </span>
                         <span className="mx-addr">
                           {p.alias && <span className="mx-dim">@{p.alias} </span>}

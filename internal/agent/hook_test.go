@@ -51,10 +51,15 @@ func TestClaudeHooks(t *testing.T) {
 	}
 	for _, ev := range []string{"Notification", "Stop", "UserPromptSubmit"} {
 		h := v.Hooks[ev]
-		if len(h) != 1 || len(h[0].Hooks) != 1 || h[0].Hooks[0].Type != "command" || !h[0].Hooks[0].Async ||
+		// Only the notification runs in the background: the other two hand
+		// the session its mail through their output.
+		if len(h) != 1 || len(h[0].Hooks) != 1 || h[0].Hooks[0].Type != "command" || h[0].Hooks[0].Async != (ev == "Notification") ||
 			!strings.HasSuffix(h[0].Hooks[0].Command, "notify --from claude-code") {
 			t.Errorf("%s: %s", ev, raw)
 		}
+	}
+	if ClaudeEvent([]byte(`{"hook_event_name":"Stop"}`)) != "Stop" || ClaudeEvent([]byte(`x`)) != "" {
+		t.Error("event name")
 	}
 	if !strings.Contains(v.Hooks["Notification"][0].Matcher, "permission_prompt") || v.Hooks["Stop"][0].Matcher != "" {
 		t.Errorf("matchers: %s", raw)
