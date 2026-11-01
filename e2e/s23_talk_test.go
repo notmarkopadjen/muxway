@@ -13,6 +13,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -267,24 +269,37 @@ func TestSec101_TalkStaysUnderTheRateLimit(t *testing.T) {
 	e.expose(ts, "work:0.1", "--write")
 	id1 := paneIDOf(ts, "work:0.1")
 	full := e.token("full", []string{"*"}, []string{"*"})
-	ok, limited := 0, 0
+	// The writes go out at once: one after the other, a slow second would
+	// refill the bucket under them.
+	var ok, limited atomic.Int32
+	var wg sync.WaitGroup
+	odd := make(chan string, 60)
 	for i := 0; i < 60; i++ {
-		switch r := e.input(full, shell0, map[string]any{"text": fmt.Sprintf("echo burst%d", i), "from": from(host, id1)}); r.status {
-		case http.StatusNoContent:
-			ok++
-		case http.StatusTooManyRequests:
-			limited++
-		default:
-			t.Fatalf("write %d: %d %s", i, r.status, r.body)
-		}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			switch r := e.input(full, shell0, map[string]any{"text": fmt.Sprintf("echo burst%d", i), "from": from(host, id1)}); r.status {
+			case http.StatusNoContent:
+				ok.Add(1)
+			case http.StatusTooManyRequests:
+				limited.Add(1)
+			default:
+				odd <- fmt.Sprintf("write %d: %d %s", i, r.status, r.body)
+			}
+		}(i)
 	}
-	if limited == 0 {
+	wg.Wait()
+	close(odd)
+	for msg := range odd {
+		t.Fatal(msg)
+	}
+	if limited.Load() == 0 {
 		t.Fatal("60 writes in a burst were all taken")
 	}
 	// The feed is under the same limit: a moment, and it answers.
 	time.Sleep(1100 * time.Millisecond)
-	if got := e.talk(full, "?limit=100"); len(got.Talk) != ok {
-		t.Fatalf("%d writes taken, %d entries", ok, len(got.Talk))
+	if got := e.talk(full, "?limit=100"); len(got.Talk) != int(ok.Load()) {
+		t.Fatalf("%d writes taken, %d entries", ok.Load(), len(got.Talk))
 	}
 }
 
