@@ -19,6 +19,7 @@ import { shownName, splitAddress, useHubs } from '../hubs';
 import { Palette } from '../components/Palette';
 import { Inbox } from '../components/Inbox';
 import { loadSeen, markSeen, recent, Talk, unseen } from '../components/Talk';
+import { onUpdate, reloadWithUpdate, updateWaiting } from '../sw';
 import { useAnswer, useInbox, useTalk } from '../api/queries';
 import { HeaderSlot } from './HeaderSlot';
 import { Profile } from './Profile';
@@ -104,6 +105,9 @@ export function Shell() {
         : 'muxway',
   );
   useSettings();
+  // A new build of the client waits to take over: the status bar says so.
+  const [updateReady, setUpdateReady] = useState(updateWaiting);
+  useEffect(() => onUpdate(() => setUpdateReady(true)), []);
 
   // The pane an event is about, as some list already has it.
   const qc = useQueryClient();
@@ -307,6 +311,17 @@ export function Shell() {
           {online ? '● hub' : '○ hub unreachable, retrying'}
         </span>
         <span className="mx-spacer" />
+        {updateReady && (
+          <button
+            type="button"
+            className="mx-update"
+            data-testid="update"
+            title="a new build of muxway is ready"
+            onClick={reloadWithUpdate}
+          >
+            new version · reload
+          </button>
+        )}
         {heading.direct ? (
           <span data-testid="status-direct">
             <kbd>▮</kbd> direct: keys go to the pane · <kbd>Shift+Esc</kbd> leaves
