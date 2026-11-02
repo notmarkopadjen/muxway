@@ -12,14 +12,18 @@ import (
 // API, Vite's hashed assets with a long cache life, and a content security
 // policy that allows nothing but the client's own files, and an image the
 // client fetched itself and shows from a blob, a PDF the same way in a frame.
-// The page connects to its own hub, and to the peers the owner named.
+// The page connects to its own hub, and to the peers the owner named. The
+// service worker and the manifest, the client's own files too, are served
+// so the browser asks for them again at every open: a new build is a new
+// worker.
 func (h *Hub) webCSP() string {
 	connect := "'self'"
 	for _, p := range h.cfg.Peers {
 		connect += " " + p
 	}
 	return "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' blob:; " +
-		"frame-src blob:; connect-src " + connect + "; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+		"frame-src blob:; connect-src " + connect + "; worker-src 'self'; manifest-src 'self'; " +
+		"base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 }
 
 func (h *Hub) webHandler() http.Handler {
@@ -40,9 +44,15 @@ func (h *Hub) webHandler() http.Handler {
 		if name != "" && name != "index.html" {
 			if f, err := files.Open(name); err == nil {
 				f.Close()
-				if strings.HasPrefix(name, "assets/") {
+				switch {
+				case strings.HasPrefix(name, "assets/"):
 					w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-				} else {
+				case name == "sw.js" || name == "manifest.webmanifest":
+					w.Header().Set("Cache-Control", "no-cache")
+					if name == "sw.js" {
+						w.Header().Set("Service-Worker-Allowed", "/")
+					}
+				default:
 					w.Header().Set("Cache-Control", "public, max-age=3600")
 				}
 				static.ServeHTTP(w, r)

@@ -20,12 +20,23 @@ import { cellsFor, inner } from './measure';
 // if it were not there, so the host is not resized a row at a time.
 // The release must survive the page going away, hence keepalive. It can
 // land within the second of the resize it undoes, so a 429 is tried again.
-function release(address: string, tries = 3) {
+// A page the service worker controls hands the release to the worker
+// instead when it goes away: a keepalive request from a dying page is
+// lost under a worker, where the worker itself may outlive the page.
+function releaseRequest(address: string) {
   const t = target(address);
-  fetch(`${t.hub ?? ''}/v1/panes/${t.address}/resize`, {
+  return {
+    url: `${t.hub ?? ''}/v1/panes/${t.address}/resize`,
+    credentials: (t.hub ? 'include' : 'same-origin') as RequestCredentials,
+  };
+}
+
+function release(address: string, tries = 3) {
+  const { url, credentials } = releaseRequest(address);
+  fetch(url, {
     method: 'POST',
     keepalive: true,
-    credentials: t.hub ? 'include' : 'same-origin',
+    credentials,
     headers: { 'X-Muxway-Client': 'web', 'Content-Type': 'application/json' },
     body: JSON.stringify({ fit: 'auto' }),
   })
@@ -53,11 +64,17 @@ export interface FitOptions {
 
 // Panes fitted and not yet released, across tiles that came and went.
 const kept = new Set<string>();
-export function releaseKept() {
-  for (const a of kept) release(a);
+export function releaseKept(leaving = false) {
+  const worker =
+    leaving && typeof navigator !== 'undefined' ? navigator.serviceWorker?.controller : null;
+  if (worker) {
+    worker.postMessage({ type: 'mx-release', items: [...kept].map(releaseRequest) });
+  } else {
+    for (const a of kept) release(a);
+  }
   kept.clear();
 }
-if (typeof window !== 'undefined') window.addEventListener('pagehide', releaseKept);
+if (typeof window !== 'undefined') window.addEventListener('pagehide', () => releaseKept(true));
 
 // A window's area holds cells with their own padding and border, which
 // the cells per axis lose; one cell's worth is taken off.
