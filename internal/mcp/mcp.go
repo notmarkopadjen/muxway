@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/notmarkopadjen/muxway/internal/agent"
 	"github.com/notmarkopadjen/muxway/internal/client"
 )
 
@@ -91,12 +92,26 @@ var Tools = []Tool{
 		"address":         str("the pane's address; empty for any pane"),
 		"timeout_seconds": num("how long to wait at most, default 300, at most 3600"),
 	})},
+	{"talk", "What panes said to panes lately: every mail and every write that named the pane it came from, oldest first, with who sent it, where, the kind (mail, text, key, answer) and the text.", schema(map[string]any{})},
+	{"mail", "Leave a message for the process in a pane, such as another agent: it is held for that process and never typed into the pane. Use this to talk to another agent; send_text is for driving a shell.", schema(map[string]any{
+		"address": str("the pane's address"),
+		"text":    str("the message, up to 4000 characters"),
+	}, "address", "text")},
+	{"mailbox", "The mail a pane holds, read and unread, oldest first: id, when, from where, who sent it, when it was read, the text.", schema(map[string]any{
+		"address": str("the pane's address"),
+	}, "address")},
+	{"my_mail", "The unread mail left for the pane this server runs in, then marked read; with timeout_seconds, wait that long for one to arrive. Answer one with muxway mail reply <id> in your shell.", schema(map[string]any{
+		"timeout_seconds": num("how long to wait for mail, default 0 (what is there now), at most 3600"),
+	})},
 }
 
-// Server answers one client over in and out.
+// Server answers one client over in and out. AgentDir and Pane say
+// where this server runs, for the mail left for its own pane.
 type Server struct {
-	Client *client.Client
-	Name   string
+	Client   *client.Client
+	Name     string
+	AgentDir string
+	Pane     string
 }
 
 // Serve reads requests until in ends.
@@ -195,6 +210,56 @@ func (s *Server) call(ctx context.Context, name string, raw json.RawMessage) (st
 	switch name {
 	case "list_panes":
 		return s.Client.Text(ctx, "/v1/panes")
+	case "talk":
+		entries, _, err := s.Client.Talk(ctx, 0, 0, 100)
+		if err != nil {
+			return "", err
+		}
+		if len(entries) == 0 {
+			return "no pane talked to another lately", nil
+		}
+		var b strings.Builder
+		for _, e := range entries {
+			fmt.Fprintf(&b, "%d\t%s → %s\t%s\t%s\n", e.At, e.FromAddress(), e.To.Address, e.Kind, strings.NewReplacer("\t", " ", "\n", " ").Replace(e.Text))
+		}
+		return b.String(), nil
+	case "mail":
+		if a.Address == "" || a.Text == "" {
+			return "", errors.New("address and text are required")
+		}
+		id, err := s.Client.Mail(ctx, a.Address, a.Text)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("mailed, id %d", id), nil
+	case "mailbox":
+		if a.Address == "" {
+			return "", errors.New("address is required")
+		}
+		out, err := s.Client.Mailbox(ctx, a.Address)
+		if err != nil {
+			return "", err
+		}
+		if strings.TrimSpace(out) == "" {
+			return "no mail", nil
+		}
+		return out, nil
+	case "my_mail":
+		if s.Pane == "" {
+			return "", errors.New("not in a tmux pane: no mailbox of its own")
+		}
+		req := agent.NotifyRequest{Pane: s.Pane, Mail: "take", How: "pull"}
+		if a.Timeout > 0 {
+			req.Mail, req.Timeout = "wait", min(a.Timeout, 3600)
+		}
+		mails, err := agent.ExchangeMail(s.AgentDir, req)
+		if err != nil {
+			return "", err
+		}
+		if len(mails) == 0 {
+			return "no mail", nil
+		}
+		return agent.FormatMail(mails), nil
 	case "inbox":
 		panes, err := s.Client.Inbox(ctx)
 		if err != nil {
@@ -221,11 +286,11 @@ func (s *Server) call(ctx context.Context, name string, raw json.RawMessage) (st
 		if a.Address == "" || a.Text == "" {
 			return "", errors.New("address and text are required")
 		}
-		if err := s.Client.Input(ctx, a.Address, map[string]string{"text": a.Text}); err != nil {
+		if err := s.Client.Input(ctx, a.Address, map[string]any{"text": a.Text}); err != nil {
 			return "", err
 		}
 		if a.Enter {
-			if err := s.Client.Input(ctx, a.Address, map[string]string{"key": "Enter"}); err != nil {
+			if err := s.Client.Input(ctx, a.Address, map[string]any{"key": "Enter"}); err != nil {
 				return "", err
 			}
 		}
