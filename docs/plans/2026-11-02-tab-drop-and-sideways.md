@@ -152,11 +152,23 @@ tests.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan. Two things the plan did not foresee: the
+  add menu and the go-to list are grids, whose auto track took an
+  entry's full width, so the ellipsis inside the entries never engaged
+  until the track got a zero minimum; and the cell measured on the
+  screen's own markup gives one more column at 1200 px, so spec 103
+  expects 135 where it expected 134.
+- [x] Security rules (AGENTS.md section 2) hold: nothing new reaches the
+  hub, spec 113 checks that a drop sends nothing but the new tile's fit.
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read.
+- [x] Docs and diagrams updated.
 
 ## Test run
 
-Pending.
+Run 20261102-211802-3e80eae, recorded as
+[issue #215](https://github.com/notmarkopadjen/muxway/issues/215):
+208 tests passed, none failed, none skipped, at commit 3e80eae. The two
+full runs before it failed in the new spec 113 alone, both in the spec
+itself: tiles measured during the power-on transition a change of count
+plays, then the area measured before the read-only notice under the keys
+took its height. The first run also found spec 103's old column count.
