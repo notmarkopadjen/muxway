@@ -319,7 +319,8 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	h.withTalk(r.Context(), t, out)
 	if wantsText(r) {
-		// Command and title are what a program in the pane chose; the rest is ASCII already.
+		// Command and title are what a program in the pane chose; the rest is ASCII already,
+		// the partners' addresses too, so | separates them without escaping.
 		w.Header().Set("Content-Type", text.ContentType(charset))
 		var b strings.Builder
 		for _, v := range out {
@@ -327,7 +328,15 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 			if v.Attention != nil {
 				kind = v.Attention.Kind
 			}
-			fmt.Fprintf(&b, "%s\t%s\t%s\t%s\t%s\n", v.Address, v.Mode, text.Fold(v.Command, charset), text.Fold(v.Title, charset), kind)
+			mail := ""
+			if v.Mail != nil && v.Mail.Unread > 0 {
+				mail = strconv.Itoa(v.Mail.Unread)
+			}
+			partners := make([]string, 0, len(v.Talk))
+			for _, p := range v.Talk {
+				partners = append(partners, p.Address)
+			}
+			fmt.Fprintf(&b, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", v.Address, v.Mode, text.Fold(v.Command, charset), text.Fold(v.Title, charset), kind, mail, strings.Join(partners, "|"))
 		}
 		w.Write(text.Encode(b.String(), charset))
 		return
