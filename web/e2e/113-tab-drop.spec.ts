@@ -16,6 +16,9 @@ const BOB = 'bob-desktop/work/0.0';
 const tab = (page: Page, a: string) => page.locator(`[data-testid="tab"][data-address="${a}"]`);
 const tile = (page: Page, a: string) => page.locator(`[data-testid="tile"][data-pane="${a}"]`);
 const box = async (l: Locator) => (await l.boundingBox())!;
+// The tiles of a new count power on with a transition: measure once they
+// have landed.
+const placed = (cond: () => Promise<boolean>) => expect.poll(cond, { timeout: 5000 }).toBe(true);
 const url = (...panes: string[]) => new RegExp(`/p/${panes.join(',')}$`.replace(/\//g, '\\/'));
 
 test('113 a tab dropped on a tile splits its place or takes it; on a divider, across', async ({
@@ -42,11 +45,11 @@ test('113 a tab dropped on a tile splits its place or takes it; on a divider, ac
   await expect(page).toHaveURL(url(SHELL0, LOGS));
   await expect(pane).toHaveAttribute('data-layout', 'custom');
   await expect(tile(page, LOGS)).toHaveAttribute('data-focused', '');
-  let a = await box(tile(page, SHELL0));
-  let b = await box(tile(page, LOGS));
-  expect(b.x).toBeGreaterThan(a.x + a.width / 2);
-  expect(Math.abs(a.y - b.y)).toBeLessThan(4);
-  expect(Math.abs(a.width - b.width)).toBeLessThan(6);
+  await placed(async () => {
+    const a = await box(tile(page, SHELL0));
+    const b = await box(tile(page, LOGS));
+    return b.x > a.x + a.width / 2 && Math.abs(a.y - b.y) < 4 && Math.abs(a.width - b.width) < 6;
+  });
   await shot(page, info, '113-tab-right');
   await expect.poll(() => posts.filter((u) => !u.includes('/resize'))).toEqual([]);
   // The tab of an open tile on the other's middle swaps the two.
@@ -72,10 +75,11 @@ test('113 a tab dropped on a tile splits its place or takes it; on a divider, ac
   });
   await expect(page.getByTestId('tile')).toHaveCount(2);
   await expect(pane).toHaveAttribute('data-layout', 'custom');
-  a = await box(tile(page, SHELL0));
-  b = await box(tile(page, LOGS));
-  expect(b.y).toBeGreaterThan(a.y + a.height / 2);
-  expect(Math.abs(a.x - b.x)).toBeLessThan(4);
+  await placed(async () => {
+    const a = await box(tile(page, SHELL0));
+    const b = await box(tile(page, LOGS));
+    return b.y > a.y + a.height / 2 && Math.abs(a.x - b.x) < 4;
+  });
   await shot(page, info, '113-tab-below');
   // The ro tab held over the left half of the divider between the rows:
   // the pane goes down the whole height, at the left.
@@ -91,10 +95,11 @@ test('113 a tab dropped on a tile splits its place or takes it; on a divider, ac
   await expect(page.getByTestId('tile')).toHaveCount(3);
   await expect(page).toHaveURL(url(SHELL0, LOGS, RO));
   const area = await box(page.locator('.mx-area'));
-  a = await box(tile(page, SHELL0));
-  const c = await box(tile(page, RO));
-  expect(c.x).toBeLessThan(a.x);
-  expect(c.height).toBeGreaterThan(area.height - 12);
+  await placed(async () => {
+    const a = await box(tile(page, SHELL0));
+    const c = await box(tile(page, RO));
+    return c.x < a.x && c.height > area.height - 12;
+  });
   await expect(tile(page, RO)).toHaveAttribute('data-focused', '');
   await shot(page, info, '113-tab-divider');
   // Four open: a tile offers only its middle, and a tab dropped on an
