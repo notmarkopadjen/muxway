@@ -904,6 +904,7 @@ button.mx-window:focus-visible {
   gap: 4px;
   flex: 1;
   min-width: 0;
+  align-items: center;
   overflow-x: auto;
   scrollbar-width: none;
   padding: 2px;
@@ -952,10 +953,21 @@ button.mx-window:focus-visible {
 .mx-minimised .mx-tab {
   border-style: dashed;
 }
+/* The focused tab is the one open below: three thick sides in the accent
+   and no bottom, standing on the row's line like a folder's tab, so the
+   eye finds it even on a zoomed-in screen. Inside a group's frame it
+   keeps its bottom. */
 .mx-tab[data-focused] {
-  border-width: 2px;
-  padding: 1px 7px;
+  align-self: stretch;
+  border-width: 3px 3px 0;
+  border-color: var(--mx-accent);
+  padding: 0 6px;
   font-weight: bold;
+  text-shadow: var(--mx-glow-text-strong);
+}
+.mx-tab-group .mx-tab[data-focused] {
+  align-self: auto;
+  border-width: 3px;
 }
 /* A pane hidden from the window view: its tab stays, dimmed, and brings it back. */
 .mx-tab[data-hidden] {

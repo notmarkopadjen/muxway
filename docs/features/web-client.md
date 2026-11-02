@@ -236,9 +236,12 @@ view, each live and typable. The page is the Android client's pane view:
   named by what Claude wrote into the title or by what runs there. Each
   tab is **painted with its state** from the lens: the theme's ink,
   inverted, when the pane waits for you (`!` `?` `z` `✓`, pulsing), dim when it
-  works (`⟳`), plain when quiet. Open panes have a border, the focused
-  one a thick border and its name in bold; selection never changes the
-  colour, so the state shows on the pane you are looking at. A click on
+  works (`⟳`), plain when quiet. Open panes have a border; the focused
+  one wears three thick sides in the accent and no bottom, standing on
+  the header row's line like a folder's tab, its name bold and brighter,
+  so the tab of the pane below is found at a glance even zoomed in
+  (inside a group's frame it keeps its bottom). Selection never changes
+  the state's colour, so the state shows on the pane you are looking at. A click on
   an open tab focuses its tile; a click on a closed tab swaps it into
   the focused tile, and a Shift+click opens it beside the others, up to
   four, so a second pane and the `▦` arrangements are one click away.
@@ -473,8 +476,9 @@ A window's `▦ … mirror layout ▸` button in the list, the `▦` entries in
 the selector, or `window ▸` above the tiles open the **window view**: every pane of the window you
 may read, in tmux's own layout, each scaled to its box. The row above
 is the pane view's: `‹` back to the list, then a **tab per pane of the
-window** in layout order, painted with its state, the focused one with
-the thick border and its name in bold; a click focuses that pane. The
+window** in layout order, painted with its state, the focused one
+standing open on the row's line with its name in bold; a click focuses
+that pane. The
 controls sit at the right as icons, the tooltip naming each with its
 key:
 
