@@ -103,8 +103,12 @@ nothing but the hub to talk to.
    under the pointer: a directory click types `cd` into the pane, a file
    click opens the preview window, types `cat` or your own command as
    the help overlay's *a file opens with* says, Shift+click only puts
-   the quoted name on the pane's line; *names* there turns it off (see
-   [shell helper](shell-helper.md)).
+   the quoted name on the pane's line; *names* there turns it off. While
+   such a pane is typed into, direct or on the line, a dim ghost word
+   after the cursor goes on from a line sent before, a command the
+   screen shows or a name of the directory; `Right` accepts it,
+   `Ctrl+Right` one word, *suggest* in the overlay turns it off and
+   *forget* empties the sent lines (see [shell helper](shell-helper.md)).
    When the hub has a transcriber (see [transcription](transcription.md))
    and the pane is writable, a `◉` button sits between the field and
    *send*: a click or `v` records a clip, a level meter and the seconds
@@ -720,6 +724,7 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `e` / `E` | tiles: lay the focused tile across the whole view's width / height, on the side its middle is |
 | `g` | tiles: the changes window over the focused tile, git's view of its repository, on a writable pane of a host with preview roots; `g`, `Esc` or `×` closes it, `_` folds it to its bar (see [changes](changes.md)) |
 | click, Shift+click on a name | a writable shell pane on a host with preview roots: a name of the pane's directory on the screen; a directory is entered, a file opens as *a file opens with* says / only the quoted name goes onto the pane's line (see [shell helper](shell-helper.md)) |
+| `Right`, `Ctrl+Right` | with a ghost word after the cursor, direct or on the line: accept it whole / its first word; without one, the pane's keys (direct) or the caret's move (line) |
 | `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, this pane alone (or `Enter`, double-click), host layout, equal shares, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
 | `t` | next theme: amber, green, paper |
