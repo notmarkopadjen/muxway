@@ -123,7 +123,9 @@ repeatable, marks a session of that exact name whenever one exists, so a
 session started again after it ended needs no second `muxway expose`
 (see [standing marks](exposing-panes.md#standing-marks)). `--preview <dir>`, repeatable,
 lets clients with a write grant read files under that directory when a
-pane prints their paths (see [preview](preview.md)) and see the changes of
+pane prints their paths (see [preview](preview.md)), list the directories
+under it so the names a shell pane prints are links (see [shell
+helper](shell-helper.md)), and see the changes of
 a repository under it with read-only `git status` and `git diff` run by
 the agent (see [changes](changes.md)); the agent reads them with its own
 rights, so choose roots the agent's user should show. `--watch`, on by

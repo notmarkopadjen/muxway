@@ -1,5 +1,6 @@
 import { useMemo, useSyncExternalStore } from 'react';
 import { ORDER_MAX } from './term/order';
+import type { OpenMode, OpenWith } from './term/names';
 
 // Per-browser preferences: theme, effects, browser notifications, the
 // screen font size.
@@ -116,6 +117,39 @@ export function useTabOrder(): string[] {
     () => null,
   );
   return useMemo(() => parseOrder(raw), [raw]);
+}
+
+// The shell helper: whether the names of a shell pane's directory are
+// links, and how a click on a file opens it.
+export const OPEN_MODES: OpenMode[] = ['preview', 'cat', 'command'];
+export const OPEN_COMMAND_MAX = 200;
+export function getNames(): boolean {
+  return read('mx-names') !== 'off';
+}
+export function toggleNames(): boolean {
+  const next = !getNames();
+  write('mx-names', next ? 'on' : 'off');
+  return next;
+}
+export function getOpenWith(): OpenWith {
+  const mode = read('mx-open') as OpenMode | null;
+  const command = (read('mx-open-command') ?? 'vim {}').slice(0, OPEN_COMMAND_MAX);
+  return { mode: mode && OPEN_MODES.includes(mode) ? mode : 'preview', command };
+}
+export function cycleOpenMode(): OpenMode {
+  const next = OPEN_MODES[(OPEN_MODES.indexOf(getOpenWith().mode) + 1) % OPEN_MODES.length];
+  write('mx-open', next);
+  return next;
+}
+export function setOpenCommand(command: string) {
+  write('mx-open-command', command.slice(0, OPEN_COMMAND_MAX));
+}
+export function useHelper(): { names: boolean; open: OpenWith } {
+  const raw = useSyncExternalStore(
+    subscribe,
+    () => `${getNames()}\n${getOpenWith().mode}\n${getOpenWith().command}`,
+  );
+  return useMemo(() => ({ names: getNames(), open: getOpenWith() }), [raw]);
 }
 
 export function getMotion(): boolean {

@@ -8,6 +8,7 @@ import type {
   AuthMethods,
   Changes,
   Diff,
+  Listing,
   Host,
   Me,
   Mouse,
@@ -40,6 +41,7 @@ export const keys = {
   admin: ['admin'] as const,
   files: (address: string) => ['files', address] as const,
   changes: (address: string) => ['changes', address] as const,
+  listing: (address: string, cwd: string) => ['listing', address, cwd] as const,
 };
 
 function useVisible(): boolean {
@@ -425,6 +427,41 @@ export function useChanges(address: string, enabled: boolean, every = 5_000) {
     retry: (count, err) => (err instanceof ApiError ? err.status === 429 && count < 3 : count < 2),
     retryDelay: 1_100,
     placeholderData: (prev) => prev,
+  });
+}
+
+// The names in a shell pane's directory, for a writer on a host that
+// lists: asked again every `every` ms while a tile shows the pane, which
+// the ETag keeps to a round trip; the directory is in the key, so a cd
+// lists again at once. Nothing is asked of a pane without a directory.
+export function useListing(
+  address: string,
+  cwd: string | undefined,
+  enabled: boolean,
+  every = 2_000,
+) {
+  return useQuery({
+    queryKey: keys.listing(address, cwd ?? ''),
+    queryFn: () => {
+      const t = target(address);
+      return api<Listing>(`/v1/panes/${t.address}/dir`, { hub: t.hub, conditional: true });
+    },
+    enabled: enabled && !!cwd,
+    refetchInterval: every,
+    // The limit is the preview's, two a second: a 429 is asked again after one.
+    retry: (count, err) => (err instanceof ApiError ? err.status === 429 && count < 3 : count < 2),
+    retryDelay: 1_100,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// A line typed into a pane for a click on a name: the text, then Enter
+// when asked, in the pane's order behind whatever is in flight.
+export function typeLine(address: string, text: string, enter: boolean): Promise<void> {
+  noteOwn(address);
+  return inOrder(address, async () => {
+    await sendInput(address, { text });
+    if (enter) await sendInput(address, { key: 'Enter' });
   });
 }
 

@@ -129,3 +129,8 @@ from panes to files, by the owner's explicit decision (2026-10-26):
   rules above, with `rel="noopener noreferrer"`; the code scanner only
   classifies runs of text. Scripts among the previewed types are read
   and shown, never run.
+
+**Listing.** With roots, the agent also lists directories under them for
+a writer of a shell pane, names and kinds only, under the same rules
+and the same limit, so the names a pane prints can be links (see [shell
+helper](shell-helper.md)).

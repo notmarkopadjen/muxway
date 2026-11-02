@@ -60,6 +60,10 @@ func TestUI_WebClient(t *testing.T) {
 	os.WriteFile(filepath.Join(preview, "docs", "Makefile"), []byte("all:\n\t@echo built\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, ".env"), []byte("SECRET=1\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, "run.sh"), []byte("#!/bin/sh\n"), 0o600)
+	// Names a click must take whole: a space, a quote, a shell's worst.
+	os.MkdirAll(filepath.Join(preview, "docs", "a b"), 0o700)
+	os.WriteFile(filepath.Join(preview, "docs", "it's.txt"), []byte("quoted ok\n"), 0o600)
+	os.WriteFile(filepath.Join(preview, "docs", "'; rm -rf ~ #"), []byte("harmless\n"), 0o600)
 	// The root is a repository with a change of each kind, for the changes window.
 	gitRepo(t, preview)
 	a := e.pairAgent(host, ts, "--allow-sessions", "--inbox", "default", "--preview", preview)
