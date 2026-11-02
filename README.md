@@ -66,7 +66,7 @@ keystroke in its pane. Claude Code is the harness tested daily.</td>
 <tr>
 <td valign="top"><img src="docs/images/icons/keys.png" width="54" alt=""></td>
 <td><strong>Agents drive it too.</strong> <code>muxway client</code> is the API from
-the command line (panes, inbox, read, send, answer, wait), <code>muxway
+the command line (panes, inbox, read, send, answer, mail, wait, talk), <code>muxway
 mcp</code> serves the same as MCP tools, and <code>muxway skill</code>
 prints the guide an agent in a pane reads, so an agent on one machine
 can watch, wait on and type into a pane on another, with a token that
@@ -183,14 +183,27 @@ muxway skill > .claude/skills/muxway/SKILL.md                          # the gui
 ```
 
 And with a token of its own, narrow as you like, an agent drives muxway
-back: `muxway client panes | inbox | read | send | key | answer | wait |
-events`, or the same seven operations as MCP tools with `muxway mcp`, so
-an agent on one machine can watch, wait on and type into a pane on
-another. See [notifications](docs/features/notifications.md),
-[the inbox](docs/features/inbox.md) and
-[driving muxway](docs/features/driving.md).
+back: `muxway client panes | inbox | read | send | key | answer | mail |
+mailbox | wait | events | talk`, or the same as MCP tools with `muxway
+mcp`, so an agent on one machine can watch, wait on and type into a pane
+on another. A message for another agent is mail, held for that pane's
+process and never typed: it reads it with `muxway mail`, or its Stop
+hook hands it over when a turn ends, and it replies to the pane it came
+from. A write or a mail from a pane names the pane it came from, and
+you see it as talk: the panes framed as one group on every client, the
+exchange in the messages window. See
+[notifications](docs/features/notifications.md),
+[the inbox](docs/features/inbox.md),
+[driving muxway](docs/features/driving.md),
+[talk](docs/features/talk.md) and [mail](docs/features/mail.md).
 
 ## The web client
+
+The client installs as an app from the browser (a manifest and a
+service worker that keeps the client's own files, never the hub's
+answers): a standalone window with its icon on Android, desktop and the
+iPhone, and a shell that opens with no network and says the hub is
+unreachable. See [the web client](docs/features/web-client.md#installing-it).
 
 Served by the hub, nothing to install. The pane list groups every host
 you may reach; a badge marks a pane that needs you.

@@ -9,6 +9,7 @@
   --mx-glow-soft: rgba(57, 255, 20, 0.35);
   --mx-accent: #b6ff9e;
   --mx-ok: #39ff14;
+  --mx-talk: #ff6b5e;
   --mx-syn-string: #ffd36b;
   --mx-syn-number: #3ad6ff;
   --mx-syn-keyword: #ff7a1a;
@@ -28,6 +29,7 @@
   --mx-accent: #0b5d1e;
   --mx-bad: #a3161b;
   --mx-ok: #0b5d1e;
+  --mx-talk: #b4301e;
   --mx-scanline: rgba(0, 0, 0, 0.04);
   --mx-vignette: rgba(0, 0, 0, 0.08);
   --mx-glow-text: none;

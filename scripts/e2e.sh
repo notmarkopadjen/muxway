@@ -16,7 +16,7 @@ go build -o "$run/gojunit" ./tools/gojunit
 if command -v npm >/dev/null; then
     ( cd web && { [ -d node_modules ] || npm ci --no-fund --no-audit; } ) > "$run/logs/npm.log" 2>&1
     fresh="$(mktemp -d)"
-    ( cd web && npm run -s lint && npx vitest run && npx tsc -b && npx vite build --outDir "$fresh" --emptyOutDir ) \
+    ( cd web && npm run -s lint && npx vitest run && npx tsc -b && npx vite build --outDir "$fresh" --emptyOutDir && node scripts/stamp-sw.mjs "$fresh" ) \
         >> "$run/logs/npm.log" 2>&1 \
         || { rm -rf "$fresh"; echo "web: lint, unit tests or build failed, see $run/logs/npm.log" >&2; exit 1; }
     if ! diff -rq web/dist "$fresh" > "$run/logs/dist-diff.log" 2>&1; then

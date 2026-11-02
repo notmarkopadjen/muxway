@@ -18,6 +18,14 @@ const KEYS: [string, string][] = [
   ['Esc', 'back to the panes; or leave the input line (first closing its completion list)'],
   ['p', 'go to a pane or window, or start a session'],
   ['I / o', 'the inbox: every pane that waits for you, oldest first / open the oldest'],
+  [
+    'T / M',
+    'messages: what panes said to panes, mail and typed, across hosts, oldest first; Enter lays the two side by side / the same with the line focused, to mail the open pane (nothing is typed for it)',
+  ],
+  [
+    'L',
+    'tiles: lay the pane the focused tile talks with beside it (opens it, or swaps it next to the tile); the ⛓ on the header the same. Panes that talk share one frame, on the strip and on the tiles',
+  ],
   ['+ / S', "one more pane in the selected row's window / a new session on its host"],
   ['/', 'filter panes'],
   ['f', 'fit: the host pane (window view: the window) follows this box, at the chosen font'],

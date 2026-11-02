@@ -45,7 +45,10 @@ muxway hooks agy             # ~/.gemini/config/hooks.json (Antigravity CLI)
 ```
 
 prints the harness's own configuration shape (merge the `hooks` key with
-what is there) with `muxway notify --from <harness> --dir <agent dir>` as
+what is there; print and merge again after an upgrade, since the shape
+grows: Claude Code's Stop and UserPromptSubmit hooks hand the session
+its [mail](mail.md) and run synchronously since then) with
+`muxway notify --from <harness> --dir <agent dir>` as
 the command, run in the background with a short timeout, so the harness
 never waits for it. The agent directory is spelled out because hooks run
 in the harness's environment, which may resolve the default differently;

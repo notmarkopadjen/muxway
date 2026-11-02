@@ -85,7 +85,7 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                 />
               </li>
             ))}
-            {rows.length === 0 && <li className="mx-dim">nothing waits for you</li>}
+            {rows.length === 0 && <li className="mx-dim mx-empty">nothing waits for you</li>}
           </ul>
           <div className="mx-toggles">
             <span className="mx-dim">

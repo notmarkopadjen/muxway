@@ -37,8 +37,8 @@ flowchart LR
   screens of the AI harnesses it knows.
 - **Hub** (`muxway hub serve`): the meeting point. It pairs agents,
   authenticates clients by token, enforces each token's grants, routes
-  requests to the right agent, keeps the event feed and lists what waits
-  in the inbox.
+  requests to the right agent, keeps the event feed and the talk feed
+  (writes that came from a pane) and lists what waits in the inbox.
 - **Clients**: anything that speaks [the protocol](protocol/v1.md). Rich
   clients use JSON; small ones use **text mode**, which returns plain lines
   rewrapped to the width the client asks for, in UTF-8, Latin-1 or ASCII
@@ -67,6 +67,18 @@ flowchart LR
 - **Scripts and AI agents as clients**: `muxway client` is the API from
   the command line, `muxway mcp` the same as MCP tools, `muxway skill`
   the guide an agent reads; see [features/driving.md](features/driving.md).
+  A write from a pane names its origin; the hub keeps those as talk
+  entries, in memory like the events, and marks the panes as a group for
+  every client; see [features/talk.md](features/talk.md). A message for
+  an agent is mail: held by the host agent in a mailbox per pane, beside
+  the questions waiting for answers, read over the agent's socket or
+  handed over by the harness's hooks, never typed; see
+  [features/mail.md](features/mail.md).
+
+- **The web client as an app**: the hub serves a manifest and a service
+  worker beside the embedded files, so a browser installs the client as
+  an app of its own; the worker keeps the client's files on the device
+  and never touches the API; see [features/web-client.md](features/web-client.md#installing-it).
 
 One binary, `muxway`, plays every role.
 

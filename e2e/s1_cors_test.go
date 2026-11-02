@@ -12,7 +12,7 @@ import (
 func TestSec16_CORSForBearerTokensOnly(t *testing.T) {
 	e, _, _ := basic(t)
 	tok := e.token("glasses", []string{host + "/*"}, []string{host + "/*"})
-	for _, path := range []string{"/v1/panes", "/v1/panes/" + shell0, "/v1/panes/" + shell0 + "/input", "/v1/events", "/v1/hosts", "/v1/me"} {
+	for _, path := range []string{"/v1/panes", "/v1/panes/" + shell0, "/v1/panes/" + shell0 + "/input", "/v1/inbox", "/v1/events", "/v1/hosts", "/v1/me"} {
 		r := e.do("OPTIONS", "", path, "", "", "Origin", "null", "Access-Control-Request-Method", "POST",
 			"Access-Control-Request-Headers", "authorization, x-muxway-client")
 		expect(t, r, http.StatusNoContent, "preflight "+path)

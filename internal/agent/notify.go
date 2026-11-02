@@ -32,12 +32,20 @@ type NotifyRequest struct {
 	Choices []string `json:"choices,omitempty"`
 	Ask     bool     `json:"ask,omitempty"`
 	Timeout int      `json:"timeout,omitempty"` // seconds
+	// Mail is a mailbox request: list (everything held), take (the unread,
+	// then marked read), wait (take, once something is there), reply.
+	// How says which way a take went, for the log; MailID and Text go
+	// with a reply.
+	Mail   string `json:"mail,omitempty"`
+	How    string `json:"how,omitempty"`
+	MailID uint64 `json:"mail_id,omitempty"`
 }
 
 type notifyResponse struct {
-	OK     bool   `json:"ok,omitempty"`
-	Error  string `json:"error,omitempty"`
-	Answer string `json:"answer,omitempty"`
+	OK     bool        `json:"ok,omitempty"`
+	Error  string      `json:"error,omitempty"`
+	Answer string      `json:"answer,omitempty"`
+	Mail   []wire.Mail `json:"mail,omitempty"`
 }
 
 // How an ask ends without an answer, as the asking command sees it.
@@ -82,6 +90,10 @@ func (a *Agent) serveOne(ctx context.Context, c net.Conn) {
 		json.NewEncoder(c).Encode(notifyResponse{Error: "bad_json"})
 		return
 	}
+	if req.Mail != "" {
+		a.serveMail(ctx, c, req)
+		return
+	}
 	if !req.Ask {
 		resp := notifyResponse{OK: true}
 		if code := a.Notify(ctx, req, sourceHook); code != "" {
@@ -119,6 +131,53 @@ func (a *Agent) serveOne(ctx context.Context, c net.Conn) {
 	}
 	c.SetDeadline(time.Now().Add(10 * time.Second))
 	json.NewEncoder(c).Encode(resp)
+}
+
+// serveMail answers a process's mailbox request over its socket.
+func (a *Agent) serveMail(ctx context.Context, c net.Conn, req NotifyRequest) {
+	if !paneID.MatchString(req.Pane) {
+		json.NewEncoder(c).Encode(notifyResponse{Error: wire.ErrBadInput})
+		return
+	}
+	var mail []wire.Mail
+	var code string
+	switch req.Mail {
+	case "list":
+		mail, code = a.peekMail(ctx, req.Pane)
+	case "take":
+		how := req.How
+		if how == "" {
+			how = "pull"
+		}
+		mail, code = a.takeMail(ctx, req.Pane, how, false)
+	case "wait":
+		if req.Timeout < 0 || time.Duration(req.Timeout)*time.Second > MaxAskWait {
+			code = wire.ErrBadInput
+			break
+		}
+		// The waiter may give up before anything comes.
+		c.SetDeadline(time.Time{})
+		wctx, cancel := context.WithCancel(ctx)
+		go func() {
+			io.Copy(io.Discard, c)
+			cancel()
+		}()
+		mail, code = a.waitMail(wctx, req.Pane, time.Duration(req.Timeout)*time.Second)
+		cancel()
+		c.SetDeadline(time.Now().Add(10 * time.Second))
+	case "reply":
+		code = a.replyMail(ctx, req.Pane, req.MailID, req.Text)
+	default:
+		code = wire.ErrBadInput
+	}
+	if code != "" {
+		json.NewEncoder(c).Encode(notifyResponse{Error: code})
+		return
+	}
+	if mail == nil {
+		mail = []wire.Mail{}
+	}
+	json.NewEncoder(c).Encode(notifyResponse{OK: true, Mail: mail})
 }
 
 // Where a notification comes from: a process over the socket (a hook or
@@ -313,25 +372,38 @@ func SendNotify(dir string, req NotifyRequest) error {
 // Exchange sends one request to the agent and returns its answer; for an
 // ask, that is after the question was answered or ended.
 func Exchange(dir string, req NotifyRequest) (string, error) {
+	resp, err := exchange(dir, req)
+	return resp.Answer, err
+}
+
+// ExchangeMail is Exchange for a mailbox request: the mail it answers.
+func ExchangeMail(dir string, req NotifyRequest) ([]wire.Mail, error) {
+	resp, err := exchange(dir, req)
+	return resp.Mail, err
+}
+
+func exchange(dir string, req NotifyRequest) (notifyResponse, error) {
+	var resp notifyResponse
 	c, err := net.DialTimeout("unix", notifyPath(dir), 5*time.Second)
 	if err != nil {
-		return "", errors.New("no agent running in " + dir)
+		return resp, errors.New("no agent running in " + dir)
 	}
 	defer c.Close()
-	if req.Ask {
+	if req.Ask || req.Mail == "wait" {
 		c.SetDeadline(time.Now().Add(time.Duration(req.Timeout)*time.Second + MaxAskWait))
+	} else if req.Mail == "reply" {
+		c.SetDeadline(time.Now().Add(replyWait + 10*time.Second))
 	} else {
 		c.SetDeadline(time.Now().Add(10 * time.Second))
 	}
 	if err := json.NewEncoder(c).Encode(req); err != nil {
-		return "", err
+		return resp, err
 	}
-	var resp notifyResponse
 	if err := json.NewDecoder(c).Decode(&resp); err != nil {
-		return "", errors.New("the agent went away")
+		return resp, errors.New("the agent went away")
 	}
 	if resp.Error != "" {
-		return "", errors.New(resp.Error)
+		return resp, errors.New(resp.Error)
 	}
-	return resp.Answer, nil
+	return resp, nil
 }

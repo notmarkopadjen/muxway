@@ -29,6 +29,9 @@ func fakeHub(t *testing.T) (*httptest.Server, *[]string) {
 		}
 		w.Write([]byte(`{"panes":[]}`))
 	})
+	mux.HandleFunc("/v1/events", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"events":[],"next":7}`))
+	})
 	mux.HandleFunc("/v1/inbox", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"inbox":[{"host":"alice-laptop","address":"alice-laptop/work/1.0","pane_id":"%3","mode":"write","command":"claude","title":"x",
 			"attention":{"kind":"question","at":1767225600,"text":"deploy?","choices":["yes","no"]}}],"count":1}`))

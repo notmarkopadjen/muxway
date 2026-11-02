@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -24,9 +26,15 @@ read      ADDRESS [--lines N]                 the last lines of a pane
 send      ADDRESS TEXT [--enter]              type into a pane
 key       ADDRESS KEY [--count N]             press a key: Enter, C-c, M-x, F5...
 answer    ADDRESS CHOICE                      answer a question with one of its choices
+mail      ADDRESS TEXT                        leave a message for the pane's process; nothing is typed
+mailbox   ADDRESS [--json]                    the mail a pane holds, read and unread
 wait      [ADDRESS] [--timeout D] [--json]    until a pane (or any) needs its owner; exit 2 on timeout
 events    [--follow] [--json]                 the recent events, or a feed
+talk      [--follow] [--json]                 what panes said to panes lately, or a feed
 
+send, key, answer and mail name the pane they come from (--from HOST/%ID): by
+default the pane this runs in, $TMUX_PANE on the host the agent directory
+names (--agent-dir), or $MUXWAY_FROM; --from none sends as nobody.
 MUXWAY_HUB, MUXWAY_TOKEN and MUXWAY_CA override what connect kept.
 `
 
@@ -37,6 +45,53 @@ func clientFor(dir string) (*client.Client, error) {
 		return nil, err
 	}
 	return client.New(cfg.Hub, token, cfg.CA)
+}
+
+// originFlags adds --from and --agent-dir to a command that writes.
+func originFlags(fs *flag.FlagSet) (from, agentDir *string) {
+	from = fs.String("from", "", "the pane this write comes from, HOST/%ID; none for nobody")
+	agentDir = fs.String("agent-dir", defaultDir("agent"), "agent directory, for the host's name")
+	return
+}
+
+// originFor is the pane a write says it comes from: the flag, else
+// MUXWAY_FROM, else the pane this process runs in on the host the agent
+// directory here is paired as. Without a pane, nobody.
+func originFor(from, agentDir string) (*client.Origin, error) {
+	if from == "none" {
+		return nil, nil
+	}
+	if from == "" {
+		from = os.Getenv("MUXWAY_FROM")
+	}
+	if from != "" {
+		return client.ParseOrigin(from)
+	}
+	pane := os.Getenv("TMUX_PANE")
+	if pane == "" {
+		return nil, nil
+	}
+	raw, err := os.ReadFile(filepath.Join(agentDir, "agent.json"))
+	if err != nil {
+		return nil, nil
+	}
+	var cfg struct {
+		Host string `json:"host"`
+	}
+	if json.Unmarshal(raw, &cfg) != nil || cfg.Host == "" {
+		return nil, nil
+	}
+	return &client.Origin{Host: cfg.Host, PaneID: pane}, nil
+}
+
+// writerFor is clientFor with the origin set.
+func writerFor(dir, from, agentDir string) (*client.Client, error) {
+	c, err := clientFor(dir)
+	if err != nil {
+		return nil, err
+	}
+	c.From, err = originFor(from, agentDir)
+	return c, err
 }
 
 func runClient(args []string) error {
@@ -141,32 +196,34 @@ func runClient(args []string) error {
 		return nil
 	case "send":
 		enter := fs.Bool("enter", false, "press Enter after the text")
+		from, agentDir := originFlags(fs)
 		if err := fs.Parse(flagsOnly); err != nil {
 			return err
 		}
 		if len(pos) != 2 {
 			return errors.New("send ADDRESS TEXT")
 		}
-		c, err := clientFor(*dir)
+		c, err := writerFor(*dir, *from, *agentDir)
 		if err != nil {
 			return err
 		}
-		if err := c.Input(ctx, pos[0], map[string]string{"text": pos[1]}); err != nil {
+		if err := c.Input(ctx, pos[0], map[string]any{"text": pos[1]}); err != nil {
 			return err
 		}
 		if *enter {
-			return c.Input(ctx, pos[0], map[string]string{"key": "Enter"})
+			return c.Input(ctx, pos[0], map[string]any{"key": "Enter"})
 		}
 		return nil
 	case "key":
 		count := fs.Int("count", 0, "how many times, 1 to 50")
+		from, agentDir := originFlags(fs)
 		if err := fs.Parse(flagsOnly); err != nil {
 			return err
 		}
 		if len(pos) != 2 {
 			return errors.New("key ADDRESS KEY")
 		}
-		c, err := clientFor(*dir)
+		c, err := writerFor(*dir, *from, *agentDir)
 		if err != nil {
 			return err
 		}
@@ -176,17 +233,57 @@ func runClient(args []string) error {
 		}
 		return c.Input(ctx, pos[0], body)
 	case "answer":
+		from, agentDir := originFlags(fs)
 		if err := fs.Parse(flagsOnly); err != nil {
 			return err
 		}
 		if len(pos) != 2 {
 			return errors.New("answer ADDRESS CHOICE")
 		}
-		c, err := clientFor(*dir)
+		c, err := writerFor(*dir, *from, *agentDir)
 		if err != nil {
 			return err
 		}
 		return c.Answer(ctx, pos[0], pos[1])
+	case "mail":
+		from, agentDir := originFlags(fs)
+		if err := fs.Parse(flagsOnly); err != nil {
+			return err
+		}
+		if len(pos) != 2 {
+			return errors.New("mail ADDRESS TEXT")
+		}
+		c, err := writerFor(*dir, *from, *agentDir)
+		if err != nil {
+			return err
+		}
+		id, err := c.Mail(ctx, pos[0], pos[1])
+		if err != nil {
+			return err
+		}
+		fmt.Printf("mail %d\n", id)
+		return nil
+	case "mailbox":
+		if err := fs.Parse(flagsOnly); err != nil {
+			return err
+		}
+		if len(pos) != 1 {
+			return errors.New("mailbox ADDRESS")
+		}
+		c, err := clientFor(*dir)
+		if err != nil {
+			return err
+		}
+		accept := "text/plain"
+		if *asJSON {
+			accept = "application/json"
+		}
+		raw, err := c.Do(ctx, "GET", "/v1/panes/"+pos[0]+"/mail", accept, nil)
+		if err != nil {
+			return err
+		}
+		os.Stdout.Write(raw)
+		return nil
 	case "wait":
 		timeout := fs.Duration("timeout", 10*time.Minute, "how long to wait at most")
 		if err := fs.Parse(flagsOnly); err != nil {
@@ -254,8 +351,56 @@ func runClient(args []string) error {
 			}
 		}
 		return nil
+	case "talk":
+		follow := fs.Bool("follow", false, "keep printing entries as they come")
+		if err := fs.Parse(flagsOnly); err != nil {
+			return err
+		}
+		c, err := clientFor(*dir)
+		if err != nil {
+			return err
+		}
+		entries, cursor, err := c.Talk(ctx, 0, 0, 100)
+		if err != nil {
+			return err
+		}
+		if err := printTalk(entries, *asJSON); err != nil {
+			return err
+		}
+		for *follow && ctx.Err() == nil {
+			entries, cursor, err = c.Talk(ctx, cursor, 30, 100)
+			if err != nil {
+				if ctx.Err() != nil {
+					return nil
+				}
+				return err
+			}
+			if err := printTalk(entries, *asJSON); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	return fmt.Errorf("unknown client command %q\n%s", verb, clientUsage)
+}
+
+func printTalk(entries []client.Talk, asJSON bool) error {
+	for _, e := range entries {
+		if asJSON {
+			if err := printJSON(e); err != nil {
+				return err
+			}
+			continue
+		}
+		text := strings.NewReplacer("\t", " ", "\n", " ").Replace(e.Text)
+		// The hub's own row: an empty origin for a mail from a client.
+		from := ""
+		if e.From != nil {
+			from = e.From.Address
+		}
+		fmt.Printf("%d\t%d\t%s\t%s\t%s\t%s\n", e.Seq, e.At, from, e.To.Address, e.Kind, text)
+	}
+	return nil
 }
 
 func printEvents(events []client.Event, asJSON bool) error {
@@ -284,20 +429,23 @@ func printJSON(v any) error {
 	return nil
 }
 
-// runMCP serves the hub's panes as MCP tools over stdin and stdout.
+// runMCP serves the hub's panes as MCP tools over stdin and stdout. It
+// runs in the pane of the agent that started it, so its writes come
+// from that pane.
 func runMCP(args []string) error {
 	fs := flag.NewFlagSet("mcp", flag.ContinueOnError)
 	dir := fs.String("dir", defaultDir("client"), "client directory")
+	from, agentDir := originFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	c, err := clientFor(*dir)
+	c, err := writerFor(*dir, *from, *agentDir)
 	if err != nil {
 		return err
 	}
 	ctx, stop := signals()
 	defer stop()
-	return (&mcp.Server{Client: c, Name: "muxway"}).Serve(ctx, os.Stdin, os.Stdout)
+	return (&mcp.Server{Client: c, Name: "muxway", AgentDir: *agentDir, Pane: os.Getenv("TMUX_PANE")}).Serve(ctx, os.Stdin, os.Stdout)
 }
 
 // runSkill prints the guide an agent in a pane reads.
