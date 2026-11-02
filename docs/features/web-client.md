@@ -235,10 +235,13 @@ view, each live and typable. The page is the Android client's pane view:
 - The **tab strip** lists every pane you may read, in listing order,
   named by what Claude wrote into the title or by what runs there. Each
   tab is **painted with its state** from the lens: the theme's ink,
-  inverted, when the pane waits for you (`!` `?` `z` `✓`, pulsing), dim when it
-  works (`⟳`), plain when quiet. Open panes have a border, the focused
-  one a thick border and its name in bold; selection never changes the
-  colour, so the state shows on the pane you are looking at. A click on
+  inverted, when the pane waits for you (`!` `?` `z` `✓`, pulsing); a
+  working pane is not painted, its turning ring (`⟳`) and the word say
+  it. Open panes have a border; the focused one has a thick border, its
+  name in bold and a bar in the accent under it, and the other tabs
+  step back to half strength (a waiting tab never dims). Selection
+  never changes the state's colour, so the state shows on the pane you
+  are looking at. A click on
   an open tab focuses its tile; a click on a closed tab swaps it into
   the focused tile, and a Shift+click opens it beside the others, up to
   four, so a second pane and the `▦` arrangements are one click away.
@@ -308,7 +311,8 @@ sequenceDiagram
 ```
 - A tile's **header** is painted like its tab and names the pane, its
   address, its size, its mode and the lens's word; the focused tile has
-  the thick border and the bold name. At its right, before `_` and `×`,
+  the thick border, the bold name and the accent bar along its header's
+  top, the same bar as under its tab. At its right, before `_` and `×`,
   a writable tile on a host with preview roots counts the repository's
   changes (`⎇ +3 ~5 −1`, `⎇ ✓` when clean, nothing outside a
   repository); a click on the count opens the changes window (see
@@ -474,7 +478,8 @@ the selector, or `window ▸` above the tiles open the **window view**: every pa
 may read, in tmux's own layout, each scaled to its box. The row above
 is the pane view's: `‹` back to the list, then a **tab per pane of the
 window** in layout order, painted with its state, the focused one with
-the thick border and its name in bold; a click focuses that pane. The
+the thick border, its name in bold and the accent bar under it; a click
+focuses that pane. The
 controls sit at the right as icons, the tooltip naming each with its
 key:
 

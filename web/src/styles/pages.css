@@ -924,6 +924,7 @@ button.mx-window:focus-visible {
   max-width: 18em;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: opacity var(--mx-motion-fast) var(--mx-ease-out);
 }
 .mx-tab[data-open] {
   border-color: var(--mx-ink);
@@ -952,10 +953,19 @@ button.mx-window:focus-visible {
 .mx-minimised .mx-tab {
   border-style: dashed;
 }
+/* The focused tab: thick border, bold name, a bar in the accent under it
+   (its tile's header carries the same bar along its top), and the other
+   tabs step back to half strength; a waiting tab never dims. */
 .mx-tab[data-focused] {
   border-width: 2px;
-  padding: 1px 7px;
+  border-bottom: 4px solid var(--mx-accent);
+  padding: 1px 7px 0;
   font-weight: bold;
+  text-shadow: var(--mx-glow-text-strong);
+  box-shadow: var(--mx-glow-box-strong);
+}
+.mx-tabs .mx-tab:not([data-focused]):not([data-state='waiting']) {
+  opacity: 0.5;
 }
 /* A pane hidden from the window view: its tab stays, dimmed, and brings it back. */
 .mx-tab[data-hidden] {
@@ -971,28 +981,15 @@ button.mx-window:focus-visible {
   color: var(--mx-bg);
   text-shadow: none;
 }
-.mx-tab[data-state='working'],
-.mx-tile-head[data-state='working'],
-.mx-cell-head[data-state='working'] {
-  background: var(--mx-ink-dim);
-  color: var(--mx-bg);
-  text-shadow: none;
-}
-/* On a painted tab or header everything is drawn in the background colour. */
+/* A working pane is not painted: its ring and word say it. On a painted
+   tab or header everything is drawn in the background colour. */
 .mx-painted[data-state='waiting'] .mx-badge,
-.mx-painted[data-state='working'] .mx-badge,
 .mx-painted[data-state='waiting'] .mx-title,
-.mx-painted[data-state='working'] .mx-title,
 .mx-painted[data-state='waiting'] .mx-title-status,
-.mx-painted[data-state='working'] .mx-title-status,
 .mx-painted[data-state='waiting'] .mx-dim,
-.mx-painted[data-state='working'] .mx-dim,
 .mx-painted[data-state='waiting'] .mx-mode,
-.mx-painted[data-state='working'] .mx-mode,
 .mx-painted[data-state='waiting'] .mx-attention,
-.mx-painted[data-state='working'] .mx-attention,
-.mx-painted[data-state='waiting'] .mx-mark,
-.mx-painted[data-state='working'] .mx-mark {
+.mx-painted[data-state='waiting'] .mx-mark {
   color: var(--mx-bg);
   text-shadow: none;
   filter: none;
@@ -1001,11 +998,8 @@ button.mx-window:focus-visible {
   border-color: var(--mx-bg);
 }
 .mx-tile-head[data-state='waiting'] .mx-mode.write,
-.mx-tile-head[data-state='working'] .mx-mode.write,
 .mx-tile-head[data-state='waiting'] button,
-.mx-tile-head[data-state='working'] button,
-.mx-cell-head[data-state='waiting'] button,
-.mx-cell-head[data-state='working'] button {
+.mx-cell-head[data-state='waiting'] button {
   color: var(--mx-bg);
   text-shadow: none;
 }
@@ -1202,6 +1196,9 @@ button.mx-window:focus-visible {
 }
 .mx-tile[data-several] .mx-tile-head {
   cursor: grab;
+}
+.mx-tile[data-focused] .mx-tile-head {
+  box-shadow: inset 0 4px 0 var(--mx-accent);
 }
 .mx-tile[data-focused] .mx-tile-head .mx-title-name {
   font-weight: bold;
@@ -2010,8 +2007,7 @@ button.mx-window:focus-visible {
   padding: 0 6px;
   color: var(--mx-talk);
 }
-.mx-painted[data-state='waiting'] .mx-talk-link,
-.mx-painted[data-state='working'] .mx-talk-link {
+.mx-painted[data-state='waiting'] .mx-talk-link {
   color: var(--mx-bg);
 }
 /* mail waiting for a pane's process: the envelope and the count */
@@ -2023,8 +2019,7 @@ button.mx-window:focus-visible {
   white-space: nowrap;
   text-shadow: 0 0 6px var(--mx-talk);
 }
-.mx-painted[data-state='waiting'] .mx-mail-count,
-.mx-painted[data-state='working'] .mx-mail-count {
+.mx-painted[data-state='waiting'] .mx-mail-count {
   color: var(--mx-bg);
   text-shadow: none;
 }
