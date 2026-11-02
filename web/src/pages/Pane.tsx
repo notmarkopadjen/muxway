@@ -178,6 +178,9 @@ interface TileProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   onDrop: (zone: Zone) => void;
+  // Whether a drop may split this tile's place; without, the whole tile
+  // is the middle (four open and a pane not open dragged in).
+  splittable: boolean;
   onZoom: (p: Pane) => void;
   refused: (why: string) => void;
   // The tile's edges inside the area; a click on the strip along one lays
@@ -347,7 +350,11 @@ function Tile(props: TileProps) {
         if (dragging && dragging !== address) {
           e.preventDefault();
           const r = e.currentTarget.getBoundingClientRect();
-          setOver(zoneAt((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height));
+          setOver(
+            props.splittable
+              ? zoneAt((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height)
+              : 'swap',
+          );
         }
       }}
       onDragLeave={(e) => {
@@ -1263,6 +1270,17 @@ function Tiles({ addresses }: { addresses: string[] }) {
       setWeights({});
     });
   };
+  // A tab of a pane not open, dropped on the view: the pane comes in as
+  // one more tile where the drop says. The count is the route, so the
+  // made tree travels over the navigation as a closed tile's does, and
+  // the pane is focused once the tiles are up.
+  const bring = (address: string, made: (leaf: number) => TileNode) => {
+    const panes = [...addresses, address];
+    carried = { panes, layout: 'custom', custom: made(n), weights: {} };
+    focusNext = address;
+    touch();
+    drawn(() => go(panes));
+  };
   const spread = (i: number, axis: 'w' | 'h') => {
     const r = places.get(i);
     const key = rootKey(shape);
@@ -1352,24 +1370,36 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onDragStart={() => setDragging(a)}
         onDragEnd={() => setDragging(null)}
         onDrop={(zone) => {
-          if (oneWindow && !movable && dragging && dragging !== a) {
+          const from = dragging;
+          setDragging(null);
+          if (!from || from === a) return;
+          if (!addresses.includes(from)) {
+            // From the strip, a pane not open: the middle gives it this
+            // tile's place, as a tab click does; an edge brings it in
+            // beside, while there is room for one more.
+            if (zone === 'swap' || n >= MAX_TILES) {
+              touch();
+              setFocusedIndex(i);
+              drawn(() => go(replace(addresses, i, from)));
+            } else bring(from, (leaf) => dropOn(shape, leaf, i, zone));
+            return;
+          }
+          if (oneWindow && !movable) {
             refused('moving these panes needs every pane of the window writable');
-            setDragging(null);
             return;
           }
           touch();
-          if (dragging && dragging !== a && zone !== 'swap') {
+          if (zone !== 'swap') {
             drawn(() => {
-              setCustom(dropOn(shape, addresses.indexOf(dragging), i, zone));
+              setCustom(dropOn(shape, addresses.indexOf(from), i, zone));
               setLayout('custom');
               setWeights({});
             });
-            setDragging(null);
             return;
           }
-          if (dragging && dragging !== a) drawn(() => go(swap(addresses, dragging, a)));
-          setDragging(null);
+          drawn(() => go(swap(addresses, from, a)));
         }}
+        splittable={!dragging || addresses.includes(dragging) || n < MAX_TILES}
         onZoom={zoom}
         refused={refused}
         edges={edgesOf(i)}
@@ -1394,6 +1424,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
           focused={focused}
           onTab={onTab}
           reorder={reorder}
+          onDragPane={setDragging}
           onZoom={(a) => {
             const p = (all.data ?? []).find((q) => q.address === a);
             if (p) zoom(p);
@@ -1537,8 +1568,11 @@ function Tiles({ addresses }: { addresses: string[] }) {
           onAcross={
             dragging
               ? (key, wrap, first) => {
-                  lay(addresses.indexOf(dragging), key, wrap, first);
+                  const from = dragging;
                   setDragging(null);
+                  if (addresses.includes(from)) lay(addresses.indexOf(from), key, wrap, first);
+                  else if (n >= MAX_TILES) refused(`up to ${MAX_TILES} panes side by side`);
+                  else bring(from, (leaf) => across(shape, leaf, key, wrap, first));
                 }
               : undefined
           }

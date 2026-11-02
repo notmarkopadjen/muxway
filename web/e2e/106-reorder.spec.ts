@@ -49,8 +49,9 @@ test('106 a tab dragged along the strip keeps its place across a reload; { } mov
   await page.keyboard.press('{');
   await page.keyboard.press('{');
   await expect.poll(() => first3(page)).toEqual([LOGS, SHELL0, RO]);
-  // A drop outside the strip changes nothing.
-  await tab(page, RO).dragTo(page.getByTestId('screen'));
+  // A drop off the strip and off the tiles changes nothing (on a tile it
+  // lays the pane out: spec 113).
+  await tab(page, RO).dragTo(page.getByTestId('input'));
   await expect.poll(() => first3(page)).toEqual([LOGS, SHELL0, RO]);
   // A new pane on the host comes last; the dragged ones keep their places.
   const before = await order(page);
