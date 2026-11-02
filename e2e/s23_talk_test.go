@@ -85,6 +85,24 @@ func (e *env) partners(tok, address string) []talkPartner {
 
 func from(host, id string) map[string]string { return map[string]string{"host": host, "pane_id": id} }
 
+// textRow is a pane's row of the text listing, split at its tabs:
+// address, mode, command, title, kind, mail, talk.
+func (e *env) textRow(tok, address string) []string {
+	e.t.Helper()
+	r := e.getText(tok, "/v1/panes")
+	expect(e.t, r, http.StatusOK, "panes text")
+	// The last row keeps its empty columns: no TrimSpace.
+	for _, line := range strings.Split(strings.TrimSuffix(r.body, "\n"), "\n") {
+		if strings.HasPrefix(line, address+"\t") {
+			if f := strings.Split(line, "\t"); len(f) == 7 {
+				return f
+			}
+			e.t.Fatalf("row of %s: %q", address, line)
+		}
+	}
+	return nil
+}
+
 // 100
 func TestSec100_AnOriginIsAPaneTheTokenReads(t *testing.T) {
 	e, ts, a := basic(t)
@@ -192,6 +210,17 @@ func TestSec100_AnOriginIsAPaneTheTokenReads(t *testing.T) {
 	}
 	if r := e.get(narrow, "/v1/panes"); strings.Contains(r.body, "talk") || strings.Contains(r.body, "0.1") {
 		t.Fatalf("the narrow listing leaks: %s", r.body)
+	}
+	// The text listing's last column: the partners, newest first, for a
+	// reader of both sides; empty for the narrow token.
+	if row := e.textRow(full, shell0); row[5] != "" || row[6] != shell1+"|"+host+"/work/0.2" {
+		t.Fatalf("text row of 0.0: %q", row)
+	}
+	if row := e.textRow(full, host+"/work/0.2"); row[6] != shell0 {
+		t.Fatalf("text row of 0.2: %q", row)
+	}
+	if row := e.textRow(narrow, shell0); row[6] != "" {
+		t.Fatalf("the narrow text row names a partner: %q", row)
 	}
 
 	// Text mode, and the cursor line.
