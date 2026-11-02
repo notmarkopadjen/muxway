@@ -332,8 +332,8 @@ values shaped like a key that are no one's.
 | 8 | `findNames` on an `ls`, an `ls -l`, a `tree`, a `git status`, prose, a name with spaces, a name inside a web address, a name that is also a word | unit (web) | the marks of the table, free runs only |
 | 9 | `suggest`: the pool order, newest first; the shadow known and unknown; a suffix of one character never; text right of the cursor; a `cd do` with the listing; a pane that is not a shell | unit (web) | as section 2.4 says |
 | 10 | The shadow: text, Backspace, Enter, `C-c`, Up, Tab, a paste, Right accepting | unit (web) | the states of the diagram |
-| 11 | `ls` in the pane, a click on a directory, on a file with each setting, Shift+click, a slashed path to a directory and to a file | UI | the pane `cd`s, previews, `cat`s, runs the template, gets the quoted name; screenshots `113-names.png`, `113-names-hover.png` |
-| 12 | Direct typing `git st` with `git status` sent before: the ghost shows, Right fills, Enter runs; Ctrl+Right one word; a key after the ghost; a shell with text right of the cursor | UI | `git status` runs; screenshot `114-ghost.png` |
+| 11 | `ls` in the pane, a click on a directory, on a file with each setting, Shift+click, a slashed path to a directory and to a file | UI | the pane `cd`s, previews, `cat`s, runs the template, gets the quoted name; screenshots `114-names.png`, `114-names-hover.png` |
+| 12 | Direct typing `git st` with `git status` sent before: the ghost shows, Right fills, Enter runs; Ctrl+Right one word; a key after the ghost; a shell with text right of the cursor | UI | `git status` runs; screenshot `115-ghost.png` |
 | 13 | The input line: the ghost in the field, Right takes it, Tab still takes the list, Enter sends the field as typed | UI | as said |
 | 14 | A pane running `vim` after an `ls`: nothing links, nothing is suggested | UI | no `mx-name-link` in the screen, no ghost |
 | 15 | The settings: names off, suggest off, the command template, forget | UI | no links, no ghost, the template typed, the store empty |
@@ -362,7 +362,7 @@ Round one, names:
    anyone but a writer; Go end-to-end tests of rows 1 to 4 and 7.
 3. Web: `names.ts` and its test (row 8); the listing query and its
    refresh rule; name marks in `Screen`; the click actions and the
-   quoting; the settings; spec 113 (rows 5, 11, 14, 15 in part).
+   quoting; the settings; spec 114 (rows 5, 11, 14, 15 in part).
 4. Docs of round one, `make web`, local review, `make e2e`, the run
    recorded, `scripts/prepush-check.sh`, the pull request.
 
@@ -372,7 +372,7 @@ Round two, the ghost word:
    forget button.
 6. `suggest.ts` and the shadow, unit tested (rows 9, 10).
 7. The ghost span in `Screen`, `Right` and `Ctrl+Right` in the direct
-   key handler, the field's ghost in `InputPanel`; spec 114 (rows 12,
+   key handler, the field's ghost in `InputPanel`; spec 115 (rows 12,
    13, 15 in part).
 8. Docs of round two, the run, the pull request.
 
@@ -452,7 +452,7 @@ worth it.
 ## Test run
 
 Go end-to-end tests 184 to 187 (`e2e/s26_listing_test.go`), browser
-spec 113 (two tests, screenshots `113-names` and `113-names-hover`),
+spec 114 (two tests, screenshots `114-names` and `114-names-hover`),
 the finder's and the quoting's unit tests. [Run
 20261102-213932-99506f0](https://github.com/notmarkopadjen/muxway/issues/217):
 passed, 215 tests, 0 failed, at `99506f0`, whose sources are those of

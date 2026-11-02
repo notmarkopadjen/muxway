@@ -165,9 +165,12 @@
   color: var(--mx-warn);
   text-shadow: 0 0 8px var(--mx-warn);
 }
+/* The screen scrolls up through its history and never sideways: a
+   fitted pane has the columns its box holds, any other is drawn at the
+   font that fits, and a wide fallback glyph is clipped, not a bar. */
 .mx-screen {
   font-size: var(--mx-screen-size);
-  overflow: auto;
+  overflow: hidden auto;
   scrollbar-gutter: stable;
   border: 1px solid var(--mx-ink-dim);
   box-shadow: var(--mx-glow-box);
@@ -654,13 +657,21 @@
   margin: var(--mx-gap) 0 0;
   padding: 0;
   max-height: 60vh;
-  overflow: auto;
+  overflow: hidden auto;
 }
 .mx-palette-list li {
   display: grid;
-  grid-template-columns: 1.6em 1fr auto;
+  grid-template-columns: 1.6em minmax(0, 1fr) fit-content(45%);
   gap: var(--mx-gap);
   padding: 2px 6px;
+}
+/* A long name or place is cut, never scrolled to. */
+.mx-palette-list .mx-addr,
+.mx-palette-list .mx-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* the one row of an empty list is a sentence, not columns */
 .mx-palette-list li.mx-empty {

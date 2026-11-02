@@ -71,7 +71,10 @@ nothing but the hub to talk to.
    host as wheel notches at the cell under the pointer, one per row of
    travel, the notches of a movement gathered into one request while the
    last one is answered, and the program moves its own view. Any shell history above it
-   is still there, reachable by the box's scrollbar. The tab strip keeps
+   is still there, reachable by the box's scrollbar. The box never
+   scrolls sideways: a fitted pane has the columns the box holds, any
+   other pane is drawn at the font that fits, and the few pixels a wide
+   fallback glyph adds are clipped rather than given a bar. The tab strip keeps
    its tabs at their width and scrolls sideways: the wheel over it moves
    it, `‹ ›` at its ends appear when there is more than fits, and
    with one tile open `]` `[` show the next and previous pane in it.
@@ -258,14 +261,22 @@ view, each live and typable. The page is the Android client's pane view:
   browser: the dragged tabs come first in that order, every other pane
   follows in listing order, a new pane comes last, and a pane that goes
   away takes its place back when the same address returns. The window
-  view keeps the host's order.
+  view keeps the host's order. **Drag a tab down onto the view** and it
+  lays its pane out as a dragged header does (below): with one tile
+  open, drop it on the right part of the screen for two columns or the
+  lower part for two rows, the dropped pane there and focused. A tab of
+  a pane not open dropped on a tile's middle takes that tile's place,
+  as a click on it takes the focused tile's; from an edge the pane
+  comes in as one more tile on that side, the others keeping their
+  places; on a divider it goes across the split. With four tiles open
+  the whole tile is its middle, and the pane takes its place.
 - **Tiles** share the area in one of the Android arrangements: two panes
   have a `row` and a `column`; three add `main-left` (a main pane with
   the others stacked beside it) and `main-top`; four add a `grid`. `▦`,
   or `l`, cycles the ones that make sense for the count. A wide window
   starts with the row, a tall one with the column. The bar between two
   tiles drags, and no tile goes under fifteen percent. Drag a tile's
-  header onto another tile: its middle swaps the two; its upper, lower,
+  header, or a tab from the strip, onto another tile: its middle swaps the two; its upper, lower,
   left or right part splits that tile's place that way, the dragged pane
   on that side, and the half it will take lights up while you hover. The
   dragged pane's old place closes up, every share is equal again, and
@@ -366,7 +377,9 @@ sequenceDiagram
   beside the others; a pick asks nothing and becomes one more tile,
   focused. With four tiles open the menu's heading says *four open: a
   pick replaces <the focused pane>* and the pick swaps into the focused
-  tile, as a tab does. `Esc` closes the menu.
+  tile, as a tab does. `Esc` closes the menu. The menu never scrolls
+  sideways: a long place after a name is cut with an ellipsis, as is a
+  long name or place in the go-to dialog.
 
   ![the add menu](images/web-add-menu.png)
 - The **minimised row**. `_` on a tile's header, or `-` on the focused

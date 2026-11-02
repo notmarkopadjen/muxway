@@ -25,7 +25,7 @@ test('103 g opens the changes over the tile: the tree, the marks, the counts; fo
   await settled(page);
   // The tile's own fit lands first; the window must add nothing to it.
   await expect.poll(() => resizes.length, { timeout: 5000 }).toBeGreaterThan(0);
-  await expect(page.getByTestId('pane-size')).toHaveText(/134×\d+/);
+  await expect(page.getByTestId('pane-size')).toHaveText(/135×\d+/);
   const sent = resizes.length;
   const screen = page.getByTestId('screen');
   const before = await screen.boundingBox();

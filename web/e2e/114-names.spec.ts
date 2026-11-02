@@ -37,7 +37,7 @@ async function setOpenWith(page: Page, mode: string, command?: string) {
   });
 }
 
-test('113 the names of the directory are links: cd for a directory, the file as set, Shift+click names it', async ({
+test('114 the names of the directory are links: cd for a directory, the file as set, Shift+click names it', async ({
   page,
   request,
 }, info) => {
@@ -63,7 +63,7 @@ test('113 the names of the directory are links: cd for a directory, the file as 
     'dir',
   );
   await dir.hover();
-  await shot(page, info, '113-names-hover');
+  await shot(page, info, '114-names-hover');
   // A directory: cd, quoted, then Enter; the pane is then in plans and a
   // listing there links its own names.
   await dir.click();
@@ -90,7 +90,7 @@ test('113 the names of the directory are links: cd for a directory, the file as 
   await expect.poll(() => inputs.length).toBe(n + 2);
   expect(inputs.slice(-2)).toEqual([{ text: "cat -- 'a.md'" }, { key: 'Enter' }]);
   await expect(screen).toContainText('# plan a', { timeout: 5000 });
-  await shot(page, info, '113-names');
+  await shot(page, info, '114-names');
   // With a command set, the command with the quoted name for {}.
   await setOpenWith(page, 'command', 'wc -l {}');
   await expect(file).toHaveAttribute('title', 'wc -l a.md');
@@ -112,7 +112,7 @@ test('113 the names of the directory are links: cd for a directory, the file as 
   await control(request, '/send', { target: 'work:0.0', text: `cd ${PREVIEW}/docs && clear` });
 });
 
-test('113 security: only a listed name is a link, typed quoted whole; a reader, a program that is no shell, and the setting off get none', async ({
+test('114 security: only a listed name is a link, typed quoted whole; a reader, a program that is no shell, and the setting off get none', async ({
   page,
   browser,
   request,
