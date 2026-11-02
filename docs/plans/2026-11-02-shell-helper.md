@@ -1,6 +1,7 @@
 # Feature: shell helper, names you can click and words you can accept
 
-> Status: proposed on 2026-11-02, awaiting the owner. Asked for as "when I
+> Status: approved by the owner on 2026-11-02 ("approve, start with the
+> names round"). Asked for as "when I
 > type `ls` the directories and files should be clickable: a directory
 > `cd`s, a file is `cat` or an editor, configurable; and while I type,
 > the suggestion pre-filled in a lighter colour right of the cursor, so

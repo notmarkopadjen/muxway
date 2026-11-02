@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -173,6 +174,7 @@ type agentConn struct {
 	repeat  bool // the agent takes a count with a key
 	ask     bool // the agent takes answers to questions
 	mailbox bool // the agent holds mail for its panes
+	dir     bool // the agent lists directories under its roots
 	evts    bucket
 	warned  time.Time
 }
@@ -232,7 +234,7 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 	}
 	sanePanes(r.Panes)
 	a.mu.Lock()
-	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys, a.ask, a.mailbox = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys, r.Ask, r.Mailbox
+	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys, a.ask, a.mailbox, a.dir = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys, r.Ask, r.Mailbox, r.Dir
 	a.mu.Unlock()
 	return r.Panes, nil
 }
@@ -245,6 +247,10 @@ func sanePanes(panes []tmux.Pane) {
 		p := &panes[i]
 		if p.CursorX < 1 || p.CursorX > p.Width || p.CursorY < 1 || p.CursorY > p.Height {
 			p.CursorX, p.CursorY = 0, 0
+		}
+		// A directory is an absolute, clean path or nothing.
+		if p.Cwd != "" && (!strings.HasPrefix(p.Cwd, "/") || !wire.ValidPath(p.Cwd)) {
+			p.Cwd = ""
 		}
 		// Choices come only with a question, and only a valid list.
 		if p.Attention != nil && p.Attention.Choices != nil &&
@@ -282,6 +288,16 @@ func (a *agentConn) previews(ctx context.Context) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.preview
+}
+
+// listsDirs says, from the agent's listing, whether the agent lists directories.
+func (a *agentConn) listsDirs(ctx context.Context) bool {
+	if _, err := a.panes(ctx); err != nil {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.dir
 }
 
 // closesPanes says, from the agent's listing, whether clients may close panes there.

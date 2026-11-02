@@ -352,6 +352,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		}
 		for _, p := range panes {
 			if p.Exposed() && a.sameProcess(p) {
+				p.Cwd = a.cwdFor(p)
 				resp.Panes = append(resp.Panes, p)
 			}
 		}
@@ -361,6 +362,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		resp.Repeat = true
 		resp.Inbox = a.cfg.Inbox != ""
 		resp.Preview = len(a.cfg.Preview) > 0
+		resp.Dir = resp.Preview
 		resp.Ask = true
 		resp.Mailbox = true
 	case wire.OpRead:
@@ -450,6 +452,14 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		var file string
 		file, resp.Type, resp.Data, resp.Error = a.preview(ctx, req)
 		a.audit(req, resp.Error, "path", req.Path, "file", file, "bytes", len(resp.Data))
+	case wire.OpListDir:
+		var dir string
+		dir, resp.Listing, resp.Error = a.listDir(ctx, req)
+		n := 0
+		if resp.Listing != nil {
+			n = len(resp.Listing.Entries)
+		}
+		a.audit(req, resp.Error, "path", req.Path, "dir", dir, "entries", n)
 	case wire.OpGitStatus:
 		resp.Changes, resp.Error = a.changes(ctx, req)
 		n, root := 0, ""

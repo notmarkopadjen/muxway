@@ -115,23 +115,8 @@ var errNoPreview = errors.New("not previewed")
 // the root unless the owner allows them, never a secret by name, a
 // regular file of at most wire.MaxFile.
 func resolvePreview(roots []string, hidden bool, cwd, home, path string) (string, string, error) {
-	if !wire.ValidPath(path) || cwd == "" {
-		return "", "", errNoPreview
-	}
-	switch {
-	case path == "~" || strings.HasPrefix(path, "~/"):
-		if home == "" {
-			return "", "", errNoPreview
-		}
-		path = filepath.Join(home, path[1:])
-	case !filepath.IsAbs(path):
-		path = filepath.Join(cwd, path)
-	}
-	file, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		return "", "", errNoPreview
-	}
-	if _, ok := underRoot(roots, file, hidden); !ok || secretName(filepath.Base(file)) {
+	file, err := resolveUnder(roots, hidden, cwd, home, path, false)
+	if err != nil || secretName(filepath.Base(file)) {
 		return "", "", errNoPreview
 	}
 	typ := previewType(file)
@@ -140,6 +125,42 @@ func resolvePreview(roots []string, hidden bool, cwd, home, path string) (string
 		return "", "", errNoPreview
 	}
 	return file, typ, nil
+}
+
+// resolveUnder turns a path as printed into the real path it names, from
+// the pane's directory (~ from home), and says whether that lies under a
+// root once every symlink is followed; the root itself only with self.
+func resolveUnder(roots []string, hidden bool, cwd, home, path string, self bool) (string, error) {
+	if !wire.ValidPath(path) || cwd == "" {
+		return "", errNoPreview
+	}
+	switch {
+	case path == "~" || strings.HasPrefix(path, "~/"):
+		if home == "" {
+			return "", errNoPreview
+		}
+		path = filepath.Join(home, path[1:])
+	case !filepath.IsAbs(path):
+		path = filepath.Join(cwd, path)
+	}
+	file, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", errNoPreview
+	}
+	if _, ok := underRoot(roots, file, hidden); !ok && !(self && isRoot(roots, file)) {
+		return "", errNoPreview
+	}
+	return file, nil
+}
+
+// isRoot says whether a resolved path is one of the roots itself.
+func isRoot(roots []string, file string) bool {
+	for _, root := range roots {
+		if real, err := filepath.EvalSymlinks(root); err == nil && real == file {
+			return true
+		}
+	}
+	return false
 }
 
 // underRoot says whether a resolved path lies below one of the roots, and

@@ -25,6 +25,7 @@ const (
 	OpReadPath   = "read-path"   // a file under the owner's preview roots, by a path as printed
 	OpGitStatus  = "git-status"  // the changes of the pane's repository, when it lies under a root
 	OpGitDiff    = "git-diff"    // one changed file's diff against the last commit
+	OpListDir    = "list-dir"    // the entries of a directory under the roots, the pane's own without a path
 	OpAnswer     = "answer"      // a client picks one of the choices a question offered
 	OpMail       = "mail"        // a message for the pane's process, into its mailbox, never typed
 	OpMailList   = "mail-list"   // the mailbox of a pane, for a reader
@@ -180,6 +181,40 @@ type Response struct {
 	Diff    string   `json:"diff,omitempty"`
 	Binary  bool     `json:"binary,omitempty"`
 	Cut     bool     `json:"cut,omitempty"`
+	// Dir, with a list, says the agent lists directories under its roots;
+	// Listing is one of them.
+	Dir     bool     `json:"dir,omitempty"`
+	Listing *Listing `json:"listing,omitempty"`
+}
+
+// Listing is a directory under the roots as a client may see it: its
+// resolved path and its entries by name and kind.
+type Listing struct {
+	Path string `json:"path"`
+	// Truncated: more than MaxEntries were left out.
+	Truncated bool    `json:"truncated,omitempty"`
+	Entries   []Entry `json:"entries"`
+}
+
+// Entry is one name of a directory. Kind is dir, file or other; a
+// symlink has the kind of what it points to, other when that lies
+// outside the roots.
+type Entry struct {
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+}
+
+// Entries a listing holds at most, and the bytes a listed name may run
+// to: a longer one, or one with a control character, is left out.
+const (
+	MaxEntries   = 2000
+	MaxNameBytes = 255
+)
+
+// ValidName reports whether a directory entry's name may be listed:
+// UTF-8, no control characters, at most MaxNameBytes.
+func ValidName(s string) bool {
+	return s != "" && len(s) <= MaxNameBytes && ValidPath(s)
 }
 
 // Changes is git's view of a repository: its root, its branch, how far

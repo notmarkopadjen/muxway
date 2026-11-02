@@ -120,10 +120,14 @@ type Pane struct {
 	CursorX int `json:"cursor_x,omitempty"`
 	CursorY int `json:"cursor_y,omitempty"`
 	// Last: the only pane of its session, so closing it ends the session.
-	Last           bool  `json:"last,omitempty"`
-	PID            int   `json:"-"`
-	ServerPID      int   `json:"-"`
-	SessionCreated int64 `json:"-"`
+	Last bool `json:"last,omitempty"`
+	// Cwd is the directory a shell pane is in, when the agent may say:
+	// under one of its roots, for a writer. Path is what tmux reports.
+	Cwd            string `json:"cwd,omitempty"`
+	Path           string `json:"-"`
+	PID            int    `json:"-"`
+	ServerPID      int    `json:"-"`
+	SessionCreated int64  `json:"-"`
 }
 
 // Attention is what a pane is waiting for: set by a notification from a
@@ -149,7 +153,7 @@ var fields = []string{
 	"#{pane_width}", "#{pane_height}", "#{pane_title}", "#{pane_current_command}",
 	"#{window_activity}", "#{" + optMode + "}", "#{" + optAlias + "}", "#{pane_pid}",
 	"#{window_zoomed_flag}", "#{mouse_any_flag}#{mouse_button_flag}#{mouse_standard_flag}#{mouse_all_flag}",
-	"#{cursor_x}", "#{cursor_y}", "#{session_created}", "#{pid}",
+	"#{cursor_x}", "#{cursor_y}", "#{session_created}", "#{pid}", "#{pane_current_path}",
 }
 
 // List returns every pane of the server, marked or not. Lines it cannot
@@ -184,6 +188,7 @@ func (s Server) List(ctx context.Context) (panes []Pane, skipped int, err error)
 			Activity: act, Mode: f[15], Alias: f[16], PID: atoi(f[17]),
 			Zoomed: f[18] == "1" && f[9] == "1", Mouse: strings.Contains(f[19], "1"),
 			CursorX: atoi(f[20]) + 1, CursorY: atoi(f[21]) + 1, SessionCreated: created, ServerPID: atoi(f[23]),
+			Path: f[24],
 		})
 	}
 	count := map[string]int{}
