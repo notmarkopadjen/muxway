@@ -94,8 +94,10 @@ test('113 a tab dropped on a tile splits its place or takes it; on a divider, ac
   await page.mouse.up();
   await expect(page.getByTestId('tile')).toHaveCount(3);
   await expect(page).toHaveURL(url(SHELL0, LOGS, RO));
-  const area = await box(page.locator('.mx-area'));
+  // The area is read with the tiles: the read-only pane focused puts a
+  // notice under the keys, which takes height from it.
   await placed(async () => {
+    const area = await box(page.locator('.mx-area'));
     const a = await box(tile(page, SHELL0));
     const c = await box(tile(page, RO));
     return c.x < a.x && c.height > area.height - 12;
