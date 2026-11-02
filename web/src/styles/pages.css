@@ -2043,15 +2043,14 @@ button.mx-window:focus-visible {
 .mx-tab-group + .mx-tab-group {
   margin-left: 2em;
 }
-/* the frame on a tile of a group */
+/* the edge of a tile in a group: one thin line, the hue dimmed, so the
+   pane keeps the eye; the strip carries the full frame */
 .mx-tile[data-group] {
-  border-color: var(--mx-talk);
-  box-shadow: inset 0 0 0 1px var(--mx-talk);
+  border-color: color-mix(in srgb, var(--mx-talk) 40%, transparent);
 }
 .mx-tile[data-group][data-focused] {
-  box-shadow:
-    inset 0 0 0 1px var(--mx-talk),
-    0 0 8px var(--mx-talk);
+  border-color: color-mix(in srgb, var(--mx-talk) 65%, transparent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--mx-talk) 30%, transparent);
 }
 /* a row of a group on the list: the frame's edge */
 .mx-pane-row[data-group] {
