@@ -237,8 +237,9 @@ view, each live and typable. The page is the Android client's pane view:
   tab is **painted with its state** from the lens: the theme's ink,
   inverted, when the pane waits for you (`!` `?` `z` `✓`, pulsing), dim when it
   works (`⟳`), plain when quiet. Open panes have a border; the focused
-  one wears three thick sides in the accent and no bottom, standing on
-  the header row's line like a folder's tab, its name bold and brighter,
+  one wears three thick sides in the accent and no bottom, sitting on
+  the header row's line like a folder's tab (the strip sits lower than
+  the buttons for that), its name bold and brighter,
   so the tab of the pane below is found at a glance even zoomed in
   (inside a group's frame it keeps its bottom). Selection never changes
   the state's colour, so the state shows on the pane you are looking at. A click on

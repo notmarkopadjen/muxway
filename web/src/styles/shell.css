@@ -633,8 +633,9 @@ button:disabled {
 }
 /* In the header the strip is as wide as its tabs, so + follows the last
    one; the pane buttons keep to the right. The strip reaches the row's
-   bottom edge, through its padding, so the open tab can stand on the
-   line; the other tabs and the strip's ends keep the row's middle. */
+   bottom edge, through its padding, and the tabs sit on it, lower than
+   the buttons, so the open tab stands on the line with its sides ending
+   just under its name; the strip's ends keep the row's middle. */
 .mx-header-slot .mx-strip {
   flex: 0 1 auto;
   align-self: stretch;
@@ -645,11 +646,12 @@ button:disabled {
 }
 .mx-header-slot .mx-tabs {
   align-self: stretch;
-  padding-bottom: calc(2px + var(--mx-gap));
+  align-items: flex-end;
+  padding-bottom: 2px;
 }
 .mx-header-slot .mx-tab[data-focused] {
-  margin-bottom: calc(-2px - var(--mx-gap));
-  padding-bottom: calc(2px + var(--mx-gap));
+  margin-bottom: -2px;
+  padding-bottom: 3px;
 }
 .mx-header-slot .mx-tab-group .mx-tab[data-focused] {
   margin-bottom: 0;
@@ -661,17 +663,6 @@ button:disabled {
   }
   .mx-header-slot .mx-strip-end {
     margin-bottom: 6px;
-  }
-  .mx-header-slot .mx-tabs {
-    padding-bottom: 8px;
-  }
-  .mx-header-slot .mx-tab[data-focused] {
-    margin-bottom: -8px;
-    padding-bottom: 8px;
-  }
-  .mx-header-slot .mx-tab-group .mx-tab[data-focused] {
-    margin-bottom: 0;
-    padding-bottom: 0;
   }
 }
 .mx-header-slot .mx-tools {

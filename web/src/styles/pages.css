@@ -958,7 +958,6 @@ button.mx-window:focus-visible {
    eye finds it even on a zoomed-in screen. Inside a group's frame it
    keeps its bottom. */
 .mx-tab[data-focused] {
-  align-self: stretch;
   border-width: 3px 3px 0;
   border-color: var(--mx-accent);
   padding: 0 6px;
@@ -966,7 +965,6 @@ button.mx-window:focus-visible {
   text-shadow: var(--mx-glow-text-strong);
 }
 .mx-tab-group .mx-tab[data-focused] {
-  align-self: auto;
   border-width: 3px;
 }
 /* A pane hidden from the window view: its tab stays, dimmed, and brings it back. */
