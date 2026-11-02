@@ -36,7 +36,22 @@ export interface Pane {
   last?: boolean; // the only pane of its session: closing it ends the session
   talk?: TalkPartner[]; // the panes this one talked with in the last ten minutes
   mail?: MailState; // mail its process has not read
+  cwd?: string; // a shell pane's directory under the host's roots, for its writers
   hub?: string; // the hub of the hubs box it came from; none for this page's own
+}
+
+// A directory under the host's roots as a writer may see it: see
+// GET /v1/panes/{address}/dir. A symlink has the kind of what it points
+// to, `other` when that lies outside the roots.
+export type EntryKind = 'dir' | 'file' | 'other';
+export interface Entry {
+  name: string;
+  kind: EntryKind;
+}
+export interface Listing {
+  path: string;
+  truncated?: boolean;
+  entries: Entry[];
 }
 
 // What waits in a pane's mailbox: how many unread, and when the newest came.
@@ -86,6 +101,7 @@ export interface Host {
   repeat?: boolean; // the agent takes a count with a key
   ask?: boolean; // the agent takes answers to questions
   mail?: boolean; // the agent holds mail for its panes
+  dir?: boolean; // the agent lists directories under its roots for writers
   hub?: string; // as on a pane
 }
 

@@ -238,6 +238,23 @@
   text-decoration-style: solid;
   outline: none;
 }
+/* a name of the pane's directory: a listing is all names, so the link
+   shows itself under the pointer only */
+.mx-screen .mx-name-link {
+  text-decoration: none;
+}
+.mx-screen .mx-name-link:hover,
+.mx-screen .mx-name-link:focus-visible {
+  text-decoration: underline dotted;
+}
+.mx-help .mx-open-command {
+  font: inherit;
+  color: var(--mx-ink);
+  background: var(--mx-bg);
+  border: 1px solid var(--mx-ink-dim);
+  padding: 0 var(--mx-gap);
+  min-width: 16ch;
+}
 /* a numbered choice in a pane that takes the mouse: a click picks it */
 .mx-screen .ln.mx-choice {
   cursor: pointer;

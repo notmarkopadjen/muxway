@@ -1,12 +1,19 @@
 import {
   cycleFont,
+  cycleOpenMode,
   getFont,
   getMotion,
+  getNames,
   getNotify,
+  getOpenWith,
   getTheme,
+  OPEN_COMMAND_MAX,
+  setOpenCommand,
   toggleMotion,
+  toggleNames,
   toggleNotify,
   cycleTheme,
+  useHelper,
   useSettings,
 } from '../settings';
 import { Box } from '../components/Box';
@@ -69,6 +76,10 @@ const KEYS: [string, string][] = [
     'v',
     'speak: held, records until released; tapped, again stops; Esc drops it. The ◉ button the same',
   ],
+  [
+    'click / Shift+click a name',
+    "in a writable shell pane on a host with preview roots, a name of the pane's directory on the screen: a directory is entered (cd), a file opens the way *a file opens with* says (the preview window, cat, or your own command with {} for the name) / only the quoted name goes onto the pane's line",
+  ],
   ['g then a letter', 'jump to the first host starting with it'],
   [
     'H',
@@ -82,6 +93,7 @@ const KEYS: [string, string][] = [
 
 export function Help({ onClose }: { onClose: () => void }) {
   useSettings();
+  const helper = useHelper();
   return (
     <div className="mx-help" onClick={onClose} data-testid="help">
       <div onClick={(e) => e.stopPropagation()}>
@@ -107,6 +119,24 @@ export function Help({ onClose }: { onClose: () => void }) {
             <button type="button" onClick={() => void toggleNotify()}>
               notifications: {getNotify() ? 'on' : 'off'}
             </button>
+            <button type="button" onClick={() => toggleNames()} data-testid="names">
+              names: {getNames() ? 'on' : 'off'}
+            </button>
+            <button type="button" onClick={() => cycleOpenMode()} data-testid="open-with">
+              a file opens with: {getOpenWith().mode}
+            </button>
+            {helper.open.mode === 'command' && (
+              <input
+                type="text"
+                className="mx-open-command"
+                data-testid="open-command"
+                aria-label="the command a file opens with, {} for its name"
+                placeholder="vim {}"
+                maxLength={OPEN_COMMAND_MAX}
+                value={helper.open.command}
+                onChange={(e) => setOpenCommand(e.target.value)}
+              />
+            )}
             <button type="button" onClick={onClose}>
               close
             </button>

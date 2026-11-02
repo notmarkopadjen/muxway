@@ -9,13 +9,17 @@ import {
   keys,
   resizePane,
   sendInput,
+  typeLine,
   useAllPanes,
   useChanges,
   useHosts,
   useInput,
+  useListing,
   usePane,
   usePaneCached,
 } from '../api/queries';
+import { isShell } from '../term/commands';
+import { lineFor, nameIndex, shellQuote, titleFor } from '../term/names';
 import { joinAddress, splitAddress } from '../hubs';
 import type { Mouse, Pane, PaneContent, TalkPartner } from '../api/types';
 import { ChainMark, MailMark } from '../components/TalkMark';
@@ -32,7 +36,7 @@ import { useToast } from '../components/Toast';
 import { noteChange, noteOwn, useLens } from '../term/lens';
 import { drawn, nameFor, useMoving } from '../term/drawn';
 import { inOrder, move, step } from '../term/order';
-import { setTabOrder, useTabOrder } from '../settings';
+import { setTabOrder, useHelper, useTabOrder } from '../settings';
 import { Screen } from '../term/Screen';
 import {
   close,
@@ -127,6 +131,23 @@ async function click(address: string, mouse: Mouse, refused: (why: string) => vo
   }
 }
 
+// A click on a name types a line into the pane, as a click on a cell
+// sends a click: what it typed shows soon, and once more a little later.
+async function typeInto(
+  address: string,
+  text: string,
+  enter: boolean,
+  refused: (why: string) => void,
+) {
+  try {
+    await typeLine(address, text, enter);
+    for (const ms of [150, 600])
+      setTimeout(() => void queryClient.invalidateQueries({ queryKey: keys.pane(address) }), ms);
+  } catch (err) {
+    refused(err instanceof ApiError ? err.code : 'hub unreachable');
+  }
+}
+
 interface TileProps {
   address: string;
   // A window over the screen, docked to the tile's edge: the changes.
@@ -164,6 +185,9 @@ interface TileProps {
   // The host has roots: the header counts the repository's changes, and
   // the count opens the changes window over this tile.
   previews: boolean;
+  // The host lists directories: in a writable shell pane the names of
+  // its directory are links.
+  lists: boolean;
   changesOpen: boolean;
   onChanges: () => void;
   // Height the input line takes beyond one row, which is not a resize.
@@ -212,6 +236,34 @@ function Tile(props: TileProps) {
   const box = useRef<HTMLDivElement>(null);
   const p = pane.data?.pane;
   const writable = p?.mode === 'write';
+  // The names of a shell pane's directory, when the host lists it for
+  // this writer and the person wants them: a click enters a directory or
+  // opens a file the way they set; Shift+click only puts the name on the
+  // pane's line.
+  const helper = useHelper();
+  const listingOn = props.lists && writable && helper.names && !!p && isShell(p.command);
+  const listing = useListing(address, p?.cwd, listingOn, focused ? 2_000 : 5_000);
+  // A listing kept from before the shell gave the pane away is no listing.
+  const entries = listingOn ? listing.data?.entries : undefined;
+  const names = useMemo(() => (entries ? nameIndex(entries) : undefined), [entries]);
+  const open = helper.open;
+  const { onPath, refused } = props;
+  const onName = useCallback(
+    (name: string, kind: 'dir' | 'file', shift: boolean) => {
+      if (shift) {
+        void typeInto(address, shellQuote(name) + ' ', false, refused);
+        return;
+      }
+      const line = lineFor(kind, name, open);
+      if (line === null) onPath?.(name);
+      else void typeInto(address, line, true, refused);
+    },
+    [address, open, onPath, refused],
+  );
+  const nameTitle = useCallback(
+    (name: string, kind: 'dir' | 'file') => titleFor(kind, name, open),
+    [open],
+  );
   // Every writable tile opens with fit on, as a single pane does.
   const fit = props.fit ?? writable;
   const fitting = fit && writable && !windowFit;
@@ -543,6 +595,9 @@ function Tile(props: TileProps) {
           }
           onFile={props.onFile}
           onPath={writable ? props.onPath : undefined}
+          names={names}
+          onName={names ? onName : undefined}
+          nameTitle={nameTitle}
           onCopy={props.onCopied}
           onPrompt={
             writable
@@ -717,6 +772,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const hosts = useHosts();
   const hostCloses = (a: string) => !!hostOf(hosts.data, a)?.close;
   const hostPreviews = (a: string) => !!hostOf(hosts.data, a)?.preview;
+  const hostLists = (a: string) => !!hostOf(hosts.data, a)?.dir;
   // Direct typing: keys go to the focused pane as pressed, while it is
   // writable; focusing a read-only tile ends it, as does leaving the view.
   const [direct, setDirect] = useState(false);
@@ -1330,6 +1386,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onFile={(name) => show({ address: a, name })}
         onPath={hostPreviews(a) ? (path) => show({ address: a, path }) : undefined}
         previews={hostPreviews(a)}
+        lists={hostLists(a)}
         changesOpen={i === index && showsChanges}
         onChanges={() => {
           setFocusedIndex(i);

@@ -2,6 +2,7 @@ import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState }
 import { blockAt, blocks } from './blocks';
 import { findFiles, findLinks, findPaths, isChoice } from './links';
 import { fontFor, inner, measureCell } from './measure';
+import { findNames, type NameIndex, type NameKind } from './names';
 import { classes, parse, type Span } from './sgr';
 
 // Renders a pane's content. Lines that were not there a moment ago burn
@@ -35,21 +36,30 @@ function SpanView({ s }: { s: Span }) {
   );
 }
 
-// What a run of a line links to: a web address, a file of the inbox, or
-// a path the host previews.
+// What a run of a line links to: a web address, a file of the inbox, a
+// path the host previews, or a name of the pane's directory.
 interface Mark {
   start: number;
   end: number;
   href?: string;
   file?: string;
   path?: string;
+  name?: string;
+  kind?: NameKind;
 }
 
 // The marks of a line in order: the links a program named (OSC 8) first,
 // then the addresses found in the text where no such link is; a file name
 // inside a web address is the address's, an inbox path is the inbox's
-// before it is a path.
-export function marks(spans: Span[], line: string, files: boolean, paths: boolean): Mark[] {
+// before it is a path, and a name of the directory fills what is free
+// after all of those.
+export function marks(
+  spans: Span[],
+  line: string,
+  files: boolean,
+  paths: boolean,
+  names?: NameIndex,
+): Mark[] {
   const out: Mark[] = [];
   let at = 0;
   for (const s of spans) {
@@ -67,6 +77,9 @@ export function marks(spans: Span[], line: string, files: boolean, paths: boolea
   if (paths)
     for (const [start, end, path] of findPaths(line))
       if (free(start, end)) out.push({ start, end, path });
+  if (names)
+    for (const [start, end, name, kind] of findNames(line, names))
+      if (free(start, end)) out.push({ start, end, name, kind });
   return out.sort((a, b) => a.start - b.start);
 }
 
@@ -76,6 +89,8 @@ interface Piece {
   href?: string;
   file?: string;
   path?: string;
+  name?: string;
+  kind?: NameKind;
   spans: Span[];
 }
 
@@ -94,11 +109,19 @@ function pieces(spans: Span[], links: Mark[]): Piece[] {
       const href = inside ? l.href : undefined;
       const file = inside ? l.file : undefined;
       const path = inside ? l.path : undefined;
+      const name = inside ? l.name : undefined;
+      const kind = inside ? l.kind : undefined;
       const last = out[out.length - 1];
       const piece = { ...s, text: text.slice(0, take) };
-      if (last && last.href === href && last.file === file && last.path === path)
+      if (
+        last &&
+        last.href === href &&
+        last.file === file &&
+        last.path === path &&
+        last.name === name
+      )
         last.spans.push(piece);
-      else out.push({ href, file, path, spans: [piece] });
+      else out.push({ href, file, path, name, kind, spans: [piece] });
       text = text.slice(take);
       at += take;
     }
@@ -127,13 +150,35 @@ function LineView({
   pieces,
   onFile,
   onPath,
+  onName,
+  nameTitle,
 }: {
   pieces: Piece[];
   onFile?: (name: string) => void;
   onPath?: (path: string) => void;
+  onName?: (name: string, kind: NameKind, shift: boolean) => void;
+  nameTitle?: (name: string, kind: NameKind) => string;
 }) {
   return pieces.map((p, j) =>
-    p.file || p.path ? (
+    p.name && p.kind ? (
+      <a
+        key={j}
+        className="mx-link mx-name-link"
+        href="#"
+        data-name={p.name}
+        data-kind={p.kind}
+        title={nameTitle?.(p.name, p.kind)}
+        onClick={(ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          onName?.(p.name!, p.kind!, ev.shiftKey);
+        }}
+      >
+        {p.spans.map((s, k) => (
+          <SpanView key={k} s={s} />
+        ))}
+      </a>
+    ) : p.file || p.path ? (
       <a
         key={j}
         className={`mx-link ${p.file ? 'mx-file-link' : 'mx-path-link'}`}
@@ -187,6 +232,9 @@ export const Screen = memo(function Screen({
   onWheel,
   onFile,
   onPath,
+  names,
+  onName,
+  nameTitle,
   onCopy,
   onPrompt,
   cursorRow,
@@ -207,6 +255,11 @@ export const Screen = memo(function Screen({
   onWheel?: (up: boolean, x: number, y: number, count: number) => Promise<void> | void;
   onFile?: (name: string) => void;
   onPath?: (path: string) => void;
+  // The names of the pane's directory, as the host listed them: each one
+  // on the screen is a link, its click named with the name and the kind.
+  names?: NameIndex;
+  onName?: (name: string, kind: NameKind, shift: boolean) => void;
+  nameTitle?: (name: string, kind: NameKind) => string;
   onCopy?: (rows: number) => void;
   onPrompt?: () => void;
   cursorRow?: number;
@@ -228,8 +281,8 @@ export const Screen = memo(function Screen({
   const files = !!onFile;
   const paths = !!onPath;
   const linked = useMemo(
-    () => lines.map((spans, i) => pieces(spans, marks(spans, plain[i], files, paths))),
-    [lines, plain, files, paths],
+    () => lines.map((spans, i) => pieces(spans, marks(spans, plain[i], files, paths, names))),
+    [lines, plain, files, paths, names],
   );
   // The blocks a click can copy, and the one under the pointer.
   const all = useMemo(() => (onCopy ? blocks(plain) : []), [plain, onCopy]);
@@ -422,7 +475,13 @@ export const Screen = memo(function Screen({
                 ⧉
               </button>
             )}
-            <LineView pieces={ps} onFile={onFile} onPath={onPath} />
+            <LineView
+              pieces={ps}
+              onFile={onFile}
+              onPath={onPath}
+              onName={onName}
+              nameTitle={nameTitle}
+            />
             {cursor && height && i === lines.length - height + Math.min(cursor.y, height) - 1 && (
               <span
                 className="mx-caret"

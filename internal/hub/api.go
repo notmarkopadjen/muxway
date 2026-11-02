@@ -220,6 +220,10 @@ func view(host string, t Principal, p tmux.Pane) PaneView {
 	if p.Mode == tmux.ModeWrite && !t.canWrite(host, p) {
 		p.Mode = tmux.ModeRead
 	}
+	// A pane's directory is a path of the host: for its writers only.
+	if p.Mode != tmux.ModeWrite {
+		p.Cwd = ""
+	}
 	return PaneView{Host: host, Address: host + "/" + p.Address(), Pane: p}
 }
 
@@ -244,6 +248,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		Repeat   bool   `json:"repeat,omitempty"`
 		Ask      bool   `json:"ask,omitempty"`
 		Mail     bool   `json:"mail,omitempty"`
+		Dir      bool   `json:"dir,omitempty"`
 	}
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
@@ -255,6 +260,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 			v.Repeat = a.repeats(r.Context())
 			v.Ask = a.asks(r.Context())
 			v.Mail = a.mails(r.Context())
+			v.Dir = a.listsDirs(r.Context())
 		}
 		out = append(out, v)
 	}
@@ -592,6 +598,10 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	if path, ok := strings.CutSuffix(r.PathValue("path"), "/preview"); ok {
 		h.handlePreview(w, r, t, path)
+		return
+	}
+	if path, ok := strings.CutSuffix(r.PathValue("path"), "/dir"); ok {
+		h.handleListing(w, r, t, path)
 		return
 	}
 	if path, ok := strings.CutSuffix(r.PathValue("path"), "/git/diff"); ok {
