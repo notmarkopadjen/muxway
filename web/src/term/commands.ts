@@ -152,6 +152,7 @@ export function commandsFor(p: Pick<Pane, 'command' | 'title'>, recent: string[]
   if (!isShell(p.command)) return null;
   const extra = recent
     .filter((r) => !SHELL_COMMANDS.some((c) => c.text === r))
+    .slice(0, ROW_MAX)
     .map((r) => ({
       label: r.length > LABEL ? r.slice(0, LABEL - 1) + '…' : r,
       text: r,
@@ -161,9 +162,11 @@ export function commandsFor(p: Pick<Pane, 'command' | 'title'>, recent: string[]
   return { kind: 'shell', commands: [...SHELL_COMMANDS, ...extra] };
 }
 
-// The last lines sent to a shell, newest first, kept by the browser.
+// The last lines sent to a shell, newest first, kept by the browser: the
+// command row shows the first few, the ghost word draws from them all.
 const KEY = 'mx-recent';
-export const RECENT_MAX = 8;
+export const RECENT_MAX = 200;
+export const ROW_MAX = 8;
 const LINE_MAX = 200;
 
 let recent: string[] = load();
@@ -182,9 +185,16 @@ function load(): string[] {
 // token, or an upper-case NAME=value assignment, exported or not.
 const SECRET_WORDS = /authorization|token|passw(or)?d|secret|mxt_|api[_-]?key/i;
 const ASSIGNMENT = /(^|\s)(export\s+)?[A-Z_][A-Z0-9_]*=/;
+// A client that takes a password on its line, with -p and a value; and
+// user:password with -u or -a, as curl, httpie and their kind take it.
+const CLIENT_P =
+  /(^|\s)(mysql|mariadb|psql|mongo(sh)?|redis-cli|sshpass|smbclient|ftp)\s(.*\s)?-p\S*/;
+const USER_PASS = /\s-[ua]\s*\S+:\S+/;
 
 export function looksSecret(line: string): boolean {
-  return SECRET_WORDS.test(line) || ASSIGNMENT.test(line);
+  return (
+    SECRET_WORDS.test(line) || ASSIGNMENT.test(line) || CLIENT_P.test(line) || USER_PASS.test(line)
+  );
 }
 
 export function remember(line: string) {

@@ -6,16 +6,19 @@ import {
   getNames,
   getNotify,
   getOpenWith,
+  getSuggest,
   getTheme,
   OPEN_COMMAND_MAX,
   setOpenCommand,
   toggleMotion,
   toggleNames,
   toggleNotify,
+  toggleSuggest,
   cycleTheme,
   useHelper,
   useSettings,
 } from '../settings';
+import { forgetRecent, useRecent } from '../term/commands';
 import { Box } from '../components/Box';
 
 const KEYS: [string, string][] = [
@@ -80,6 +83,10 @@ const KEYS: [string, string][] = [
     'click / Shift+click a name',
     "in a writable shell pane on a host with preview roots, a name of the pane's directory on the screen: a directory is entered (cd), a file opens the way *a file opens with* says (the preview window, cat, or your own command with {} for the name) / only the quoted name goes onto the pane's line",
   ],
+  [
+    'Right / Ctrl+Right',
+    'the ghost word: while a shell pane is typed into, direct or on the line, the rest of a line sent before, a command the screen shows, or a name of the directory is drawn dim after the cursor; Right accepts it, Ctrl+Right one word; any other key ignores it; *suggest* turns it off',
+  ],
   ['g then a letter', 'jump to the first host starting with it'],
   [
     'H',
@@ -94,6 +101,7 @@ const KEYS: [string, string][] = [
 export function Help({ onClose }: { onClose: () => void }) {
   useSettings();
   const helper = useHelper();
+  const recent = useRecent();
   return (
     <div className="mx-help" onClick={onClose} data-testid="help">
       <div onClick={(e) => e.stopPropagation()}>
@@ -121,6 +129,18 @@ export function Help({ onClose }: { onClose: () => void }) {
             </button>
             <button type="button" onClick={() => toggleNames()} data-testid="names">
               names: {getNames() ? 'on' : 'off'}
+            </button>
+            <button type="button" onClick={() => toggleSuggest()} data-testid="suggest">
+              suggest: {getSuggest() ? 'on' : 'off'}
+            </button>
+            <button
+              type="button"
+              onClick={() => forgetRecent()}
+              disabled={!recent.length}
+              title="the lines sent to shells from this browser, which the ghost word and the command row draw from"
+              data-testid="forget"
+            >
+              forget {recent.length} sent {recent.length === 1 ? 'line' : 'lines'}
             </button>
             <button type="button" onClick={() => cycleOpenMode()} data-testid="open-with">
               a file opens with: {getOpenWith().mode}

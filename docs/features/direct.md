@@ -55,6 +55,13 @@ ways: the row the program waits on focuses the line, and `i` from a
 hardware keyboard turns direct typing on. Focusing a read-only tile
 ends it, as does leaving the view; it is not remembered between visits.
 
+In a shell pane a dim ghost word may follow the cursor while typing:
+the rest of a line this browser sent before, a command the screen
+shows, or a name of the directory. `Right` then sends the ghost as
+text rather than the key, `Ctrl+Right` its first word; without a ghost
+both are the pane's keys as the table says (see [the shell
+helper](shell-helper.md)).
+
 ## How it works
 
 ```mermaid

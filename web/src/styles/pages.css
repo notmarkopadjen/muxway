@@ -207,6 +207,43 @@
   pointer-events: none;
   z-index: 1;
 }
+/* the ghost word: the rest of a known line after the cursor, dim, cut at
+   the row's end */
+.mx-ghost {
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: var(--mx-ink-dim);
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+/* the same on the input line: a mirror of the field with its text
+   transparent and the ghost dim, over the field */
+.mx-field {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+}
+.mx-field-ghost {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border-style: solid;
+  border-color: transparent;
+  color: transparent;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: hidden;
+  pointer-events: none;
+}
+.mx-field-ghost .mx-ghost {
+  position: static;
+  color: var(--mx-ink-dim);
+  white-space: pre-wrap;
+}
 /* the mark at a block's first row: a click copies the block */
 .mx-copy {
   position: absolute;

@@ -6,6 +6,7 @@ import {
   isShell,
   looksSecret,
   RECENT_MAX,
+  ROW_MAX,
   recentLines,
   remember,
   SHELL_COMMANDS,
@@ -78,14 +79,25 @@ group('commands', () => {
     remember('export API_KEY=abc');
     remember('make test');
     expect(recentLines()).toEqual(['make test']);
+    for (const line of [
+      'mysql -u root -p hunter2 shop',
+      'psql -h db -p 5432 -U app',
+      'http -a alice:hunter2 https://example.com/',
+      'sshpass -p x ssh host',
+    ])
+      expect(looksSecret(line), line).toBe(true);
+    for (const line of ['mkdir -p a/b', 'grep -u x', 'ssh -p 2222 host', 'cp -u a b'])
+      expect(looksSecret(line), line).toBe(false);
   });
 
-  it('keeps a bounded list and drops a line too long to be a command', () => {
+  it('keeps a bounded list, shows the row the first few, and drops a line too long to be a command', () => {
     for (let i = 0; i < RECENT_MAX + 3; i++) remember(`cmd ${i}`);
     remember('y'.repeat(201));
+    expect(recentLines()).toHaveLength(RECENT_MAX);
+    expect(recentLines()[0]).toBe(`cmd ${RECENT_MAX + 2}`);
     const row = commandsFor({ command: 'sh', title: '' }, recentLines());
     const extra = row!.commands.slice(SHELL_COMMANDS.length).map((c) => c.text);
-    expect(extra).toHaveLength(RECENT_MAX);
+    expect(extra).toHaveLength(ROW_MAX);
     expect(extra[0]).toBe(`cmd ${RECENT_MAX + 2}`);
   });
 });

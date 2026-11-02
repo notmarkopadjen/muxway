@@ -101,6 +101,59 @@ sequenceDiagram
 Protocol: `dir` in the hosts listing, `cwd` on a pane, the endpoint and
 the op in [the protocol](../protocol/v1.md).
 
+## The ghost word
+
+While a shell pane is typed into, [direct](direct.md) or on the input
+line, the rest of what the client thinks is being typed is drawn dim
+after the cursor: a line this browser sent before, a command the
+screen shows was typed at a prompt, one of the command row's starters,
+or, after a command that takes a file (`cd`, `cat`, `ls`, `vim` and
+their kind), a name of the pane's directory, a directory with its
+slash. `Right` accepts it whole, `Ctrl+Right` its first word; any other
+key ignores it, and Enter never sends it. On the line the ghost is drawn
+inside the field and `Right` at the end of the text takes it into the
+field; Tab and the completion list stay as they are.
+
+![the ghost word after the cursor while typing direct](images/web-ghost.png)
+
+The client does not know where the shell's prompt ends, so it keeps a
+shadow of the line from the keys it sent while typing direct: text
+appends, Backspace takes a character, Enter and the keys that clear
+the line (`C-c`, `C-u`) start it afresh, and a key it cannot follow
+(history, Tab, a move, `C-r`) makes it unknown until the next line. A
+ghost shows only where the screen's cursor row ends with the shadow,
+so the screen confirms what was typed; without a shadow the client
+takes the longest suffix of the row that starts a word and that some
+known line starts with, two characters at least. Nothing shows while
+text stands right of the cursor, while the pane runs anything but a
+shell, or while the setting *suggest* is off, which is the switch for
+a host shell that draws its own (fish, zsh-autosuggestions).
+
+The sent lines are the command row's store, grown to two hundred (the
+row shows the first eight): a line that looks like it carries a secret
+(a credential word, a muxway token, an upper-case assignment, a
+database client with `-p`, `-u user:password`) is never kept, nor
+offered from the screen, and the help overlay's *forget* button empties
+the store; signing out empties it too. Nothing from the hub or another
+pane is ever suggested.
+
+```mermaid
+sequenceDiagram
+    participant P as Person
+    participant C as Client
+    participant H as Hub
+    P->>C: keys g i t space s t (direct typing)
+    C->>H: POST input {text git st}
+    H-->>C: screen, cursor after st
+    C->>C: shadow git st confirmed on the cursor row
+    C->>C: pool has git status, ghost atus drawn dim
+    P->>C: Right
+    C->>H: POST input {text atus}
+    P->>C: Enter
+    C->>H: POST input {key Enter}
+    C->>C: git status remembered, shadow cleared
+```
+
 ## Security considerations
 
 - **What an attacker gains.** A stolen write token lists directories
@@ -128,4 +181,11 @@ the op in [the protocol](../protocol/v1.md).
   asked and as resolved, the count of entries and the result, never a
   name. A click is an ordinary input audit line: who, when, which pane,
   how many bytes.
+- **The ghost sends nothing until Right.** It is a drawing of the
+  client's, from this browser's own sent lines, the pane's screen and
+  the listing; a copy of the screen, a `cat -v` on the host and the
+  text-mode read see nothing. Accepting sends ordinary text through the
+  same endpoint, grant and audit. The sent-lines store keeps no line
+  that looks like a secret, offers none from the screen either, and is
+  emptied by *forget* and by signing out.
 - **Dependencies.** None new.

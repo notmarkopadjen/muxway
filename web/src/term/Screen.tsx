@@ -239,6 +239,7 @@ export const Screen = memo(function Screen({
   onPrompt,
   cursorRow,
   cursor,
+  ghost,
   height,
   bounds,
   focused,
@@ -267,6 +268,9 @@ export const Screen = memo(function Screen({
   // blank row below the text, which the host leaves out, it is drawn on
   // the last row shown, as the prompt row is.
   cursor?: { x: number; y: number };
+  // The ghost word: drawn dim from the cursor's cell to the row's end,
+  // the client's own drawing, never content.
+  ghost?: string;
   height?: number;
   bounds?: { cols: number; rows: number };
   focused?: boolean;
@@ -483,12 +487,24 @@ export const Screen = memo(function Screen({
               nameTitle={nameTitle}
             />
             {cursor && height && i === lines.length - height + Math.min(cursor.y, height) - 1 && (
-              <span
-                className="mx-caret"
-                data-testid="caret"
-                aria-hidden
-                style={{ left: `${cursor.x - 1}ch` }}
-              />
+              <>
+                <span
+                  className="mx-caret"
+                  data-testid="caret"
+                  aria-hidden
+                  style={{ left: `${cursor.x - 1}ch` }}
+                />
+                {ghost && (
+                  <span
+                    className="mx-ghost"
+                    data-testid="ghost"
+                    aria-hidden
+                    style={{ left: `${cursor.x - 1}ch` }}
+                  >
+                    {ghost}
+                  </span>
+                )}
+              </>
             )}
           </div>
         ))}

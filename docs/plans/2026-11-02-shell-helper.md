@@ -449,6 +449,38 @@ worth it.
   preview page, the web client (links, keyboard table), the guideline
   (§1.4 *names*, three rows of §1.6, §2), the help overlay, the README.
 
+## Review (round two, the ghost word)
+
+- [x] Diff matches the plan. Deviations: the sent-lines store already
+  had a secret filter and a *forget* on sign-out, so round two grows the
+  store to 200, caps the command row at eight, adds the database
+  client's `-p` and `-u user:password` shapes, applies the same filter
+  to the commands read off the screen, and gives the help overlay the
+  *forget* button; the shadow starts unknown when direct typing is
+  entered (the line may not be empty) and is known from the next Enter
+  on, so the first line of a session goes by the row alone; a cursor
+  row comes without its trailing blanks, so the row is padded to the
+  cursor's cell before the typed part is read; a name of the directory
+  completes the last word after a command that takes a file from one
+  character and elsewhere from two, so a lone letter in another command
+  stays quiet; the line's ghost draws from the sent lines, the screen
+  and the starters, not the listing; `Ctrl+Right` takes the ghost up to
+  and including the next blank.
+- [x] Security rules hold: nothing is sent until Right, and then as
+  ordinary text through the same endpoint, grant and audit; the pool is
+  this browser's sent lines (secret shapes never kept, forgettable,
+  emptied on sign-out), the pane's own screen (secret shapes skipped)
+  and the host's listing for the pane's writer; nothing from the hub or
+  another pane; the ghost is a drawing, never content. Spec 115's
+  second test sends two secret-shaped lines and sees neither kept nor
+  offered.
+- [x] Privacy check: fixtures are the suite's pane and `example.com`;
+  `scripts/prepush-check.sh` at the push.
+- [x] Docs: the feature page's ghost section with its diagram and
+  screenshot, `direct.md`, the web client (links, keyboard table), the
+  guideline (§1.4 *suggestion*, §1.6 *accept the suggestion*, §2), the
+  help overlay.
+
 ## Test run
 
 Go end-to-end tests 184 to 187 (`e2e/s26_listing_test.go`), browser
