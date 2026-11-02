@@ -209,6 +209,19 @@
 .mx-pulse {
   animation: mx-pulse 1.4s var(--mx-ease-out) infinite;
 }
+/* a partner just spoke: the chain beats for a few seconds */
+@keyframes mx-talk-beat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.35);
+  }
+}
+.mx-talk-fresh {
+  animation: mx-talk-beat 0.6s ease-in-out 5;
+}
 .mx-toast {
   animation: mx-slide-in var(--mx-motion-medium) var(--mx-ease-crt) both;
 }
@@ -236,6 +249,7 @@
   .mx-closing .mx-picture-back,
   .mx-burn,
   .mx-pulse,
+  .mx-talk-fresh,
   .mx-cell[data-state='waiting'],
   .mx-toast,
   .mx-noise,

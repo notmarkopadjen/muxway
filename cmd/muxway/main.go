@@ -36,11 +36,12 @@ agent pair      pair this machine with a hub
 agent run       run the agent
 notify          tell the agent that this pane needs attention
 ask             ask the owner a question with fixed answers, wait for one
+mail            read the mail left for this pane, or reply to one; nothing is typed
 hooks           print a harness's hooks that call notify: claude-code, codex, gemini, copilot, opencode, agy
 expose          make a session, window or pane reachable
 unexpose        remove a mark
 exposed         list what is reachable
-client          a hub from the command line: panes, inbox, read, send, key, answer, wait, events
+client          a hub from the command line: panes, inbox, read, send, key, answer, mail, wait, events
 mcp             the same as MCP tools over stdio, for an AI agent's MCP configuration
 skill           print the guide an AI agent in a pane reads to use muxway
 
@@ -104,6 +105,8 @@ func run(args []string) error {
 		return runHooks(args[1:])
 	case "ask":
 		return runAsk(args[1:])
+	case "mail":
+		return runMail(args[1:])
 	case "client":
 		return runClient(args[1:])
 	case "mcp":
@@ -513,6 +516,17 @@ func runNotify(args []string) error {
 			return nil
 		}
 		*kind, *text = k, t
+		// Mail waiting for the pane goes to the session with the hook's
+		// output: at the end of a turn as the reason to go on, with the
+		// next prompt as context. Never typed.
+		if *from == "claude-code" && *pane != "" {
+			if out, goesOn := deliverMail(*dir, *pane, agent.ClaudeEvent(raw)); out != "" {
+				if goesOn {
+					*kind, *text = wire.KindWorking, "reading mail"
+				}
+				defer os.Stdout.WriteString(out)
+			}
+		}
 	}
 	if *pane == "" {
 		return quiet(fmt.Errorf("not inside tmux and no --pane given"))
@@ -521,6 +535,31 @@ func runNotify(args []string) error {
 		return fmt.Errorf("--kind is required: question, permission, idle, done or working")
 	}
 	return quiet(agent.SendNotify(*dir, agent.NotifyRequest{Pane: *pane, Kind: *kind, Text: *text}))
+}
+
+// deliverMail takes the pane's unread mail for a Claude Code hook. At
+// Stop it is the block decision with the mail as the reason, so the turn
+// goes on; at UserPromptSubmit the mail itself, which the session adds
+// to its context. Nothing waits for mail; "" when there is none.
+func deliverMail(dir, pane, event string) (out string, goesOn bool) {
+	how := ""
+	switch event {
+	case "Stop":
+		how = "stop-hook"
+	case "UserPromptSubmit":
+		how = "prompt"
+	default:
+		return "", false
+	}
+	mails, err := agent.ExchangeMail(dir, agent.NotifyRequest{Pane: pane, Mail: "take", How: how})
+	if err != nil || len(mails) == 0 {
+		return "", false
+	}
+	if event == "Stop" {
+		raw, _ := json.Marshal(map[string]string{"decision": "block", "reason": agent.MailReason(mails)})
+		return string(raw) + "\n", true
+	}
+	return agent.MailReason(mails), false
 }
 
 func runHooks(args []string) error {

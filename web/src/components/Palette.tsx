@@ -141,7 +141,7 @@ export function Palette({
                 <span className="mx-meta">{r.meta}</span>
               </li>
             ))}
-            {rows.length === 0 && <li className="mx-dim">nothing matches</li>}
+            {rows.length === 0 && <li className="mx-dim mx-empty">nothing matches</li>}
           </ul>
         </Box>
       </div>

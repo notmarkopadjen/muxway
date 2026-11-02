@@ -189,6 +189,9 @@ type Agent struct {
 	standing   map[string]bool                 // sessions given their standing mark, by server, id and creation time
 	sess       *secure.Session                 // current connection to the hub, nil while away
 	extKeys    bool                            // tmux's extended-keys seen to, or given up on
+	mail       map[string]*mailbox             // pane id -> mail held for its process
+	replies    map[uint64]chan string          // reply id -> the hub's word, for the process waiting
+	nextReply  uint64
 }
 
 // ensureExtendedKeys turns tmux's extended-keys on once the server
@@ -227,7 +230,8 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 	}
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
 		seen: map[string]process{}, attention: map[string]tmux.Attention{}, background: map[string]bool{}, resized: map[string]time.Time{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{},
-		made: map[string]time.Time{}, sessions: map[string]bool{}, standing: map[string]bool{}, asks: map[string]*pendingAsk{}, hooked: map[string]bool{}, watched: map[string]*watched{}}, nil
+		made: map[string]time.Time{}, sessions: map[string]bool{}, standing: map[string]bool{}, asks: map[string]*pendingAsk{}, hooked: map[string]bool{}, watched: map[string]*watched{},
+		mail: map[string]*mailbox{}, replies: map[uint64]chan string{}}, nil
 }
 
 // Run keeps a connection to the hub until ctx ends, and listens for
@@ -319,6 +323,11 @@ func (a *Agent) connect(ctx context.Context) error {
 		if err := json.Unmarshal(raw, &req); err != nil {
 			return errors.New("malformed request from hub")
 		}
+		// The hub's word on a reply is not a request: nothing is answered.
+		if req.Op == wire.OpReplied {
+			a.replied(req)
+			continue
+		}
 		resp := wire.Response{ID: req.ID, Error: wire.ErrBadInput}
 		// Only a file may be larger than any other message.
 		if len(raw) <= wire.MaxMessage || req.Op == wire.OpFile {
@@ -353,6 +362,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		resp.Inbox = a.cfg.Inbox != ""
 		resp.Preview = len(a.cfg.Preview) > 0
 		resp.Ask = true
+		resp.Mailbox = true
 	case wire.OpRead:
 		p, code := a.find(ctx, req.Pane)
 		if code != "" {
@@ -410,6 +420,11 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 	case wire.OpAnswer:
 		resp.Error = a.answer(ctx, req)
 		a.audit(req, resp.Error)
+	case wire.OpMail:
+		resp.Unread, resp.Error = a.storeMail(ctx, req)
+		a.audit(req, resp.Error, "mail", req.MailID, "unread", resp.Unread)
+	case wire.OpMailList:
+		resp.Mail, resp.Error = a.mailList(ctx, req)
 	case wire.OpResize:
 		resp.Error = a.resize(ctx, req)
 		a.audit(req, resp.Error)
@@ -827,6 +842,20 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 			delete(a.watched, id)
 		}
 	}
+	// Mail goes with its pane, or after a day; what is left shows as a count.
+	now := time.Now()
+	for id, b := range a.mail {
+		if !alive[id] || !b.sweep(now) {
+			delete(a.mail, id)
+		}
+	}
+	for i := range panes {
+		if b := a.mail[panes[i].PaneID]; b != nil {
+			if n, at := b.unread(); n > 0 {
+				panes[i].Mail = &tmux.MailState{Unread: n, At: at}
+			}
+		}
+	}
 	// A window whose fitting panes are all gone (the shell exited) has no
 	// pane left to release it through: it is given back here.
 	type orphan struct{ pane, layout string }
@@ -913,6 +942,9 @@ func (a *Agent) audit(req wire.Request, code string, extra ...any) {
 	}
 	if req.Choice != "" {
 		attrs = append(attrs, "choice_bytes", len(req.Choice))
+	}
+	if req.From != "" {
+		attrs = append(attrs, "from", req.From)
 	}
 	if req.Op == wire.OpResize {
 		if req.Fit != "" {
