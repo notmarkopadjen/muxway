@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { control, HOST, SHELL0, shot, signIn } from './fixtures';
 
-test('86 the lens paints a working Claude pane dim and a waiting one in the attention colour', async ({
+test('86 the lens shows a working Claude pane with its ring, unpainted, and a waiting one in the attention colour', async ({
   page,
   request,
 }, info) => {
@@ -34,6 +34,11 @@ test('86 the lens paints a working Claude pane dim and a waiting one in the atte
   );
   await row.click();
   await expect(tab).toHaveAttribute('data-state', 'working');
+  // Nor is the tab: the working ring and word say it, the paint is for waiting.
+  expect(await tab.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(
+    await page.evaluate(() => getComputedStyle(document.body).getPropertyValue('--mx-ink-dim')),
+  );
+  await shot(page, info, '86-working');
   await expect(tab).toHaveText(/building/);
   // A reload learns the state again from the hub's recent events.
   await page.reload();
