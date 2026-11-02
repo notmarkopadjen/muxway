@@ -243,8 +243,12 @@ view, each live and typable. The page is the Android client's pane view:
   to a pane; on a narrow screen (640 px and under) they fold into one
   `⋯` button that opens a menu with the same entries. Last, the profile
   button with who you are, holding *hubs*, *help*, *admin* (for an
-  admin) and *logout*; on a narrow screen it shows only its caret. The
-  browser tab's icon is drawn in the theme's colours.
+  admin) and *logout*; on a narrow screen it shows only its caret. In a
+  window 960 px wide or narrower the tabs would be squeezed between the
+  brand and the buttons, so the strip and its `+` take a second row of
+  their own, the whole width, while the brand, the counts, the pane
+  buttons and the profile button keep the first. The browser tab's icon
+  is drawn in the theme's colours.
 - The **tab strip** lists every pane you may read, in listing order,
   named by what Claude wrote into the title or by what runs there. Each
   tab is **painted with its state** from the lens: the theme's ink,

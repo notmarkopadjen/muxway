@@ -646,11 +646,33 @@ button:disabled {
 }
 /* In the header the strip is as wide as its tabs, so + follows the last
    one; the pane buttons keep to the right. */
+.mx-header-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
 .mx-header-slot .mx-strip {
   flex: 0 1 auto;
 }
 .mx-header-slot .mx-tools {
   margin-left: auto;
+}
+/* Under 960 px the tabs would be squeezed between the brand and the
+   buttons: the strip takes a row of its own under them, the whole width. */
+@media (max-width: 960px) {
+  .mx-header {
+    flex-wrap: wrap;
+    row-gap: var(--mx-gap);
+  }
+  .mx-header-slot:not(:empty) {
+    display: contents;
+  }
+  .mx-header-strip {
+    order: 1;
+    flex: 1 1 100%;
+  }
 }
 
 /* how many panes wait, beside the brand; opens the inbox */

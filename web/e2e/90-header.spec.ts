@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 import { control, HOST, settled, shot, signIn, SHELL0 } from './fixtures';
 
 // The header is one row: the brand (the way back), the view's tabs, `+`
-// and its buttons, and the profile button with what used to line it.
+// and its buttons, and the profile button with what used to line it. In a
+// window 960 px or narrower the tabs and `+` take a second row of their own.
 
 const LOGS = `${HOST}/work/1.0`;
 
@@ -61,6 +62,57 @@ test('90 one row: brand, tabs, +, pane buttons, profile', async ({ page }, info)
   await expect(page.getByTestId('panes')).toBeVisible();
   // On the list the header row has no tabs.
   await expect(header.locator('[data-testid="tab"]')).toHaveCount(0);
+});
+
+test('90 two rows under 960 px: the strip under the brand and the buttons', async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 800, height: 600 });
+  await signIn(page);
+  await page.goto(`/p/${SHELL0}`);
+  await settled(page);
+  const header = page.locator('header.mx-header');
+  const brand = header.getByTestId('back');
+  const tab = header.locator('[data-testid="tab"][data-focused]');
+  const add = header.getByTestId('add');
+  const who = header.getByTestId('who');
+  const zoom = header.getByTestId('zoom');
+  for (const l of [brand, tab, add, who, zoom]) await expect(l).toBeVisible();
+  // The brand, the pane buttons and the profile button share the first
+  // row; the tabs and + sit under them, the strip starting at the brand's
+  // left edge and + right after the last tab.
+  const b = (await brand.boundingBox())!;
+  const z = (await zoom.boundingBox())!;
+  const w = (await who.boundingBox())!;
+  const t = (await tab.boundingBox())!;
+  const a = (await add.boundingBox())!;
+  expect(Math.abs(z.y + z.height / 2 - (b.y + b.height / 2))).toBeLessThan(2);
+  expect(Math.abs(w.y + w.height / 2 - (b.y + b.height / 2))).toBeLessThan(2);
+  expect(t.y).toBeGreaterThanOrEqual(b.y + b.height);
+  expect(Math.abs(t.x - b.x)).toBeLessThan(4);
+  expect(a.x).toBeGreaterThan(t.x + t.width);
+  expect(Math.abs(a.y + a.height / 2 - (t.y + t.height / 2))).toBeLessThan(2);
+  // The tabs have the whole width to themselves: the strip reaches past
+  // where the buttons start.
+  const strip = (await header.getByTestId('tabs').boundingBox())!;
+  expect(strip.x + strip.width).toBeGreaterThan(z.x);
+  await shot(page, info, '90-two-rows');
+  // Narrower still, the buttons fold into ⋯ and the tabs keep their row.
+  await page.setViewportSize({ width: 600, height: 600 });
+  const more = header.getByTestId('more');
+  await expect(more).toBeVisible();
+  const m = (await more.boundingBox())!;
+  const b2 = (await brand.boundingBox())!;
+  const t2 = (await tab.boundingBox())!;
+  expect(Math.abs(m.y + m.height / 2 - (b2.y + b2.height / 2))).toBeLessThan(2);
+  expect(t2.y).toBeGreaterThanOrEqual(b2.y + b2.height);
+  await shot(page, info, '90-two-rows-narrow');
+  // Wide again, everything is back on one row.
+  await page.setViewportSize({ width: 1400, height: 800 });
+  await expect(zoom).toBeVisible();
+  const b3 = (await brand.boundingBox())!;
+  const t3 = (await tab.boundingBox())!;
+  expect(Math.abs(t3.y + t3.height / 2 - (b3.y + b3.height / 2))).toBeLessThan(2);
 });
 
 test('90 + splits the focused pane and opens the new one beside it', async ({
