@@ -20,6 +20,13 @@ commit messages:
 - keys, tokens, passwords, certificates, session ids, cookies, TOTP secrets
 - real tmux pane content, real shell history, real agent transcripts
 
+This includes the author and committer of every commit: commits carry
+the repository's configured identity, a GitHub noreply address, never a
+personal e-mail address. Do not override it with `-c user.email`,
+`--author` or the `GIT_AUTHOR_EMAIL` and `GIT_COMMITTER_EMAIL`
+variables; a worktree or clone without an identity is a reason to stop,
+not to invent one.
+
 Use placeholders instead: `hub.example.com`, `192.0.2.10` (RFC 5737),
 `2001:db8::1`, `alice`/`bob`, `+15555550100`, `<token>`. Test fixtures are
 synthetic. Screenshots are taken against the test environment only.
@@ -29,7 +36,8 @@ which needs [gitleaks](https://github.com/gitleaks/gitleaks) installed):
 it runs a secret scanner over the outgoing commits and a grep for the
 project's deny-list (`.denylist`, not committed, one pattern per line for
 the owner's own host names, domains, numbers and names). Then read the full
-diff yourself. If anything slipped into a commit, do not push: rewrite the
+diff yourself, the commit headers included: a deny-list match on an
+author or committer line is a finding. If anything slipped into a commit, do not push: rewrite the
 local history first. If it was already pushed, say so at once; rotating the
 secret is the fix, deleting the file is not.
 
