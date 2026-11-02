@@ -416,13 +416,45 @@ worth it.
 
 ---
 
-## Review (after implementation)
+## Review (round one, names)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan. Deviations: a root itself resolves for a
+  listing (the preview refuses it, since a root is no file), so a pane
+  sitting in a root lists it; `cwd` is the directory's real path,
+  symlinks followed, not the one tmux reports; a symlink that leaves the
+  roots is listed by name with kind `other` and is no link, by the
+  plan's own kind rule; the agent refuses a pane that is not writable by
+  its mark (`read_only`) beside the hub's check of the grant; with *a
+  file opens with: preview* every file opens the window, and what the
+  host cannot show arrives there as a download rather than falling to
+  `cat`; the focused tile lists every two seconds, the others every five;
+  the listing kept by the query is dropped the moment the pane's
+  program is no shell, so a stale one never links; the "older agent"
+  case of row 1 is not run (the suite has no older binary) and the
+  client goes by the `dir` flag alone; the *forget* button and
+  *suggest* of row 15 are round two's.
+- [x] Security rules hold: the listing needs the write grant and a
+  writable pane on a host with roots, resolves under a root after
+  symlinks, keeps hidden and secret names out, caps at 2000, one `404`
+  for every refusal, the preview's rate bucket; `cwd` reaches writers
+  only and only under a root, and the hub drops a malformed one; the
+  typed text is built from the host's listing, single-quoted with `'`
+  escaped and `--` before it, through the same input endpoint, grant and
+  audit; audit lines carry counts and paths, never a name (tests 185 and
+  186 read the logs); no new dependency.
+- [x] Privacy check: fixtures are the suite's temporary directories and
+  `alice-laptop`; `scripts/prepush-check.sh` to run at the push.
+- [x] Docs: `shell-helper.md` with its diagram and screenshot, the
+  protocol (`dir`, `cwd`, the endpoint, the op), the agent page, the
+  preview page, the web client (links, keyboard table), the guideline
+  (§1.4 *names*, three rows of §1.6, §2), the help overlay, the README.
 
 ## Test run
 
-Not run yet.
+Go end-to-end tests 184 to 187 (`e2e/s26_listing_test.go`), browser
+spec 113 (two tests, screenshots `113-names` and `113-names-hover`),
+the finder's and the quoting's unit tests. [Run
+20261102-213932-99506f0](https://github.com/notmarkopadjen/muxway/issues/217):
+passed, 215 tests, 0 failed, at `99506f0`, whose sources are those of
+`841bb52` (the branch was rewritten once after the run, to reword two
+example values in this plan that the secret scanner took for keys).
