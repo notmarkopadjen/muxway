@@ -24,6 +24,7 @@ type mailRecord struct {
 	FromHost, FromPane string
 	At                 time.Time
 	Replied            bool
+	Reply              bool // the mail is itself a reply: it takes none
 }
 
 type mailIDs struct {
@@ -120,6 +121,12 @@ func (h *Hub) handleMail(w http.ResponseWriter, r *http.Request, t Principal) {
 		if from, status, code = h.origin(r.Context(), t, in.From); status != 0 {
 			h.log.Info("audit mail", append(attrs, "from", in.From.Host+"/"+in.From.PaneID, "result", "bad_origin")...)
 			fail(w, status, code)
+			return
+		}
+		// A reply lands in the origin: it must be a pane the token could mail.
+		if !t.canWrite(in.From.Host, from) || from.Mode != tmux.ModeWrite {
+			h.log.Info("audit mail", append(attrs, "from", in.From.Host+"/"+from.PaneID, "result", "bad_origin")...)
+			fail(w, http.StatusForbidden, "read_only")
 			return
 		}
 		req.From = in.From.Host + "/" + from.PaneID
@@ -257,6 +264,8 @@ func (h *Hub) deliverReply(ctx context.Context, a *agentConn, rp wire.Reply) str
 		return wire.ErrNoOrigin
 	case rec.Replied:
 		return wire.ErrReplied
+	case rec.Reply:
+		return wire.ErrReplyToReply
 	}
 	// The replying pane, as its own agent lists it, for the feed.
 	mine, err := a.panes(ctx)
@@ -293,7 +302,7 @@ func (h *Hub) deliverReply(ctx context.Context, a *agentConn, rp wire.Reply) str
 		return wire.ErrReadOnly
 	}
 	text := rp.Text
-	id := h.mails.issue(mailRecord{ToHost: rec.FromHost, ToPane: to.PaneID, FromHost: a.host, FromPane: from.PaneID})
+	id := h.mails.issue(mailRecord{ToHost: rec.FromHost, ToPane: to.PaneID, FromHost: a.host, FromPane: from.PaneID, Reply: true})
 	req := wire.Request{Op: wire.OpMail, Actor: "reply", Name: "reply", Pane: to.PaneID, Text: &text,
 		From: a.host + "/" + from.PaneID, Address: a.host + "/" + from.Address(), MailID: id, Reply: rp.MailID}
 	resp, err := oa.request(ctx, req)

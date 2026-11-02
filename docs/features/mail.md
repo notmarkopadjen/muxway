@@ -46,7 +46,10 @@ the [talk feed](talk.md) keeps of any message, 200 characters, and the
 ids it issued with their origin for a day, so a reply can be checked.
 
 The hub takes a mail like it takes an answer: the token needs the write
-grant on the pane, and the pane must be marked for writing. It forwards
+grant on the pane, and the pane must be marked for writing. A `from`
+on a mail is held to the same rule, unlike on a typed write: a reply
+lands in the origin, so the origin must be a pane the token could mail
+itself, or the mail is refused with `read_only`. It forwards
 it to the host, records a feed entry of kind `mail`, and the panes form
 a group on every client as talk does.
 
@@ -108,9 +111,10 @@ sends the hub the pane, the id and the text. The hub checks the id was
 issued for a mail into that pane within the day, that it came from a
 pane, and that it was not answered yet; then it mails the origin pane
 (which must still be exposed and writable) and records a feed entry
-from the replying pane, with the actor `reply`. One reply per mail; a
-mail the owner wrote from a client came from no pane and cannot be
-answered over the socket. This is the one path that needs no token,
+from the replying pane, with the actor `reply`. One reply per mail,
+and none to a reply: a reply is one message back, not a thread, and a
+conversation goes on with a token. A mail the owner wrote from a client
+came from no pane and cannot be answered over the socket. This is the one path that needs no token,
 decided by the owner on 2026-11-01: **a pane may mail back the pane
 that mailed it**, and nothing else.
 
@@ -168,8 +172,14 @@ sending and the window are follow-ups in their repositories.
   screen.
 - The right to reply gives a mailed pane one message back to its
   sender's pane and nothing else: the hub, not the agent, checks the
-  id, the direction, the age and that a reply was not sent before, so a
-  compromised host can only answer mail that was really sent to it.
+  id, the direction, the age, that a reply was not sent before and that
+  the mail was not itself a reply, so a compromised host can only
+  answer mail that was really sent to it, once, and two hosts cannot
+  keep a conversation going with no token between them. Because a
+  reply is a write nobody's token authorised, the origin a mail claims
+  must be a pane the sender could mail: with a read-only origin, a
+  token that may only read a pane could have had a reply written into
+  it.
 - `text` is checked for length and control characters on the hub and
   again on the agent; `from` as for talk; the id is an integer the hub
   issued; the hook's output is JSON-encoded, so a mail cannot change
