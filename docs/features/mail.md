@@ -133,7 +133,8 @@ mail another agent, type into a shell.
 ## What clients see
 
 **The listing.** A pane with unread mail carries `mail`: the count and
-when the newest arrived. The feed carries a mail as an entry of kind
+when the newest arrived; in text mode the count stands in the row's
+`mail` column. The feed carries a mail as an entry of kind
 `mail` with its first 200 characters, a reply the same with `reply_to`;
 a mail from a client that is not a pane has no `from`.
 
@@ -148,8 +149,10 @@ a mail with Enter, nothing typed; `M` opens it with that line focused.
 
 ![the messages window with a mail row and the line](images/web-mail-window.png)
 
-The native clients take `mail` from the listing for the `✉ n` mark;
-sending and the window are follow-ups in their repositories.
+The native clients take `mail` from the listing for the mark: `✉ n` on
+the phone and the watch, the word `mail n` on the glasses (whose font
+has no envelope), `✉ n` or `M n` on the keypad phone by its charset.
+Sending and the window are follow-ups in their repositories.
 
 ## Security considerations
 

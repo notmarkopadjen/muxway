@@ -281,6 +281,9 @@ func TestMailReachesTheProcessAndComesBack(t *testing.T) {
 	if n := e.unread(full, shell0); n != 1 {
 		t.Fatalf("unread after the mail: %d", n)
 	}
+	if row := e.textRow(full, shell0); row[5] != "1" {
+		t.Fatalf("text row after the mail: %q", row)
+	}
 	// Nothing on the screen; the process reads it over the socket.
 	time.Sleep(200 * time.Millisecond)
 	if strings.Contains(ts.capture("work:0.0"), "run the tests") {
@@ -293,6 +296,9 @@ func TestMailReachesTheProcessAndComesBack(t *testing.T) {
 	}
 	// The listing follows within its second of cache.
 	waitFor(t, "the count cleared", func() bool { return e.unread(full, shell0) == 0 })
+	if row := e.textRow(full, shell0); row[5] != "" {
+		t.Fatalf("text row after the read: %q", row)
+	}
 	if got, _, _ := e.readMail(a, id0); got != "" {
 		t.Fatalf("read mail printed again: %q", got)
 	}

@@ -85,7 +85,8 @@ muxway client talk --follow
 minutes carries `talk`: its partners among the panes the principal may
 read, each with its pane id, its current address, when, and the way
 (`to`, `from`, `both`). That one field is enough for a small client to
-draw the chain.
+draw the chain. In text mode the row's last column holds the partners'
+addresses joined by `|`.
 
 **The feed.** `GET /v1/talk` lists the entries, oldest first, polled
 like `/v1/events` (`after`, `wait`, `limit`), with a text mode, and
@@ -129,9 +130,11 @@ the alert red, like a browser's tab group:
 
 ![a thread of three panes in one frame on the strip](images/web-talk-groups.png)
 
-The native clients take the listing's `talk` for the chain on their
-lists; the feed and the lay-beside gesture are follow-ups in their
-repositories.
+The native clients take the listing's `talk` for their lists: Android
+frames the rows and tabs of a group as the web does and edges its tiles;
+the glasses draw a bar before a group's rows; the keypad phone an edge
+column (`[`, `|`, `]`) at the row's left. The feed and the lay-beside
+gesture are follow-ups in their repositories.
 
 ## Security considerations
 
