@@ -184,6 +184,22 @@ describe('dropping a header on a tile', () => {
     const t = dropOn(row, 2, 0, 'bottom');
     expect(prune(t, 0)).toEqual({ kind: 'h', key: 'r', children: [1, 0] });
   });
+  // A tab of a pane not open: the new leaf comes in where the drop says,
+  // and nothing else moves. A single tile is a leaf with no split.
+  it('brings a new leaf in beside a tile, or across a split', () => {
+    expect(dropOn(0, 1, 0, 'right')).toEqual({ kind: 'h', key: 'r', children: [0, 1] });
+    expect(dropOn(0, 1, 0, 'bottom')).toEqual({ kind: 'v', key: 'r', children: [0, 1] });
+    expect(dropOn(row, 3, 1, 'left')).toEqual({
+      kind: 'h',
+      key: 'r',
+      children: [0, 3, 1, 2],
+    });
+    expect(across(row, 3, 'main', 'v', false)).toEqual({
+      kind: 'v',
+      key: 'r',
+      children: [{ kind: 'h', key: 'r.0', children: [0, 1, 2] }, 3],
+    });
+  });
   it('lays out a made tree for the window as well', () => {
     const t = dropOn(tree(2, 'row'), 1, 0, 'bottom');
     expect(tilesLayout(t, {}, ['%1', '%2'])).toMatch(

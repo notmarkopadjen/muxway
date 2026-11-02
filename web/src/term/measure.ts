@@ -7,7 +7,9 @@ let cellFor = '';
 export function measureCell(): { w: number; h: number; px: number } {
   const size = document.documentElement.style.getPropertyValue('--mx-screen-size');
   if (cell && cellFor === size) return cell;
-  const probe = document.createElement('pre');
+  // The probe is the screen's own markup, so the cell is the one drawn:
+  // a bare pre would take the browser's monospace font and line height.
+  const probe = document.createElement('div');
   probe.className = 'mx-screen';
   probe.style.position = 'absolute';
   probe.style.visibility = 'hidden';
@@ -16,10 +18,17 @@ export function measureCell(): { w: number; h: number; px: number } {
   // The screen keeps room for its scrollbar; the glyph does not.
   probe.style.overflow = 'visible';
   probe.style.scrollbarGutter = 'auto';
-  probe.textContent = Array(10).fill('MMMMMMMMMM').join('\n');
+  const pre = document.createElement('pre');
+  for (let i = 0; i < 10; i++) {
+    const ln = document.createElement('div');
+    ln.className = 'ln';
+    ln.textContent = 'MMMMMMMMMM';
+    pre.appendChild(ln);
+  }
+  probe.appendChild(pre);
   document.body.appendChild(probe);
   const px = parseFloat(getComputedStyle(probe).fontSize) || 14;
-  const rect = probe.getBoundingClientRect();
+  const rect = pre.getBoundingClientRect();
   probe.remove();
   cell = { w: rect.width / 10, h: rect.height / 10, px };
   cellFor = size;

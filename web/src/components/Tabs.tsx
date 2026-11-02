@@ -11,6 +11,8 @@ import { MailMark } from './TalkMark';
 // bordered, the focused one thick and bold, a hidden one dimmed. With
 // `reorder` a tab can be dragged along the strip: a mark shows on the
 // nearer edge of the tab under the pointer, and the drop puts it there.
+// `onDragPane` hears the tab's drag start and end, so the view can take
+// the drop as a header's: onto a tile, or a divider.
 // Panes that talk to each other sit side by side inside one frame, like
 // a browser's tab group: a tab is pulled next to its group when the
 // group forms, and let go when the owner drags it out.
@@ -23,6 +25,7 @@ export function Tabs({
   onTab,
   onZoom,
   reorder,
+  onDragPane,
 }: {
   panes: Pane[];
   open: string[];
@@ -32,6 +35,7 @@ export function Tabs({
   onTab: (address: string, add: boolean) => void;
   onZoom?: (address: string) => void;
   reorder?: (dragged: string, before: string | null) => void;
+  onDragPane?: (address: string | null) => void;
 }) {
   const lens = useLens();
   const strip = useRef<HTMLDivElement>(null);
@@ -40,6 +44,7 @@ export function Tabs({
   const endDrag = () => {
     setDragging(null);
     setMark(null);
+    onDragPane?.(null);
   };
   useEffect(() => {
     strip.current
@@ -136,6 +141,7 @@ export function Tabs({
             e.dataTransfer.setData('text/plain', '');
             e.dataTransfer.effectAllowed = 'move';
             setDragging(address);
+            onDragPane?.(address);
           })
         }
         onDragEnd={reorder && endDrag}
@@ -157,7 +163,12 @@ export function Tabs({
             ? `${address} · hidden here, click brings it back`
             : addable && !isOpen
               ? `${address} · Shift+click opens it beside`
-              : address) + (reorder ? ' · drag along the strip to reorder' : '')
+              : address) +
+          (reorder
+            ? onDragPane
+              ? ' · drag along the strip to reorder, onto a tile to lay it out there'
+              : ' · drag along the strip to reorder'
+            : '')
         }
       >
         {pane && <AgentMark agent={describe(pane).agent} />}
