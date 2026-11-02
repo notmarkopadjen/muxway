@@ -144,12 +144,22 @@ export function cycleOpenMode(): OpenMode {
 export function setOpenCommand(command: string) {
   write('mx-open-command', command.slice(0, OPEN_COMMAND_MAX));
 }
-export function useHelper(): { names: boolean; open: OpenWith } {
+// The ghost word: the rest of a known line drawn dim after the cursor,
+// which Right accepts; off for a shell that draws its own.
+export function getSuggest(): boolean {
+  return read('mx-suggest') !== 'off';
+}
+export function toggleSuggest(): boolean {
+  const next = !getSuggest();
+  write('mx-suggest', next ? 'on' : 'off');
+  return next;
+}
+export function useHelper(): { names: boolean; open: OpenWith; suggest: boolean } {
   const raw = useSyncExternalStore(
     subscribe,
-    () => `${getNames()}\n${getOpenWith().mode}\n${getOpenWith().command}`,
+    () => `${getNames()}\n${getOpenWith().mode}\n${getOpenWith().command}\n${getSuggest()}`,
   );
-  return useMemo(() => ({ names: getNames(), open: getOpenWith() }), [raw]);
+  return useMemo(() => ({ names: getNames(), open: getOpenWith(), suggest: getSuggest() }), [raw]);
 }
 
 export function getMotion(): boolean {

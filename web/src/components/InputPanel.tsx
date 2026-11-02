@@ -1,3 +1,4 @@
+import { firstWord, suggest } from '../term/suggest';
 import {
   useEffect,
   useLayoutEffect,
@@ -94,6 +95,7 @@ export function InputPanel({
   send,
   onGrow,
   words,
+  pool,
   children,
 }: {
   pane: Pane | undefined;
@@ -109,6 +111,8 @@ export function InputPanel({
   onGrow?: (px: number) => void;
   // Words on the pane's screen, offered as completions of any word.
   words?: string[];
+  // Known lines the ghost word goes on from, when the line may show one.
+  pool?: string[];
   children?: ReactNode;
 }) {
   const [text, setText] = useState('');
@@ -116,6 +120,7 @@ export function InputPanel({
   const [pick, setPick] = useState(0);
   const [closed, setClosed] = useState(false);
   const field = useRef<HTMLTextAreaElement>(null);
+  const mirror = useRef<HTMLDivElement>(null);
   const wantCaret = useRef<number | null>(null);
   const wantFocus = useRef(false);
   const textNow = useRef(text);
@@ -142,6 +147,12 @@ export function InputPanel({
   const row = pane ? commandsFor(pane, recent) : null;
   const list = pane && writable && !closed ? completions(pane, text, caret, recent, words) : [];
   const picked = Math.min(pick, Math.max(list.length - 1, 0));
+  // The ghost word on the line: the rest of a known line, with the caret
+  // at the end of a one-line text; Right takes it into the field.
+  const ghost =
+    pool && text && !text.includes('\n') && caret === text.length
+      ? suggest(text, text.length + 1, text, pool)
+      : null;
 
   // The field grows with its text up to ROWS rows, then scrolls inside.
   useLayoutEffect(() => {
@@ -158,6 +169,15 @@ export function InputPanel({
     const want = el.scrollHeight + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
     const height = Math.min(want, max);
     el.style.height = `${height}px`;
+    // The ghost's mirror wears the field's font, padding and border, so
+    // its text lies exactly over the field's.
+    const m = mirror.current;
+    if (m) {
+      m.style.font = cs.font;
+      m.style.lineHeight = cs.lineHeight;
+      m.style.padding = cs.padding;
+      m.style.borderWidth = cs.borderWidth;
+    }
     onGrow?.(Math.max(0, height - (parseFloat(cs.lineHeight) + pad)));
     if (wantCaret.current !== null) {
       el.setSelectionRange(wantCaret.current, wantCaret.current);
@@ -450,6 +470,11 @@ export function InputPanel({
       e.preventDefault();
       e.stopPropagation();
       setClosed(true);
+    } else if (ghost && k === 'ArrowRight' && !e.altKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
+      const taken = e.ctrlKey ? firstWord(ghost) : ghost;
+      wantCaret.current = text.length + taken.length;
+      change(text + taken, text.length + taken.length);
     } else if (list.length && plain && (k === 'ArrowDown' || k === 'ArrowUp')) {
       e.preventDefault();
       const step = k === 'ArrowDown' ? 1 : list.length - 1;
@@ -477,23 +502,33 @@ export function InputPanel({
             {sending}
           </div>
         ) : mic === 'idle' ? (
-          <textarea
-            ref={field}
-            rows={1}
-            value={text}
-            onChange={(e) => change(e.target.value, e.target.selectionStart)}
-            onSelect={select}
-            onKeyDown={onKey}
-            onFocus={() => {
-              if (direct) onLeaveDirect?.();
-            }}
-            disabled={!writable}
-            placeholder={placeholder}
-            aria-label="input"
-            autoComplete="off"
-            spellCheck={false}
-            data-testid="input"
-          />
+          <div className="mx-field">
+            <textarea
+              ref={field}
+              rows={1}
+              value={text}
+              onChange={(e) => change(e.target.value, e.target.selectionStart)}
+              onSelect={select}
+              onKeyDown={onKey}
+              onFocus={() => {
+                if (direct) onLeaveDirect?.();
+              }}
+              disabled={!writable}
+              placeholder={placeholder}
+              aria-label="input"
+              autoComplete="off"
+              spellCheck={false}
+              data-testid="input"
+            />
+            {ghost && (
+              <div className="mx-field-ghost" ref={mirror} aria-hidden>
+                {text}
+                <span className="mx-ghost" data-testid="line-ghost">
+                  {ghost}
+                </span>
+              </div>
+            )}
+          </div>
         ) : (
           <div
             className={`mx-mic-line${mic === 'hearing' ? ' mx-hearing' : ''}`}

@@ -18,8 +18,10 @@ import {
   usePane,
   usePaneCached,
 } from '../api/queries';
-import { isShell } from '../term/commands';
+import { isShell, SHELL_COMMANDS, useRecent } from '../term/commands';
 import { lineFor, nameIndex, shellQuote, titleFor } from '../term/names';
+import { firstWord, nextShadow, screenCommands, suggest } from '../term/suggest';
+import { parse } from '../term/sgr';
 import { joinAddress, splitAddress } from '../hubs';
 import type { Mouse, Pane, PaneContent, TalkPartner } from '../api/types';
 import { ChainMark, MailMark } from '../components/TalkMark';
@@ -72,7 +74,7 @@ import { cellsFor, inner } from '../term/measure';
 import { releaseKept, useFit } from '../term/useFit';
 import { screenWords } from '../term/complete';
 import { countOf, summary } from '../term/changes';
-import { Backlog, keyToBody, pasteText } from '../term/direct';
+import { Backlog, keyToBody, pasteText, type Body } from '../term/direct';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
 import { AddMenu } from '../components/AddMenu';
@@ -188,6 +190,8 @@ interface TileProps {
   // The host lists directories: in a writable shell pane the names of
   // its directory are links.
   lists: boolean;
+  // The ghost word after the cursor, while direct typing lands here.
+  ghost?: string;
   changesOpen: boolean;
   onChanges: () => void;
   // Height the input line takes beyond one row, which is not a resize.
@@ -613,6 +617,7 @@ function Tile(props: TileProps) {
               ? { x: p.cursor_x, y: p.cursor_y }
               : undefined
           }
+          ghost={props.direct ? props.ghost : undefined}
           testId={focused ? 'screen' : 'cell-screen'}
         />
         {props.panel}
@@ -777,6 +782,54 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // writable; focusing a read-only tile ends it, as does leaving the view.
   const [direct, setDirect] = useState(false);
   const directOn = direct && writable;
+  // The ghost word for the focused shell pane: the shadow of the line
+  // typed direct, the pool of known lines (this browser's sent lines, the
+  // commands the screen shows, the starters) and the directory's names;
+  // drawn where the cursor row confirms it, accepted with Right.
+  const helper = useHelper();
+  const recent = useRecent();
+  const focusedShell = !!focusedPane && isShell(focusedPane.command);
+  const ghosting = helper.suggest && writable && focusedShell;
+  const focusedListing = useListing(focused, focusedPane?.cwd, ghosting && helper.names, 5_000);
+  const focusedEntries = ghosting ? focusedListing.data?.entries : undefined;
+  const focusedNames = useMemo(
+    () => (focusedEntries ? nameIndex(focusedEntries) : undefined),
+    [focusedEntries],
+  );
+  const [shadow, setShadow] = useState<string | null>(null);
+  const rows = useMemo(
+    () =>
+      ghosting ? parse(focusedCached?.content ?? '').map((l) => l.map((s) => s.text).join('')) : [],
+    [ghosting, focusedCached?.content],
+  );
+  const cursorIndex =
+    focusedPane?.cursor_y && focusedPane.height
+      ? rows.length -
+        (focusedPane.height - (focusedCached?.trimmed ?? 0)) +
+        focusedPane.cursor_y -
+        1
+      : -1;
+  const pool = useMemo(
+    () => [...recent, ...screenCommands(rows, cursorIndex), ...SHELL_COMMANDS.map((c) => c.text)],
+    [recent, rows, cursorIndex],
+  );
+  const ghost = useMemo(() => {
+    if (
+      !ghosting ||
+      !directOn ||
+      !focusedPane?.cursor_x ||
+      cursorIndex < 0 ||
+      cursorIndex >= rows.length
+    )
+      return null;
+    return suggest(rows[cursorIndex], focusedPane.cursor_x, shadow, pool, focusedNames);
+  }, [ghosting, directOn, focusedPane?.cursor_x, cursorIndex, rows, shadow, pool, focusedNames]);
+  const ghostRef = useRef(ghost);
+  ghostRef.current = ghost;
+  // The shadow is the focused pane's while direct typing is on.
+  useEffect(() => {
+    setShadow(null);
+  }, [focused, directOn]);
   const repeats = useRef(false);
   repeats.current = !!hostOf(hosts.data, focused)?.repeat;
   useEffect(() => {
@@ -1232,6 +1285,11 @@ function Tiles({ addresses }: { addresses: string[] }) {
     };
     const elsewhere = (t: EventTarget | null) =>
       typing(t) || !!document.querySelector('.mx-picture-back');
+    // Every body sent moves the shadow of the line along with it.
+    const push = (b: Body) => {
+      setShadow((s) => nextShadow(s, b));
+      backlog.push(b);
+    };
     const onKey = (ev: KeyboardEvent) => {
       if (elsewhere(ev.target)) return;
       if (ev.key === 'Escape' && ev.shiftKey && !ev.ctrlKey && !ev.altKey && !ev.metaKey) {
@@ -1240,21 +1298,30 @@ function Tiles({ addresses }: { addresses: string[] }) {
         ev.stopImmediatePropagation();
         return;
       }
+      // Right takes the ghost word whole, Ctrl+Right its first word, as
+      // text; without a ghost they are the pane's keys.
+      const g = ghostRef.current;
+      if (g && ev.key === 'ArrowRight' && !ev.altKey && !ev.metaKey && !ev.shiftKey) {
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        push({ text: ev.ctrlKey ? firstWord(g) : g });
+        return;
+      }
       const body = keyToBody(ev, !!window.getSelection()?.toString());
       if (!body) return;
       ev.preventDefault();
       ev.stopImmediatePropagation();
-      backlog.push(body);
+      push(body);
     };
     const onPaste = (ev: ClipboardEvent) => {
       if (elsewhere(ev.target) || ev.clipboardData?.files.length) return;
       const text = pasteText(ev.clipboardData?.getData('text') ?? '');
       if (!text) return;
       ev.preventDefault();
-      backlog.push({ text });
+      push({ text });
     };
     const onComposed = (ev: CompositionEvent) => {
-      if (!elsewhere(ev.target) && ev.data) backlog.push({ text: ev.data });
+      if (!elsewhere(ev.target) && ev.data) push({ text: ev.data });
     };
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('paste', onPaste, true);
@@ -1387,6 +1454,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onPath={hostPreviews(a) ? (path) => show({ address: a, path }) : undefined}
         previews={hostPreviews(a)}
         lists={hostLists(a)}
+        ghost={i === index ? (ghost ?? undefined) : undefined}
         changesOpen={i === index && showsChanges}
         onChanges={() => {
           setFocusedIndex(i);
@@ -1661,6 +1729,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
           grown.current = px;
         }}
         words={words}
+        pool={ghosting ? pool : undefined}
       >
         {focusedPane && !writable && (
           <div className="mx-readonly" data-testid="readonly">
