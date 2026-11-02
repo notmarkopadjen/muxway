@@ -209,22 +209,23 @@ const KeyGrammar = 2
 
 // Errors an agent returns. They are codes, never details.
 const (
-	ErrNotExposed  = "not_exposed"
-	ErrReadOnly    = "read_only"
-	ErrBadInput    = "bad_input"
-	ErrUnknownOp   = "unknown_op"
-	ErrTmux        = "tmux_error"
-	ErrRateLimit   = "rate_limited"
-	ErrNotAllowed  = "not_allowed" // the agent does not start sessions
-	ErrExists      = "exists"
-	ErrTooMany     = "too_many"
-	ErrInboxFull   = "inbox_full"
-	ErrNoFile      = "no_file"      // no such file in the inbox
-	ErrNoQuestion  = "no_question"  // an answer for a pane with no question pending
-	ErrMailboxFull = "mailbox_full" // MaxMailbox mails held for the pane
-	ErrNoMail      = "no_mail"      // a reply to a mail the pane does not hold, or the hub forgot
-	ErrNoOrigin    = "no_origin"    // a reply to a mail that came from no pane
-	ErrReplied     = "replied"      // a second reply to the same mail
+	ErrNotExposed   = "not_exposed"
+	ErrReadOnly     = "read_only"
+	ErrBadInput     = "bad_input"
+	ErrUnknownOp    = "unknown_op"
+	ErrTmux         = "tmux_error"
+	ErrRateLimit    = "rate_limited"
+	ErrNotAllowed   = "not_allowed" // the agent does not start sessions
+	ErrExists       = "exists"
+	ErrTooMany      = "too_many"
+	ErrInboxFull    = "inbox_full"
+	ErrNoFile       = "no_file"        // no such file in the inbox
+	ErrNoQuestion   = "no_question"    // an answer for a pane with no question pending
+	ErrMailboxFull  = "mailbox_full"   // MaxMailbox mails held for the pane
+	ErrNoMail       = "no_mail"        // a reply to a mail the pane does not hold, or the hub forgot
+	ErrNoOrigin     = "no_origin"      // a reply to a mail that came from no pane
+	ErrReplied      = "replied"        // a second reply to the same mail
+	ErrReplyToReply = "reply_to_reply" // a reply to a reply: one message back, not a thread
 )
 
 // Limits shared by hub and agent.

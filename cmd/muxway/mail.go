@@ -123,6 +123,8 @@ func runMailReply(args []string) error {
 			return errors.New("mail reply: that mail came from no pane; its sender reads your screen")
 		case wire.ErrReplied:
 			return errors.New("mail reply: answered already")
+		case wire.ErrReplyToReply:
+			return errors.New("mail reply: that was a reply, and a reply is one message back; to go on, mail the pane with a token (muxway client mail)")
 		case wire.ErrReadOnly, wire.ErrNotExposed:
 			return errors.New("mail reply: the sender's pane takes no mail any more")
 		}

@@ -141,10 +141,11 @@ func TestSec110_MailNeedsTheWriteGrantAndIsNeverTyped(t *testing.T) {
 	e.expose(ts, "work:0.2", "--write")
 	// work:0.3 stays hidden.
 	shell2 := host + "/work/0.2"
-	id0, id1, id3 := paneIDOf(ts, "work:0.0"), paneIDOf(ts, "work:0.1"), paneIDOf(ts, "work:0.3")
+	id0, id1, id2, id3 := paneIDOf(ts, "work:0.0"), paneIDOf(ts, "work:0.1"), paneIDOf(ts, "work:0.2"), paneIDOf(ts, "work:0.3")
 	full := e.token("full", []string{"*"}, []string{"*"})
 	reader := e.token("reader", []string{"*"}, nil)
 	narrow := e.token("narrow", []string{shell0}, []string{shell0})
+	half := e.token("half", []string{"*"}, []string{shell0}) // writes 0.0 only
 
 	expect(t, e.mail(reader, shell0, "mailcanary1", nil), http.StatusForbidden, "mail without the write grant")
 	expect(t, e.mail(full, host+"/work/0.1", "mailcanary2", nil), http.StatusForbidden, "mail to a read-only pane")
@@ -175,9 +176,16 @@ func TestSec110_MailNeedsTheWriteGrantAndIsNeverTyped(t *testing.T) {
 		t.Fatalf("refused mail made entries: %+v", f.Talk)
 	}
 
-	// Taken: from a read-only origin is fine, nothing is typed, the count shows.
-	r := e.mail(full, shell0, "mailcanary8 first", from(host, id1))
-	expect(t, r, http.StatusCreated, "mail from a read-only pane")
+	// An origin is a pane the token could mail, since a reply lands there:
+	// not one read-only on its host, not one the token may only read.
+	expect(t, e.mail(full, shell0, "mailcanary8", from(host, id1)), http.StatusForbidden, "an origin that is read-only on its host")
+	expect(t, e.mail(half, shell0, "mailcanary9", from(host, id2)), http.StatusForbidden, "an origin the token may not write")
+	if n := e.unread(full, shell0); n != 0 {
+		t.Fatalf("mail with a refused origin counted: %d", n)
+	}
+	// Taken: from a writable origin; nothing is typed, the count shows.
+	r := e.mail(full, shell0, "mailcanary8 first", from(host, id2))
+	expect(t, r, http.StatusCreated, "mail from a writable pane")
 	var made struct {
 		Mail struct {
 			ID uint64 `json:"id"`
@@ -200,13 +208,13 @@ func TestSec110_MailNeedsTheWriteGrantAndIsNeverTyped(t *testing.T) {
 	if box := e.mailbox(narrow, shell0); len(box) != 1 || box[0].From != nil || box[0].Text != "mailcanary8 first" || box[0].ReadAt != 0 {
 		t.Fatalf("the narrow reader's view: %+v", box)
 	}
-	if box := e.mailbox(reader, shell0); len(box) != 1 || box[0].From == nil || box[0].From.PaneID != id1 || box[0].Actor.Name != "full" {
+	if box := e.mailbox(reader, shell0); len(box) != 1 || box[0].From == nil || box[0].From.PaneID != id2 || box[0].Actor.Name != "full" {
 		t.Fatalf("the reader's view: %+v", box)
 	}
 	if f := e.feed(narrow); len(f.Talk) != 0 {
 		t.Fatalf("the feed for a token that reads one side: %+v", f.Talk)
 	}
-	if f := e.feed(reader); len(f.Talk) != 1 || f.Talk[0].Kind != "mail" || f.Talk[0].ID != made.Mail.ID || f.Talk[0].From.PaneID != id1 {
+	if f := e.feed(reader); len(f.Talk) != 1 || f.Talk[0].Kind != "mail" || f.Talk[0].ID != made.Mail.ID || f.Talk[0].From.PaneID != id2 {
 		t.Fatalf("the feed: %+v", f.Talk)
 	}
 	// A reply to a mail nobody sent, from a pane that holds nothing.
@@ -367,6 +375,15 @@ func TestMailReachesTheProcessAndComesBack(t *testing.T) {
 	}
 	if box := e.mailbox(full, shell0); !box[0].Replied {
 		t.Fatalf("the mail is not marked replied: %+v", box[0])
+	}
+	// A reply is one message back, not a thread: 0.1 cannot answer it.
+	if _, errs, code := e.readMail(a, id1, "reply", fmt.Sprint(back[0].ID), "and again"); code == 0 || !strings.Contains(errs, "was a reply") {
+		t.Fatalf("a reply to a reply: %d %q", code, errs)
+	}
+	for _, m := range e.mailbox(full, shell0) {
+		if m.ReplyTo == back[0].ID {
+			t.Fatalf("the reply to a reply arrived: %+v", m)
+		}
 	}
 	f := e.feed(full)
 	last := f.Talk[len(f.Talk)-1]

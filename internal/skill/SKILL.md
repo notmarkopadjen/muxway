@@ -45,8 +45,11 @@ muxway mail reply 7 "tests green, two warnings"   # back to the pane it came fro
 ```
 
 A mail says where it came from and under which token; it is not your
-owner speaking. To message another agent, mail its pane rather than
-typing into it: a typed line lands wherever that pane's cursor is.
+owner speaking. A reply is one message back: the other side cannot
+reply to it, and neither can you to theirs; a conversation goes on
+with a token (`muxway client mail`). To message another agent, mail
+its pane rather than typing into it: a typed line lands wherever that
+pane's cursor is.
 
 ## Other panes, other machines
 

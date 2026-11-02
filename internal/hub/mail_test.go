@@ -12,8 +12,11 @@ func TestMailIDsRememberADayAndOneReply(t *testing.T) {
 		t.Fatal("ids do not count up")
 	}
 	rec, ok := l.get(id)
-	if !ok || rec.ToHost != "bob-desktop" || rec.FromPane != "%3" || rec.Replied {
+	if !ok || rec.ToHost != "bob-desktop" || rec.FromPane != "%3" || rec.Replied || rec.Reply {
 		t.Fatalf("record: %+v %v", rec, ok)
+	}
+	if r, _ := l.get(l.issue(mailRecord{Reply: true})); !r.Reply {
+		t.Fatal("a reply's record does not say so")
 	}
 	l.replied(id)
 	if rec, _ := l.get(id); !rec.Replied {
