@@ -85,3 +85,7 @@ listing).
 1. `handlePanes`: the two columns.
 2. The e2e assertions above.
 3. The docs.
+
+## Test run
+
+Run 20261102-125201-8ca1c40, recorded as [issue #209](https://github.com/notmarkopadjen/muxway/issues/209): 208 tests passed, none failed, at commit 8ca1c40. The run before it, at d1a78eb, failed in Flow26 alone, whose text row ended at the pending kind; it expects the two new columns since 8ca1c40.
