@@ -294,4 +294,7 @@ grep and gitleaks run before the push.
 
 ## Test run
 
-Link to the recorded run: result, commit, logs, screenshots.
+Run 20261103-184333 at 5e21677, **passed**, 218 tests: recorded as
+[issue #236](https://github.com/notmarkopadjen/muxway/issues/236);
+logs, screenshots and traces in `test-runs/20261103-184333-5e21677` on
+the machine that ran it.
