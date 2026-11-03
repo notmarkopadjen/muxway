@@ -51,6 +51,16 @@ func (h *Hub) routes() http.Handler {
 	mux.HandleFunc("GET /v1/windows/{host}/{session}/{window}", h.withPrincipal(h.handleWindow))
 	mux.HandleFunc("POST /v1/windows/{host}/{session}/{window}/panes", h.withPrincipal(h.handleSplit))
 	mux.HandleFunc("POST /v1/hosts/{host}/sessions", h.withPrincipal(h.handleNewSession))
+	mux.HandleFunc("GET /v1/shares", h.withPrincipal(h.handleShares))
+	mux.HandleFunc("DELETE /v1/shares/{id}", h.withPrincipal(h.handleShareRevoke))
+	mux.HandleFunc("PUT /v1/share/{id}/showing", h.withPrincipal(h.handleShowingPut))
+	mux.HandleFunc("DELETE /v1/share/{id}/showing", h.withPrincipal(h.handleShowingDelete))
+	mux.HandleFunc("GET /v1/share/{id}", h.handleShareProbe)
+	mux.HandleFunc("POST /v1/share/{id}/open", h.handleShareOpen)
+	mux.HandleFunc("GET /v1/share/{id}/pane", h.withObserver(h.handleSharePane))
+	mux.HandleFunc("GET /v1/share/{id}/showing", h.withObserver(h.handleShowingGet))
+	mux.HandleFunc("GET /v1/share/{id}/showing/file", h.withObserver(h.handleShowingFile))
+	mux.HandleFunc("POST /v1/share/{id}/close", h.withObserver(h.handleShareClose))
 	if h.cfg.NoWeb {
 		mux.HandleFunc("/", h.handleRoot)
 	} else {
@@ -214,6 +224,8 @@ type PaneView struct {
 	// Talk: the panes this one talked with lately, among those the
 	// principal may read.
 	Talk []TalkPartner `json:"talk,omitempty"`
+	// Shared: live shares the principal made of this pane.
+	Shared int `json:"shared,omitempty"`
 }
 
 func view(host string, t Principal, p tmux.Pane) PaneView {
@@ -324,6 +336,7 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 		}
 	}
 	h.withTalk(r.Context(), t, out)
+	h.withShared(t, out)
 	if wantsText(r) {
 		// Command and title are what a program in the pane chose; the rest is ASCII already,
 		// the partners' addresses too, so | separates them without escaping.
@@ -457,6 +470,7 @@ func (h *Hub) handleTree(w http.ResponseWriter, r *http.Request, t Principal) {
 	for _, s := range sessions {
 		for _, win := range s.Windows {
 			h.withTalk(r.Context(), t, win.Panes)
+			h.withShared(t, win.Panes)
 		}
 	}
 	reply(w, map[string]any{"host": host, "sessions": sessions})
@@ -562,6 +576,10 @@ func (h *Hub) handlePost(w http.ResponseWriter, r *http.Request, t Principal) {
 		h.handleMail(w, r, t)
 		return
 	}
+	if strings.HasSuffix(r.PathValue("path"), "/shares") {
+		h.handleShareCreate(w, r, t)
+		return
+	}
 	h.handleInput(w, r, t)
 }
 
@@ -657,6 +675,7 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 	} else {
 		vs := []PaneView{view(r.PathValue("host"), t, p)}
 		h.withTalk(r.Context(), t, vs)
+		h.withShared(t, vs)
 		body, _ = json.Marshal(map[string]any{"pane": vs[0], "content": resp.Content, "trimmed": resp.Trimmed})
 	}
 	sum := sha256.Sum256(body)

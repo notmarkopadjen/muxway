@@ -72,5 +72,5 @@ func (h *Hub) webHandler() http.Handler {
 // like before, never the page.
 func appRoute(p string) bool {
 	return p == "/" || p == "/signin" || p == "/admin" || strings.HasPrefix(p, "/p/") || strings.HasPrefix(p, "/w/") ||
-		strings.HasPrefix(p, "/b/")
+		strings.HasPrefix(p, "/b/") || strings.HasPrefix(p, "/s/")
 }

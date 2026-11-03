@@ -52,6 +52,7 @@ type stateFile struct {
 	Agents map[string]AgentRecord `json:"agents"`
 	Tokens []Token                `json:"tokens"`
 	Users  []User                 `json:"users,omitempty"`
+	Shares []Share                `json:"shares,omitempty"`
 	Access Access                 `json:"access"`
 }
 
