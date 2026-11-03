@@ -84,6 +84,13 @@ Web: `web/src/term/lens.ts`, `components/Lens.tsx`. Android:
 `protocol/Lens.kt`. Feature pages: core `web-client.md` (The lens),
 Android `lenses.md`.
 
+The glasses draw the same states with the glyphs their font has (it
+draws no check, no ring and no flag, found on the device on
+2026-11-03): `★` for a question and a permission, `√` done, `○` idle,
+`◐` and `◑` turned once a second for working, `◌` for a pane with
+nothing reported, and `◆` for the inbox where the other clients fly
+`⚑`. Glasses `screens.md`.
+
 ### 1.3 The pane list
 
 ```
