@@ -246,4 +246,7 @@ texts. Screenshots come from the test environment.
 
 ## Test run
 
-Link to the recorded run: result, commit, logs, screenshots.
+Run 20261103-190544 at 49b4e5a, **passed**: recorded as
+[issue #237](https://github.com/notmarkopadjen/muxway/issues/237);
+logs, screenshots and traces in `test-runs/20261103-190544-49b4e5a` on the machine that
+ran it.
