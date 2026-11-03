@@ -403,14 +403,17 @@ export function WindowPage() {
   const previews = !!hosts.data?.find((h) => h.name === host && !h.hub)?.preview;
   const parks = !!hosts.data?.find((h) => h.name === host && !h.hub)?.later;
   const later = useLater();
-  const setLater = (address: string, on: boolean) => {
-    const p = stripPanes.find((q) => q.address === address);
-    if (!p || p.mode !== 'write' || !parks || !!p.later === on) return;
-    later.mutate(
-      { address, later: on },
-      { onError: (err) => toast.push({ kind: 'later', title: address, text: String(err) }) },
-    );
-  };
+  const setLater = useCallback(
+    (address: string, on: boolean) => {
+      const p = stripPanes.find((q) => q.address === address);
+      if (!p || p.mode !== 'write' || !parks || !!p.later === on) return;
+      later.mutate(
+        { address, later: on },
+        { onError: (err) => toast.push({ kind: 'later', title: address, text: String(err) }) },
+      );
+    },
+    [stripPanes, parks, later, toast],
+  );
   const repeats = useRef(false);
   repeats.current = !!hostOf(hosts.data, focusedPane?.address ?? '')?.repeat;
   // The changes window shows for a writer on a host with roots; the
@@ -577,6 +580,7 @@ export function WindowPage() {
     enterDirect,
     focusLine,
     previews,
+    setLater,
   ]);
 
   const send = async (body: { text: string } | { key: string } | { mouse: Mouse }) => {
