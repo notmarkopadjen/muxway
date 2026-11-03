@@ -85,7 +85,7 @@ test('111 a mail to the open pane: no toast, the count on the tile and the tab, 
   await page.keyboard.press('Escape');
 });
 
-test('111 three panes in a thread are one frame, two threads are two with air between, M focuses the line, the list', async ({
+test('111 three panes in a thread are one frame, two threads are two with air between, M opens the mail window, the list', async ({
   page,
   request,
 }, info) => {
@@ -109,12 +109,12 @@ test('111 three panes in a thread are one frame, two threads are two with air be
   await expect(groups.nth(0)).toHaveAttribute('data-group', '1');
   await expect(groups.nth(1)).toHaveAttribute('data-group', '2');
   await shot(page, info, '111-mail-groups');
-  // M opens the window with the line focused on the open pane.
+  // M opens the open pane's mail window with its line focused.
   await page.keyboard.press('M');
-  await expect(page.getByTestId('talk')).toBeVisible();
-  await expect(page.getByTestId('mail-line')).toBeFocused();
+  await expect(page.getByTestId('mail-window')).toBeVisible();
+  await expect(page.getByTestId('mail-text')).toBeFocused();
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('talk')).toHaveCount(0);
+  await expect(page.getByTestId('mail-window')).toHaveCount(0);
   // The list: the rows of each group kept together, with the edge and the counts.
   await page.getByTestId('back').click();
   await expect(page.getByTestId('panes')).toBeVisible();
