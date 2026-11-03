@@ -40,8 +40,17 @@ export function Inbox({ onClose }: { onClose: () => void }) {
     return () => window.clearInterval(t);
   }, []);
   useEffect(() => {
+    console.log(
+      'MXDBG inbox clamp',
+      'rows',
+      rows.length,
+      'sel',
+      sel,
+      'data',
+      panes.data === undefined ? 'undef' : panes.data.length,
+    );
     if (sel >= rows.length) setSel(Math.max(0, rows.length - 1));
-  }, [rows.length, sel]);
+  }, [rows.length, sel, panes.data]);
   const park = (p: Pane, on: boolean) =>
     later.mutate(
       { address: p.address, later: on },
@@ -56,6 +65,16 @@ export function Inbox({ onClose }: { onClose: () => void }) {
   // Before the paint, so a key pressed the moment the box shows is the box's.
   useLayoutEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
+      console.log(
+        'MXDBG inbox key',
+        ev.key,
+        'rows',
+        rows.length,
+        'sel',
+        sel,
+        'addrs',
+        rows.map((p) => p.address).join(','),
+      );
       if (ev.key === 'ArrowDown' || ev.key === 'j') setSel((s) => Math.min(s + 1, rows.length - 1));
       else if (ev.key === 'ArrowUp' || ev.key === 'k') setSel((s) => Math.max(s - 1, 0));
       else if (ev.key === 'Enter') open(rows[sel]);
