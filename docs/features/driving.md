@@ -69,7 +69,7 @@ panes, and `talk` prints that record; see [talk](talk.md) and
 
 ## `muxway mcp`
 
-The same operations, eleven tools, as [MCP](https://modelcontextprotocol.io) tools
+The same operations, twelve tools, as [MCP](https://modelcontextprotocol.io) tools
 over stdio, for an AI agent's MCP configuration:
 
 ```sh
