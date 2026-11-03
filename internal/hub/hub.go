@@ -173,6 +173,7 @@ type agentConn struct {
 	preview bool // the agent serves files under its roots
 	repeat  bool // the agent takes a count with a key
 	ask     bool // the agent takes answers to questions
+	later   bool // the agent parks panes for later
 	mailbox bool // the agent holds mail for its panes
 	dir     bool // the agent lists directories under its roots
 	evts    bucket
@@ -234,7 +235,7 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 	}
 	sanePanes(r.Panes)
 	a.mu.Lock()
-	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys, a.ask, a.mailbox, a.dir = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys, r.Ask, r.Mailbox, r.Dir
+	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys, a.ask, a.mailbox, a.dir, a.later = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys, r.Ask, r.Mailbox, r.Dir, r.Later
 	a.mu.Unlock()
 	return r.Panes, nil
 }
@@ -278,6 +279,16 @@ func (a *agentConn) asks(ctx context.Context) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.ask
+}
+
+// parks says, from the agent's listing, whether the agent parks panes for later.
+func (a *agentConn) parks(ctx context.Context) bool {
+	if _, err := a.panes(ctx); err != nil {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.later
 }
 
 // previews says, from the agent's listing, whether the agent has preview roots.

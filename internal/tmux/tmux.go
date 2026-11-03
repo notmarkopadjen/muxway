@@ -121,6 +121,9 @@ type Pane struct {
 	CursorY int `json:"cursor_y,omitempty"`
 	// Last: the only pane of its session, so closing it ends the session.
 	Last bool `json:"last,omitempty"`
+	// Later: the owner parked the pane; LaterAt is when.
+	Later   bool  `json:"later,omitempty"`
+	LaterAt int64 `json:"later_at,omitempty"`
 	// Cwd is the directory a shell pane is in, when the agent may say:
 	// under one of its roots, for a writer. Path is what tmux reports.
 	Cwd            string `json:"cwd,omitempty"`

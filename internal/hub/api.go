@@ -249,6 +249,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		Ask      bool   `json:"ask,omitempty"`
 		Mail     bool   `json:"mail,omitempty"`
 		Dir      bool   `json:"dir,omitempty"`
+		Later    bool   `json:"later,omitempty"`
 	}
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
@@ -261,6 +262,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 			v.Ask = a.asks(r.Context())
 			v.Mail = a.mails(r.Context())
 			v.Dir = a.listsDirs(r.Context())
+			v.Later = a.parks(r.Context())
 		}
 		out = append(out, v)
 	}
@@ -330,10 +332,7 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 		w.Header().Set("Content-Type", text.ContentType(charset))
 		var b strings.Builder
 		for _, v := range out {
-			kind := ""
-			if v.Attention != nil {
-				kind = v.Attention.Kind
-			}
+			kind := textKind(v.Pane)
 			mail := ""
 			if v.Mail != nil && v.Mail.Unread > 0 {
 				mail = strconv.Itoa(v.Mail.Unread)
@@ -560,6 +559,10 @@ func (h *Hub) handlePost(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	if strings.HasSuffix(r.PathValue("path"), "/mail") {
 		h.handleMail(w, r, t)
+		return
+	}
+	if strings.HasSuffix(r.PathValue("path"), "/later") {
+		h.handleLater(w, r, t)
 		return
 	}
 	h.handleInput(w, r, t)

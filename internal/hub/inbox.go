@@ -12,8 +12,42 @@ import (
 )
 
 // The inbox is every pane the principal may read that waits for its
-// owner, across hosts, oldest first; and an answer is one of the choices
-// a question offered, a write like any input.
+// owner, across hosts, oldest first, the panes the owner parked for later
+// after them; an answer is one of the choices a question offered, a write
+// like any input; and later is the owner's own mark on a pane, a write
+// too.
+
+// textKind is the kind column of a text-mode row: what the pane waits
+// for, or later once the owner parked it.
+func textKind(p tmux.Pane) string {
+	if p.Later {
+		return "later"
+	}
+	if p.Attention != nil {
+		return p.Attention.Kind
+	}
+	return ""
+}
+
+// sortInbox puts the awake panes first, then the parked ones, each
+// oldest first.
+func sortInbox(out []PaneView) {
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Later != out[j].Later {
+			return !out[i].Later
+		}
+		return inboxAt(out[i].Pane) < inboxAt(out[j].Pane)
+	})
+}
+
+// inboxAt is when an inbox entry began waiting: its attention, or its
+// parking for a pane with none.
+func inboxAt(p tmux.Pane) int64 {
+	if p.Attention != nil {
+		return p.Attention.At
+	}
+	return p.LaterAt
+}
 
 func (h *Hub) handleInbox(w http.ResponseWriter, r *http.Request, t Principal) {
 	charset, ok := charsetParam(r)
@@ -28,18 +62,22 @@ func (h *Hub) handleInbox(w http.ResponseWriter, r *http.Request, t Principal) {
 			continue
 		}
 		for _, p := range panes {
-			if p.Attention != nil {
+			if p.Attention != nil || p.Later {
 				out = append(out, view(host, t, p))
 			}
 		}
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Attention.At < out[j].Attention.At })
+	sortInbox(out)
 	if wantsText(r) {
 		w.Header().Set("Content-Type", text.ContentType(charset))
 		var b strings.Builder
 		for _, v := range out {
-			fmt.Fprintf(&b, "%s\t%s\t%d\t%s\t%s\n", v.Address, v.Attention.Kind, v.Attention.At,
-				text.Fold(v.Attention.Text, charset), text.Fold(strings.Join(v.Attention.Choices, "|"), charset))
+			att := v.Attention
+			if att == nil {
+				att = &tmux.Attention{}
+			}
+			fmt.Fprintf(&b, "%s\t%s\t%d\t%s\t%s\n", v.Address, textKind(v.Pane), inboxAt(v.Pane),
+				text.Fold(att.Text, charset), text.Fold(strings.Join(att.Choices, "|"), charset))
 		}
 		w.Write(text.Encode(b.String(), charset))
 		return
@@ -108,5 +146,59 @@ func (h *Hub) handleAnswer(w http.ResponseWriter, r *http.Request, t Principal) 
 	if in.From != nil {
 		h.said(t, in.From, from, host, p, "answer", in.Choice, 0)
 	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleLater parks a pane for later, or wakes it: the owner's own mark,
+// kept by the host beside the pane's attention.
+func (h *Hub) handleLater(w http.ResponseWriter, r *http.Request, t Principal) {
+	host := r.PathValue("host")
+	path, _ := strings.CutSuffix(r.PathValue("path"), "/later")
+	var in struct {
+		Later *bool `json:"later"`
+	}
+	if !decodeBody(w, r, &in) {
+		return
+	}
+	if in.Later == nil {
+		fail(w, http.StatusBadRequest, "bad_input")
+		return
+	}
+	if !h.limits.allowLater(t.ID) {
+		fail(w, http.StatusTooManyRequests, "rate_limited")
+		return
+	}
+	a, p, status := h.locate(r.Context(), t, host, path)
+	if status != 0 {
+		if status == http.StatusServiceUnavailable {
+			fail(w, status, "host_offline")
+		} else {
+			fail(w, status, "not_found")
+		}
+		return
+	}
+	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID, "later", *in.Later}
+	if !t.canWrite(host, p) || p.Mode != tmux.ModeWrite {
+		h.log.Info("audit later", append(attrs, "result", "read_only")...)
+		fail(w, http.StatusForbidden, "read_only")
+		return
+	}
+	if !a.parks(r.Context()) {
+		fail(w, http.StatusNotFound, "not_found")
+		return
+	}
+	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpLater, Actor: t.ID, Pane: p.PaneID, Later: in.Later})
+	a.forget()
+	if err != nil {
+		fail(w, http.StatusServiceUnavailable, "host_offline")
+		return
+	}
+	if resp.Error != "" {
+		h.log.Info("audit later", append(attrs, "result", resp.Error)...)
+		status, code := statusFor(resp.Error)
+		fail(w, status, code)
+		return
+	}
+	h.log.Info("audit later", append(attrs, "result", "ok")...)
 	w.WriteHeader(http.StatusNoContent)
 }

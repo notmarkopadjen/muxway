@@ -30,6 +30,7 @@ const (
 	OpMail       = "mail"        // a message for the pane's process, into its mailbox, never typed
 	OpMailList   = "mail-list"   // the mailbox of a pane, for a reader
 	OpReplied    = "replied"     // the hub's word on a reply the agent sent; nothing is answered
+	OpLater      = "later"       // the owner parks a pane, or wakes it
 )
 
 // Request from hub to agent. Actor is the id of the client token the hub
@@ -83,6 +84,8 @@ type Request struct {
 	MailID uint64 `json:"mail_id,omitempty"`
 	Reply  uint64 `json:"reply,omitempty"`
 	Result string `json:"result,omitempty"`
+	// Later, with later, parks the pane or wakes it.
+	Later *bool `json:"later,omitempty"`
 }
 
 // Mail is one message held for a pane's process: who sent it, from
@@ -168,8 +171,10 @@ type Response struct {
 	Data []byte `json:"data,omitempty"`
 	// Preview, with a list, says the agent serves files under its roots.
 	Preview bool `json:"preview,omitempty"`
-	// Ask, with a list, says the agent takes answers to questions.
-	Ask bool `json:"ask,omitempty"`
+	// Ask, with a list, says the agent takes answers to questions; Later
+	// that it parks panes for later.
+	Ask   bool `json:"ask,omitempty"`
+	Later bool `json:"later,omitempty"`
 	// Mailbox, with a list, says the agent holds mail for its panes;
 	// Unread is a pane's count after a mail; Mail is a mailbox listed.
 	Mailbox bool   `json:"mailbox,omitempty"`

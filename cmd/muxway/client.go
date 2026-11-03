@@ -26,6 +26,7 @@ read      ADDRESS [--lines N]                 the last lines of a pane
 send      ADDRESS TEXT [--enter]              type into a pane
 key       ADDRESS KEY [--count N]             press a key: Enter, C-c, M-x, F5...
 answer    ADDRESS CHOICE                      answer a question with one of its choices
+later     ADDRESS [--off]                     park a pane for later (its tab goes last); --off wakes it
 mail      ADDRESS TEXT                        leave a message for the pane's process; nothing is typed
 mailbox   ADDRESS [--json]                    the mail a pane holds, read and unread
 wait      [ADDRESS] [--timeout D] [--json]    until a pane (or any) needs its owner; exit 2 on timeout
@@ -245,6 +246,19 @@ func runClient(args []string) error {
 			return err
 		}
 		return c.Answer(ctx, pos[0], pos[1])
+	case "later":
+		off := fs.Bool("off", false, "wake the pane")
+		if err := fs.Parse(flagsOnly); err != nil {
+			return err
+		}
+		if len(pos) != 1 {
+			return errors.New("later ADDRESS [--off]")
+		}
+		c, err := clientFor(*dir)
+		if err != nil {
+			return err
+		}
+		return c.Later(ctx, pos[0], !*off)
 	case "mail":
 		from, agentDir := originFlags(fs)
 		if err := fs.Parse(flagsOnly); err != nil {
