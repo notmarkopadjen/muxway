@@ -39,6 +39,8 @@ test('116 the name: a slow second click or N opens the field; Enter names the pa
   request,
 }, info) => {
   await page.setViewportSize({ width: 1400, height: 900 });
+  // The pane's title as the fixtures set it, whatever an earlier spec left.
+  await control(request, '/rename', { what: 'title', target: 'work:1.0', name: 'test-pane' });
   await signIn(page);
   await openPane(page, LOGS);
   await settled(page);
