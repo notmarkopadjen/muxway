@@ -525,7 +525,7 @@ is the pane view's: `‹` back to the list, then a **tab per pane of the
 window** in layout order, painted with its state, the focused one with
 the thick border, its name in bold and the accent bar under it; a click
 focuses that pane. The
-controls at the right are the pane view's eight, in its order, each
+controls at the right are the pane view's nine, in its order, each
 disabled where it does not apply here, the tooltip naming each with
 its key:
 

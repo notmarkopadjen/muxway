@@ -287,7 +287,7 @@ export function Shell() {
             onHelp={() => setHelp(true)}
             onLogout={() => void logout().then(() => navigate({ to: '/signin' }))}
           />
-        ) : (
+        ) : location.pathname.startsWith('/s/') ? null : (
           <button
             type="button"
             onClick={() => setHubsOpen(true)}
