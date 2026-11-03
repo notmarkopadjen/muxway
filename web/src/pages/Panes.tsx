@@ -287,10 +287,7 @@ function HostTree({
                           <PaneTitle pane={p} />
                           {p.mail && <MailMark unread={p.mail.unread} />}
                         </span>
-                        <span className="mx-addr">
-                          {p.alias && <span className="mx-dim">@{p.alias} </span>}
-                          {p.address}
-                        </span>
+                        <span className="mx-addr">{p.address}</span>
                         <span className="mx-state">{word(st, p.attention?.kind)}</span>
                       </div>
                     );

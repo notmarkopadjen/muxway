@@ -37,6 +37,10 @@ const KEYS: [string, string][] = [
     'tiles: lay the pane the focused tile talks with beside it (opens it, or swaps it next to the tile); the ⛓ on the header the same. Panes that talk share one frame, on the strip and on the tiles',
   ],
   ['+ / S', "one more pane in the selected row's window / a new session on its host"],
+  [
+    'N',
+    'name the focused pane (or click its tab or its header name again, slowly): the name is its alias, a-z 0-9 and -, shown first everywhere and an address for agents; Enter saves, Esc leaves, empty takes it away',
+  ],
   ['/', 'filter panes'],
   ['f', 'fit: the host pane (window view: the window) follows this box, at the chosen font'],
   ['r', 'fit again, after another client sized the window'],

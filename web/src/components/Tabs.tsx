@@ -168,7 +168,8 @@ export function Tabs({
             ? onDragPane
               ? ' · drag along the strip to reorder, onto a tile to lay it out there'
               : ' · drag along the strip to reorder'
-            : '')
+            : '') +
+          (pane?.cwd ? `\n${pane.cwd}` : '')
         }
       >
         {pane && <AgentMark agent={describe(pane).agent} />}

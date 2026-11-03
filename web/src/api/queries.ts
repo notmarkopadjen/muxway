@@ -263,6 +263,27 @@ export function useMail() {
   });
 }
 
+// The owner's name for a pane: its alias, set on the host for a writer.
+export function useRename() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ address, alias }: { address: string; alias: string }) => {
+      const t = target(address);
+      return api<{ pane: Pane }>(`/v1/panes/${t.address}/alias`, {
+        method: 'POST',
+        body: JSON.stringify({ alias }),
+        hub: t.hub,
+      });
+    },
+    onSuccess: (_v, { address }) => {
+      const { hub, address: bare } = splitAddress(address);
+      qc.invalidateQueries({ queryKey: keys.pane(address) });
+      qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
+      qc.invalidateQueries({ queryKey: keys.tree(bare.split('/')[0], hub) });
+    },
+  });
+}
+
 export function useAnswer() {
   const qc = useQueryClient();
   return useMutation({

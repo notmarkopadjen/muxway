@@ -1062,6 +1062,8 @@ button.mx-window:focus-visible {
 .mx-painted[data-state='waiting'] .mx-badge,
 .mx-painted[data-state='waiting'] .mx-title,
 .mx-painted[data-state='waiting'] .mx-title-status,
+.mx-painted[data-state='waiting'] .mx-title-folder,
+.mx-painted[data-state='waiting'] .mx-size,
 .mx-painted[data-state='waiting'] .mx-dim,
 .mx-painted[data-state='waiting'] .mx-mode,
 .mx-painted[data-state='waiting'] .mx-attention,
@@ -1295,6 +1297,36 @@ button.mx-window:focus-visible {
 .mx-cell-head .mx-tile-changes.on {
   color: var(--mx-ink);
   border-color: var(--mx-ink);
+}
+/* the size: under the pointer, and beside held and sync */
+.mx-tile-head .mx-size {
+  font-family: var(--mx-mono);
+  color: var(--mx-ink-dim);
+  white-space: nowrap;
+}
+.mx-tile-head .mx-size:not([data-shown]) {
+  display: none;
+}
+/* the name as a field */
+.mx-rename {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.mx-rename input {
+  width: 14em;
+  max-width: 40vw;
+  font: inherit;
+  font-weight: bold;
+  color: var(--mx-ink);
+  background: var(--mx-bg);
+  border: 1px solid var(--mx-ink);
+  padding: 2px 6px;
+  outline: none;
+}
+.mx-rename input:focus {
+  box-shadow: var(--mx-glow-box-strong);
 }
 .mx-tile-head .mx-mode {
   font-family: var(--mx-pixel);

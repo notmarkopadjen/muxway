@@ -46,9 +46,12 @@ test('98 new pane: + pane splits the window and opens the new pane; + on a selec
     await control(request, '/rename', { what: 'title', target: made.pane_id, name: 'test-pane' }),
   ).toBe('<nil>');
   await paneLoaded(page);
-  await expect(page.getByTestId('pane')).toContainText(made.address);
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', made.address);
   await expect(page.getByTestId('pane').locator('.mx-title').first()).toContainText('test-pane');
-  await expect(page.getByTestId('pane').locator('.mx-mode')).toHaveText('write');
+  await expect(page.getByTestId('pane').locator('.mx-tile-head')).toHaveAttribute(
+    'data-mode',
+    'write',
+  );
   // The shell runs in the new pane: a prompt, and the command row offers claude.
   await expect(page.getByTestId('screen')).toContainText('$', { timeout: 5000 });
   await page.goto('/');
@@ -81,7 +84,10 @@ test('98 new pane: + pane splits the window and opens the new pane; + on a selec
   const made2 = ((await res2.json()) as { pane: { address: string; pane_id: string } }).pane;
   expect(made2.address.startsWith(`${HOST}/work/1.`)).toBe(true);
   await paneLoaded(page);
-  await expect(page.getByTestId('pane').locator('.mx-mode')).toHaveText('write');
+  await expect(page.getByTestId('pane').locator('.mx-tile-head')).toHaveAttribute(
+    'data-mode',
+    'write',
+  );
   await control(request, '/kill-pane', { target: made2.pane_id });
   expect(madeId(made2.address)).not.toBe('');
 });
@@ -113,8 +119,11 @@ test('98 new session: + session, a name, Enter opens its pane; a used name is re
   expect(res.status()).toBe(201);
   await control(request, '/rename', { what: 'title', target: 'scratch', name: 'test-pane' });
   await paneLoaded(page);
-  await expect(page.getByTestId('pane')).toContainText(`${HOST}/scratch/0.0`);
-  await expect(page.getByTestId('pane').locator('.mx-mode')).toHaveText('write');
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', `${HOST}/scratch/0.0`);
+  await expect(page.getByTestId('pane').locator('.mx-tile-head')).toHaveAttribute(
+    'data-mode',
+    'write',
+  );
   await expect(page.getByTestId('screen')).toContainText('$', { timeout: 5000 });
   await expect(page.getByTestId('pane').locator('.mx-title').first()).toContainText('test-pane');
   await shot(page, info, '98-new-session');

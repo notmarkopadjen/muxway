@@ -102,6 +102,7 @@ export interface Host {
   ask?: boolean; // the agent takes answers to questions
   mail?: boolean; // the agent holds mail for its panes
   dir?: boolean; // the agent lists directories under its roots for writers
+  rename?: boolean; // the agent names panes for writers
   hub?: string; // as on a pane
 }
 
