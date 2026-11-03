@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ApiError } from '../api/client';
+import { ApiError, target } from '../api/client';
 import { queryClient } from '../query';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -80,6 +80,7 @@ import { InHeader } from '../shell/HeaderSlot';
 import { AddMenu } from '../components/AddMenu';
 import { Closing } from '../components/Closing';
 import { FileWindow, type Shown } from '../components/FileWindow';
+import { ShareWindow, sharesOf, useShares } from '../components/ShareWindow';
 import { ChangesWindow } from '../components/Changes';
 import { Tools } from '../components/Tools';
 import { requestPalette } from '../term/intent';
@@ -194,6 +195,7 @@ interface TileProps {
   ghost?: string;
   changesOpen: boolean;
   onChanges: () => void;
+  onShare: () => void;
   // Height the input line takes beyond one row, which is not a resize.
   slack: () => number;
   onCopied: (rows: number) => void;
@@ -499,6 +501,20 @@ function Tile(props: TileProps) {
           </>
         )}
         <span className="mx-spacer" />
+        {p && (p.shared ?? 0) > 0 && (
+          <button
+            type="button"
+            className="mx-tile-changes mx-tile-shared"
+            title={`shared read-only: ${p.shared} ${p.shared === 1 ? 'link' : 'links'} live (s)`}
+            data-testid="tile-shared"
+            onClick={(e) => {
+              e.stopPropagation();
+              props.onShare();
+            }}
+          >
+            ⇗ {p.shared}
+          </button>
+        )}
         {counts && (
           <button
             type="button"
@@ -771,6 +787,15 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // The changes window over the focused tile, and whether it is folded.
   const [changes, setChanges] = useState(false);
   const [changesFolded, setChangesFolded] = useState(false);
+  // The share window over the focused tile, and the live shares of the
+  // page's panes, so the file window knows whom to tell what it shows.
+  const [share, setShare] = useState(false);
+  const shares = useShares(focused, !!focusedPane);
+  const sharesFor = (address: string) =>
+    sharesOf(
+      shares.data,
+      (all.data ?? []).find((q) => q.address === address),
+    ).map((s) => s.id);
   const [dragging, setDragging] = useState<string | null>(null);
   // The tile whose header asks whether to close its pane on the host.
   const [asking, setAsking] = useState<string | null>(null);
@@ -1230,6 +1255,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         touch();
         drawn(() => setWeights({}));
       } else if (ev.key === 'g' && writable && hostPreviews(focused)) setChanges((c) => !c);
+      else if (ev.key === 's' && writable) setShare((s) => !s);
       else if (ev.key === 'i' && writable) enterDirect();
       else if (ev.key === 'L' && focusedPane?.talk?.length)
         beside(focused, withHub(focused, focusedPane.talk[0].address));
@@ -1460,6 +1486,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
           setFocusedIndex(i);
           setChanges((c) => (i === index ? !c : true));
         }}
+        onShare={() => {
+          setFocusedIndex(i);
+          setShare(true);
+        }}
         direct={i === index && directOn}
         onDirect={() => {
           setFocusedIndex(i);
@@ -1661,6 +1691,17 @@ function Tiles({ addresses }: { addresses: string[] }) {
                   : "git's changes of the pane's repository, over the tile (g)",
             },
             {
+              id: 'share',
+              glyph: '⇗',
+              label: 'share',
+              onClick: () => setShare((s) => !s),
+              disabled: !writable,
+              on: share,
+              title: writable
+                ? 'share the pane read-only: a link and a password (s)'
+                : 'share the pane read-only; needs a writable pane',
+            },
+            {
               id: 'zoom',
               glyph: '⊡',
               label: 'zoom',
@@ -1752,8 +1793,16 @@ function Tiles({ addresses }: { addresses: string[] }) {
                 ? (path) => show({ address: shown.address, path })
                 : undefined
             }
+            relay={
+              sharesFor(shown.address).length
+                ? { ids: sharesFor(shown.address), hub: target(shown.address).hub }
+                : undefined
+            }
           />
         )}
+      </Closing>
+      <Closing open={share && !!focusedPane}>
+        {focusedPane && <ShareWindow pane={focusedPane} onClose={() => setShare(false)} />}
       </Closing>
     </div>
   );

@@ -37,6 +37,7 @@ export interface Pane {
   talk?: TalkPartner[]; // the panes this one talked with in the last ten minutes
   mail?: MailState; // mail its process has not read
   cwd?: string; // a shell pane's directory under the host's roots, for its writers
+  shared?: number; // live shares this principal made of the pane
   hub?: string; // the hub of the hubs box it came from; none for this page's own
 }
 
@@ -221,9 +222,53 @@ export interface AdminOverview {
   tokens: AdminToken[];
   users: AdminUser[];
   clients: AdminClient[];
+  shares?: AdminShare[];
   locked: { addr: string; until: number }[];
   access: Access;
   you: { id: string; addr: string };
+}
+
+// A share of one pane: see docs/features/share.md.
+export interface Share {
+  id: string;
+  url: string;
+  password?: string; // only in the answer that made it
+  expires: number;
+  host: string;
+  pane_id: string;
+  address?: string;
+  watching: number;
+}
+
+// What the sharer's page shows over the pane, as the observer learns it.
+export type ShowingKind = 'file' | 'diff';
+export type ShowingView = 'rendered' | 'plain' | 'diff' | 'file';
+export interface Showing {
+  kind: ShowingKind;
+  path: string;
+  view: ShowingView;
+  type: string;
+  bytes: number;
+}
+
+// The shared pane as its observer reads it.
+export interface SharedPane {
+  pane: Pane;
+  content: string;
+  trimmed?: number;
+  expires: number;
+}
+
+export interface AdminShare {
+  handle: string;
+  id: string;
+  by: string;
+  host: string;
+  pane_id: string;
+  address?: string;
+  created: number;
+  expires: number;
+  watching: number;
 }
 
 export interface LogRecord {

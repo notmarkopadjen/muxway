@@ -362,10 +362,37 @@ generated one is committed. Screenshots come from the e2e run only.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan, deviations explained here
+- [x] Security rules (AGENTS.md section 2) hold: the observer is no
+      principal and reaches six endpoints under its own cookie's path;
+      the sharer's write grant is checked on every call; the password
+      is hashed and compared in constant time, counted toward the
+      lockout and burns the share at ten; nothing is logged but handles,
+      addresses, kinds and sizes (tests 200 to 206, spec 116)
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Docs and diagrams updated
+
+Deviations:
+
+- Creation is rate limited as a burst of twenty, then one every ten
+  seconds, not one every ten seconds from the first: the cap of twenty
+  live shares is checked before the bucket, so the twenty-first answers
+  `409 too_many` as the plan's test 5 asks, and an owner may make a few
+  at once.
+- The share's end by expiry is a unit test of the store's sweep (test
+  18), not an end-to-end one: the shortest lifetime is a minute. A pane
+  gone from its host ends the share after a minute by the sweep; the
+  end-to-end test covers what the observer sees at once, `404` on the
+  next read, by unexposing the pane.
+- The host's audit log does not name the share: the agent audits writes,
+  not reads. The hub asks it to read with the sharer's name and the
+  share's handle as the actor, for the day it does.
+- The admin page lists shares inside the clients box, under the
+  sessions and above the agents, rather than in a box of its own.
+- Test 7 (the hub's log) also checks the agent's log holds nothing of
+  the secrets; test 6 adds a meta without bytes held (`400`).
+- The observer's view keeps the password page in the sign-in box's
+  look, and `t` and `m` work there since the shell handles them.
 
 ## Test run
 

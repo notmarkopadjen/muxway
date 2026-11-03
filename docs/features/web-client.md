@@ -155,6 +155,17 @@ the tab title flashes until you come back, and, if you turned them on, a
 browser notification names the pane while the tab is hidden. Typing into
 the pane clears it.
 
+## Sharing a pane
+
+`s`, or `⇗` among the pane buttons, opens the share window on a writable
+pane: a link and a password for one person to watch the pane read-only
+in their browser, with the link drawn as a code and copy buttons for
+the link, the password and the code as an image. The observer's page,
+`/s/<id>`, shows the pane's screen at the host's size, scaled, with the
+web links in it and the file or diff you open over it, and nothing
+else; the tile's header carries `⇗ n` while a share lives. See
+[share](share.md).
+
 ## Fit: the host follows the browser
 
 A terminal tells tmux its size; the browser does the same when **fit** is
@@ -241,7 +252,7 @@ view, each live and typable. The page is the Android client's pane view:
   the right the pane buttons, 32 px squares with a label under
   the pointer: `▦` arrangement, `⊞` equal shares, `↺` the host's
   layout (the window view's; off here), `⤢` fit, `▮` direct typing,
-  `⎇` changes, `⊡` zoom, `≡` go to a pane. The row is the same in
+  `⎇` changes, `⇗` share, `⊡` zoom, `≡` go to a pane. The row is the same in
   every view, the window view included: a button whose action does not
   apply is disabled, never left out, so nothing moves under the
   pointer; on a narrow screen (640 px and under) they fold into one
@@ -738,6 +749,7 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `1`–`4`, `l`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
 | `e` / `E` | tiles: lay the focused tile across the whole view's width / height, on the side its middle is |
 | `g` | tiles: the changes window over the focused tile, git's view of its repository, on a writable pane of a host with preview roots; `g`, `Esc` or `×` closes it, `_` folds it to its bar (see [changes](changes.md)) |
+| `s` | the share window for the focused pane: its live shares with *revoke*, and a link and a password for one person to watch it read-only, with the link as a code to send (see [share](share.md)); `Esc` closes |
 | click, Shift+click on a name | a writable shell pane on a host with preview roots: a name of the pane's directory on the screen; a directory is entered, a file opens as *a file opens with* says / only the quoted name goes onto the pane's line (see [shell helper](shell-helper.md)) |
 | `Right`, `Ctrl+Right` | with a ghost word after the cursor, direct or on the line: accept it whole / its first word; without one, the pane's keys (direct) or the caret's move (line) |
 | `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, this pane alone (or `Enter`, double-click), host layout, equal shares, bigger, smaller |
@@ -860,6 +872,11 @@ and fails if the committed output differs from the sources.
   entry. The hub serves `/sw.js` and the manifest with `no-cache`, so a
   new build replaces the worker at the next open.
 
+- A shared pane's observer holds a cookie of its own, scoped by its
+  path to that share's six endpoints, and the page gives the observer no
+  input, no file links and no download; what the owner shows over the
+  pane reaches the observer from the owner's browser through the hub,
+  never from the host. See [share](share.md).
 - The client is a consumer of the API with the session cookie; it adds no
   endpoint. Its own risks are in the browser, and the hub's headers close
   them: a content security policy that allows only the client's own

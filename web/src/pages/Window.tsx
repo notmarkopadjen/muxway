@@ -32,6 +32,7 @@ import { noteOwn, useLens } from '../term/lens';
 import { Screen } from '../term/Screen';
 import { AddMenu } from '../components/AddMenu';
 import { ChangesWindow } from '../components/Changes';
+import { ShareWindow, sharesOf, useShares } from '../components/ShareWindow';
 import { Closing } from '../components/Closing';
 import { FileWindow, type Shown } from '../components/FileWindow';
 import { useFit } from '../term/useFit';
@@ -379,6 +380,8 @@ export function WindowPage() {
   }, [direct, focusedPane, writable]);
   // The changes window over the focused cell, and whether it is folded.
   const [changes, setChanges] = useState(false);
+  const [share, setShare] = useState(false);
+  const shares = useShares(focusedPane?.address, !!focusedPane);
   const [changesFolded, setChangesFolded] = useState(false);
   const enterDirect = useCallback(() => {
     setDirect(true);
@@ -392,6 +395,10 @@ export function WindowPage() {
   const [fit, setFit] = useState(true);
   // A file of the inbox shown over the page; kept while its window powers off.
   const [shown, setShown] = useState<Shown | null>(null);
+  const shownPane = shown
+    ? [...panes.values()].map((pc) => pc.pane).find((q) => q.address === shown.address)
+    : undefined;
+  const shownShares = sharesOf(shares.data, shownPane).map((sh) => sh.id);
   const [showing, setShowing] = useState(false);
   const show = useCallback((s: Shown) => {
     setShown(s);
@@ -544,6 +551,7 @@ export function WindowPage() {
       else if (ev.key === 'i' && writable) enterDirect();
       else if (ev.key === ':') focusLine();
       else if (ev.key === 'g' && writable && previews) setChanges((c) => !c);
+      else if (ev.key === 's' && writable) setShare((s) => !s);
       else return;
       ev.preventDefault();
       ev.stopImmediatePropagation();
@@ -766,6 +774,17 @@ export function WindowPage() {
                   : "git's changes of the pane's repository, over the cell (g)",
             },
             {
+              id: 'share',
+              glyph: '⇗',
+              label: 'share',
+              onClick: () => setShare((s) => !s),
+              disabled: !writable,
+              on: share,
+              title: writable
+                ? 'share the pane read-only: a link and a password (s)'
+                : 'share the pane read-only; needs a writable pane',
+            },
+            {
               id: 'zoom',
               glyph: '⊡',
               label: 'zoom',
@@ -859,8 +878,12 @@ export function WindowPage() {
             onClose={hide}
             onFile={(name) => show({ address: shown.address, name })}
             onPath={previews ? (path) => show({ address: shown.address, path }) : undefined}
+            relay={shownShares.length ? { ids: shownShares } : undefined}
           />
         )}
+      </Closing>
+      <Closing open={share && !!focusedPane}>
+        {focusedPane && <ShareWindow pane={focusedPane} onClose={() => setShare(false)} />}
       </Closing>
       <InputPanel
         pane={focusedPane}

@@ -42,6 +42,7 @@ export const keys = {
   files: (address: string) => ['files', address] as const,
   changes: (address: string) => ['changes', address] as const,
   listing: (address: string, cwd: string) => ['listing', address, cwd] as const,
+  shares: (hub?: string) => (hub ? (['shares', hub] as const) : (['shares'] as const)),
 };
 
 function useVisible(): boolean {

@@ -457,6 +457,10 @@ function ClientsBox({ o }: { o: AdminOverview }) {
     await api<void>(`/v1/admin/sessions/${id}`, { method: 'DELETE' }).catch(() => undefined);
     qc.invalidateQueries({ queryKey: keys.admin });
   };
+  const revoke = async (id: string) => {
+    await api<void>(`/v1/shares/${id}`, { method: 'DELETE' }).catch(() => undefined);
+    qc.invalidateQueries({ queryKey: keys.admin });
+  };
   return (
     <Box title="clients" className="mx-admin-clients" testId="admin-clients">
       <div className="mx-admin-body">
@@ -484,6 +488,22 @@ function ClientsBox({ o }: { o: AdminOverview }) {
             </li>
           ))}
           {o.clients.length === 0 && <li className="mx-dim">no one.</li>}
+        </ul>
+        <div className="mx-admin-sub">shares</div>
+        <ul className="mx-admin-list" data-testid="admin-shares">
+          {(o.shares ?? []).map((s) => (
+            <li key={s.id} data-testid="share-admin-row">
+              <span className="mx-admin-name">{s.address ?? `${s.host} ${s.pane_id}`}</span>
+              <span>{names.get(s.by) ?? s.by}</span>
+              <span className="mx-dim" title="watching · until">
+                {s.watching} watching · until {day(s.expires)}
+              </span>
+              <button type="button" data-testid="share-admin-revoke" onClick={() => revoke(s.id)}>
+                revoke
+              </button>
+            </li>
+          ))}
+          {(o.shares ?? []).length === 0 && <li className="mx-dim">no pane is shared.</li>}
         </ul>
         <div className="mx-admin-sub">agents</div>
         <ul className="mx-admin-list">

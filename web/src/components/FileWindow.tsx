@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { previewFile, readDiff, readFile } from '../api/queries';
-import type { ChangeKind, Diff } from '../api/types';
+import { clearShowing, putShowing } from '../api/shares';
+import type { ChangeKind, Diff, ShowingView } from '../api/types';
 import { setPreview, usePreview } from '../settings';
 import { viewsOf } from '../term/changes';
 import { languageOf } from '../term/code';
@@ -15,12 +16,18 @@ import { size } from './InputPanel';
 // pane printed the path of, by that path, from under the host's roots. A
 // change of the repository opens with a diff / file switch: its diff
 // against the last commit, or the file as the preview shows it.
+//
+// With shares of the pane live, the window relays what it shows to the
+// hub, so the observers' pages open the same; and on an observer's page
+// the window is given what to show and fetches nothing.
 export type Shown =
   | { address: string; name: string }
   | { address: string; path: string; change?: { kind: ChangeKind; root: string } };
 
 // Text beyond this is left to the download.
 const TEXT_SHOWN = 1 << 20;
+// The relay says again that the window is open, well inside the hub's patience.
+const RELAY_KEEPALIVE_MS = 5 * 60_000;
 
 function labelOf(s: Shown): string {
   return 'name' in s ? s.name : s.path;
@@ -30,10 +37,29 @@ function fileNameOf(s: Shown): string {
   return 'name' in s ? s.name : s.path.split('/').pop() || 'file';
 }
 
-type Got =
-  | { url: string; bytes: number; kind: 'image' | 'pdf' | 'binary' }
-  | { url: string; bytes: number; kind: 'text'; text: string; cut: boolean }
+export type Got =
+  | { url: string; bytes: number; kind: 'image' | 'pdf' | 'binary'; blob?: Blob }
+  | { url: string; bytes: number; kind: 'text'; text: string; cut: boolean; blob?: Blob }
   | { error: string };
+
+// gotOf sorts a fetched blob into what the window draws.
+export async function gotOf(blob: Blob, url: string): Promise<Got> {
+  const typ = blob.type.split(';')[0];
+  if (typ.startsWith('image/')) return { url, bytes: blob.size, kind: 'image', blob };
+  if (typ === 'application/pdf') return { url, bytes: blob.size, kind: 'pdf', blob };
+  if (!typ.startsWith('text/')) return { url, bytes: blob.size, kind: 'binary', blob };
+  const text = await blob.slice(0, TEXT_SHOWN).text();
+  return { url, bytes: blob.size, kind: 'text', text, cut: blob.size > TEXT_SHOWN, blob };
+}
+
+// What an observer's window is told to show.
+export interface Observed {
+  label: string;
+  change: boolean;
+  side: 'diff' | 'file';
+  view: ShowingView;
+  got: Got | null;
+}
 
 // A diff drawn as rows of text: added rows in the ok colour, removed
 // rows dim and struck, hunk and file headers dim.
@@ -79,14 +105,23 @@ export function FileWindow({
   onClose,
   onFile,
   onPath,
+  relay,
+  observed,
 }: {
   shown: Shown;
   onClose: () => void;
   onFile?: (name: string) => void;
   onPath?: (path: string) => void;
+  // The shares of the pane to tell what this window shows.
+  relay?: { ids: string[]; hub?: string };
+  // On an observer's page: what to show, given; nothing is fetched, and
+  // the bar has no switch, no download and no close.
+  observed?: Observed;
 }) {
-  const [got, setGot] = useState<Got | null>(null);
-  const view = usePreview();
+  const [fetched, setFetched] = useState<Got | null>(null);
+  const got = observed ? observed.got : fetched;
+  const chosenView = usePreview();
+  const view = observed ? (observed.view === 'plain' ? 'plain' : 'rendered') : chosenView;
   const name = fileNameOf(shown);
   const markdown = /\.(md|markdown)$/i.test(name);
   const patch = /\.(diff|patch)$/i.test(name);
@@ -99,12 +134,13 @@ export function FileWindow({
     'path' in shown ? (shown.change ? `${shown.change.root}/${shown.path}` : shown.path) : '';
   // A change opens on its diff when it has one; the file is a click away,
   // and each is fetched once.
-  const [side, setSide] = useState<'diff' | 'file'>(views[0] ?? 'file');
+  const [ownSide, setSide] = useState<'diff' | 'file'>(views[0] ?? 'file');
+  const side = observed ? observed.side : ownSide;
   const [diff, setDiff] = useState<Diff | { error: string } | null>(null);
   // Which of the two has been wanted for this key: once wanted, fetched
   // and kept until the key changes, so a switch back shows it at once.
   const [wanted, setWanted] = useState({ key, file: false, diff: false });
-  const wantDiff = side === 'diff' && !!change;
+  const wantDiff = observed ? observed.change && side === 'diff' : side === 'diff' && !!change;
   const wantFile = side === 'file' || !change;
   if (wanted.key !== key) {
     setWanted({ key, file: wantFile, diff: wantDiff });
@@ -112,8 +148,8 @@ export function FileWindow({
   } else if ((wantDiff && !wanted.diff) || (wantFile && !wanted.file)) {
     setWanted({ key, file: wanted.file || wantFile, diff: wanted.diff || wantDiff });
   }
-  const fetchDiff = wanted.key === key && wanted.diff;
-  const fetchFile = wanted.key === key && wanted.file;
+  const fetchDiff = !observed && wanted.key === key && wanted.diff;
+  const fetchFile = !observed && wanted.key === key && wanted.file;
   useEffect(() => {
     if (!fetchDiff || !('path' in shown)) return;
     let gone = false;
@@ -133,33 +169,28 @@ export function FileWindow({
     if (!fetchFile) return;
     let url: string | undefined;
     let gone = false;
-    setGot(null);
+    setFetched(null);
     const fetched =
       'name' in shown ? readFile(shown.address, shown.name) : previewFile(shown.address, filePath);
     fetched
       .then(async (blob) => {
         if (gone) return;
         url = URL.createObjectURL(blob);
-        const typ = blob.type.split(';')[0];
-        if (typ.startsWith('image/')) setGot({ url, bytes: blob.size, kind: 'image' });
-        else if (typ === 'application/pdf') setGot({ url, bytes: blob.size, kind: 'pdf' });
-        else if (!typ.startsWith('text/')) setGot({ url, bytes: blob.size, kind: 'binary' });
-        else {
-          const text = await blob.slice(0, TEXT_SHOWN).text();
-          if (!gone)
-            setGot({ url, bytes: blob.size, kind: 'text', text, cut: blob.size > TEXT_SHOWN });
-        }
+        const g = await gotOf(blob, url);
+        if (!gone) setFetched(g);
       })
       .catch((err) => {
-        if (!gone) setGot({ error: err instanceof ApiError ? err.code : 'hub unreachable' });
+        if (!gone) setFetched({ error: err instanceof ApiError ? err.code : 'hub unreachable' });
       });
     return () => {
       gone = true;
       if (url) URL.revokeObjectURL(url);
     };
   }, [shown, key, fetchFile]);
-  // Escape closes the window, and nothing else hears it.
+  // Escape closes the window, and nothing else hears it; an observer's
+  // window closes with the sharer's.
   useEffect(() => {
+    if (observed) return;
     const onKey = (ev: KeyboardEvent) => {
       if (ev.key !== 'Escape') return;
       ev.preventDefault();
@@ -168,12 +199,59 @@ export function FileWindow({
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [onClose]);
-  const label = labelOf(shown);
+  }, [onClose, observed]);
+  // The relay: the bytes shown go to the hub for the observers when they
+  // change, the view alone when only it does, and the whole is cleared
+  // when the window goes.
+  const relayIds = relay?.ids.join(' ') ?? '';
+  const relayHub = relay?.hub;
+  const diffText = diff && 'diff' in diff ? diff : null;
+  const shownBlob = wantDiff
+    ? diffText
+      ? new Blob([diffText.diff], { type: 'text/plain' })
+      : null
+    : got && 'blob' in got
+      ? (got.blob ?? null)
+      : null;
+  const relayView: ShowingView = wantDiff ? 'diff' : markdown ? view : 'file';
+  const relayKind = change ? 'diff' : 'file';
+  const relayPath = labelOf(shown);
+  const sent = useRef<{ key: string; side: string } | null>(null);
+  useEffect(() => {
+    if (!relayIds || !shownBlob) return;
+    const ids = relayIds.split(' ');
+    const fresh = sent.current?.key !== key || sent.current?.side !== side;
+    sent.current = { key, side };
+    const meta = { kind: relayKind, path: relayPath, view: relayView } as const;
+    const send = (blob?: Blob) =>
+      ids.forEach((id) => void putShowing(id, meta, blob, relayHub).catch(() => undefined));
+    send(fresh ? shownBlob : undefined);
+    const t = window.setInterval(() => send(), RELAY_KEEPALIVE_MS);
+    return () => window.clearInterval(t);
+  }, [relayIds, relayHub, shownBlob, key, side, relayKind, relayView, relayPath]);
+  useEffect(() => {
+    if (!relayIds) return;
+    const ids = relayIds.split(' ');
+    return () => {
+      sent.current = null;
+      ids.forEach((id) => void clearShowing(id, relayHub).catch(() => undefined));
+    };
+  }, [relayIds, relayHub]);
+  const label = observed ? observed.label : labelOf(shown);
   const text = got && 'kind' in got && got.kind === 'text' ? got.text : '';
   const lines = text ? text.split('\n').length - (text.endsWith('\n') ? 1 : 0) : 0;
+  const drawDiff = observed
+    ? wantDiff && got && 'kind' in got && got.kind === 'text'
+      ? { diff: got.text, binary: false, cut: got.cut }
+      : null
+    : diffText;
   return (
-    <div className="mx-picture-back" data-testid="picture-back" onClick={onClose}>
+    <div
+      className="mx-picture-back"
+      data-testid="picture-back"
+      data-observed={observed ? '' : undefined}
+      onClick={observed ? undefined : onClose}
+    >
       <div
         className="mx-picture"
         role="dialog"
@@ -183,7 +261,7 @@ export function FileWindow({
         onClick={(ev) => ev.stopPropagation()}
       >
         <div className="mx-picture-bar">
-          <span>{change ? '┌─ change ─ ' : '┌─ file ─ '}</span>
+          <span>{(observed ? observed.change : change) ? '┌─ change ─ ' : '┌─ file ─ '}</span>
           <span className="mx-picture-name" data-testid="picture-name" title={label}>
             {label}
           </span>
@@ -194,7 +272,12 @@ export function FileWindow({
               {lines ? ` · ${lines} lines` : ''}
             </span>
           )}
-          {views.length > 1 && (
+          {observed && (
+            <span className="mx-dim" data-testid="picture-observed">
+              {wantDiff ? 'diff · ' : markdown ? `${view} · ` : ''}shown by the owner
+            </span>
+          )}
+          {!observed && views.length > 1 && (
             <span className="mx-picture-view" data-testid="picture-side" data-view={side}>
               <button
                 type="button"
@@ -216,29 +299,34 @@ export function FileWindow({
               </button>
             </span>
           )}
-          {markdown && side !== 'diff' && got && 'kind' in got && got.kind === 'text' && (
-            <span className="mx-picture-view" data-testid="picture-view" data-view={view}>
-              <button
-                type="button"
-                className={view === 'rendered' ? 'on' : undefined}
-                onClick={() => setPreview('rendered')}
-                title="the file rendered"
-                data-testid="picture-rendered"
-              >
-                rendered
-              </button>
-              <button
-                type="button"
-                className={view === 'plain' ? 'on' : undefined}
-                onClick={() => setPreview('plain')}
-                title="the file as it is"
-                data-testid="picture-plain"
-              >
-                plain
-              </button>
-            </span>
-          )}
-          {side !== 'diff' && got && 'url' in got && (
+          {!observed &&
+            markdown &&
+            side !== 'diff' &&
+            got &&
+            'kind' in got &&
+            got.kind === 'text' && (
+              <span className="mx-picture-view" data-testid="picture-view" data-view={view}>
+                <button
+                  type="button"
+                  className={view === 'rendered' ? 'on' : undefined}
+                  onClick={() => setPreview('rendered')}
+                  title="the file rendered"
+                  data-testid="picture-rendered"
+                >
+                  rendered
+                </button>
+                <button
+                  type="button"
+                  className={view === 'plain' ? 'on' : undefined}
+                  onClick={() => setPreview('plain')}
+                  title="the file as it is"
+                  data-testid="picture-plain"
+                >
+                  plain
+                </button>
+              </span>
+            )}
+          {!observed && side !== 'diff' && got && 'url' in got && (
             <a
               className="mx-picture-download"
               href={got.url}
@@ -249,13 +337,21 @@ export function FileWindow({
               ⤓
             </a>
           )}
-          <button type="button" onClick={onClose} title="close (Esc)" data-testid="picture-close">
-            ×
-          </button>
+          {!observed && (
+            <button type="button" onClick={onClose} title="close (Esc)" data-testid="picture-close">
+              ×
+            </button>
+          )}
         </div>
         <div className="mx-picture-body">
           {wantDiff ? (
-            !diff ? (
+            observed ? (
+              drawDiff ? (
+                <DiffView diff={drawDiff} />
+              ) : (
+                <span className="mx-dim">loading…</span>
+              )
+            ) : !diff ? (
               <span className="mx-dim">loading…</span>
             ) : 'error' in diff ? (
               <span className="mx-bad" data-testid="picture-error">
@@ -280,7 +376,7 @@ export function FileWindow({
             <iframe src={got.url} title={label} data-testid="picture-frame" />
           ) : got.kind === 'binary' ? (
             <span className="mx-dim" data-testid="picture-binary">
-              no preview for this type; ⤓ downloads it
+              {observed ? 'no preview for this type' : 'no preview for this type; ⤓ downloads it'}
             </span>
           ) : got.kind === 'text' && markdown && view === 'rendered' ? (
             <div className="mx-picture-text mx-md" data-testid="picture-rendered-body">
