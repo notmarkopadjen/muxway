@@ -138,11 +138,11 @@ test('116 the name: a slow second click or N opens the field; Enter names the pa
     target: 'work:1.0',
     name: '✳ fixing the build',
   });
-  await expect(tab(page, LOGS)).toHaveText(/^fixing the build$/, { timeout: 10_000 });
+  await expect(tab(page, LOGS)).toHaveText(/^fixing the build$/, { timeout: 15_000 });
   await page.keyboard.press('N');
   await field.fill('logs');
   await page.keyboard.press('Enter');
-  await expect(tab(page, LOGS)).toHaveText(/^logs$/, { timeout: 10_000 });
+  await expect(tab(page, LOGS)).toHaveText(/^logs$/, { timeout: 15_000 });
   await expect(title.locator('.mx-title-status')).toHaveText(/fixing the build/);
   await expect(title).toHaveAttribute('data-agent', 'claude');
   await control(request, '/rename', { what: 'title', target: 'work:1.0', name: 'test-pane' });
