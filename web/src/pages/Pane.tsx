@@ -1585,92 +1585,94 @@ function Tiles({ addresses }: { addresses: string[] }) {
         </div>
         <Tools
           tools={[
-            ...(several
-              ? [
-                  {
-                    id: 'arrange',
-                    glyph: '▦',
-                    label: 'arrange',
-                    onClick: () => {
-                      touch();
-                      drawn(() => setLayout((l) => next(l, n)));
-                    },
-                    disabled: !!oneWindow && !movable,
-                    title:
-                      oneWindow && !movable
-                        ? 'the panes of this window move only when every one is writable'
-                        : `next arrangement (l): ${options(n).join(', ')}`,
-                  },
-                  {
-                    id: 'equal',
-                    glyph: '⊞',
-                    label: 'equal',
-                    onClick: () => {
-                      touch();
-                      drawn(() => setWeights({}));
-                    },
-                    disabled: !!oneWindow && !movable,
-                    title:
-                      oneWindow && !movable
-                        ? 'the panes of this window move only when every one is writable'
-                        : 'equal shares in every split (=); with fit on, the host follows',
-                  },
-                ]
-              : []),
-            ...(writable
-              ? [
-                  {
-                    id: 'fit',
-                    glyph: '⤢',
-                    label: 'fit',
-                    onClick: () => toggleFit(focused),
-                    on: focusedFit,
-                    title: `fit: the host pane follows this tile (f), ${focusedFit ? 'on' : 'off'}; F: every tile`,
-                  },
-                ]
-              : []),
-            ...(writable
-              ? [
-                  {
-                    id: 'direct',
-                    glyph: '▮',
-                    label: 'direct',
-                    onClick: () => (directOn ? setDirect(false) : enterDirect()),
-                    on: directOn,
-                    title: directOn
-                      ? 'direct: keys go to the pane as pressed; Shift+Esc or this leaves'
-                      : 'direct: keys go to the pane as pressed (i); Shift+Esc leaves',
-                  },
-                ]
-              : []),
-            ...(writable && hostPreviews(focused)
-              ? [
-                  {
-                    id: 'changes',
-                    glyph: '⎇',
-                    label: 'changes',
-                    onClick: () => setChanges((c) => !c),
-                    on: changes,
-                    title: "git's changes of the pane's repository, over the tile (g)",
-                  },
-                ]
-              : []),
-            ...(focusedPane
-              ? [
-                  {
-                    id: 'zoom',
-                    glyph: '⊡',
-                    label: 'zoom',
-                    onClick: () => zoom(focusedPane),
-                    on: !several,
-                    title: several
-                      ? 'this pane alone (z, Enter, or double-click)'
-                      : focusedPane.hub
-                        ? "the window's panes side by side (z, or double-click)"
-                        : "the window's panes side by side (z, or double-click); w: the mirror layout",
-                  },
-                ]
-              : []),
+            {
+              id: 'arrange',
+              glyph: '▦',
+              label: 'arrange',
+              onClick: () => {
+                touch();
+                drawn(() => setLayout((l) => next(l, n)));
+              },
+              disabled: !several || (!!oneWindow && !movable),
+              title: !several
+                ? 'arrangements are for two or more tiles'
+                : oneWindow && !movable
+                  ? 'the panes of this window move only when every one is writable'
+                  : `next arrangement (l): ${options(n).join(', ')}`,
+            },
+            {
+              id: 'equal',
+              glyph: '⊞',
+              label: 'equal',
+              onClick: () => {
+                touch();
+                drawn(() => setWeights({}));
+              },
+              disabled: !several || (!!oneWindow && !movable),
+              title: !several
+                ? 'equal shares are for two or more tiles'
+                : oneWindow && !movable
+                  ? 'the panes of this window move only when every one is writable'
+                  : 'equal shares in every split (=); with fit on, the host follows',
+            },
+            {
+              id: 'reset',
+              glyph: '↺',
+              label: "the host's layout",
+              onClick: () => undefined,
+              disabled: true,
+              title: "the host's layout: in the window view (w)",
+            },
+            {
+              id: 'fit',
+              glyph: '⤢',
+              label: 'fit',
+              onClick: () => toggleFit(focused),
+              disabled: !writable,
+              on: focusedFit,
+              title: writable
+                ? `fit: the host pane follows this tile (f), ${focusedFit ? 'on' : 'off'}; F: every tile`
+                : 'fit: the host pane follows this tile; needs a writable pane',
+            },
+            {
+              id: 'direct',
+              glyph: '▮',
+              label: 'direct',
+              onClick: () => (directOn ? setDirect(false) : enterDirect()),
+              disabled: !writable,
+              on: directOn,
+              title: !writable
+                ? 'direct: keys go to the pane as pressed; needs a writable pane'
+                : directOn
+                  ? 'direct: keys go to the pane as pressed; Shift+Esc or this leaves'
+                  : 'direct: keys go to the pane as pressed (i); Shift+Esc leaves',
+            },
+            {
+              id: 'changes',
+              glyph: '⎇',
+              label: 'changes',
+              onClick: () => setChanges((c) => !c),
+              disabled: !writable || !hostPreviews(focused),
+              on: changes,
+              title: !writable
+                ? "the repository's changes; needs a writable pane"
+                : !hostPreviews(focused)
+                  ? "the repository's changes; the host has no preview roots"
+                  : "git's changes of the pane's repository, over the tile (g)",
+            },
+            {
+              id: 'zoom',
+              glyph: '⊡',
+              label: 'zoom',
+              onClick: () => focusedPane && zoom(focusedPane),
+              disabled: !focusedPane,
+              on: !several,
+              title: several
+                ? 'this pane alone (z, Enter, or double-click)'
+                : focusedPane?.hub
+                  ? "the window's panes side by side (z, or double-click)"
+                  : "the window's panes side by side (z, or double-click); w: the mirror layout",
+            },
             {
               id: 'open-palette',
               glyph: '≡',

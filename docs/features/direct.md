@@ -12,13 +12,14 @@ line brings the line back.
 
 ## Using it
 
-The pane view is in one of three states, said in the input row:
+The pane view, and the window view for its focused pane, is in one of
+three states, said in the input row:
 
 | state | keys go to | the row shows | enter | leave |
 |---|---|---|---|---|
 | page | the view's shortcuts (`g`, `f`, `z`, `]` …) | `>` | `Esc` from the line, `Shift+Esc` from direct typing | |
 | line | the input line | `>` with the caret in the line | `:`, a click on the line | `Esc` |
-| direct | the focused pane, key by key | `▮`, `direct` in the placeholder and the status bar, the pane's cursor as a block | `i`, a click on a writable tile's screen, `▮` | `Shift+Esc`, `▮`, a click on the line |
+| direct | the focused pane, key by key | `▮`, `direct` in the placeholder and the status bar, the pane's cursor as a block | `i`, a click on a writable tile's screen (the window view: on its cell), `▮` | `Shift+Esc`, `▮`, a click on the line |
 
 `i` is vim's: it types into the text, which here is the pane. `:` is
 vim's too: it takes the line. `Esc` stays the pane's while direct typing
@@ -110,7 +111,8 @@ and `"repeat": true` in the hosts listing for an agent that takes it.
   escape sequence can be built from keys. Composed and pasted text go
   through the text rules; control characters are never text.
 - **The wrong pane.** The mode is shown in the prompt, the placeholder,
-  the status bar and the block cursor; keys go to the focused tile only;
+  the status bar and the block cursor; keys go to the focused tile (the
+  window view: the focused cell) only;
   a read-only tile focused ends it.
 - **Clipboard.** Nothing is read without a paste the person made.
   `Ctrl+V` and `Shift+Insert` send no key: a program in the pane never

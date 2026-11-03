@@ -463,10 +463,10 @@ button:disabled {
   width: min(560px, calc(100vw - 32px));
 }
 .mx-help .mx-box.mx-help-keys {
-  width: min(1120px, calc(100vw - 32px));
+  width: min(1440px, calc(100vw - 32px));
 }
 .mx-help dl {
-  columns: 2 420px;
+  columns: 3 400px;
   column-gap: 32px;
   margin: 0;
 }

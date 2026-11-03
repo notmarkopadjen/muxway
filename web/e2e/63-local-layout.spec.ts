@@ -33,7 +33,7 @@ test('63 drag, hide and reset change only the browser', async ({ page, request }
   // = gives every split equal shares; 0 below goes back to the host's.
   await page.keyboard.press('=');
   await expect(slots.nth(0)).toHaveAttribute('data-fraction', '0.500');
-  await page.getByTestId('equalise').click();
+  await page.getByTestId('equal').click();
   await expect(slots.nth(0)).toHaveAttribute('data-fraction', '0.500');
   await page.keyboard.press(']');
   await expect(page.locator('[data-testid="tab"][data-focused]')).toHaveAttribute(

@@ -2,7 +2,7 @@ import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { keys, resizePane, useHosts, useInput, useWindow } from '../api/queries';
+import { hostOf, keys, resizePane, useHosts, useInput, useWindow } from '../api/queries';
 import type { Mouse, PaneContent } from '../api/types';
 import { LensMark } from '../components/Lens';
 import { Divider } from '../components/Divider';
@@ -36,6 +36,8 @@ import {
   type TileNode,
 } from '../term/tiles';
 import { screenWords } from '../term/complete';
+import { Backlog, keyToBody, pasteText, type Body } from '../term/direct';
+import { requestPalette } from '../term/intent';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
 import { Tools } from '../components/Tools';
@@ -91,6 +93,10 @@ interface TreeProps {
   setArr: (f: (a: Arrangement) => Arrangement) => void;
   onFocus: (id: string) => void;
   onZoom: (id: string) => void;
+  // Direct typing lands in the focused pane: its cursor is a block, and
+  // a click with a fine pointer on a writable pane's screen turns it on.
+  direct: boolean;
+  onDirect: (id: string) => void;
   onCell: (address: string, x: number, y: number) => void;
   onWheel: (address: string, up: boolean, x: number, y: number, count: number) => Promise<void>;
   onFile: (address: string, name: string) => void;
@@ -102,8 +108,9 @@ interface TreeProps {
 function Tree(props: TreeProps) {
   const { node, path, arr, panes, focused, burn, fit, setArr, onFocus, onZoom, onCell, onWheel } =
     props;
-  const { onFile, onPath, onCopied, onPrompt } = props;
+  const { direct, onDirect, onFile, onPath, onCopied, onPrompt } = props;
   const box = useRef<HTMLDivElement>(null);
+  const pointer = useRef('mouse');
   const lens = useLens();
   const moving = useMoving();
   if (node.kind === 'pane') {
@@ -129,6 +136,9 @@ function Tree(props: TreeProps) {
         data-moving={moving.on ? '' : undefined}
         style={moving.on ? { viewTransitionName: nameFor(node.id) } : undefined}
         onDoubleClick={() => onZoom(node.id)}
+        onPointerDownCapture={(e) => {
+          pointer.current = e.pointerType;
+        }}
       >
         <div
           className="mx-cell-head mx-painted"
@@ -161,7 +171,10 @@ function Tree(props: TreeProps) {
           rows={fit ? undefined : p.height}
           scale={arr.scale[node.id] ?? 1}
           focused={focused === node.id}
-          onClick={() => onFocus(node.id)}
+          onClick={() => {
+            onFocus(node.id);
+            if (p.mode === 'write' && pointer.current !== 'touch') onDirect(node.id);
+          }}
           height={p.height - (pc.trimmed ?? 0)}
           bounds={{ cols: p.width, rows: p.height }}
           onCell={p.mode === 'write' && p.mouse ? (x, y) => onCell(p.address, x, y) : undefined}
@@ -173,8 +186,20 @@ function Tree(props: TreeProps) {
           onFile={(name) => onFile(p.address, name)}
           onPath={onPath && p.mode === 'write' ? (path) => onPath(p.address, path) : undefined}
           onCopy={onCopied}
-          onPrompt={p.mode === 'write' ? () => onPrompt(node.id) : undefined}
+          onPrompt={
+            p.mode === 'write'
+              ? () => {
+                  // A touch keeps the line's way in; a fine pointer went direct.
+                  if (pointer.current === 'touch') onPrompt(node.id);
+                }
+              : undefined
+          }
           cursorRow={p.cursor_y}
+          cursor={
+            direct && focused === node.id && p.cursor_x && p.cursor_y
+              ? { x: p.cursor_x, y: p.cursor_y }
+              : undefined
+          }
           testId="cell-screen"
         />
       </div>
@@ -303,6 +328,21 @@ export function WindowPage() {
   };
   const writable = focusedPane?.mode === 'write';
   const input = useInput(focusedPane?.address ?? '');
+  // Direct typing: keys go to the focused pane as pressed, while it is
+  // writable; focusing a read-only pane ends it, as does leaving the view.
+  const [direct, setDirect] = useState(false);
+  const directOn = direct && writable;
+  useEffect(() => {
+    if (direct && focusedPane && !writable) setDirect(false);
+  }, [direct, focusedPane, writable]);
+  const enterDirect = useCallback(() => {
+    setDirect(true);
+    const active = document.activeElement as HTMLElement | null;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) active.blur();
+    document
+      .querySelector<HTMLElement>('.mx-cell[data-focused] [data-testid="cell-screen"]')
+      ?.focus();
+  }, []);
   const area = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(true);
   // A file of the inbox shown over the page; kept while its window powers off.
@@ -315,6 +355,8 @@ export function WindowPage() {
   const hide = useCallback(() => setShowing(false), []);
   const hosts = useHosts();
   const previews = !!hosts.data?.find((h) => h.name === host && !h.hub)?.preview;
+  const repeats = useRef(false);
+  repeats.current = !!hostOf(hosts.data, focusedPane?.address ?? '')?.repeat;
   // The window is fitted through one of its writable panes, the same one
   // while it is shown, so moving the focus sends nothing.
   const fitVia = useMemo(
@@ -376,9 +418,13 @@ export function WindowPage() {
     void send(3);
   }, [arrangeable, preset, visible, panes, fitVia, qc, host, session, win, toast, shownLayout]);
   useEffect(() => {
-    setHeading({ pane: focusedPane, place: `window ${host}/${session}/${win}` });
+    setHeading({
+      pane: focusedPane,
+      place: `window ${host}/${session}/${win}`,
+      direct: directOn,
+    });
     return () => setHeading({ place: '' });
-  }, [focusedPane, host, session, win]);
+  }, [focusedPane, host, session, win, directOn]);
 
   // The host's layout wins: a new layout string resets the arrangement.
   // Except with fit on, when the host's sizes are the browser's own: a
@@ -415,7 +461,7 @@ export function WindowPage() {
     const onKey = (ev: KeyboardEvent) => {
       const target = ev.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (ev.ctrlKey || ev.metaKey || ev.altKey || directOn) return;
       const i = focus ? visible.indexOf(focus) : -1;
       const by = (d: number) => move(visible[(i + d + visible.length) % visible.length] ?? null);
       if (ev.key === ']') by(1);
@@ -438,13 +484,29 @@ export function WindowPage() {
         }));
       } else if (ev.key === 'f' && writable) setFit((f) => !f);
       else if (ev.key === 'r' && fit && writable) refit();
+      else if (ev.key === 'i' && writable) enterDirect();
+      else if (ev.key === ':') focusLine();
       else return;
       ev.preventDefault();
       ev.stopImmediatePropagation();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [visible, focus, focusedPane, layout, navigate, setArr, writable, open, fit, refit]);
+  }, [
+    visible,
+    focus,
+    focusedPane,
+    layout,
+    navigate,
+    setArr,
+    writable,
+    open,
+    fit,
+    refit,
+    directOn,
+    enterDirect,
+    focusLine,
+  ]);
 
   const send = async (body: { text: string } | { key: string } | { mouse: Mouse }) => {
     if (!focusedPane) return false;
@@ -459,6 +521,61 @@ export function WindowPage() {
       return false;
     }
   };
+  // The keys of direct typing, queued per pane behind the request in
+  // flight, as the pane view does; the file window keeps every key while
+  // it is open.
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  const backlog = useMemo(
+    () =>
+      new Backlog(
+        (b) => sendRef.current(b),
+        () => repeats.current,
+      ),
+    [focus],
+  );
+  useEffect(() => {
+    if (!directOn) return;
+    const typing = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+    };
+    const elsewhere = (t: EventTarget | null) =>
+      typing(t) || !!document.querySelector('.mx-picture-back');
+    const push = (b: Body) => backlog.push(b);
+    const onKey = (ev: KeyboardEvent) => {
+      if (elsewhere(ev.target)) return;
+      if (ev.key === 'Escape' && ev.shiftKey && !ev.ctrlKey && !ev.altKey && !ev.metaKey) {
+        setDirect(false);
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        return;
+      }
+      const body = keyToBody(ev, !!window.getSelection()?.toString());
+      if (!body) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      push(body);
+    };
+    const onPaste = (ev: ClipboardEvent) => {
+      if (elsewhere(ev.target) || ev.clipboardData?.files.length) return;
+      const text = pasteText(ev.clipboardData?.getData('text') ?? '');
+      if (!text) return;
+      ev.preventDefault();
+      push({ text });
+    };
+    const onComposed = (ev: CompositionEvent) => {
+      if (!elsewhere(ev.target) && ev.data) push({ text: ev.data });
+    };
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('paste', onPaste, true);
+    window.addEventListener('compositionend', onComposed, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('paste', onPaste, true);
+      window.removeEventListener('compositionend', onComposed, true);
+    };
+  }, [directOn, backlog]);
   // A click or a wheel notch lands in the pane under the pointer, focused or not.
   const click = async (address: string, mouse: Mouse) => {
     try {
@@ -524,29 +641,6 @@ export function WindowPage() {
         </div>
         <Tools
           tools={[
-            ...(writable
-              ? [
-                  {
-                    id: 'fit',
-                    glyph: '⤢',
-                    label: 'fit',
-                    onClick: () => setFit(!fit),
-                    on: fit,
-                    title: `fit: the host window follows this box (f), ${fit ? 'on' : 'off'}`,
-                  },
-                ]
-              : []),
-            ...(focus
-              ? [
-                  {
-                    id: 'zoom',
-                    glyph: '⊡',
-                    label: 'zoom',
-                    onClick: () => open(focus),
-                    title: 'this pane alone, in the pane view (z, Enter, or double-click)',
-                  },
-                ]
-              : []),
             {
               id: 'arrange',
               glyph: '▦',
@@ -557,14 +651,16 @@ export function WindowPage() {
                 ? 'the panes of this window move only when every one is writable'
                 : visible.length > 4
                   ? 'arrangements are for up to four panes'
-                  : `next arrangement of the window's panes, on the host (l): ${presetOptions(visible.length).join(', ')}`,
+                  : visible.length < 2
+                    ? 'arrangements are for two or more panes'
+                    : `next arrangement of the window's panes, on the host (l): ${presetOptions(visible.length).join(', ')}`,
             },
             {
-              id: 'equalise',
+              id: 'equal',
               glyph: '⊞',
-              label: 'equal shares',
+              label: 'equal',
               onClick: () => tree && drawn(() => setArr((a) => equalised(a, tree))),
-              title: 'equal shares (=)',
+              title: 'equal shares in every split (=); with fit on, the host follows',
             },
             {
               id: 'reset',
@@ -572,6 +668,54 @@ export function WindowPage() {
               label: "the host's layout",
               onClick: () => drawn(() => setArr(() => fresh(layout))),
               title: "the host's layout (0)",
+            },
+            {
+              id: 'fit',
+              glyph: '⤢',
+              label: 'fit',
+              onClick: () => setFit(!fit),
+              disabled: !writable,
+              on: fit,
+              title: writable
+                ? `fit: the host window follows this box (f), ${fit ? 'on' : 'off'}`
+                : 'fit: the host window follows this box; needs a writable pane',
+            },
+            {
+              id: 'direct',
+              glyph: '▮',
+              label: 'direct',
+              onClick: () => (directOn ? setDirect(false) : enterDirect()),
+              disabled: !writable,
+              on: directOn,
+              title: !writable
+                ? 'direct: keys go to the pane as pressed; needs a writable pane'
+                : directOn
+                  ? 'direct: keys go to the pane as pressed; Shift+Esc or this leaves'
+                  : 'direct: keys go to the pane as pressed (i); Shift+Esc leaves',
+            },
+            {
+              id: 'changes',
+              glyph: '⎇',
+              label: 'changes',
+              onClick: () => undefined,
+              disabled: true,
+              title: "the repository's changes: over the pane in the pane view (z)",
+            },
+            {
+              id: 'zoom',
+              glyph: '⊡',
+              label: 'zoom',
+              onClick: () => focus && open(focus),
+              disabled: !focus,
+              on: false,
+              title: 'this pane alone, in the pane view (z, Enter, or double-click)',
+            },
+            {
+              id: 'open-palette',
+              glyph: '≡',
+              label: 'go to',
+              onClick: requestPalette,
+              title: 'go to a pane (p)',
             },
           ]}
         />
@@ -589,6 +733,11 @@ export function WindowPage() {
             setArr={setArr}
             onFocus={setFocused}
             onZoom={open}
+            direct={directOn}
+            onDirect={(id) => {
+              setFocused(id);
+              enterDirect();
+            }}
             onCell={(address, x, y) => void click(address, { button: 'left', x, y })}
             onWheel={(address, up, x, y, count) =>
               click(address, {
@@ -629,10 +778,14 @@ export function WindowPage() {
         placeholder={
           focusedPane
             ? writable
-              ? `type into ${focusedPane.address}`
+              ? directOn
+                ? 'direct · keys go to the pane · Shift+Esc or a click here types on the line'
+                : `type into ${focusedPane.address}`
               : 'read-only pane'
             : 'no pane'
         }
+        direct={directOn}
+        onLeaveDirect={() => setDirect(false)}
         send={send}
         onGrow={(px) => {
           grown.current = px;

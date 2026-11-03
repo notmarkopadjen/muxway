@@ -224,7 +224,7 @@ workstation, the logs on a server and an AI agent on your laptop in one
 view, each live and typable. The page is the Android client's pane view:
 
 ```
-┌─ muxway ─┐ [⟳ fixing the build][! review][bash][tail · build.log] [+]   [▦][⤢][⎇][⊡][≡]  [alice ▾]
+┌─ muxway ─┐ [⟳ fixing the build][! review][bash][tail · build.log] [+]   [▦][⊞][↺][⤢][▮][⎇][⊡][≡]  [alice ▾]
 ┌─ ✳ Claude · fixing the build · work/0.0 · 96×28 · write · ⟳ working ─ _ × ┐
 │ $ make test                                                                   │
 │ ok                                                                            │
@@ -239,8 +239,12 @@ view, each live and typable. The page is the Android client's pane view:
   list. After it the tab strip, and right after the last tab `+`, which
   opens the [add menu](#the-add-menu) (the `+` key opens it too). At
   the right the pane buttons, 32 px squares with a label under
-  the pointer: `▦` arrangement, `⤢` fit, `⎇` changes, `⊡` zoom, `≡` go
-  to a pane; on a narrow screen (640 px and under) they fold into one
+  the pointer: `▦` arrangement, `⊞` equal shares, `↺` the host's
+  layout (the window view's; off here), `⤢` fit, `▮` direct typing,
+  `⎇` changes, `⊡` zoom, `≡` go to a pane. The row is the same in
+  every view, the window view included: a button whose action does not
+  apply is disabled, never left out, so nothing moves under the
+  pointer; on a narrow screen (640 px and under) they fold into one
   `⋯` button that opens a menu with the same entries. Last, the profile
   button with who you are, holding *hubs*, *help*, *admin* (for an
   admin) and *logout*; on a narrow screen it shows only its caret. In a
@@ -343,9 +347,10 @@ sequenceDiagram
   repository); a click on the count opens the changes window (see
   [changes](changes.md)). `_` minimises the tile (below); it is off on
   the last tile. The controls sit in the top row,
-  at the right, as icons: `▦` the next arrangement (with several tiles),
-  `⤢` fit for the focused tile (selected when on), `⎇` the changes
-  window over the tile on a host with preview roots (see
+  at the right, as icons: `▦` the next arrangement and `⊞` equal
+  shares (with several tiles), `⤢` fit for the focused tile (selected
+  when on), `▮` direct typing (see [direct](direct.md)), `⎇` the
+  changes window over the tile on a host with preview roots (see
   [changes](changes.md)), `⊡` zoom.
 - **Fit** is per tile, with the pane's own scope (see
   [fit](#fit-the-host-follows-the-browser)). Every writable tile opens
@@ -507,22 +512,26 @@ is the pane view's: `‹` back to the list, then a **tab per pane of the
 window** in layout order, painted with its state, the focused one with
 the thick border, its name in bold and the accent bar under it; a click
 focuses that pane. The
-controls sit at the right as icons, the tooltip naming each with its
-key:
+controls at the right are the pane view's eight, in its order, each
+disabled where it does not apply here, the tooltip naming each with
+its key:
 
 ```
-[‹] [✳ Claude · fixing the build][bash][! review][ logs ]      [⤢][⊡][▦][⊞][↺]
+[‹] [✳ Claude · fixing the build][bash][! review][ logs ]      [▦][⊞][↺][⤢][▮][⎇][⊡][≡]
 ┌ ✳ Claude · fixing the build · work/0.0 · 98×40 · ⟳ working              × ┐
 ```
 
 | Icon | Does | Key |
 |---|---|---|
 | `+` | one more pane: split here, or a new session on a host that starts them (as in the pane view) | `+` |
-| `⤢` | fit: the host window follows the box (selected when on) | `f` |
-| `⊡` | the focused pane alone, in the pane view with everything it has | `z`, `Enter`, double-click |
-| `▦` | the next arrangement of the window's panes, on the host: row, column, then main-left, main-top and grid by count, over the shown panes, the hidden ones kept in a thin stack at the right; off while any pane of the window is read-only, since the host's panes move only with the write grant on all of them, and above four panes | `l` |
+| `▦` | the next arrangement of the window's panes, on the host: row, column, then main-left, main-top and grid by count, over the shown panes, the hidden ones kept in a thin stack at the right; off while any pane of the window is read-only, since the host's panes move only with the write grant on all of them, above four panes, and with one pane shown | `l` |
 | `⊞` | equal shares in every split (with fit on, the host follows: the way to put a squeezed window right) | `=` |
 | `↺` | the host's own layout again | `0` |
+| `⤢` | fit: the host window follows the box (selected when on); off for a read-only pane | `f` |
+| `▮` | direct typing into the focused pane, every key as pressed, as in the pane view (see [direct](direct.md)); off for a read-only pane | `i`, a click on the cell |
+| `⎇` | the changes window is the pane view's: off here | |
+| `⊡` | the focused pane alone, in the pane view with everything it has | `z`, `Enter`, double-click |
+| `≡` | go to a pane or window | `p` |
 
 One pane is focused (its tab, a click on its header, or `]` and `[`);
 the input line and key bar go to it. **Zoom is the pane view**: `⊡`,

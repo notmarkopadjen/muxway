@@ -150,3 +150,53 @@ test('90 security: a read-only pane offers no split', async ({ page }) => {
   await expect(page.getByTestId('add-split')).toBeDisabled();
   await expect(page.getByTestId('add-split')).toHaveAttribute('title', /read only/);
 });
+
+test('90 the pane buttons are the same eight in every view, disabled where they do not apply', async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await signIn(page);
+  const labels = () =>
+    page
+      .locator('header.mx-header .mx-tools button')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-label')));
+  const ALL = [
+    'arrange',
+    'equal',
+    "the host's layout",
+    'fit',
+    'direct',
+    'changes',
+    'zoom',
+    'go to',
+  ];
+  // One tile: nothing to arrange or even out, the host's layout is the window view's.
+  await page.goto(`/p/${SHELL0}`);
+  await settled(page);
+  expect(await labels()).toEqual(ALL);
+  for (const id of ['arrange', 'equal', 'reset']) await expect(page.getByTestId(id)).toBeDisabled();
+  for (const id of ['fit', 'direct', 'zoom', 'open-palette'])
+    await expect(page.getByTestId(id)).toBeEnabled();
+  // Two tiles of different windows: the arrangement is the browser's own.
+  await page.goto(`/p/${SHELL0},${LOGS}`);
+  await expect(page.getByTestId('tile')).toHaveCount(2);
+  expect(await labels()).toEqual(ALL);
+  for (const id of ['arrange', 'equal', 'fit', 'direct', 'zoom'])
+    await expect(page.getByTestId(id)).toBeEnabled();
+  await expect(page.getByTestId('reset')).toBeDisabled();
+  // The window view: the same row; the changes window is the pane view's.
+  await page.goto(`/w/${HOST}/work/0`);
+  await expect(page.getByTestId('window')).toBeVisible();
+  expect(await labels()).toEqual(ALL);
+  await expect(page.getByTestId('changes')).toBeDisabled();
+  for (const id of ['equal', 'reset', 'fit', 'direct', 'zoom', 'open-palette'])
+    await expect(page.getByTestId(id)).toBeEnabled();
+  // The help reads in three columns on a wide screen.
+  await page.keyboard.press('?');
+  const dl = page.getByTestId('help').locator('dl');
+  await expect(dl).toBeVisible();
+  expect(await dl.evaluate((el) => getComputedStyle(el).columnCount)).toBe('3');
+  await shot(page, info, '90-help-columns');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('help')).toHaveCount(0);
+});

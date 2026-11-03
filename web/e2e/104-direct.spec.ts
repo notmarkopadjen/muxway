@@ -175,7 +175,7 @@ test('104 security: a read-only pane has no direct typing', async ({ page }) => 
   await signIn(page);
   await page.goto(`/p/${HOST}/work/0.1`);
   await expect(page.getByTestId('readonly')).toBeVisible();
-  await expect(page.getByTestId('direct')).toHaveCount(0);
+  await expect(page.getByTestId('direct')).toBeDisabled();
   await page.getByTestId('screen').click();
   await page.keyboard.press('i');
   await expect(page.locator('form.mx-input')).not.toHaveAttribute('data-direct', '');
@@ -202,4 +202,41 @@ test.describe('touch', () => {
     await expect(input).toBeFocused();
     await expect(page.locator('form.mx-input')).not.toHaveAttribute('data-direct', '');
   });
+});
+
+test('104 the window view types direct too: a click on the cell, keys reach the pane, Shift+Esc leaves', async ({
+  page,
+  request,
+}, info) => {
+  test.skip(!KEYS, 'needs the key echo pane');
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await signIn(page);
+  await page.goto(`/w/${HOST}/work/0`);
+  await expect(page.getByTestId('window')).toBeVisible();
+  const form = page.locator('form.mx-input');
+  await expect(form).not.toHaveAttribute('data-direct', '');
+  await expect(page.getByTestId('caret')).toHaveCount(0);
+  await page.locator('.mx-cell[data-focused]').getByTestId('cell-screen').click();
+  await expect(form).toHaveAttribute('data-direct', '');
+  await expect(page.getByTestId('status-direct')).toBeVisible();
+  await expect(page.getByTestId('direct')).toHaveClass(/\bon\b/);
+  await expect(page.getByTestId('caret')).toBeVisible();
+  await page.keyboard.type('wv');
+  await expectTyped(request, 'wv');
+  await page.keyboard.press('Escape');
+  await expectTyped(request, String.raw`\x1b`);
+  // The view's shortcuts are keys for the pane: z stays in the window view.
+  await page.keyboard.press('z');
+  await expectTyped(request, 'z');
+  await expect(page).toHaveURL(new RegExp(`/w/${HOST}/work/0$`));
+  await shot(page, info, '104-window-direct');
+  const before = await typed(request);
+  await page.keyboard.press('Shift+Escape');
+  await expect(form).not.toHaveAttribute('data-direct', '');
+  await expect(page.getByTestId('caret')).toHaveCount(0);
+  await page.keyboard.press('i');
+  await expect(form).toHaveAttribute('data-direct', '');
+  await page.getByTestId('direct').click();
+  await expect(form).not.toHaveAttribute('data-direct', '');
+  expect(await typed(request)).toBe(before);
 });
