@@ -7,7 +7,18 @@ export const GLYPH: Record<Attention['kind'], string> = {
   done: '✓',
 };
 
-export function Badge({ attention }: { attention?: Attention }) {
+export function Badge({ attention, later }: { attention?: Attention; later?: boolean }) {
+  if (later)
+    return (
+      <span
+        className="mx-badge mx-later"
+        title={attention ? `later · ${attention.kind}` : 'later'}
+        data-testid="badge"
+        data-kind="later"
+      >
+        ☾
+      </span>
+    );
   if (!attention) return <span className="mx-badge-slot" />;
   const pulse = attention.kind === 'question' || attention.kind === 'permission';
   return (

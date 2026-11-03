@@ -23,6 +23,7 @@ export function Tabs({
   hidden = [],
   addable = false,
   onTab,
+  onWake,
   onZoom,
   reorder,
   onDragPane,
@@ -33,6 +34,8 @@ export function Tabs({
   hidden?: string[];
   addable?: boolean;
   onTab: (address: string, add: boolean) => void;
+  // A click on a parked tab wakes it, besides focusing it.
+  onWake?: (address: string) => void;
   onZoom?: (address: string) => void;
   reorder?: (dragged: string, before: string | null) => void;
   onDragPane?: (address: string | null) => void;
@@ -92,7 +95,9 @@ export function Tabs({
     const p = panes.find((q) => q.address === a);
     if (!p?.talk?.length || p.talk.some((tp) => tp.at * 1000 > since)) loose.current.delete(a);
   }
-  const shown = pullTogether(rows, groups, new Set(loose.current.keys()));
+  // A parked tab stays last, outside its group's frame.
+  const parked = panes.filter((p) => p.later).map((p) => p.address);
+  const shown = pullTogether(rows, groups, new Set([...loose.current.keys(), ...parked]));
   // The pull is kept in the owner's order, so it holds once the group ends.
   useEffect(() => {
     if (!reorder) return;
@@ -156,7 +161,10 @@ export function Tabs({
               }
             : undefined
         }
-        onClick={(e) => onTab(address, e.shiftKey)}
+        onClick={(e) => {
+          if (pane?.later) onWake?.(address);
+          onTab(address, e.shiftKey);
+        }}
         onDoubleClick={onZoom && (() => onZoom(address))}
         title={
           (isHidden

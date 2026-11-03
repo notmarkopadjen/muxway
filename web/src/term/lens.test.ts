@@ -25,6 +25,17 @@ describe('lens', () => {
     expect(status(shell, 'working', now, now)).toBe('quiet');
   });
 
+  it('is later when the owner parked the pane, whatever waits underneath', () => {
+    const attention = { kind: 'permission' as const, at: 1 };
+    expect(status({ ...claude, attention, later: true }, 'working', now, now)).toBe('later');
+    expect(status({ ...shell, later: true }, undefined, undefined, now)).toBe('later');
+    expect(status({ ...shell, later: false, attention }, undefined, undefined, now)).toBe(
+      'waiting',
+    );
+    expect(glyph('later')).toBe('☾');
+    expect(word('later')).toBe('later');
+  });
+
   it('names the state', () => {
     expect(glyph('waiting', 'question')).toBe('?');
     expect(glyph('waiting', 'permission')).toBe('!');

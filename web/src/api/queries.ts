@@ -1,4 +1,5 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { inboxOrder } from '../term/order';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError, target } from './client';
 import { joinAddress, originOfHub, splitAddress, useHubs, type Hub } from '../hubs';
@@ -284,6 +285,29 @@ export function useAnswer() {
   });
 }
 
+// Later: the owner parks a pane, or wakes it; the host keeps the mark
+// beside the pane's attention, so every client sees it.
+export function useLater() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ address, later }: { address: string; later: boolean }) => {
+      const t = target(address);
+      return api<void>(`/v1/panes/${t.address}/later`, {
+        method: 'POST',
+        body: JSON.stringify({ later }),
+        hub: t.hub,
+      });
+    },
+    onSuccess: (_v, { address }) => {
+      qc.invalidateQueries({ queryKey: keys.pane(address) });
+      const { hub, address: bare } = splitAddress(address);
+      qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
+      qc.invalidateQueries({ queryKey: keys.inboxOf(hub) });
+      qc.invalidateQueries({ queryKey: keys.tree(bare.split('/')[0], hub) });
+    },
+  });
+}
+
 export function sendInput(
   address: string,
   body: { text: string } | { key: string; count?: number } | { mouse: Mouse },
@@ -337,9 +361,7 @@ export function useInbox(enabled: boolean) {
       data:
         lists[0]?.data === undefined
           ? undefined
-          : lists
-              .flatMap((l) => l.data ?? [])
-              .sort((a, b) => (a.attention?.at ?? 0) - (b.attention?.at ?? 0)),
+          : lists.flatMap((l) => l.data ?? []).sort(inboxOrder),
     }),
     [lists],
   );

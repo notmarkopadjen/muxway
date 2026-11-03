@@ -5,6 +5,27 @@
 
 export const ORDER_MAX = 256;
 
+// The panes the owner parked for later go after every other, in the
+// order they would otherwise have; a woken pane takes its place back.
+export function parkedLast<T extends { address: string; later?: boolean }>(panes: T[]): T[] {
+  return [...panes.filter((p) => !p.later), ...panes.filter((p) => p.later)];
+}
+
+// When an inbox entry began waiting: its attention, or its parking.
+export function waitingSince(p: { attention?: { at: number }; later_at?: number }): number {
+  return p.attention?.at ?? p.later_at ?? 0;
+}
+
+// The inbox's order: the awake panes first, then the parked ones, each
+// oldest first.
+export function inboxOrder(
+  a: { later?: boolean; attention?: { at: number }; later_at?: number },
+  b: { later?: boolean; attention?: { at: number }; later_at?: number },
+): number {
+  if (!!a.later !== !!b.later) return a.later ? 1 : -1;
+  return waitingSince(a) - waitingSince(b);
+}
+
 export function inOrder<T extends { address: string }>(panes: T[], order: string[]): T[] {
   const rank = new Map(order.map((a, i) => [a, i]));
   const placed = panes

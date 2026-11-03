@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseOrder } from '../settings';
-import { inOrder, move, ORDER_MAX, step } from './order';
+import { inboxOrder, inOrder, move, ORDER_MAX, parkedLast, step, waitingSince } from './order';
 
 const p = (address: string) => ({ address });
 const A = 'alice-laptop/work/0.0';
@@ -25,6 +25,34 @@ describe('parseOrder', () => {
     expect(parseOrder(JSON.stringify([A, B, A]))).toEqual([A, B]);
     const many = Array.from({ length: 1000 }, (_, i) => `h/s/${i}`);
     expect(parseOrder(JSON.stringify(many))).toHaveLength(ORDER_MAX);
+  });
+});
+
+describe('parkedLast', () => {
+  it('puts the parked panes after the others, each side in its order', () => {
+    const panes = [
+      { address: A, later: true },
+      { address: B },
+      { address: C, later: true },
+      { address: D },
+    ];
+    expect(parkedLast(panes).map((x) => x.address)).toEqual([B, D, A, C]);
+    expect(parkedLast([{ address: B }, { address: A }]).map((x) => x.address)).toEqual([B, A]);
+  });
+});
+
+describe('inboxOrder', () => {
+  it('lists the awake panes oldest first, then the parked ones since their parking', () => {
+    const rows = [
+      { address: A, later: true, attention: { at: 30 }, later_at: 40 },
+      { address: B, attention: { at: 20 } },
+      { address: C, later: true, later_at: 25 },
+      { address: D, attention: { at: 10 } },
+    ].sort(inboxOrder);
+    expect(rows.map((x) => x.address)).toEqual([D, B, C, A]);
+    expect(waitingSince(rows[2])).toBe(25);
+    expect(waitingSince(rows[3])).toBe(30);
+    expect(waitingSince({})).toBe(0);
   });
 });
 

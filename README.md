@@ -61,7 +61,9 @@ show a banner, the inbox lists what waits across your machines, oldest
 first, and you answer from wherever you are: a tap, a key, a few typed
 words, a spoken reply. An agent can also ask you a question with fixed
 answers (<code>muxway ask</code>) and get your pick back without a
-keystroke in its pane. Claude Code is the harness tested daily.</td>
+keystroke in its pane. A pane that can wait is parked for later from
+any client: its tab goes last with <code>☾</code> and it stops calling
+until you come back. Claude Code is the harness tested daily.</td>
 </tr>
 <tr>
 <td valign="top"><img src="docs/images/icons/keys.png" width="54" alt=""></td>

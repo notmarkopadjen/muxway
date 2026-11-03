@@ -134,6 +134,8 @@ export function Shell() {
       if (e.kind === 'idle' && changedRecently(e.address)) return;
       const kind = e.kind as keyof typeof GLYPH;
       const pane = known(e.address);
+      // A parked pane does not call: the owner said later.
+      if (pane?.later) return;
       toast.push({
         kind: `${GLYPH[kind]} ${e.kind}`,
         title: pane ? <PaneTitle pane={pane} /> : e.address,
@@ -198,7 +200,7 @@ export function Shell() {
         setInbox((v) => !v);
         ev.preventDefault();
       } else if (ev.key === 'o' && signedIn && !inbox) {
-        const oldest = inboxList.data?.[0];
+        const oldest = inboxList.data?.find((p) => !p.later);
         if (oldest) navigate({ to: '/p/$', params: { _splat: oldest.address } });
         ev.preventDefault();
       } else if (ev.key === 'T' && signedIn) {

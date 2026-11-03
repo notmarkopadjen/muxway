@@ -10,16 +10,19 @@ import { describe, label } from './describe';
 // tile that reads the pane. tmux's own activity flag is not used: it is
 // the window's, shared by every pane in it.
 
-export type Status = 'waiting' | 'working' | 'quiet';
+// A fourth state, later, is the owner's own: the pane is parked, its mark
+// is the only sign, and it is painted plain whatever waits underneath.
+export type Status = 'waiting' | 'working' | 'quiet' | 'later';
 
 export const RECENT_MS = 10_000;
 
 export function status(
-  p: Pick<Pane, 'command' | 'title' | 'attention'>,
+  p: Pick<Pane, 'command' | 'title' | 'attention' | 'later'>,
   lastKind: string | undefined,
   changedAt: number | undefined,
   now: number,
 ): Status {
+  if (p.later) return 'later';
   const agent = !!describe(p).agent;
   const recent = changedAt !== undefined && now - changedAt >= 0 && now - changedAt < RECENT_MS;
   // An idle notice while the screen still moves is the program's own
@@ -32,6 +35,7 @@ export function status(
 // One character for tabs, headers and rows; empty when there is nothing to say.
 export function glyph(s: Status, kind?: string): string {
   if (s === 'working') return '⟳';
+  if (s === 'later') return '☾';
   if (s !== 'waiting') return '';
   switch (kind) {
     case 'question':
@@ -47,6 +51,7 @@ export function glyph(s: Status, kind?: string): string {
 
 export function word(s: Status, kind?: string): string {
   if (s === 'working') return 'working';
+  if (s === 'later') return 'later';
   if (s === 'waiting') return kind ?? 'waiting';
   return '';
 }

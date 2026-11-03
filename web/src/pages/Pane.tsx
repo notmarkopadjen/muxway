@@ -14,6 +14,7 @@ import {
   useChanges,
   useHosts,
   useInput,
+  useLater,
   useListing,
   usePane,
   usePaneCached,
@@ -37,7 +38,7 @@ import { Tabs } from '../components/Tabs';
 import { useToast } from '../components/Toast';
 import { noteChange, noteOwn, useLens } from '../term/lens';
 import { drawn, nameFor, useMoving } from '../term/drawn';
-import { inOrder, move, step } from '../term/order';
+import { inOrder, move, parkedLast, step } from '../term/order';
 import { setTabOrder, useHelper, useTabOrder } from '../settings';
 import { Screen } from '../term/Screen';
 import {
@@ -487,13 +488,19 @@ function Tile(props: TileProps) {
             {st !== 'quiet' && (
               <span
                 className={st === 'waiting' ? 'mx-attention' : 'mx-dim'}
-                data-testid={st === 'waiting' && focused ? 'pane-attention' : undefined}
+                data-testid={
+                  focused && st === 'waiting'
+                    ? 'pane-attention'
+                    : focused && st === 'later'
+                      ? 'pane-later'
+                      : undefined
+                }
               >
                 <LensMark status={st} attention={p.attention} withWord />
                 {p.attention?.text ? `: ${p.attention.text}` : ''}
               </span>
             )}
-            {st === 'waiting' && (
+            {(st === 'waiting' || st === 'later') && (
               <Choices address={address} attention={p.attention} writable={p.mode === 'write'} />
             )}
           </>
@@ -777,6 +784,22 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const hosts = useHosts();
   const hostCloses = (a: string) => !!hostOf(hosts.data, a)?.close;
   const hostPreviews = (a: string) => !!hostOf(hosts.data, a)?.preview;
+  const hostParks = (a: string) => !!hostOf(hosts.data, a)?.later;
+  // Later: the owner parks the pane on its host, or wakes it; a click on
+  // a parked tab wakes it too.
+  const later = useLater();
+  const setLater = (a: string, on: boolean) => {
+    const p = (all.data ?? []).find((q) => q.address === a);
+    if (!p || p.mode !== 'write' || !hostParks(a) || !!p.later === on) return;
+    later.mutate(
+      { address: a, later: on },
+      { onError: (err) => toast.push({ kind: 'later', title: a, text: String(err) }) },
+    );
+  };
+  const toggleLater = (a: string) => {
+    const p = (all.data ?? []).find((q) => q.address === a);
+    if (p) setLater(a, !p.later);
+  };
   const hostLists = (a: string) => !!hostOf(hosts.data, a)?.dir;
   // Direct typing: keys go to the focused pane as pressed, while it is
   // writable; focusing a read-only tile ends it, as does leaving the view.
@@ -1158,7 +1181,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // The strip in the owner's order; an open address the listing lacks
   // goes last.
   const tabOrder = useTabOrder();
-  const stripPanes = useMemo(() => inOrder(shownPanes, tabOrder), [shownPanes, tabOrder]);
+  const stripPanes = useMemo(
+    () => parkedLast(inOrder(shownPanes, tabOrder)),
+    [shownPanes, tabOrder],
+  );
   const strip = useMemo(() => {
     const order = stripPanes.map((p) => p.address);
     for (const a of addresses) if (!order.includes(a)) order.push(a);
@@ -1230,6 +1256,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         touch();
         drawn(() => setWeights({}));
       } else if (ev.key === 'g' && writable && hostPreviews(focused)) setChanges((c) => !c);
+      else if (ev.key === 'd') toggleLater(focused);
       else if (ev.key === 'i' && writable) enterDirect();
       else if (ev.key === 'L' && focusedPane?.talk?.length)
         beside(focused, withHub(focused, focusedPane.talk[0].address));
@@ -1549,6 +1576,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
             open={addresses}
             focused={focused}
             onTab={onTab}
+            onWake={(a) => setLater(a, false)}
             reorder={reorder}
             onDragPane={setDragging}
             onZoom={(a) => {
@@ -1659,6 +1687,21 @@ function Tiles({ addresses }: { addresses: string[] }) {
                 : !hostPreviews(focused)
                   ? "the repository's changes; the host has no preview roots"
                   : "git's changes of the pane's repository, over the tile (g)",
+            },
+            {
+              id: 'later',
+              glyph: '☾',
+              label: 'later',
+              onClick: () => toggleLater(focused),
+              disabled: !writable || !hostParks(focused),
+              on: !!focusedPane?.later,
+              title: !writable
+                ? 'later: park the pane, its tab goes last; needs a writable pane'
+                : !hostParks(focused)
+                  ? 'later: park the pane; the host is older than this'
+                  : focusedPane?.later
+                    ? 'later: parked; wake it (d)'
+                    : 'later: park the pane, its tab goes last and it stops calling (d)',
             },
             {
               id: 'zoom',

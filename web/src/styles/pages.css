@@ -2039,8 +2039,19 @@ button.mx-window:focus-visible {
 
 /* the inbox: a row per waiting pane, its question's choices at the end */
 .mx-inbox-list li {
-  grid-template-columns: 1.6em 1fr auto auto;
+  grid-template-columns: 1.6em auto 1fr auto auto;
   align-items: center;
+}
+.mx-inbox-later {
+  padding: 0 6px;
+  border: 1px solid var(--mx-ink-dim);
+  color: var(--mx-ink-dim);
+  background: transparent;
+  cursor: pointer;
+}
+.mx-inbox-later:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .mx-inbox-list .mx-meta {
   overflow-wrap: anywhere;
