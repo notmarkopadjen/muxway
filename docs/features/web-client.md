@@ -260,7 +260,9 @@ view, each live and typable. The page is the Android client's pane view:
   working pane is not painted, its turning ring (`⟳`) and the word say
   it. Open panes have a border; the focused one has a thick border, its
   name in bold and a bar in the accent under it, and the other tabs
-  step back to half strength (a waiting tab never dims). Selection
+  step back a little, to seven tenths, so their paint still reads (a
+  waiting tab never dims, and its edge flashes twice every seven
+  seconds, never with effects off). Selection
   never changes the state's colour, so the state shows on the pane you
   are looking at. A click on
   an open tab focuses its tile; a click on a closed tab swaps it into

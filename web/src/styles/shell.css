@@ -326,6 +326,12 @@ button:disabled {
   overflow: auto;
   padding: var(--mx-gap-2);
 }
+/* The pane and window views start right under the header: their tiles
+   carry their own headers, so the gap above them was only air. */
+.mx-main:has(> .mx-tiles),
+.mx-main:has(> .mx-winview) {
+  padding-top: 0;
+}
 
 .mx-status {
   display: flex;

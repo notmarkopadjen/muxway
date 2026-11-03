@@ -58,7 +58,7 @@ async function titleShows(page: import('@playwright/test').Page, overlay: string
   expect(ok, `${overlay} title`).toBe(true);
 }
 
-test('48 overlays show their titles; help is two columns on a wide window', async ({
+test('48 overlays show their titles; help is three columns on a wide window', async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 1600, height: 700 });
@@ -69,7 +69,7 @@ test('48 overlays show their titles; help is two columns on a wide window', asyn
     .getByTestId('help')
     .locator('dt')
     .evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().left)))]);
-  expect(xs.length).toBe(2);
+  expect(xs.length).toBe(3);
   await shot(page, info, '48-help-columns');
   await page.keyboard.press('Escape');
   await page.keyboard.press('H');

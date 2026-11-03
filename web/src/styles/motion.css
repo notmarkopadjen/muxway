@@ -90,6 +90,27 @@
     box-shadow: 0 0 0 10px transparent;
   }
 }
+/* A waiting tab's edge lights twice, briefly, every few seconds: enough
+   to catch the eye among the dimmed tabs, too rare to be a blink. */
+@keyframes mx-tab-flash {
+  0%,
+  90%,
+  92.5%,
+  93.5%,
+  96%,
+  100% {
+    outline-color: transparent;
+  }
+  90.5%,
+  92%,
+  94%,
+  95.5% {
+    outline-color: var(--mx-warn);
+  }
+}
+.mx-tab[data-state='waiting'] {
+  animation: mx-tab-flash 7s linear infinite;
+}
 @keyframes mx-cell-glow {
   from {
     box-shadow:
@@ -251,6 +272,7 @@
   .mx-pulse,
   .mx-talk-fresh,
   .mx-cell[data-state='waiting'],
+  .mx-tab[data-state='waiting'],
   .mx-toast,
   .mx-noise,
   .mx-resync,
@@ -275,6 +297,7 @@
 :root[data-motion='off'] .mx-burn,
 :root[data-motion='off'] .mx-pulse,
 :root[data-motion='off'] .mx-cell[data-state='waiting'],
+:root[data-motion='off'] .mx-tab[data-state='waiting'],
 :root[data-motion='off'] .mx-toast,
 :root[data-motion='off'] .mx-noise,
 :root[data-motion='off'] .mx-resync,
