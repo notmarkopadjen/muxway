@@ -17,10 +17,6 @@ import (
 // allows it, never a secret by name. Names and kinds travel, never
 // content.
 
-var shells = set("bash zsh fish sh dash ash ksh tcsh csh")
-
-func isShell(command string) bool { return shells[command] }
-
 // resolveDir turns a path as printed into the directory it names, from
 // the pane's directory; "" is the pane's directory itself. A root is a
 // directory a pane may sit in, so it resolves too.
@@ -91,10 +87,10 @@ func entryKind(roots []string, hidden bool, dir string, e os.DirEntry) string {
 	return "other"
 }
 
-// cwdFor is what a listing says of a pane's directory: a shell pane's,
-// real, when it lies under a root; nothing otherwise.
+// cwdFor is what a listing says of a pane's directory: the real one,
+// when it lies under a root; nothing otherwise.
 func (a *Agent) cwdFor(p tmux.Pane) string {
-	if len(a.cfg.Preview) == 0 || !isShell(p.Command) || p.Path == "" {
+	if len(a.cfg.Preview) == 0 || p.Path == "" {
 		return ""
 	}
 	dir, err := resolveDir(a.cfg.Preview, a.cfg.PreviewHidden, p.Path, "", "")

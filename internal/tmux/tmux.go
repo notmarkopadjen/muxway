@@ -717,11 +717,16 @@ func (s Server) SetAlias(ctx context.Context, target, alias string) error {
 	if Scope(target) != "pane" {
 		return errors.New("an alias names one pane: use session:window.pane")
 	}
+	return s.SetPaneAlias(ctx, target, alias)
+}
+
+// SetPaneAlias is SetAlias for a pane named by its id.
+func (s Server) SetPaneAlias(ctx context.Context, paneID, alias string) error {
 	if alias == "" {
-		_, err := s.run(ctx, "set-option", "-p", "-u", "-t", target, optAlias)
+		_, err := s.run(ctx, "set-option", "-p", "-u", "-t", paneID, optAlias)
 		return err
 	}
-	_, err := s.run(ctx, "set-option", "-p", "-t", target, optAlias, alias)
+	_, err := s.run(ctx, "set-option", "-p", "-t", paneID, optAlias, alias)
 	return err
 }
 
