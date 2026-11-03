@@ -92,10 +92,10 @@ test('90 two rows under 960 px: the strip under the brand and the buttons', asyn
   expect(Math.abs(t.x - b.x)).toBeLessThan(4);
   expect(a.x).toBeGreaterThan(t.x + t.width);
   expect(Math.abs(a.y + a.height / 2 - (t.y + t.height / 2))).toBeLessThan(2);
-  // The tabs have the whole width to themselves: the strip reaches past
-  // where the buttons start.
-  const strip = (await header.getByTestId('tabs').boundingBox())!;
-  expect(strip.x + strip.width).toBeGreaterThan(z.x);
+  // The tabs have the whole width to themselves: their row spans the
+  // header, past where the buttons start.
+  const row = (await header.locator('.mx-header-strip').boundingBox())!;
+  expect(row.x + row.width).toBeGreaterThan(z.x);
   await shot(page, info, '90-two-rows');
   // Narrower still, the buttons fold into ⋯ and the tabs keep their row.
   await page.setViewportSize({ width: 600, height: 600 });
