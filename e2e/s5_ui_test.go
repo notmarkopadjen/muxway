@@ -205,13 +205,13 @@ func TestUI_Agents(t *testing.T) {
 	npx, webDir := uiTools(t)
 	if g := os.Getenv("MX_GREP"); g != "" {
 		in := false
-		for _, spec := range []string{"109-", "110-", "111-"} {
+		for _, spec := range []string{"109-", "110-", "111-", "117-"} {
 			if ok, _ := regexp.MatchString(g, spec); ok {
 				in = true
 			}
 		}
 		if !in {
-			t.Skip("MX_GREP leaves specs 109, 110 and 111 out")
+			t.Skip("MX_GREP leaves specs 109, 110, 111 and 117 out")
 		}
 	}
 	e := newEnv(t)
@@ -224,7 +224,7 @@ func TestUI_Agents(t *testing.T) {
 	e.expose(ts, "work:0.2")
 	full := e.token("browser", []string{"*"}, []string{"*"})
 	control := e.startControl(t, ts, a)
-	runPlaywright(t, e, npx, webDir, "109-|110-|111-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_AGENTS=1")
+	runPlaywright(t, e, npx, webDir, "109-|110-|111-|117-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_AGENTS=1")
 }
 
 func uiTools(t *testing.T) (npx, webDir string) {

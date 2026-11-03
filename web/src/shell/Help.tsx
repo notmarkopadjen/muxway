@@ -30,7 +30,7 @@ const KEYS: [string, string][] = [
   ['I / o', 'the inbox: every pane that waits for you, oldest first / open the oldest'],
   [
     'T / M',
-    'messages: what panes said to panes, mail and typed, across hosts, oldest first; Enter lays the two side by side / the same with the line focused, to mail the open pane (nothing is typed for it)',
+    "messages: what panes said to panes, mail and typed, across hosts, oldest first; Enter lays the two side by side, a click on a mail row opens that pane's mail / the open pane's mail window: its mail in full, what it sent, a line that mails it or whoever wrote to it (nothing is typed); the ✉ n on a tab, a header or a row opens it too",
   ],
   [
     'L',

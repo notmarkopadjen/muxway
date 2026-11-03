@@ -76,6 +76,7 @@ import { screenWords } from '../term/complete';
 import { countOf, summary } from '../term/changes';
 import { Backlog, keyToBody, pasteText, type Body } from '../term/direct';
 import { setHeading } from '../shell/heading';
+import { openMailWindow } from '../shell/mailwin';
 import { InHeader } from '../shell/HeaderSlot';
 import { AddMenu } from '../components/AddMenu';
 import { Closing } from '../components/Closing';
@@ -485,7 +486,9 @@ function Tile(props: TileProps) {
                 <ChainMark />
               </button>
             )}
-            {p.mail && <MailMark unread={p.mail.unread} />}
+            {p.mail && (
+              <MailMark unread={p.mail.unread} onClick={() => openMailWindow({ address })} />
+            )}
             <span
               className="mx-size"
               data-testid={focused ? 'pane-size' : undefined}

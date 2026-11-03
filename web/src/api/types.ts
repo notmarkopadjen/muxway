@@ -84,6 +84,18 @@ export interface Talk {
   hub?: string; // as on a pane
 }
 
+// One mail a pane holds, as GET /v1/panes/{address}/mail lists it.
+export interface Mail {
+  id: number;
+  at: number;
+  actor: { id: string; name: string };
+  from: TalkEnd | null; // null for a client that is not a pane, or an origin the token may not read
+  text: string;
+  read_at?: number; // when the process read it; absent until then
+  reply_to?: number;
+  replied?: boolean;
+}
+
 export interface TalkEnd {
   host: string;
   address: string;
