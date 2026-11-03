@@ -1632,6 +1632,10 @@ button.mx-window:focus-visible {
   padding: 2px 6px;
   font-size: 12px;
   white-space: nowrap;
+  /* the body sizes the window; a long name is cut, not given room */
+  width: 0;
+  min-width: 100%;
+  box-sizing: border-box;
   user-select: none;
   background: var(--mx-bg-raised);
   border-bottom: 1px solid var(--mx-ink-dim);
