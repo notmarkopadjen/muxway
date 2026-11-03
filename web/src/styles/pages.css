@@ -641,6 +641,12 @@
 .mx-cell-head .mx-spacer {
   flex: 1;
 }
+.mx-cell-body {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+}
 .mx-cell .mx-screen {
   padding: 4px;
 }
@@ -1020,7 +1026,8 @@ button.mx-window:focus-visible {
 }
 /* The focused tab: thick border, bold name, a bar in the accent under it
    (its tile's header carries the same bar along its top), and the other
-   tabs step back to half strength; a waiting tab never dims. */
+   tabs step back a little, their paint still readable; a waiting tab never
+   dims and flashes its edge now and then (motion.css). */
 .mx-tab[data-focused] {
   border-width: 2px;
   border-bottom: 4px solid var(--mx-accent);
@@ -1030,7 +1037,7 @@ button.mx-window:focus-visible {
   box-shadow: var(--mx-glow-box-strong);
 }
 .mx-tabs .mx-tab:not([data-focused]):not([data-state='waiting']) {
-  opacity: 0.5;
+  opacity: 0.7;
 }
 /* A pane hidden from the window view: its tab stays, dimmed, and brings it back. */
 .mx-tab[data-hidden] {
@@ -1045,6 +1052,10 @@ button.mx-window:focus-visible {
   background: var(--mx-warn);
   color: var(--mx-bg);
   text-shadow: none;
+}
+.mx-tab[data-state='waiting'] {
+  outline: 3px solid transparent;
+  outline-offset: 2px;
 }
 /* A working pane is not painted: its ring and word say it. On a painted
    tab or header everything is drawn in the background colour. */
@@ -1275,11 +1286,13 @@ button.mx-window:focus-visible {
   padding: 0 8px;
   font-size: 14px;
 }
-.mx-tile-head .mx-tile-changes {
+.mx-tile-head .mx-tile-changes,
+.mx-cell-head .mx-tile-changes {
   font-family: var(--mx-mono);
   color: var(--mx-ink-dim);
 }
-.mx-tile-head .mx-tile-changes.on {
+.mx-tile-head .mx-tile-changes.on,
+.mx-cell-head .mx-tile-changes.on {
   color: var(--mx-ink);
   border-color: var(--mx-ink);
 }

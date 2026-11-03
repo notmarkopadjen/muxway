@@ -12,7 +12,8 @@ test('83 tiles: a read-only token types nowhere; a bad route asks the hub for no
   await expect(page.getByTestId('pane').locator('.mx-mode')).toHaveCount(2);
   await expect(page.getByTestId('input')).toBeDisabled();
   await expect(page.getByTestId('readonly')).toBeVisible();
-  await expect(page.getByTestId('fit')).toHaveCount(0);
+  await expect(page.getByTestId('fit')).toBeDisabled();
+  await expect(page.getByTestId('direct')).toBeDisabled();
   await expect(page.getByTestId('tile-fit')).toHaveCount(0);
   // A click on either tile's screen sends nothing: no mouse request, the pane unchanged.
   const before = await control(request, '/capture', { target: 'work:0.0' });

@@ -326,6 +326,12 @@ button:disabled {
   overflow: auto;
   padding: var(--mx-gap-2);
 }
+/* The pane and window views start right under the header: their tiles
+   carry their own headers, so the gap above them was only air. */
+.mx-main:has(> .mx-tiles),
+.mx-main:has(> .mx-winview) {
+  padding-top: 0;
+}
 
 .mx-status {
   display: flex;
@@ -463,10 +469,10 @@ button:disabled {
   width: min(560px, calc(100vw - 32px));
 }
 .mx-help .mx-box.mx-help-keys {
-  width: min(1120px, calc(100vw - 32px));
+  width: min(1440px, calc(100vw - 32px));
 }
 .mx-help dl {
-  columns: 2 420px;
+  columns: 3 400px;
   column-gap: 32px;
   margin: 0;
 }

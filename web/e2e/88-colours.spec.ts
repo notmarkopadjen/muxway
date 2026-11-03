@@ -41,6 +41,17 @@ test('88 a waiting tab and header are the theme ink, inverted, in every theme', 
   const tab = page.locator(`[data-testid="tab"][data-address="${SHELL0}"]`);
   const head = page.locator(`[data-pane="${SHELL0}"] .mx-tile-head`);
   await expect(tab).toHaveAttribute('data-state', 'waiting');
+  // The waiting tab flashes its edge now and then; the other, not focused,
+  // steps back only a little, so its paint still reads.
+  expect(await tab.evaluate((e) => getComputedStyle(e).animationName)).toBe('mx-tab-flash');
+  expect(await tab.evaluate((e) => getComputedStyle(e).opacity)).toBe('1');
+  const other = page.locator(`[data-testid="tab"][data-address="${LOGS}"]`);
+  expect(await other.evaluate((e) => getComputedStyle(e).opacity)).toBe('0.7');
+  expect(await other.evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+  // The tiles start right under the header: no air above them.
+  expect(await page.locator('.mx-main').evaluate((e) => getComputedStyle(e).paddingTop)).toBe(
+    '0px',
+  );
   for (const theme of ['amber', 'green', 'paper']) {
     await expect(page.locator('html')).toHaveAttribute(
       'data-theme',

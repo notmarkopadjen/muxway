@@ -62,7 +62,7 @@ const KEYS: [string, string][] = [
   ],
   [
     'i',
-    'direct: keys go to the focused pane as pressed, Esc included; Shift+Esc, a click on the line or the ▮ button leaves. A click on the tile the same',
+    'direct: keys go to the focused pane as pressed, Esc included; Shift+Esc, a click on the line or the ▮ button leaves. A click on the tile (window view: the cell) the same',
   ],
   [':', 'focus the input line; Esc leaves it'],
   [
