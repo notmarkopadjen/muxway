@@ -396,4 +396,8 @@ Deviations:
 
 ## Test run
 
-Pending.
+- Full suite on `3deb477`: [#239](https://github.com/notmarkopadjen/muxway/issues/239),
+  225 tests, one failed: `115-ghost`, the ghost word, which this change
+  does not touch and which passed in the full run before it (the one
+  that caught spec 90's count of the pane buttons).
+- `115-ghost` alone, same tree: [#242](https://github.com/notmarkopadjen/muxway/issues/242), passed.
