@@ -7,6 +7,7 @@ import { routeFor } from '../term/tiles';
 import { Box } from './Box';
 import { ago } from './Inbox';
 import { ChainMark } from './TalkMark';
+import { openMailWindow } from '../shell/mailwin';
 
 // The messages window: what panes said to panes, mail and typed writes,
 // on every hub of the hubs box, oldest at the top. Enter or a click lays
@@ -90,6 +91,16 @@ export function Talk({
       !e.from || e.from.address === e.to.address ? [e.to.address] : [e.from.address, e.to.address];
     navigate({ to: '/p/$', params: { _splat: routeFor(panes) } });
   };
+  // A click on a mail row reads the mail where it went; a typed row has
+  // nothing to read, so it lays the two side by side as Enter does.
+  const read = (e: TalkEntry) => {
+    if (e.kind !== 'mail' || !e.id) {
+      open(e);
+      return;
+    }
+    onClose();
+    openMailWindow({ address: e.to.address, mailId: e.id });
+  };
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       if (ev.target === input.current) return;
@@ -118,13 +129,13 @@ export function Talk({
   return (
     <div className="mx-help" onClick={onClose} data-testid="talk">
       <div onClick={(e) => e.stopPropagation()}>
-        <Box title={`messages · ${rows.length}`} enter={false}>
+        <Box title={`messages · ${rows.length}`} enter={false} className="mx-talk-box">
           <ul className="mx-palette-list mx-talk-list">
             {rows.map((e, i) => (
               <li
                 key={`${e.hub ?? ''}${e.seq}`}
                 className={i === at ? 'mx-selected' : ''}
-                onClick={() => open(e)}
+                onClick={() => read(e)}
                 data-testid="talk-row"
                 data-from={e.from?.address}
                 data-to={e.to.address}
@@ -146,11 +157,23 @@ export function Talk({
                     {nameOf(all.data, e.to.address, e.to.pane_id)}
                   </span>
                 </span>
-                <span className="mx-talk-text" title={e.text}>
-                  {e.kind === 'text' || e.kind === 'mail' ? e.text : `${e.kind}: ${e.text}`}
-                </span>
                 <span className="mx-meta">
                   {ago(e.at, now)} · {e.actor.name}
+                </span>
+                <button
+                  type="button"
+                  className="mx-talk-beside"
+                  data-testid="talk-beside"
+                  title="both panes side by side (Enter)"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    open(e);
+                  }}
+                >
+                  ⇆
+                </button>
+                <span className="mx-talk-text" title={e.text}>
+                  {e.kind === 'text' || e.kind === 'mail' ? e.text : `${e.kind}: ${e.text}`}
                 </span>
               </li>
             ))}
@@ -189,7 +212,8 @@ export function Talk({
           </form>
           <div className="mx-toggles">
             <span className="mx-dim">
-              <kbd>Enter</kbd> both panes side by side · <kbd>Esc</kbd> close
+              <kbd>Enter</kbd> both panes side by side · click a mail to read it · <kbd>Esc</kbd>{' '}
+              close
             </span>
           </div>
         </Box>

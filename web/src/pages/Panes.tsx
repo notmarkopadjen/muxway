@@ -16,6 +16,7 @@ import { Box } from '../components/Box';
 import { LensMark } from '../components/Lens';
 import { PaneTitle } from '../components/PaneTitle';
 import { MailMark } from '../components/TalkMark';
+import { openMailWindow } from '../shell/mailwin';
 import { groupsOf, pullTogether } from '../term/groups';
 import { useToast } from '../components/Toast';
 import { label } from '../term/describe';
@@ -285,7 +286,12 @@ function HostTree({
                         <LensMark status={st} attention={p.attention} />
                         <span className="mx-meta">
                           <PaneTitle pane={p} />
-                          {p.mail && <MailMark unread={p.mail.unread} />}
+                          {p.mail && (
+                            <MailMark
+                              unread={p.mail.unread}
+                              onClick={() => openMailWindow({ address: p.address })}
+                            />
+                          )}
                         </span>
                         <span className="mx-addr">{p.address}</span>
                         <span className="mx-state">{word(st, p.attention?.kind)}</span>

@@ -233,7 +233,13 @@ texts. Screenshots come from the test environment.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
+- [x] Diff matches the plan, deviations explained here: the mail
+  window's input is `mail-text` and the messages window keeps its
+  `mail-line`, so the specs tell them apart; the mail window lives in
+  the shell behind a small store (`shell/mailwin.ts`), so a tab, a
+  header, a list row and the messages window open it the same way; a
+  partner the token may not write is listed disabled in the picker, as
+  planned, and its `mail back` is disabled too.
 - [ ] Security rules (AGENTS.md section 2) hold
 - [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
 - [ ] Docs and diagrams updated
