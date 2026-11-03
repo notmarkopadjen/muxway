@@ -496,30 +496,32 @@ export function WindowPage() {
   return (
     <div className="mx-winview" data-testid="window" data-layout={layout}>
       <InHeader>
-        <Tabs
-          panes={stripPanes}
-          open={stripPanes.filter((p) => !arr.hidden.includes(p.pane_id)).map((p) => p.address)}
-          focused={focusedPane?.address ?? null}
-          hidden={hiddenAddresses}
-          onTab={onTab}
-        />
-        <AddMenu
-          pane={focusedPane}
-          open={stripPanes.map((p) => p.address)}
-          onMade={(a) => {
-            // A split appears in this window by itself; a new session is elsewhere: open it.
-            if (!a.startsWith(`${host}/${session}/`))
-              navigate({ to: '/p/$', params: { _splat: a } });
-          }}
-          // A pane of another window: the pane view, with this one's focused pane beside it.
-          onPick={(a) =>
-            navigate({
-              to: '/p/$',
-              params: { _splat: focusedPane ? `${focusedPane.address},${a}` : a },
-            })
-          }
-          onRefused={(why) => toast.push({ kind: 'refused', title: why })}
-        />
+        <div className="mx-header-strip">
+          <Tabs
+            panes={stripPanes}
+            open={stripPanes.filter((p) => !arr.hidden.includes(p.pane_id)).map((p) => p.address)}
+            focused={focusedPane?.address ?? null}
+            hidden={hiddenAddresses}
+            onTab={onTab}
+          />
+          <AddMenu
+            pane={focusedPane}
+            open={stripPanes.map((p) => p.address)}
+            onMade={(a) => {
+              // A split appears in this window by itself; a new session is elsewhere: open it.
+              if (!a.startsWith(`${host}/${session}/`))
+                navigate({ to: '/p/$', params: { _splat: a } });
+            }}
+            // A pane of another window: the pane view, with this one's focused pane beside it.
+            onPick={(a) =>
+              navigate({
+                to: '/p/$',
+                params: { _splat: focusedPane ? `${focusedPane.address},${a}` : a },
+              })
+            }
+            onRefused={(why) => toast.push({ kind: 'refused', title: why })}
+          />
+        </div>
         <Tools
           tools={[
             ...(writable

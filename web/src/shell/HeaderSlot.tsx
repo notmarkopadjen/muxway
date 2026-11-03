@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 
 // The header has one row: the brand, then what the view puts there (the
 // pane view its tabs and buttons), then the profile button. A view puts
-// its part in through InHeader.
+// its part in through InHeader. Under 960 px the tabs take a second row.
 export const HeaderSlot = createContext<HTMLElement | null>(null);
 
 export function InHeader({ children }: { children: ReactNode }) {

@@ -1543,44 +1543,46 @@ function Tiles({ addresses }: { addresses: string[] }) {
       data-panes={addresses.join(' ')}
     >
       <InHeader>
-        <Tabs
-          panes={stripPanes}
-          open={addresses}
-          focused={focused}
-          onTab={onTab}
-          reorder={reorder}
-          onDragPane={setDragging}
-          onZoom={(a) => {
-            const p = (all.data ?? []).find((q) => q.address === a);
-            if (p) zoom(p);
-          }}
-          addable
-        />
-        <AddMenu
-          pane={focusedPane}
-          open={addresses}
-          minimised={minimised}
-          onMade={async (a) => {
-            // tmux numbers panes by place, so a pane split beside an open
-            // one can shift its neighbours' addresses: the open tiles
-            // follow their panes by id through a fresh listing.
-            const ids = addresses.map(
-              (x) => (all.data ?? []).find((q) => q.address === x)?.pane_id,
-            );
-            const { hub } = splitAddress(addresses[0]);
-            await qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
-            const list = qc.getQueryData<Pane[]>(keys.panesOf(hub)) ?? [];
-            const kept = addresses.map(
-              (x, i) => (ids[i] && list.find((q) => q.pane_id === ids[i])?.address) || x,
-            );
-            if (kept.length < MAX_TILES) {
-              focusNext = a;
-              go([...kept.filter((x) => x !== a), a]);
-            } else go(replace(kept, index, a));
-          }}
-          onPick={restore}
-          onRefused={refused}
-        />
+        <div className="mx-header-strip">
+          <Tabs
+            panes={stripPanes}
+            open={addresses}
+            focused={focused}
+            onTab={onTab}
+            reorder={reorder}
+            onDragPane={setDragging}
+            onZoom={(a) => {
+              const p = (all.data ?? []).find((q) => q.address === a);
+              if (p) zoom(p);
+            }}
+            addable
+          />
+          <AddMenu
+            pane={focusedPane}
+            open={addresses}
+            minimised={minimised}
+            onMade={async (a) => {
+              // tmux numbers panes by place, so a pane split beside an open
+              // one can shift its neighbours' addresses: the open tiles
+              // follow their panes by id through a fresh listing.
+              const ids = addresses.map(
+                (x) => (all.data ?? []).find((q) => q.address === x)?.pane_id,
+              );
+              const { hub } = splitAddress(addresses[0]);
+              await qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
+              const list = qc.getQueryData<Pane[]>(keys.panesOf(hub)) ?? [];
+              const kept = addresses.map(
+                (x, i) => (ids[i] && list.find((q) => q.pane_id === ids[i])?.address) || x,
+              );
+              if (kept.length < MAX_TILES) {
+                focusNext = a;
+                go([...kept.filter((x) => x !== a), a]);
+              } else go(replace(kept, index, a));
+            }}
+            onPick={restore}
+            onRefused={refused}
+          />
+        </div>
         <Tools
           tools={[
             ...(several
