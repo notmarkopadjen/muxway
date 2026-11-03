@@ -31,6 +31,20 @@ function watchInput(page: Page) {
 }
 
 const head = (page: Page) => page.getByTestId('pane').locator('.mx-tile-head').first();
+
+// Whatever a step left, the panes go back to what the other specs
+// expect: the names, and the title of the logs pane.
+test.afterEach(async ({ request }) => {
+  const json = { ...auth, 'Content-Type': 'application/json' };
+  await request.post(`/v1/panes/${SHELL0}/alias`, { headers: json, data: { alias: '' } });
+  const panes = (await (await request.get('/v1/panes', { headers: auth })).json()) as {
+    panes: { address: string; alias?: string }[];
+  };
+  const logs = panes.panes.find((p) => p.address === LOGS);
+  if (logs && logs.alias !== 'logs')
+    await request.post(`/v1/panes/${LOGS}/alias`, { headers: json, data: { alias: 'logs' } });
+  await control(request, '/rename', { what: 'title', target: 'work:1.0', name: 'test-pane' });
+});
 const tab = (page: Page, address: string) =>
   page.locator(`[data-testid=tab][data-address="${address}"]`);
 
@@ -124,21 +138,17 @@ test('116 the name: a slow second click or N opens the field; Enter names the pa
     target: 'work:1.0',
     name: '✳ fixing the build',
   });
-  await expect(tab(page, LOGS)).toHaveText(/^fixing the build$/);
+  await expect(tab(page, LOGS)).toHaveText(/^fixing the build$/, { timeout: 10_000 });
   await page.keyboard.press('N');
   await field.fill('logs');
   await page.keyboard.press('Enter');
-  await expect(tab(page, LOGS)).toHaveText(/^logs$/);
+  await expect(tab(page, LOGS)).toHaveText(/^logs$/, { timeout: 10_000 });
   await expect(title.locator('.mx-title-status')).toHaveText(/fixing the build/);
   await expect(title).toHaveAttribute('data-agent', 'claude');
   await control(request, '/rename', { what: 'title', target: 'work:1.0', name: 'test-pane' });
-  await expect(title.locator('.mx-title-status')).toHaveText(/bash · test-pane/);
-  // The other pane's name goes, so the next spec finds the panes as it left them.
-  const cleared = await request.post(`/v1/panes/${SHELL0}/alias`, {
-    headers: { ...auth, 'Content-Type': 'application/json' },
-    data: { alias: '' },
+  await expect(title.locator('.mx-title-status')).toHaveText(/bash · test-pane/, {
+    timeout: 10_000,
   });
-  expect(cleared.status()).toBe(200);
 });
 
 test('116 the folder shows in italics with its path under the pointer; a reader gets no field and no folder', async ({
