@@ -191,3 +191,40 @@ test('103 a pane outside a repository says so', async ({ page, request }) => {
   await page.keyboard.press('g');
   await expect(page.getByTestId('changes-window')).toHaveCount(0, { timeout: 3000 });
 });
+
+test("103 the window view has the changes too: the count in a writable cell's header, g opens the window over the focused cell, × closes", async ({
+  page,
+}, info) => {
+  test.skip(!PREVIEW, 'no preview root in this environment');
+  await signIn(page);
+  await page.goto(`/w/${HOST}/work/0`);
+  await expect(page.getByTestId('cell')).toHaveCount(2);
+  await settled(page);
+  const cell = page.locator('.mx-cell[data-focused]');
+  const count = cell.getByTestId('cell-changes');
+  await expect(count).toHaveText('⎇ +6 ~2 −1');
+  // The read-only cell has no count.
+  await expect(
+    page.locator('.mx-cell[data-pane]:not([data-focused]) [data-testid="cell-changes"]'),
+  ).toHaveCount(0);
+  await page.keyboard.press('g');
+  const changes = page.getByTestId('changes-window');
+  await expect(changes).toBeVisible();
+  await expect(page.getByTestId('changes-counts')).toHaveText('+6 ~2 −1');
+  await expect(page.getByTestId('changes')).toHaveClass(/\bon\b/);
+  await expect(count).toHaveClass(/\bon\b/);
+  // Over the focused cell, inside its box.
+  const c = (await cell.boundingBox())!;
+  const w = (await changes.boundingBox())!;
+  expect(w.x).toBeGreaterThanOrEqual(c.x - 1);
+  expect(w.x + w.width).toBeLessThanOrEqual(c.x + c.width + 1);
+  await shot(page, info, '103-window');
+  await page.getByTestId('changes-close').click();
+  await expect(changes).toHaveCount(0, { timeout: 3000 });
+  await expect(page.getByTestId('changes')).not.toHaveClass(/\bon\b/);
+  // The count opens it too.
+  await count.click();
+  await expect(changes).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(changes).toHaveCount(0, { timeout: 3000 });
+});

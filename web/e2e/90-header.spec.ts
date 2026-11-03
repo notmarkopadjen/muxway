@@ -184,11 +184,10 @@ test('90 the pane buttons are the same eight in every view, disabled where they 
   for (const id of ['arrange', 'equal', 'fit', 'direct', 'zoom'])
     await expect(page.getByTestId(id)).toBeEnabled();
   await expect(page.getByTestId('reset')).toBeDisabled();
-  // The window view: the same row; the changes window is the pane view's.
+  // The window view: the same row.
   await page.goto(`/w/${HOST}/work/0`);
   await expect(page.getByTestId('window')).toBeVisible();
   expect(await labels()).toEqual(ALL);
-  await expect(page.getByTestId('changes')).toBeDisabled();
   for (const id of ['equal', 'reset', 'fit', 'direct', 'zoom', 'open-palette'])
     await expect(page.getByTestId(id)).toBeEnabled();
   // The help reads in three columns on a wide screen.

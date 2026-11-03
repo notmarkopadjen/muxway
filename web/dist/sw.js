@@ -2,8 +2,8 @@
 // nothing else. The hub's API is never read here, never cached, never
 // answered; a request under /v1/ passes as if no worker were installed.
 // The build writes the stamp and the asset list below (scripts/stamp-sw.mjs).
-const STAMP = "971502ab3b933a34";
-const ASSETS = ["/assets/index-B956gSnX.js","/assets/index-DChbC4Wv.css"];
+const STAMP = "3de62a0263ae7151";
+const ASSETS = ["/assets/index-BhLnlQkw.js","/assets/index-CwiY7FKM.css"];
 const CACHE = 'mx-' + STAMP;
 
 // The page's files: the shell (the page at /, which every app route falls back to), the manifest

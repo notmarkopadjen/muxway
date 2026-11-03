@@ -11,7 +11,8 @@ over the screen. A click on a file opens it in the file window, as its
 diff against the last commit or as the file it is now. The counts are
 also in the tile's own header, next to `×`, without opening anything:
 `⎇ +3 ~5 −1`, or `⎇ ✓` for a clean repository; a click on them opens
-the window.
+the window. The window view has the same: the count in every writable
+cell's header, and `⎇` or `g` opens the window over the focused cell.
 
 ![the changes window over a pane](images/web-changes.png)
 

@@ -2,8 +2,16 @@ import { useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { hostOf, keys, resizePane, useHosts, useInput, useWindow } from '../api/queries';
-import type { Mouse, PaneContent } from '../api/types';
+import {
+  hostOf,
+  keys,
+  resizePane,
+  useChanges,
+  useHosts,
+  useInput,
+  useWindow,
+} from '../api/queries';
+import type { Change, Mouse, PaneContent } from '../api/types';
 import { LensMark } from '../components/Lens';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
@@ -23,6 +31,7 @@ import {
 import { noteOwn, useLens } from '../term/lens';
 import { Screen } from '../term/Screen';
 import { AddMenu } from '../components/AddMenu';
+import { ChangesWindow } from '../components/Changes';
 import { Closing } from '../components/Closing';
 import { FileWindow, type Shown } from '../components/FileWindow';
 import { useFit } from '../term/useFit';
@@ -35,6 +44,7 @@ import {
   type Layout as Preset,
   type TileNode,
 } from '../term/tiles';
+import { countOf, summary } from '../term/changes';
 import { screenWords } from '../term/complete';
 import { Backlog, keyToBody, pasteText, type Body } from '../term/direct';
 import { requestPalette } from '../term/intent';
@@ -97,6 +107,12 @@ interface TreeProps {
   // a click with a fine pointer on a writable pane's screen turns it on.
   direct: boolean;
   onDirect: (id: string) => void;
+  // The host has roots: a writable cell's header counts the repository's
+  // changes, and the count opens the changes window over the focused cell.
+  previews: boolean;
+  changesOpen: boolean;
+  onChanges: (id: string) => void;
+  panel?: React.ReactNode;
   onCell: (address: string, x: number, y: number) => void;
   onWheel: (address: string, up: boolean, x: number, y: number, count: number) => Promise<void>;
   onFile: (address: string, name: string) => void;
@@ -108,11 +124,19 @@ interface TreeProps {
 function Tree(props: TreeProps) {
   const { node, path, arr, panes, focused, burn, fit, setArr, onFocus, onZoom, onCell, onWheel } =
     props;
-  const { direct, onDirect, onFile, onPath, onCopied, onPrompt } = props;
+  const { direct, onDirect, previews, changesOpen, onChanges, panel } = props;
+  const { onFile, onPath, onCopied, onPrompt } = props;
   const box = useRef<HTMLDivElement>(null);
   const pointer = useRef('mouse');
   const lens = useLens();
   const moving = useMoving();
+  const own = node.kind === 'pane' ? panes.get(node.id)?.pane : undefined;
+  const counting = !!own && own.mode === 'write' && previews;
+  const ch = useChanges(own?.address ?? '', counting, 10_000);
+  const counts =
+    counting && ch.data && !(ch.error instanceof ApiError && ch.error.status === 404)
+      ? countOf(ch.data.entries)
+      : null;
   if (node.kind === 'pane') {
     if (arr.hidden.includes(node.id)) return null;
     const pc = panes.get(node.id);
@@ -156,6 +180,21 @@ function Tree(props: TreeProps) {
             </span>
           )}
           <span className="mx-spacer" />
+          {counts && (
+            <button
+              type="button"
+              className={`mx-tile-changes${changesOpen && focused === node.id ? ' on' : ''}`}
+              title="the repository's changes (g)"
+              data-testid="cell-changes"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChanges(node.id);
+              }}
+            >
+              ⎇ {summary({ ...counts, conflict: 0 }) || (counts.conflict ? '' : '✓')}
+              {counts.conflict ? <span className="mx-warn"> !{counts.conflict}</span> : null}
+            </button>
+          )}
           <button
             type="button"
             title="hide here (x)"
@@ -164,44 +203,47 @@ function Tree(props: TreeProps) {
             ×
           </button>
         </div>
-        <Screen
-          content={pc.content}
-          burn={burn}
-          cols={fit ? undefined : p.width}
-          rows={fit ? undefined : p.height}
-          scale={arr.scale[node.id] ?? 1}
-          focused={focused === node.id}
-          onClick={() => {
-            onFocus(node.id);
-            if (p.mode === 'write' && pointer.current !== 'touch') onDirect(node.id);
-          }}
-          height={p.height - (pc.trimmed ?? 0)}
-          bounds={{ cols: p.width, rows: p.height }}
-          onCell={p.mode === 'write' && p.mouse ? (x, y) => onCell(p.address, x, y) : undefined}
-          onWheel={
-            p.mode === 'write' && p.mouse
-              ? (up, x, y, count) => onWheel(p.address, up, x, y, count)
-              : undefined
-          }
-          onFile={(name) => onFile(p.address, name)}
-          onPath={onPath && p.mode === 'write' ? (path) => onPath(p.address, path) : undefined}
-          onCopy={onCopied}
-          onPrompt={
-            p.mode === 'write'
-              ? () => {
-                  // A touch keeps the line's way in; a fine pointer went direct.
-                  if (pointer.current === 'touch') onPrompt(node.id);
-                }
-              : undefined
-          }
-          cursorRow={p.cursor_y}
-          cursor={
-            direct && focused === node.id && p.cursor_x && p.cursor_y
-              ? { x: p.cursor_x, y: p.cursor_y }
-              : undefined
-          }
-          testId="cell-screen"
-        />
+        <div className="mx-cell-body">
+          <Screen
+            content={pc.content}
+            burn={burn}
+            cols={fit ? undefined : p.width}
+            rows={fit ? undefined : p.height}
+            scale={arr.scale[node.id] ?? 1}
+            focused={focused === node.id}
+            onClick={() => {
+              onFocus(node.id);
+              if (p.mode === 'write' && pointer.current !== 'touch') onDirect(node.id);
+            }}
+            height={p.height - (pc.trimmed ?? 0)}
+            bounds={{ cols: p.width, rows: p.height }}
+            onCell={p.mode === 'write' && p.mouse ? (x, y) => onCell(p.address, x, y) : undefined}
+            onWheel={
+              p.mode === 'write' && p.mouse
+                ? (up, x, y, count) => onWheel(p.address, up, x, y, count)
+                : undefined
+            }
+            onFile={(name) => onFile(p.address, name)}
+            onPath={onPath && p.mode === 'write' ? (path) => onPath(p.address, path) : undefined}
+            onCopy={onCopied}
+            onPrompt={
+              p.mode === 'write'
+                ? () => {
+                    // A touch keeps the line's way in; a fine pointer went direct.
+                    if (pointer.current === 'touch') onPrompt(node.id);
+                  }
+                : undefined
+            }
+            cursorRow={p.cursor_y}
+            cursor={
+              direct && focused === node.id && p.cursor_x && p.cursor_y
+                ? { x: p.cursor_x, y: p.cursor_y }
+                : undefined
+            }
+            testId="cell-screen"
+          />
+          {focused === node.id && panel}
+        </div>
       </div>
     );
   }
@@ -335,6 +377,9 @@ export function WindowPage() {
   useEffect(() => {
     if (direct && focusedPane && !writable) setDirect(false);
   }, [direct, focusedPane, writable]);
+  // The changes window over the focused cell, and whether it is folded.
+  const [changes, setChanges] = useState(false);
+  const [changesFolded, setChangesFolded] = useState(false);
   const enterDirect = useCallback(() => {
     setDirect(true);
     const active = document.activeElement as HTMLElement | null;
@@ -357,6 +402,18 @@ export function WindowPage() {
   const previews = !!hosts.data?.find((h) => h.name === host && !h.hub)?.preview;
   const repeats = useRef(false);
   repeats.current = !!hostOf(hosts.data, focusedPane?.address ?? '')?.repeat;
+  // The changes window shows for a writer on a host with roots; the
+  // repository's state is asked again once the pane's output settles.
+  const showsChanges = changes && writable && previews;
+  const focusedAddress = focusedPane?.address ?? '';
+  useEffect(() => {
+    if (!showsChanges) return;
+    const t = setTimeout(
+      () => void qc.invalidateQueries({ queryKey: keys.changes(focusedAddress) }),
+      800,
+    );
+    return () => clearTimeout(t);
+  }, [showsChanges, focusedAddress, focusedContent, qc]);
   // The window is fitted through one of its writable panes, the same one
   // while it is shown, so moving the focus sends nothing.
   const fitVia = useMemo(
@@ -486,6 +543,7 @@ export function WindowPage() {
       else if (ev.key === 'r' && fit && writable) refit();
       else if (ev.key === 'i' && writable) enterDirect();
       else if (ev.key === ':') focusLine();
+      else if (ev.key === 'g' && writable && previews) setChanges((c) => !c);
       else return;
       ev.preventDefault();
       ev.stopImmediatePropagation();
@@ -506,6 +564,7 @@ export function WindowPage() {
     directOn,
     enterDirect,
     focusLine,
+    previews,
   ]);
 
   const send = async (body: { text: string } | { key: string } | { mouse: Mouse }) => {
@@ -697,9 +756,14 @@ export function WindowPage() {
               id: 'changes',
               glyph: '⎇',
               label: 'changes',
-              onClick: () => undefined,
-              disabled: true,
-              title: "the repository's changes: over the pane in the pane view (z)",
+              onClick: () => setChanges((c) => !c),
+              disabled: !writable || !previews,
+              on: changes,
+              title: !writable
+                ? "the repository's changes; needs a writable pane"
+                : !previews
+                  ? "the repository's changes; the host has no preview roots"
+                  : "git's changes of the pane's repository, over the cell (g)",
             },
             {
               id: 'zoom',
@@ -738,6 +802,32 @@ export function WindowPage() {
               setFocused(id);
               enterDirect();
             }}
+            previews={previews}
+            changesOpen={showsChanges}
+            onChanges={(id) => {
+              setFocused(id);
+              setChanges((c) => (id === focus ? !c : true));
+            }}
+            panel={
+              focusedPane && previews ? (
+                <Closing open={showsChanges}>
+                  <ChangesWindow
+                    address={focusedPane.address}
+                    direct={directOn}
+                    folded={changesFolded}
+                    onFold={() => setChangesFolded((f) => !f)}
+                    onClose={() => setChanges(false)}
+                    onOpen={(c: Change, root: string) =>
+                      show({
+                        address: focusedPane.address,
+                        path: c.path,
+                        change: { kind: c.kind, root },
+                      })
+                    }
+                  />
+                </Closing>
+              ) : undefined
+            }
             onCell={(address, x, y) => void click(address, { button: 'left', x, y })}
             onWheel={(address, up, x, y, count) =>
               click(address, {

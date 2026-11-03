@@ -641,6 +641,12 @@
 .mx-cell-head .mx-spacer {
   flex: 1;
 }
+.mx-cell-body {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+}
 .mx-cell .mx-screen {
   padding: 4px;
 }
@@ -1275,11 +1281,13 @@ button.mx-window:focus-visible {
   padding: 0 8px;
   font-size: 14px;
 }
-.mx-tile-head .mx-tile-changes {
+.mx-tile-head .mx-tile-changes,
+.mx-cell-head .mx-tile-changes {
   font-family: var(--mx-mono);
   color: var(--mx-ink-dim);
 }
-.mx-tile-head .mx-tile-changes.on {
+.mx-tile-head .mx-tile-changes.on,
+.mx-cell-head .mx-tile-changes.on {
   color: var(--mx-ink);
   border-color: var(--mx-ink);
 }

@@ -529,7 +529,7 @@ its key:
 | `↺` | the host's own layout again | `0` |
 | `⤢` | fit: the host window follows the box (selected when on); off for a read-only pane | `f` |
 | `▮` | direct typing into the focused pane, every key as pressed, as in the pane view (see [direct](direct.md)); off for a read-only pane | `i`, a click on the cell |
-| `⎇` | the changes window is the pane view's: off here | |
+| `⎇` | the changes window over the focused cell, as in the pane view (see [changes](changes.md)); the count stands in every writable cell's header; off for a read-only pane or a host without preview roots | `g` |
 | `⊡` | the focused pane alone, in the pane view with everything it has | `z`, `Enter`, double-click |
 | `≡` | go to a pane or window | `p` |
 
