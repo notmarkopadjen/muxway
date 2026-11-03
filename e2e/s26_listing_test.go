@@ -93,14 +93,16 @@ func TestSec184_ListingNeedsRootsAndAWriter(t *testing.T) {
 	if !strings.Contains(one, `"cwd":"`+docs+`"`) {
 		t.Fatalf("the pane read: %s", one)
 	}
-	// A pane whose program is not a shell says nothing, even under a root.
+	// A pane whose program is not a shell keeps its directory under a root
+	// (the header shows where it works); the listing of it is the shell
+	// helper's business and stays with the client.
 	expect(t, e2.input(full, shell0, map[string]any{"text": "sleep 30"}), http.StatusNoContent, "sleep")
 	expect(t, e2.input(full, shell0, map[string]any{"key": "Enter"}), http.StatusNoContent, "enter")
 	waitFor(t, "sleep in the pane", func() bool {
 		return strings.Contains(e2.get(full, "/v1/panes").body, `"command":"sleep"`)
 	})
-	if strings.Contains(e2.get(full, "/v1/panes").body, `"cwd"`) {
-		t.Fatal("a directory said for a pane that is not a shell")
+	if !strings.Contains(e2.get(full, "/v1/panes").body, `"cwd":"`+docs+`"`) {
+		t.Fatal("no directory for a program under a root")
 	}
 	expect(t, e2.input(full, shell0, map[string]any{"key": "C-c"}), http.StatusNoContent, "C-c")
 	waitFor(t, "the shell back", func() bool {

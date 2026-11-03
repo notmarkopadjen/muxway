@@ -276,10 +276,21 @@ grep and gitleaks run before the push.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan, deviations explained here: the endpoint is
+  `POST …/alias`, not `PUT`, since the hub's CORS allows GET and POST
+  and every other pane action is a POST; the size stays in the header
+  as an element shown only beside *held* and *sync* (and found by the
+  fit specs); the tile header carries `data-mode` so the specs know
+  when the mode is known; the double-click check left the UI test,
+  because a double-click on a tab opens the window view (it is covered
+  by the unit test of the slow click's window); the e2e tests are
+  numbered 188 and 189 in the suite's own series.
+- [x] Security rules (AGENTS.md section 2) hold: write grant and a
+  writable pane for a rename, the alias checked at the hub and the
+  agent, a taken name refused, the folder for writers under the roots
+  only, audit lines with names and never a token.
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Docs and diagrams updated
 
 ## Test run
 
