@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useInbox, useLater } from '../api/queries';
 import type { Pane } from '../api/types';
 import { inboxOrder, waitingSince } from '../term/order';
@@ -53,7 +53,8 @@ export function Inbox({ onClose }: { onClose: () => void }) {
     onClose();
     navigate({ to: '/p/$', params: { _splat: p.address } });
   };
-  useEffect(() => {
+  // Before the paint, so a key pressed the moment the box shows is the box's.
+  useLayoutEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       if (ev.key === 'ArrowDown' || ev.key === 'j') setSel((s) => Math.min(s + 1, rows.length - 1));
       else if (ev.key === 'ArrowUp' || ev.key === 'k') setSel((s) => Math.max(s - 1, 0));
