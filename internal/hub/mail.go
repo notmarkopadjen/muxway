@@ -281,7 +281,7 @@ func (h *Hub) deliverReply(ctx context.Context, a *agentConn, rp wire.Reply) str
 	if from.PaneID == "" {
 		return wire.ErrNotExposed
 	}
-	oa := h.agent(rec.FromHost)
+	oa := h.await(ctx, rec.FromHost)
 	if oa == nil {
 		return "host_offline"
 	}

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { control, openPane, RO_TOKEN, SHELL0, shot, signIn } from './fixtures';
+import { control, HOST, openPane, RO_TOKEN, SHELL0, shot, signIn, TOKEN } from './fixtures';
 import { addressOf, closeMade, otherPane } from './talk';
 
 // The agents environment (see 109): the first pane writable. Later: the
@@ -50,6 +50,9 @@ test('118 d parks the focused pane: its tab goes last with ☾, it stops calling
   await expect(header).toContainText('later');
   await expect(header.getByTestId('under-later')).toContainText('✓ done');
   await expect(page.getByTestId('later')).toHaveAttribute('data-on', '1');
+  // The name leans while the pane is parked; nothing else of the paint changes.
+  const name = page.locator('.mx-tile[data-focused] .mx-tile-head .mx-title-name');
+  await expect(name).toHaveCSS('font-style', 'italic');
   await shot(page, info, '118-later-header');
   // A parked pane does not call: no toast, no title flash on a new notification.
   await control(request, '/notify', { pane: other.id, kind: 'permission', text: 'run make?' });
@@ -65,6 +68,7 @@ test('118 d parks the focused pane: its tab goes last with ☾, it stops calling
   await expect(tab).toHaveAttribute('data-state', 'waiting', { timeout: 10_000 });
   await expect.poll(() => tabOrder(page), { timeout: 10_000 }).toEqual(before);
   await expect(page.getByTestId('pane-attention')).toContainText('permission: run make?');
+  await expect(name).toHaveCSS('font-style', 'normal');
   // A click on a parked tab focuses it and wakes it.
   await page.keyboard.press('d');
   await expect(tab).toHaveAttribute('data-state', 'later', { timeout: 10_000 });
@@ -183,4 +187,28 @@ test('118 the list: d parks the selected row in its place; opening it wakes it; 
   await expect(page).toHaveURL(new RegExp(`/p/${other.address.replace(/\//g, '\\/')}`));
   await expect(page.getByTestId('pane-later')).toHaveCount(0, { timeout: 10_000 });
   await expect(page.getByTestId('later')).toHaveAttribute('data-on', '0');
+});
+
+test("118 the window view leans a parked pane's name in its cell header, upright again when woken", async ({
+  page,
+  request,
+}, info) => {
+  const other = await otherPane(request);
+  const park = (on: boolean) =>
+    request.post(`/v1/panes/${other.address}/later`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+      data: { later: on },
+    });
+  expect((await park(true)).ok()).toBe(true);
+  await signIn(page);
+  await page.goto(`/w/${HOST}/work/0`);
+  const head = page.locator(`.mx-cell-head[data-state="later"]`);
+  await expect(head).toHaveCount(1, { timeout: 10_000 });
+  await expect(head.locator('.mx-title-name')).toHaveCSS('font-style', 'italic');
+  await shot(page, info, '118-later-window-header');
+  expect((await park(false)).ok()).toBe(true);
+  await expect(head).toHaveCount(0, { timeout: 10_000 });
+  const cells = page.locator('.mx-cell-head .mx-title-name');
+  for (let i = 0; i < (await cells.count()); i++)
+    await expect(cells.nth(i)).toHaveCSS('font-style', 'normal');
 });

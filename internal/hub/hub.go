@@ -56,8 +56,14 @@ type Hub struct {
 
 	mu     sync.Mutex
 	agents map[string]*agentConn
+	gone   map[string]time.Time // when a host's agent dropped, until one attaches
+	arrive chan struct{}        // closed and replaced when an agent attaches
 	codes  map[string]*pairCode
 }
+
+// grace is how long a request waits for the agent of a host that just
+// dropped, since an agent that lost its connection comes straight back.
+const grace = 3 * time.Second
 
 type pairCode struct {
 	host     string
@@ -88,7 +94,7 @@ func New(cfg Config, log *slog.Logger) (*Hub, error) {
 	logs := newLogRing()
 	log = slog.New(&ringHandler{next: log.Handler(), ring: logs})
 	return &Hub{cfg: cfg, key: key, store: store, log: log, limits: newLimiter(), events: newEventLog(), talk: newTalkLog(), mails: newMailIDs(),
-		sessions: newSessions(cfg.SessionTTL), shares: newShareState(), logs: logs, agents: map[string]*agentConn{}, codes: map[string]*pairCode{}}, nil
+		sessions: newSessions(cfg.SessionTTL), shares: newShareState(), logs: logs, agents: map[string]*agentConn{}, gone: map[string]time.Time{}, arrive: make(chan struct{}), codes: map[string]*pairCode{}}, nil
 }
 
 // PublicKey is the key agents pin.
@@ -191,6 +197,30 @@ func (h *Hub) agent(host string) *agentConn {
 	return h.agents[host]
 }
 
+// await is agent with patience: a host whose agent dropped within the
+// grace is waited for, until one attaches, the grace runs out or ctx
+// ends. A host that was never there, or has been gone longer, answers
+// at once.
+func (h *Hub) await(ctx context.Context, host string) *agentConn {
+	for {
+		h.mu.Lock()
+		a := h.agents[host]
+		left := grace - time.Since(h.gone[host])
+		arrive := h.arrive
+		h.mu.Unlock()
+		if a != nil || left <= 0 || ctx.Err() != nil {
+			return a
+		}
+		t := time.NewTimer(left)
+		select {
+		case <-arrive:
+		case <-t.C:
+		case <-ctx.Done():
+		}
+		t.Stop()
+	}
+}
+
 func (a *agentConn) request(ctx context.Context, req wire.Request) (wire.Response, error) {
 	a.mu.Lock()
 	a.nextID++
@@ -207,6 +237,9 @@ func (a *agentConn) request(ctx context.Context, req wire.Request) (wire.Respons
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	if err := a.sess.Write(ctx, raw); err != nil {
+		// The session sends no more after a failed write: let the agent
+		// reconnect rather than sit online and unreachable.
+		a.cancel()
 		return wire.Response{}, errOffline
 	}
 	select {
@@ -433,6 +466,9 @@ func (h *Hub) attach(a *agentConn) {
 	h.mu.Lock()
 	old := h.agents[a.host]
 	h.agents[a.host] = a
+	delete(h.gone, a.host)
+	close(h.arrive)
+	h.arrive = make(chan struct{})
 	h.mu.Unlock()
 	if old != nil {
 		old.cancel()
@@ -443,6 +479,7 @@ func (h *Hub) detach(a *agentConn) {
 	h.mu.Lock()
 	if h.agents[a.host] == a {
 		delete(h.agents, a.host)
+		h.gone[a.host] = time.Now()
 	}
 	h.mu.Unlock()
 	a.mu.Lock()

@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -154,5 +155,80 @@ func TestPairCodeAndProof(t *testing.T) {
 		if _, err := ParsePairCode(bad); err == nil {
 			t.Fatalf("parsed %q", bad)
 		}
+	}
+}
+
+// fussy is a Conn whose Write respects its context and can be told to fail.
+type fussy struct {
+	pipe
+	fail error
+}
+
+func (f *fussy) Write(ctx context.Context, m []byte) error {
+	if f.fail != nil {
+		return f.fail
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	return f.pipe.Write(ctx, m)
+}
+
+func TestWriteOutlivesTheCallerAndAFailureEndsTheSending(t *testing.T) {
+	hubPub, hubKey := keys(t)
+	agentPub, agentKey := keys(t)
+	hs, as, _, _ := run(t, hubKey, hubPub, agentKey, agentPub)
+	hp := hs.conn.(pipe)
+	f := &fussy{pipe: hp}
+	hs.conn = f
+	// A caller that gave up does not skip the frame: it goes out and opens.
+	gone, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := hs.Write(gone, []byte("still sent")); err != nil {
+		t.Fatal(err)
+	}
+	if msg, err := as.Read(context.Background()); err != nil || string(msg) != "still sent" {
+		t.Fatalf("after a cancelled write: %q %v", msg, err)
+	}
+	// A write that failed poisons the session: nothing more reaches the
+	// peer, so no frame ever arrives sealed one counter ahead.
+	f.fail = errors.New("socket gone")
+	if err := hs.Write(context.Background(), []byte("lost")); err == nil {
+		t.Fatal("a failed write passed")
+	}
+	f.fail = nil
+	if err := hs.Write(context.Background(), []byte("after")); err == nil {
+		t.Fatal("the session wrote after a failure")
+	}
+	select {
+	case m := <-hp.out:
+		t.Fatalf("a frame went out after a failure: %d bytes", len(m))
+	default:
+	}
+}
+
+func TestOpenFailureNamesTheFrame(t *testing.T) {
+	hubPub, hubKey := keys(t)
+	agentPub, agentKey := keys(t)
+	hs, as, _, _ := run(t, hubKey, hubPub, agentKey, agentPub)
+	ctx := context.Background()
+	hp := hs.conn.(pipe)
+	hs.Write(ctx, []byte("one"))
+	first := <-hp.out
+	hp.out <- first
+	if _, err := as.Read(ctx); err != nil {
+		t.Fatal(err)
+	}
+	// The first frame again, where the second is due.
+	hs.Write(ctx, []byte("two"))
+	<-hp.out
+	hp.out <- first
+	_, err := as.Read(ctx)
+	if err == nil {
+		t.Fatal("a replayed frame opened")
+	}
+	want := fmt.Sprintf("message failed authentication (frame 1, %d bytes)", len(first))
+	if err.Error() != want {
+		t.Fatalf("error %q, want %q", err, want)
 	}
 }

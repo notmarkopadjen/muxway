@@ -235,6 +235,10 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 		mail: map[string]*mailbox{}, replies: map[uint64]chan string{}}, nil
 }
 
+// heldFor is how long a connection must have lasted to count as one
+// that worked, so that losing it is retried without a wait.
+const heldFor = 5 * time.Second
+
 // Run keeps a connection to the hub until ctx ends, and listens for
 // notifications from processes in the panes meanwhile.
 func (a *Agent) Run(ctx context.Context) error {
@@ -260,6 +264,9 @@ func (a *Agent) Run(ctx context.Context) error {
 	if a.cfg.Watch {
 		go a.watch(ctx)
 	}
+	// A connection that held is retried at once: the hub restarted or the
+	// line broke, and clients are waiting. One that failed quickly backs
+	// off, doubling to a minute, with jitter.
 	delay := time.Second
 	for {
 		start := time.Now()
@@ -267,17 +274,24 @@ func (a *Agent) Run(ctx context.Context) error {
 		if ctx.Err() != nil {
 			return nil
 		}
-		if time.Since(start) > time.Minute {
-			delay = time.Second
-		}
+		held := time.Since(start) >= heldFor
 		wait := delay + time.Duration(rand.Int64N(int64(delay)/2+1))
-		a.log.Warn("disconnected from hub", "err", err, "retry_in", wait.Round(time.Millisecond))
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-time.After(wait):
+		if held {
+			wait = 0
 		}
-		delay = min(delay*2, time.Minute)
+		a.log.Warn("disconnected from hub", "err", err, "retry_in", wait.Round(time.Millisecond))
+		if wait > 0 {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-time.After(wait):
+			}
+		}
+		if held {
+			delay = time.Second
+		} else {
+			delay = min(delay*2, time.Minute)
+		}
 	}
 }
 

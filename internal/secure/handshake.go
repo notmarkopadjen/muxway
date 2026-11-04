@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 )
 
 // Conn is a message transport, such as a WebSocket.
@@ -157,7 +158,12 @@ type Session struct {
 	send, recv   cipher.AEAD
 	sendMu       sync.Mutex
 	sendN, recvN uint64
+	broken       error // the first write that failed; nothing is sent after it
 }
+
+// writeTimeout bounds one frame on the wire. A frame is all or nothing:
+// a caller that gives up must not skip it, or the counters drift apart.
+const writeTimeout = 10 * time.Second
 
 func newSession(c Conn, eph *ecdh.PrivateKey, peerEph, hubNonce, agentNonce []byte, role string) (*Session, error) {
 	peer, err := ecdh.X25519().NewPublicKey(peerEph)
@@ -201,13 +207,24 @@ func nonce(n uint64) []byte {
 	return b
 }
 
-// Write seals and sends one message. Safe for concurrent use.
+// Write seals and sends one message. Safe for concurrent use. The write
+// outlives the caller's cancellation, within writeTimeout; once a write
+// has failed the wire's state is unknown and the session sends no more.
 func (s *Session) Write(ctx context.Context, msg []byte) error {
 	s.sendMu.Lock()
 	defer s.sendMu.Unlock()
+	if s.broken != nil {
+		return s.broken
+	}
+	wctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), writeTimeout)
+	defer cancel()
 	sealed := s.send.Seal(nil, nonce(s.sendN), msg, nil)
+	if err := s.conn.Write(wctx, sealed); err != nil {
+		s.broken = err
+		return err
+	}
 	s.sendN++
-	return s.conn.Write(ctx, sealed)
+	return nil
 }
 
 // Read receives and opens one message. Not for concurrent use.
@@ -218,7 +235,7 @@ func (s *Session) Read(ctx context.Context) ([]byte, error) {
 	}
 	msg, err := s.recv.Open(nil, nonce(s.recvN), sealed, nil)
 	if err != nil {
-		return nil, errors.New("message failed authentication")
+		return nil, fmt.Errorf("message failed authentication (frame %d, %d bytes)", s.recvN, len(sealed))
 	}
 	s.recvN++
 	return msg, nil

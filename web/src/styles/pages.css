@@ -1281,6 +1281,11 @@ button.mx-window:focus-visible {
 .mx-tile[data-focused] .mx-tile-head .mx-title-name {
   font-weight: bold;
 }
+/* a parked pane's name leans, like its folder: the moon and the slant are the only signs */
+.mx-tile-head[data-state='later'] .mx-title-name,
+.mx-cell-head[data-state='later'] .mx-title-name {
+  font-style: italic;
+}
 .mx-tile-head button {
   flex: none;
   align-self: stretch;

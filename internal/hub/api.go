@@ -266,7 +266,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
-		a := h.agent(host)
+		a := h.await(r.Context(), host)
 		v := hostView{Name: host, Online: a != nil}
 		if a != nil {
 			v.Sessions, v.Close, v.Keys = a.startsSessions(r.Context()), a.closesPanes(r.Context()), a.keyGrammar()
@@ -296,7 +296,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 
 // readable lists the panes of one host that the token may read.
 func (h *Hub) readable(ctx context.Context, t Principal, host string) ([]tmux.Pane, *agentConn, error) {
-	a := h.agent(host)
+	a := h.await(ctx, host)
 	if a == nil {
 		return nil, nil, errOffline
 	}

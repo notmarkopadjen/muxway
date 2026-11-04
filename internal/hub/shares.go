@@ -286,7 +286,7 @@ func (h *Hub) viewShare(ctx context.Context, sh Share) shareView {
 
 // sharedPane finds the share's pane on its host, as the agent lists it.
 func (h *Hub) sharedPane(ctx context.Context, sh Share) (tmux.Pane, bool) {
-	a := h.agent(sh.Host)
+	a := h.await(ctx, sh.Host)
 	if a == nil {
 		return tmux.Pane{}, false
 	}
@@ -760,7 +760,7 @@ func (h *Hub) handleSharePane(w http.ResponseWriter, r *http.Request, sh Share, 
 		fail(w, http.StatusBadRequest, "bad_parameter")
 		return
 	}
-	a := h.agent(sh.Host)
+	a := h.await(r.Context(), sh.Host)
 	if a == nil {
 		fail(w, http.StatusServiceUnavailable, "host_offline")
 		return

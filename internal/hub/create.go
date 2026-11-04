@@ -196,7 +196,7 @@ func (h *Hub) handleNewSession(w http.ResponseWriter, r *http.Request, t Princip
 		fail(w, http.StatusNotFound, "not_found")
 		return
 	}
-	a := h.agent(host)
+	a := h.await(r.Context(), host)
 	if a == nil {
 		fail(w, http.StatusServiceUnavailable, "host_offline")
 		return

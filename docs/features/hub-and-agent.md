@@ -300,6 +300,13 @@ address the proxy saw, never one the client wrote in a header of its own.
   github.com/notmarkopadjen/muxway/cmd/muxway@latest` (or a new release
   binary) upgrades everything at once; restart the service and reload the
   page.
+- **A lost connection** is retried by the agent at once when it had held
+  for five seconds or more (a hub restart, a cut line), and with a
+  backoff doubling from one second to a minute when it fails quickly.
+  For three seconds after an agent dropped, the hub holds a client's
+  request for that host instead of answering `host_offline`, so a
+  reconnect costs clients a pause and not an error; `muxway hub agents`
+  and the admin page show the drop at once.
 - **Rotate a token** by creating the new one, putting it on the client,
   then revoking the old one by id: `muxway hub token create ...`,
   `muxway hub token list`, `muxway hub token revoke <id>`. Revocation is
@@ -312,6 +319,11 @@ address the proxy saw, never one the client wrote in a header of its own.
   panes sparingly; see [exposing panes](exposing-panes.md).
 - Every input is audited by hub and agent: time, token id, pane, key name
   or text length. The text itself and tokens are never logged.
+- Every frame between hub and agent is sealed under a counter; one that
+  fails to open ends the connection, whether it was tampered with,
+  replayed or sent out of order. The sender never skips a frame: a write
+  outlives the request that asked for it, within ten seconds, and a
+  write that failed ends the session's sending.
 - Ten failed authentications from one address in ten minutes lock that
   address out for ten minutes. An agent with a stale key that keeps
   reconnecting counts too, so unpair or re-pair it promptly.
