@@ -47,12 +47,14 @@ const (
 	probeRate     = 5 // link probes per second per address
 	probeBurst    = 10
 	showingTTL    = 10 * time.Minute // a showing the sharer's page stops refreshing
+	changesMax    = 1 << 20          // the changes window as JSON
 	paneGoneAfter = time.Minute      // a pane missing from its host's listing this long ends the share
 	pbkdfRounds   = 210_000
 	passwordMin   = 8
 	passwordMax   = 64
 	showingKinds  = "file diff"
 	showingViews  = "rendered plain diff file"
+	changeKinds   = "added modified deleted renamed untracked conflict"
 )
 
 // Share is the record kept on disk.
@@ -77,16 +79,29 @@ type showing struct {
 	View  string `json:"view"`
 	Type  string `json:"type"`
 	Bytes int    `json:"bytes"`
-	data  []byte
-	set   time.Time
+	// FileRev is the revision the bytes last changed at, so an observer
+	// fetches them once and keeps them while only the meta or the
+	// changes window moves.
+	FileRev uint64 `json:"file_rev"`
+	data    []byte
+	set     time.Time
 }
 
-// The hub's memory of a share: failures, observers and the showing.
+// The changes window the sharer's page has open, held for the observers.
+type shownChanges struct {
+	wire.Changes
+	Folded bool `json:"folded,omitempty"`
+	set    time.Time
+}
+
+// The hub's memory of a share: failures, observers, the showing and the
+// changes window.
 type shareLive struct {
 	fails   int
 	missing time.Time // when the pane was first not listed
 	rev     uint64
 	show    *showing
+	changes *shownChanges
 	wake    chan struct{}
 }
 
@@ -500,8 +515,9 @@ func (h *Hub) handleShowingPut(w http.ResponseWriter, r *http.Request, t Princip
 	}
 	h.shares.mu.Lock()
 	l := h.shares.of(sh.ID)
+	fileRev := l.rev + 1
 	if data == nil && l.show != nil {
-		typ, data = l.show.Type, l.show.data
+		typ, data, fileRev = l.show.Type, l.show.data, l.show.FileRev
 	}
 	if data == nil {
 		h.shares.mu.Unlock()
@@ -510,7 +526,7 @@ func (h *Hub) handleShowingPut(w http.ResponseWriter, r *http.Request, t Princip
 		return
 	}
 	l.rev++
-	l.show = &showing{Kind: meta.Kind, Path: meta.Path, View: meta.View, Type: typ, Bytes: len(data), data: data, set: time.Now()}
+	l.show = &showing{Kind: meta.Kind, Path: meta.Path, View: meta.View, Type: typ, Bytes: len(data), FileRev: fileRev, data: data, set: time.Now()}
 	close(l.wake)
 	l.wake = make(chan struct{})
 	h.shares.mu.Unlock()
@@ -538,6 +554,92 @@ func (h *Hub) clearShowing(sh Share) {
 		l.wake = make(chan struct{})
 	}
 	h.shares.mu.Unlock()
+}
+
+// handleChangesPut takes the changes window the sharer's page has open:
+// the listing as the host gave it, and whether the window is folded.
+func (h *Hub) handleChangesPut(w http.ResponseWriter, r *http.Request, t Principal) {
+	sh, ok := h.sharerShare(w, r, t)
+	if !ok {
+		return
+	}
+	attrs := []any{"token", t.ID, "share", sh.Handle, "host", sh.Host, "pane", sh.PaneID}
+	var c shownChanges
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, changesMax))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&c); err != nil || !validChanges(c.Changes) {
+		code := "bad_input"
+		if err != nil {
+			code = sizeOr(err, code)
+		}
+		h.log.Info("audit share changes", append(attrs, "result", code)...)
+		status := http.StatusBadRequest
+		if code == "too_large" {
+			status = http.StatusRequestEntityTooLarge
+		}
+		fail(w, status, code)
+		return
+	}
+	c.set = time.Now()
+	h.shares.mu.Lock()
+	l := h.shares.of(sh.ID)
+	l.changes = &c
+	l.rev++
+	close(l.wake)
+	l.wake = make(chan struct{})
+	h.shares.mu.Unlock()
+	h.log.Info("audit share changes", append(attrs, "result", "ok", "entries", len(c.Entries), "folded", c.Folded)...)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Hub) handleChangesDelete(w http.ResponseWriter, r *http.Request, t Principal) {
+	sh, ok := h.sharerShare(w, r, t)
+	if !ok {
+		return
+	}
+	h.clearChanges(sh)
+	h.log.Info("audit share changes", "token", t.ID, "share", sh.Handle, "host", sh.Host, "pane", sh.PaneID, "result", "cleared")
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Hub) clearChanges(sh Share) {
+	h.shares.mu.Lock()
+	l := h.shares.of(sh.ID)
+	if l.changes != nil {
+		l.changes = nil
+		l.rev++
+		close(l.wake)
+		l.wake = make(chan struct{})
+	}
+	h.shares.mu.Unlock()
+}
+
+// validChanges takes a listing as an agent would give it: a root and a
+// branch without control characters, each entry a path of a known kind.
+// A file's name may hold a tab or a newline, as git allows: the page
+// draws it as text.
+func validChanges(c wire.Changes) bool {
+	if c.Root == "" || !wire.ValidPath(c.Root) || !wire.ValidPath(c.Branch) {
+		return false
+	}
+	if c.Ahead < 0 || c.Behind < 0 || len(c.Entries) > wire.MaxChanges {
+		return false
+	}
+	for _, e := range c.Entries {
+		if !validChangePath(e.Path) || (e.From != "" && !validChangePath(e.From)) || !among(e.Kind, changeKinds) {
+			return false
+		}
+	}
+	return true
+}
+
+func validChangePath(p string) bool {
+	if p == "" || len(p) > wire.MaxPathBytes || !utf8.ValidString(p) {
+		return false
+	}
+	return !strings.ContainsFunc(p, func(r rune) bool {
+		return (r < 0x20 && r != '\t' && r != '\n') || r == 0x7f
+	})
 }
 
 type showingMeta struct {
@@ -817,12 +919,15 @@ func (h *Hub) handleShowingGet(w http.ResponseWriter, r *http.Request, sh Share,
 	for {
 		h.shares.mu.Lock()
 		l := h.shares.of(sh.ID)
-		rev, show, ch := l.rev, l.show, l.wake
+		rev, show, changes, ch := l.rev, l.show, l.changes, l.wake
 		h.shares.mu.Unlock()
 		if rev != after || !time.Now().Before(deadline) || r.Context().Err() != nil {
-			out := map[string]any{"rev": rev, "showing": nil}
+			out := map[string]any{"rev": rev, "showing": nil, "changes": nil}
 			if show != nil {
 				out["showing"] = show
+			}
+			if changes != nil {
+				out["changes"] = changes
 			}
 			reply(w, out)
 			return
@@ -901,6 +1006,7 @@ func (h *Hub) sweepShares(ctx context.Context) {
 			}
 			gone := !found && now.Sub(l.missing) >= paneGoneAfter
 			stale := l.show != nil && now.Sub(l.show.set) > showingTTL
+			staleChanges := l.changes != nil && now.Sub(l.changes.set) > showingTTL
 			h.shares.mu.Unlock()
 			if gone {
 				h.endShare(sh, "ended, pane gone")
@@ -909,6 +1015,10 @@ func (h *Hub) sweepShares(ctx context.Context) {
 			if stale {
 				h.clearShowing(sh)
 				h.log.Info("share showing dropped", "share", sh.Handle)
+			}
+			if staleChanges {
+				h.clearChanges(sh)
+				h.log.Info("share changes dropped", "share", sh.Handle)
 			}
 		}
 		h.shares.mu.Lock()

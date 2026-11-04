@@ -1579,6 +1579,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
                 onOpen={(c, root) =>
                   show({ address: a, path: c.path, change: { kind: c.kind, root } })
                 }
+                relay={sharesFor(a).length ? { ids: sharesFor(a), hub: target(a).hub } : undefined}
               />
             </Closing>
           ) : undefined

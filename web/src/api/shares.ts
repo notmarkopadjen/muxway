@@ -1,5 +1,13 @@
 import { api, ApiError, target } from './client';
-import type { Share, SharedPane, Showing, ShowingKind, ShowingView } from './types';
+import type {
+  Changes,
+  Share,
+  SharedChanges,
+  SharedPane,
+  Showing,
+  ShowingKind,
+  ShowingView,
+} from './types';
 
 // Sharing a pane read-only: the sharer's calls go through the session as
 // every other; the observer's go to /v1/share/{id}/ with that share's own
@@ -45,6 +53,25 @@ export function clearShowing(id: string, hub?: string): Promise<void> {
   return api<void>(`/v1/share/${id}/showing`, { method: 'DELETE', hub });
 }
 
+// The sharer's page tells the hub the changes window it has open: the
+// listing, and whether the window is folded to its bar.
+export function putChanges(
+  id: string,
+  changes: Changes,
+  folded: boolean,
+  hub?: string,
+): Promise<void> {
+  return api<void>(`/v1/share/${id}/changes`, {
+    method: 'PUT',
+    body: JSON.stringify({ ...changes, folded }),
+    hub,
+  });
+}
+
+export function clearChanges(id: string, hub?: string): Promise<void> {
+  return api<void>(`/v1/share/${id}/changes`, { method: 'DELETE', hub });
+}
+
 // --- the observer -----------------------------------------------------------
 
 export function probeShare(id: string): Promise<{ share: { expires: number } }> {
@@ -63,15 +90,14 @@ export function readSharedPane(id: string): Promise<SharedPane> {
   return api<SharedPane>(`/v1/share/${id}/pane?ansi=1&lines=200`, { conditional: true });
 }
 
-export function pollShowing(
-  id: string,
-  after: number,
-  signal: AbortSignal,
-): Promise<{ rev: number; showing: Showing | null }> {
-  return api<{ rev: number; showing: Showing | null }>(
-    `/v1/share/${id}/showing?after=${after}&wait=25`,
-    { signal },
-  );
+export interface Observed {
+  rev: number;
+  showing: Showing | null;
+  changes: SharedChanges | null;
+}
+
+export function pollShowing(id: string, after: number, signal: AbortSignal): Promise<Observed> {
+  return api<Observed>(`/v1/share/${id}/showing?after=${after}&wait=25`, { signal });
 }
 
 export async function showingFile(id: string): Promise<Blob> {

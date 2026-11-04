@@ -27,7 +27,7 @@ export type Shown =
 // Text beyond this is left to the download.
 const TEXT_SHOWN = 1 << 20;
 // The relay says again that the window is open, well inside the hub's patience.
-const RELAY_KEEPALIVE_MS = 5 * 60_000;
+export const RELAY_KEEPALIVE_MS = 5 * 60_000;
 
 function labelOf(s: Shown): string {
   return 'name' in s ? s.name : s.path;

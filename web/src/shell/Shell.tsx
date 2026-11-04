@@ -103,6 +103,8 @@ export function Shell() {
   const hubs = useHubs();
   const [resync, setResync] = useState(false);
   const heading = useHeading();
+  // The observer's view of a shared pane: no hubs, and a help of its own.
+  const observer = location.pathname.startsWith('/s/');
   const flash = useTitleFlash(
     heading.pane
       ? `${label(heading.pane)} · muxway`
@@ -203,7 +205,7 @@ export function Shell() {
       } else if (ev.key === 'M' && signedIn && heading.pane) {
         openMailWindow({ address: heading.pane.address, line: true });
         ev.preventDefault();
-      } else if (ev.key === 'H') {
+      } else if (ev.key === 'H' && !location.pathname.startsWith('/s/')) {
         setHubsOpen((h) => !h);
         ev.preventDefault();
       } else if (ev.key === 't') {
@@ -283,7 +285,7 @@ export function Shell() {
             onHelp={() => setHelp(true)}
             onLogout={() => void logout().then(() => navigate({ to: '/signin' }))}
           />
-        ) : location.pathname.startsWith('/s/') ? null : (
+        ) : observer ? null : (
           <button
             type="button"
             onClick={() => setHubsOpen(true)}
@@ -322,14 +324,18 @@ export function Shell() {
           <span data-testid="status-direct">
             <kbd>▮</kbd> direct: keys go to the pane · <kbd>Shift+Esc</kbd> leaves
           </span>
+        ) : observer ? (
+          <span data-testid="status-keys">
+            <kbd>?</kbd> help · <kbd>t</kbd> theme · <kbd>m</kbd> effects
+          </span>
         ) : (
-          <span>
+          <span data-testid="status-keys">
             <kbd>?</kbd> help · <kbd>t</kbd> theme · <kbd>/</kbd> filter
           </span>
         )}
       </footer>
       <Closing open={help}>
-        <Help onClose={() => setHelp(false)} />
+        <Help onClose={() => setHelp(false)} observer={observer} />
       </Closing>
       <Closing open={hubsOpen}>
         <Hubs signedIn={signedIn} onClose={() => setHubsOpen(false)} />

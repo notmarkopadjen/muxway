@@ -110,16 +110,20 @@ const KEYS: [string, string][] = [
   ['?', 'this help'],
 ];
 
-export function Help({ onClose }: { onClose: () => void }) {
+// What an observer of a shared pane can do: look, and change the look.
+const OBSERVER_KEYS = new Set(['t', 'm', '?']);
+
+export function Help({ onClose, observer }: { onClose: () => void; observer?: boolean }) {
   useSettings();
   const helper = useHelper();
   const recent = useRecent();
+  const keys = observer ? KEYS.filter(([k]) => OBSERVER_KEYS.has(k)) : KEYS;
   return (
     <div className="mx-help" onClick={onClose} data-testid="help">
       <div onClick={(e) => e.stopPropagation()}>
         <Box title="help" className="mx-help-keys">
           <dl>
-            {KEYS.map(([k, d]) => (
+            {keys.map(([k, d]) => (
               <div key={k}>
                 <dt>{k}</dt>
                 <dd>{d}</dd>
@@ -133,31 +137,35 @@ export function Help({ onClose }: { onClose: () => void }) {
             <button type="button" onClick={() => toggleMotion()}>
               effects: {getMotion() ? 'on' : 'off'}
             </button>
-            <button type="button" onClick={() => cycleFont()} data-testid="font">
-              font: {getFont()}px
-            </button>
-            <button type="button" onClick={() => void toggleNotify()}>
-              notifications: {getNotify() ? 'on' : 'off'}
-            </button>
-            <button type="button" onClick={() => toggleNames()} data-testid="names">
-              names: {getNames() ? 'on' : 'off'}
-            </button>
-            <button type="button" onClick={() => toggleSuggest()} data-testid="suggest">
-              suggest: {getSuggest() ? 'on' : 'off'}
-            </button>
-            <button
-              type="button"
-              onClick={() => forgetRecent()}
-              disabled={!recent.length}
-              title="the lines sent to shells from this browser, which the ghost word and the command row draw from"
-              data-testid="forget"
-            >
-              forget {recent.length} sent {recent.length === 1 ? 'line' : 'lines'}
-            </button>
-            <button type="button" onClick={() => cycleOpenMode()} data-testid="open-with">
-              a file opens with: {getOpenWith().mode}
-            </button>
-            {helper.open.mode === 'command' && (
+            {!observer && (
+              <>
+                <button type="button" onClick={() => cycleFont()} data-testid="font">
+                  font: {getFont()}px
+                </button>
+                <button type="button" onClick={() => void toggleNotify()}>
+                  notifications: {getNotify() ? 'on' : 'off'}
+                </button>
+                <button type="button" onClick={() => toggleNames()} data-testid="names">
+                  names: {getNames() ? 'on' : 'off'}
+                </button>
+                <button type="button" onClick={() => toggleSuggest()} data-testid="suggest">
+                  suggest: {getSuggest() ? 'on' : 'off'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => forgetRecent()}
+                  disabled={!recent.length}
+                  title="the lines sent to shells from this browser, which the ghost word and the command row draw from"
+                  data-testid="forget"
+                >
+                  forget {recent.length} sent {recent.length === 1 ? 'line' : 'lines'}
+                </button>
+                <button type="button" onClick={() => cycleOpenMode()} data-testid="open-with">
+                  a file opens with: {getOpenWith().mode}
+                </button>
+              </>
+            )}
+            {!observer && helper.open.mode === 'command' && (
               <input
                 type="text"
                 className="mx-open-command"
