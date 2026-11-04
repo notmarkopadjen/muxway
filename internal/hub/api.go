@@ -342,9 +342,11 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 	h.withTalk(r.Context(), t, out)
 	h.withShared(t, out)
 	if wantsText(r) {
-		// Command and title are what a program in the pane chose; the rest is ASCII already,
-		// the partners' addresses too, so | separates them without escaping.
+		// Command, title and cwd are what a program or the host chose; the rest is ASCII already,
+		// the partners' addresses too, so | separates them without escaping. A path may hold
+		// a tab or a line break: those become spaces so the row stays one row.
 		w.Header().Set("Content-Type", text.ContentType(charset))
+		oneRow := strings.NewReplacer("\t", " ", "\n", " ", "\r", " ")
 		var b strings.Builder
 		for _, v := range out {
 			kind := textKind(v.Pane)
@@ -356,7 +358,7 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 			for _, p := range v.Talk {
 				partners = append(partners, p.Address)
 			}
-			fmt.Fprintf(&b, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", v.Address, v.Mode, text.Fold(v.Command, charset), text.Fold(v.Title, charset), kind, mail, strings.Join(partners, "|"))
+			fmt.Fprintf(&b, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", v.Address, v.Mode, text.Fold(v.Command, charset), text.Fold(v.Title, charset), kind, mail, strings.Join(partners, "|"), v.Alias, text.Fold(oneRow.Replace(v.Cwd), charset))
 		}
 		w.Write(text.Encode(b.String(), charset))
 		return

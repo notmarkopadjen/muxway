@@ -81,7 +81,7 @@ func TestSec140_PreviewNeedsRootsAndAWriter(t *testing.T) {
 	if strings.Contains(e.get(full, "/v1/hosts").body, `"preview"`) {
 		t.Fatal("preview announced without roots")
 	}
-	e2, _, _ := previewEnv(t, "ROOT")
+	e2, root, _ := previewEnv(t, "ROOT")
 	full = e2.token("full", []string{host + "/*"}, []string{host + "/*"})
 	reader := e2.token("reader", []string{host + "/*"}, nil)
 	if !strings.Contains(e2.get(full, "/v1/hosts").body, `"preview":true`) {
@@ -92,6 +92,16 @@ func TestSec140_PreviewNeedsRootsAndAWriter(t *testing.T) {
 	expect(t, e2.preview(full, host+"/work/0.1", "plans/a.md"), http.StatusForbidden, "read-only pane")
 	expect(t, e2.preview(full, host+"/work/7.0", "plans/a.md"), http.StatusNotFound, "no such pane")
 	expect(t, e2.preview(full, shell0, "plans/a.md"), http.StatusOK, "a writer")
+	// The listing's text row ends in the folder for a writer, and in nothing for a reader or outside the roots.
+	rows := func(tok string) []string {
+		return strings.Split(strings.TrimSuffix(e2.getText(tok, "/v1/panes").body, "\n"), "\n")
+	}
+	if r := rows(full); len(r) != 2 || !strings.HasSuffix(r[0], "\t\t"+filepath.Join(root, "docs")) || !strings.HasSuffix(r[1], "\t\t") {
+		t.Fatalf("text rows for a writer: %q", r)
+	}
+	if r := rows(reader); len(r) != 2 || !strings.HasSuffix(r[0], "\t\t") {
+		t.Fatalf("text rows for a reader: %q", r)
+	}
 }
 
 // 141
