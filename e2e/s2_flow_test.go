@@ -43,8 +43,8 @@ func TestFlow16_ListTreeAndReadInJSONAndTextMode(t *testing.T) {
 		t.Fatalf("list:\n%s", strings.Join(got, "\n"))
 	}
 	text := e.getText(tok, "/v1/panes")
-	// The alias is the row's eighth column, the folder its ninth (empty here: no preview roots).
-	if lines := strings.Split(strings.TrimSuffix(text.body, "\n"), "\n"); len(lines) != 3 || !strings.HasPrefix(lines[2], host+"/work/1.0\twrite\t") || !strings.HasSuffix(lines[2], "\tlogs\t") {
+	// The alias is the row's eighth column, the folder its ninth (empty here: no preview roots), the pending column its tenth (empty: awake).
+	if lines := strings.Split(strings.TrimSuffix(text.body, "\n"), "\n"); len(lines) != 3 || !strings.HasPrefix(lines[2], host+"/work/1.0\twrite\t") || !strings.HasSuffix(lines[2], "\tlogs\t\t") {
 		t.Fatalf("text list:\n%s", text.body)
 	}
 	// The title is the program's own; a small phone asks for it folded like the content.
