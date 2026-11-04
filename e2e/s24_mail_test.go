@@ -455,7 +455,7 @@ func TestMailReachesTheProcessAndComesBack(t *testing.T) {
 	if sent := send(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"mail","arguments":{"address":"` + shell0 + `","text":"via mcp"}}}`); !strings.HasPrefix(text(sent), "mailed, id ") {
 		t.Fatalf("mail: %v", sent)
 	}
-	if box := send(`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"mailbox","arguments":{"address":"` + shell0 + `"}}}`); !strings.Contains(text(box), "\tvia mcp\n") {
+	if box := send(`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"mailbox","arguments":{"address":"` + shell0 + `"}}}`); !strings.Contains(text(box), "\tvia mcp\t\n") {
 		t.Fatalf("mailbox: %v", box)
 	}
 	if mine := send(`{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"my_mail","arguments":{}}}`); text(mine) != "no mail" {

@@ -290,7 +290,7 @@ func TestInboxListsWhatWaitsOldestFirst(t *testing.T) {
 	p := e.ask(a, paneIDOf(ts, "work:0.0"), "30s", "which?", "one", "two")
 	waitFor(t, "the question", func() bool { return e.attention(full, shell0) == "question" })
 	r = e.getText(full, "/v1/inbox")
-	if !strings.Contains(r.body, "\tquestion\t") || !strings.HasSuffix(strings.TrimRight(r.body, "\n"), "\twhich?\tone|two") {
+	if !strings.Contains(r.body, "\tquestion\t") || !strings.HasSuffix(strings.TrimRight(r.body, "\n"), "\twhich?\tone|two\t") {
 		t.Fatalf("text mode with choices:\n%s", r.body)
 	}
 	expect(t, e.getText(full, "/v1/inbox?charset=ascii"), http.StatusOK, "ascii")

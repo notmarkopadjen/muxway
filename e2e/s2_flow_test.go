@@ -61,7 +61,7 @@ func TestFlow16_ListTreeAndReadInJSONAndTextMode(t *testing.T) {
 		if r.status != http.StatusOK || r.header.Get("Content-Type") != c.ct {
 			t.Fatalf("list%s: %d %q", c.q, r.status, r.header.Get("Content-Type"))
 		}
-		if lines := strings.Split(strings.TrimSpace(r.body), "\n"); len(lines) != 3 || lines[1] != host+"/work/0.1\twrite\tbash\t"+c.title+"\t\t\t\t\t" {
+		if lines := strings.Split(strings.TrimSpace(r.body), "\n"); len(lines) != 3 || lines[1] != host+"/work/0.1\twrite\tbash\t"+c.title+"\t\t\t\t\t\t" {
 			t.Fatalf("list%s:\n%q", c.q, r.body)
 		}
 	}
