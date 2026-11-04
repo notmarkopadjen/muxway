@@ -1062,6 +1062,8 @@ button.mx-window:focus-visible {
 .mx-painted[data-state='waiting'] .mx-badge,
 .mx-painted[data-state='waiting'] .mx-title,
 .mx-painted[data-state='waiting'] .mx-title-status,
+.mx-painted[data-state='waiting'] .mx-title-folder,
+.mx-painted[data-state='waiting'] .mx-size,
 .mx-painted[data-state='waiting'] .mx-dim,
 .mx-painted[data-state='waiting'] .mx-mode,
 .mx-painted[data-state='waiting'] .mx-attention,
@@ -1295,6 +1297,36 @@ button.mx-window:focus-visible {
 .mx-cell-head .mx-tile-changes.on {
   color: var(--mx-ink);
   border-color: var(--mx-ink);
+}
+/* the size: under the pointer, and beside held and sync */
+.mx-tile-head .mx-size {
+  font-family: var(--mx-mono);
+  color: var(--mx-ink-dim);
+  white-space: nowrap;
+}
+.mx-tile-head .mx-size:not([data-shown]) {
+  display: none;
+}
+/* the name as a field */
+.mx-rename {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.mx-rename input {
+  width: 14em;
+  max-width: 40vw;
+  font: inherit;
+  font-weight: bold;
+  color: var(--mx-ink);
+  background: var(--mx-bg);
+  border: 1px solid var(--mx-ink);
+  padding: 2px 6px;
+  outline: none;
+}
+.mx-rename input:focus {
+  box-shadow: var(--mx-glow-box-strong);
 }
 .mx-tile-head .mx-mode {
   font-family: var(--mx-pixel);
@@ -2166,10 +2198,108 @@ button.mx-window:focus-visible {
   height: 14px;
 }
 /* the messages window: rows, a reply indented, a live row with the hue's edge */
+/* the messages window: wide enough to read, two lines a row */
+.mx-help .mx-box.mx-talk-box,
+.mx-help .mx-box.mx-mail-box {
+  width: min(960px, calc(100vw - 32px));
+}
 .mx-talk-list li {
-  grid-template-columns: 1.6em auto 1fr auto;
+  grid-template-columns: 1.6em 1fr auto auto;
+  grid-template-areas:
+    'glyph who meta beside'
+    'glyph text text text';
   align-items: center;
-  gap: var(--mx-gap);
+  gap: 2px var(--mx-gap);
+}
+.mx-talk-list li > .mx-mark,
+.mx-talk-list li > .mx-mail-glyph {
+  grid-area: glyph;
+}
+.mx-talk-list .mx-talk-who {
+  grid-area: who;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mx-talk-list li > .mx-meta {
+  grid-area: meta;
+}
+.mx-talk-list .mx-talk-beside {
+  grid-area: beside;
+  padding: 0 6px;
+  border-color: transparent;
+  color: var(--mx-ink-dim);
+}
+.mx-talk-list .mx-talk-beside:hover {
+  color: var(--mx-ink);
+  border-color: var(--mx-ink);
+}
+.mx-talk-list .mx-talk-text {
+  grid-area: text;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* the mail window: a pane's mail in full */
+.mx-mail-list {
+  list-style: none;
+  margin: var(--mx-gap) 0 0;
+  padding: 0;
+  max-height: 60vh;
+  overflow: hidden auto;
+}
+.mx-mail-list li {
+  padding: 4px 6px;
+  border: 1px solid transparent;
+}
+.mx-mail-list li[data-focused] {
+  border-color: var(--mx-talk);
+}
+.mx-mail-list li[data-reply] {
+  padding-left: 2em;
+}
+.mx-mail-list li[data-dir='out'] .mx-mail-text {
+  color: var(--mx-ink-dim);
+}
+.mx-mail-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.mx-mail-head .mx-spacer {
+  flex: 1;
+}
+.mx-mail-head .mx-talk-name {
+  color: var(--mx-talk);
+}
+.mx-mail-head .mx-mail-way {
+  text-shadow: 0 0 6px var(--mx-talk);
+}
+.mx-mail-head .mx-mail-state {
+  color: var(--mx-talk);
+  text-shadow: 0 0 6px var(--mx-talk);
+}
+.mx-mail-head .mx-mail-back {
+  padding: 0 6px;
+  font-size: 12px;
+}
+.mx-mail-text {
+  margin: 2px 0 2px 1.6em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mx-talk-line select {
+  font: inherit;
+  color: var(--mx-talk);
+  background: var(--mx-bg);
+  border: 1px solid var(--mx-ink-dim);
+  padding: 2px 4px;
+  max-width: 14em;
 }
 .mx-talk-list li[data-live] {
   box-shadow: inset 3px 0 0 var(--mx-talk);
@@ -2185,11 +2315,6 @@ button.mx-window:focus-visible {
 }
 .mx-talk-list .mx-talk-name {
   color: var(--mx-talk);
-}
-.mx-talk-list .mx-talk-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .mx-talk-line {
   display: flex;

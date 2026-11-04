@@ -142,12 +142,34 @@ a mail from a client that is not a pane has no `from`.
 tile's header, on its tab and on its row on the list while the pane
 holds unread mail; the group frame of [talk](talk.md) around the panes
 that mail each other; `✉ n` left in the header row, beside `⚑ n`, for
-the messages the owner has not looked at yet. `T` opens the messages
-window, oldest at the top, mail rows with `✉` and a reply indented
-under what it answers; its bottom line, *mail to the open pane*, sends
-a mail with Enter, nothing typed; `M` opens it with that line focused.
+the messages the owner has not looked at yet. `T` opens the **messages
+window**, 960 px wide, oldest at the top: a row is who wrote to whom,
+the time and the token on one line, and the message's first 200
+characters wrapping under it, a reply indented under what it answers;
+`Enter` or `⇆` lays the two panes side by side, and a click on a mail
+row opens that mail in the mail window. Its bottom line, *mail to the
+open pane*, sends a mail with Enter, nothing typed.
 
-![the messages window with a mail row and the line](images/web-mail-window.png)
+![the messages window with mail rows and the line](images/web-messages.png)
+
+The **mail window** is one pane's mail: `✉ n` on its tab, its header
+or its list row opens it, so does a mail row in the messages window
+(with that mail framed), and `M` opens it for the open pane with the
+line focused. Oldest at the top, merged by time: `←` every mail in the
+pane's mailbox, whole, with who sent it (the origin pane's name, or
+*you* for a client that is not a pane, and the token), `unread` until
+the process read it, `replied` when it answered; `→` every mail the
+pane sent, from the feed, whole where the token reads the recipient's
+mailbox and else the first 200 characters marked *cut*. Reading here
+takes nothing from the process: the count on the tab stands until the
+process reads, and the rows then say *read*. The line at the bottom
+mails the pane; *mail back* on a received mail aims it at the sender,
+and the picker beside it lists the pane and its partners, a pane the
+token may not write disabled. `L` lays the pane beside the line's
+target, or its latest partner. Mail is shown as text, never as markup,
+with no links made clickable.
+
+![the mail window: a pane's mail in full and the line](images/web-mail-window.png)
 
 The native clients take `mail` from the listing for the mark: `✉ n` on
 the phone and the watch, the word `mail n` on the glasses (whose font

@@ -365,6 +365,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		resp.Dir = resp.Preview
 		resp.Ask = true
 		resp.Mailbox = true
+		resp.Rename = true
 	case wire.OpRead:
 		p, code := a.find(ctx, req.Pane)
 		if code != "" {
@@ -427,6 +428,10 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		a.audit(req, resp.Error, "mail", req.MailID, "unread", resp.Unread)
 	case wire.OpMailList:
 		resp.Mail, resp.Error = a.mailList(ctx, req)
+	case wire.OpAlias:
+		var old string
+		old, resp.Error = a.setAlias(ctx, req)
+		a.audit(req, resp.Error, "alias", req.Alias, "was", old)
 	case wire.OpResize:
 		resp.Error = a.resize(ctx, req)
 		a.audit(req, resp.Error)

@@ -58,7 +58,7 @@ export async function openPane(page: Page, address: string) {
 
 export async function paneLoaded(page: Page) {
   await expect(page.getByTestId('pane')).toBeVisible();
-  await expect(page.getByTestId('pane').locator('.mx-mode')).toBeVisible();
+  await expect(page.getByTestId('pane').locator('.mx-tile-head[data-mode]').first()).toBeVisible();
 }
 
 // Collects every CSP violation and alert the page sees.

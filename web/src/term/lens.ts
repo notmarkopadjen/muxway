@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { Pane } from '../api/types';
-import { describe, label } from './describe';
+import { describe, label, type Named } from './describe';
 
 // The lens, as the Android client has it: a pane running an AI agent is
 // waiting for its owner (the listing carries a notification), working
@@ -51,8 +51,10 @@ export function word(s: Status, kind?: string): string {
   return '';
 }
 
-// A tab's name: what the agent wrote into the title, else what runs there.
-export function tabName(p: Pick<Pane, 'command' | 'title'>): string {
+// A tab's name: the owner's, else what the agent wrote into the title,
+// else what runs there.
+export function tabName(p: Named): string {
+  if (p.alias) return p.alias;
   const d = describe(p);
   return d.agent ? d.status || d.name : label(p);
 }

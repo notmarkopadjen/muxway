@@ -280,7 +280,7 @@ test("94 every hub: a hub not signed in on says so with a link to its page; sign
   const tiles = page.getByTestId('tile');
   await expect(tiles).toHaveCount(2);
   await expect(tiles.nth(1)).toHaveAttribute('data-pane', FAR);
-  await expect(tiles.nth(1).locator('.mx-mode')).toHaveText('write');
+  await expect(tiles.nth(1).locator('.mx-tile-head')).toHaveAttribute('data-mode', 'write');
   await page.keyboard.press(']');
   await expect(page.locator('[data-testid="tile"][data-focused]')).toHaveAttribute(
     'data-pane',

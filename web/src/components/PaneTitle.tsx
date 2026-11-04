@@ -1,5 +1,8 @@
+import { useEffect, useRef, useState } from 'react';
+import { ApiError } from '../api/client';
+import { useRename } from '../api/queries';
 import type { Pane } from '../api/types';
-import { describe, type Agent } from '../term/describe';
+import { aliasOf, describe, label, type Agent, type Named } from '../term/describe';
 
 // The marks of the AI CLIs, drawn with strokes so they are the same in
 // every font: a spark for Claude Code, a hexagon for Codex, a lifted
@@ -60,14 +63,132 @@ export function AgentMark({ agent }: { agent?: Agent }) {
   }
 }
 
-// The pane's own name: what runs in it and what it says it is doing.
-export function PaneTitle({ pane }: { pane: Pick<Pane, 'command' | 'title'> }) {
+// The pane's own name: the owner's, else what runs in it; then the folder
+// it works in and what the program says it is doing, both set back.
+export function PaneTitle({
+  pane,
+  folder,
+  title,
+  onClick,
+}: {
+  pane: Named;
+  folder?: string;
+  title?: string;
+  onClick?: () => void;
+}) {
   const d = describe(pane);
   return (
-    <span className="mx-title" data-testid="pane-title" data-agent={d.agent}>
+    <span
+      className="mx-title"
+      data-testid="pane-title"
+      data-agent={d.agent}
+      title={title}
+      onClick={onClick}
+    >
       <AgentMark agent={d.agent} />
       <span className="mx-title-name">{d.name}</span>
+      {folder && (
+        <span className="mx-title-folder" data-testid="pane-folder" title={folder}>
+          {' · '}
+          {folder.split('/').filter(Boolean).pop() ?? folder}
+        </span>
+      )}
       {d.status && <span className="mx-title-status"> · {d.status}</span>}
     </span>
+  );
+}
+
+// What the header keeps under the pointer: what the program says of
+// itself, the place, the size, the mode, the folder's whole path.
+export function paneTooltip(p: Pane): string {
+  const lines = [
+    label({ command: p.command, title: p.title }),
+    `${p.address} · ${p.width}×${p.height} · ${p.mode}`,
+  ];
+  if (p.cwd) lines.push(p.cwd);
+  return lines.join('\n');
+}
+
+// A second click on a name already focused, slower than a double-click
+// and not a forgotten one, asks for a rename.
+export const SLOW_MIN_MS = 500;
+export const SLOW_MAX_MS = 3_000;
+export function slowSecond(prevAt: number | undefined, now: number): boolean {
+  return prevAt !== undefined && now - prevAt >= SLOW_MIN_MS && now - prevAt <= SLOW_MAX_MS;
+}
+
+function refusedWhy(e: unknown): string {
+  const code = e instanceof ApiError ? e.code : '';
+  switch (code) {
+    case 'alias_taken':
+      return 'another pane has it';
+    case 'bad_alias':
+      return 'a-z, 0-9 and -, up to 32';
+    case 'read_only':
+      return 'read-only';
+    case 'not_found':
+      return 'the host does not name panes';
+    default:
+      return 'refused';
+  }
+}
+
+// The name as a field, in the header's place: Enter saves, Esc leaves,
+// empty takes the name away. What is typed becomes an alias as it goes.
+export function RenameField({ pane, onDone }: { pane: Pane; onDone: () => void }) {
+  const rename = useRename();
+  const [value, setValue] = useState(pane.alias ?? '');
+  const [why, setWhy] = useState('');
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    input.current?.focus();
+    input.current?.select();
+  }, []);
+  const save = () => {
+    if (rename.isPending) return;
+    if (value === (pane.alias ?? '')) {
+      onDone();
+      return;
+    }
+    rename.mutate(
+      { address: pane.address, alias: value },
+      { onSuccess: onDone, onError: (e) => setWhy(refusedWhy(e)) },
+    );
+  };
+  return (
+    <form
+      className="mx-rename"
+      data-testid="rename"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save();
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        ref={input}
+        data-testid="rename-field"
+        value={value}
+        placeholder="a name: a-z 0-9 -"
+        maxLength={32}
+        spellCheck={false}
+        onChange={(e) => {
+          setValue(aliasOf(e.target.value));
+          setWhy('');
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            onDone();
+          }
+        }}
+        onBlur={onDone}
+      />
+      {why && (
+        <span className="mx-warn" data-testid="rename-error">
+          {why}
+        </span>
+      )}
+    </form>
   );
 }

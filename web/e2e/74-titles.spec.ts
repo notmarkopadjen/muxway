@@ -20,12 +20,17 @@ test('74 a pane running Claude is named Claude with its status; tmux names step 
   await shot(page, info, '74-panes');
   await row.click();
   await paneLoaded(page);
-  await expect(page.getByTestId('pane').getByTestId('pane-title')).toHaveText(
-    'Claude · fixing the build',
+  // The tile's header: the name, the folder it works in, the status; the
+  // place waits under the pointer.
+  const head = page.getByTestId('pane').getByTestId('pane-title');
+  await expect(head.locator('.mx-title-name')).toHaveText('Claude');
+  await expect(head.locator('.mx-title-status')).toHaveText('· fixing the build');
+  await expect(head).toHaveAttribute(
+    'title',
+    new RegExp(`^Claude · fixing the build\n${SHELL0} · `),
   );
-  // The header row names the pane by its tab; the tile's header says where it is.
+  // The header row names the pane by its tab.
   await expect(page.locator('[data-testid="tab"][data-focused]')).toContainText('fixing the build');
-  await expect(page.locator('.mx-tile-head').first()).toContainText(SHELL0);
   await expect(page).toHaveTitle('Claude · fixing the build · muxway');
   await shot(page, info, '74-pane');
   await page.keyboard.press('p');
@@ -38,9 +43,9 @@ test('74 a pane running Claude is named Claude with its status; tmux names step 
   await shot(page, info, '74-selector');
   await page.keyboard.press('Escape');
   await page.goto(`/w/${HOST}/work/0`);
-  await expect(page.getByTestId('cell').first().getByTestId('pane-title')).toHaveText(
-    'Claude · fixing the build',
-  );
+  await expect(
+    page.getByTestId('cell').first().getByTestId('pane-title').locator('.mx-title-status'),
+  ).toHaveText('· fixing the build');
   // The window's strip names it as a tab does: the spark, then the status.
   const claudeTab = page.locator(`[data-testid="tab"][data-address="${SHELL0}"]`);
   await expect(claudeTab).toHaveText('fixing the build');
@@ -56,10 +61,7 @@ test('74 a pane running Claude is named Claude with its status; tmux names step 
   expect(await tab.locator('b').count()).toBe(0);
   expect(await page.getByTestId('cell').first().locator('b').count()).toBe(0);
   await control(request, '/rename', { what: 'title', target: 'work:0.0', name: 'test-pane' });
-  await expect(page.getByTestId('cell').first().getByTestId('pane-title')).toHaveText(
-    'bash · test-pane',
-    {
-      timeout: 10_000,
-    },
-  );
+  await expect(
+    page.getByTestId('cell').first().getByTestId('pane-title').locator('.mx-title-status'),
+  ).toHaveText('· test-pane', { timeout: 10_000 });
 });

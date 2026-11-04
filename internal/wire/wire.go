@@ -30,6 +30,7 @@ const (
 	OpMail       = "mail"        // a message for the pane's process, into its mailbox, never typed
 	OpMailList   = "mail-list"   // the mailbox of a pane, for a reader
 	OpReplied    = "replied"     // the hub's word on a reply the agent sent; nothing is answered
+	OpAlias      = "alias"       // name a pane, or unname it, for a writer
 )
 
 // Request from hub to agent. Actor is the id of the client token the hub
@@ -83,6 +84,8 @@ type Request struct {
 	MailID uint64 `json:"mail_id,omitempty"`
 	Reply  uint64 `json:"reply,omitempty"`
 	Result string `json:"result,omitempty"`
+	// Alias, with alias, is the pane's new name; empty takes the name away.
+	Alias string `json:"alias,omitempty"`
 }
 
 // Mail is one message held for a pane's process: who sent it, from
@@ -185,6 +188,8 @@ type Response struct {
 	// Listing is one of them.
 	Dir     bool     `json:"dir,omitempty"`
 	Listing *Listing `json:"listing,omitempty"`
+	// Rename, with a list, says the agent names panes for writers.
+	Rename bool `json:"rename,omitempty"`
 }
 
 // Listing is a directory under the roots as a client may see it: its
@@ -261,7 +266,22 @@ const (
 	ErrNoOrigin     = "no_origin"      // a reply to a mail that came from no pane
 	ErrReplied      = "replied"        // a second reply to the same mail
 	ErrReplyToReply = "reply_to_reply" // a reply to a reply: one message back, not a thread
+	ErrAliasTaken   = "alias_taken"    // another pane of the host has the name
 )
+
+// ValidAlias reports whether s may name a pane: 1 to 32 of a-z, 0-9 and -,
+// the same rule as a host's name, so an alias fits an address.
+func ValidAlias(s string) bool {
+	if len(s) < 1 || len(s) > 32 {
+		return false
+	}
+	for _, c := range []byte(s) {
+		if !('a' <= c && c <= 'z' || '0' <= c && c <= '9' || c == '-') {
+			return false
+		}
+	}
+	return true
+}
 
 // Limits shared by hub and agent.
 const (

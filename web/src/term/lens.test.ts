@@ -42,6 +42,8 @@ describe('lens', () => {
     expect(tabName({ command: 'claude', title: '✳' })).toBe('Claude');
     expect(tabName(shell)).toBe('bash');
     expect(tabName({ command: 'vim', title: 'notes.md' })).toBe('vim · notes.md');
+    expect(tabName({ ...claude, alias: 'review' })).toBe('review');
+    expect(tabName({ ...shell, alias: 'build' })).toBe('build');
   });
 
   it('does not count a change right after this client typed or resized', () => {
