@@ -9,6 +9,7 @@ import {
   useChanges,
   useHosts,
   useInput,
+  useLater,
   useWindow,
 } from '../api/queries';
 import type { Change, Mouse, PaneContent } from '../api/types';
@@ -400,6 +401,19 @@ export function WindowPage() {
   const hide = useCallback(() => setShowing(false), []);
   const hosts = useHosts();
   const previews = !!hosts.data?.find((h) => h.name === host && !h.hub)?.preview;
+  const parks = !!hosts.data?.find((h) => h.name === host && !h.hub)?.later;
+  const later = useLater();
+  const setLater = useCallback(
+    (address: string, on: boolean) => {
+      const p = stripPanes.find((q) => q.address === address);
+      if (!p || p.mode !== 'write' || !parks || !!p.later === on) return;
+      later.mutate(
+        { address, later: on },
+        { onError: (err) => toast.push({ kind: 'later', title: address, text: String(err) }) },
+      );
+    },
+    [stripPanes, parks, later, toast],
+  );
   const repeats = useRef(false);
   repeats.current = !!hostOf(hosts.data, focusedPane?.address ?? '')?.repeat;
   // The changes window shows for a writer on a host with roots; the
@@ -544,6 +558,7 @@ export function WindowPage() {
       else if (ev.key === 'i' && writable) enterDirect();
       else if (ev.key === ':') focusLine();
       else if (ev.key === 'g' && writable && previews) setChanges((c) => !c);
+      else if (ev.key === 'd' && focusedPane) setLater(focusedPane.address, !focusedPane.later);
       else return;
       ev.preventDefault();
       ev.stopImmediatePropagation();
@@ -565,6 +580,7 @@ export function WindowPage() {
     enterDirect,
     focusLine,
     previews,
+    setLater,
   ]);
 
   const send = async (body: { text: string } | { key: string } | { mouse: Mouse }) => {
@@ -679,6 +695,7 @@ export function WindowPage() {
             focused={focusedPane?.address ?? null}
             hidden={hiddenAddresses}
             onTab={onTab}
+            onWake={(a) => setLater(a, false)}
           />
           <AddMenu
             pane={focusedPane}
@@ -764,6 +781,21 @@ export function WindowPage() {
                 : !previews
                   ? "the repository's changes; the host has no preview roots"
                   : "git's changes of the pane's repository, over the cell (g)",
+            },
+            {
+              id: 'later',
+              glyph: '☾',
+              label: 'later',
+              onClick: () => focusedPane && setLater(focusedPane.address, !focusedPane.later),
+              disabled: !writable || !parks,
+              on: !!focusedPane?.later,
+              title: !writable
+                ? 'later: park the pane, its tab goes last; needs a writable pane'
+                : !parks
+                  ? 'later: park the pane; the host is older than this'
+                  : focusedPane?.later
+                    ? 'later: parked; wake it (d)'
+                    : 'later: park the pane, its tab goes last and it stops calling (d)',
             },
             {
               id: 'zoom',

@@ -229,6 +229,49 @@ with the pane and with the agent process; it survives a hub restart.
 `GET /v1/inbox` lists every pane with attention, oldest first (see
 [the inbox](inbox.md)).
 
+## Later
+
+Several agents call at once, and some of them can wait: the owner has
+looked, decided not now, and wants the pane out of the way without
+losing it. **Later** is that decision, made on a pane from any client:
+its tab goes to the end of the strip with a sleeping mark (`☾`, or `zz`
+where a font has no moon), it stops calling (no toast, no pulse, no
+flash), and it counts among the done panes rather than the pressing
+ones, in the inbox last, until the owner opens it again or wakes it on
+purpose.
+
+The mark lives on the host's agent beside the pane's attention, so
+every client sees it, it survives a hub restart, and it dies with the
+pane and with the agent process. A client sets it with
+[`POST /v1/panes/{address}/later`](../protocol/v1.md#post-v1panesaddresslater),
+under the write grant, like an answer; the listing carries `"later":
+true` and when it was parked, with the attention underneath as it is.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Awake
+    Awake --> Later: the owner marks it, from any client
+    Later --> Awake: the owner opens the pane, a tab, a row, the inbox
+    Later --> Awake: the owner unmarks it
+    Later --> Awake: input, an answer or mail from a client
+    Later --> Later: a notification arrives, the pane stays parked
+    Later --> [*]: pane gone, agent restarted
+```
+
+A notification that arrives while the pane is parked does not wake it:
+the owner said later, and the listing still carries the kind underneath
+for anyone who looks. Typing into it, answering its question or mailing
+its process is the owner coming back, so that wakes it, as it clears
+attention today. Opening the pane is the owner coming back too: the
+client that opens a parked pane sends the wake itself. On the web `d`
+parks the focused tile or the selected row and wakes it again, the `☾`
+pane button does the same, the inbox row has *later* and *wake*, and a
+click on a parked tab focuses it and wakes it; `muxway client later`
+and the MCP tool `later` do it from a script (see [driving
+muxway](driving.md)). The native clients follow in their repositories.
+
+![a parked tab at the end of the strip](images/web-later-tab.png)
+
 ```mermaid
 stateDiagram-v2
     [*] --> Quiet
@@ -275,5 +318,11 @@ See [the protocol](../protocol/v1.md#get-v1events) for the JSON shape.
 - Events raised while the agent cannot reach the hub are not delivered,
   but the pane's `attention` shows on the next listing.
 - Logs carry kind and pane id, never the text or a choice.
+- Parking a pane needs the write grant and the writable mark, checked
+  on the hub and again on the agent; a reader sees the mark and cannot
+  move it. It is one boolean, typed nowhere; with the write grant one
+  could clear the attention outright by typing, so parking adds no
+  reach. Five a second per principal. Both sides audit who, which pane
+  and the value.
 - A hook never passes anything back to its harness and does not block it,
   whatever happens.

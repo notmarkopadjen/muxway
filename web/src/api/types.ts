@@ -34,6 +34,8 @@ export interface Pane {
   cursor_x?: number; // the cursor's cell, 1-based, where the program waits
   cursor_y?: number;
   last?: boolean; // the only pane of its session: closing it ends the session
+  later?: boolean; // the owner parked it: its tab goes last and it stops calling
+  later_at?: number; // when
   talk?: TalkPartner[]; // the panes this one talked with in the last ten minutes
   mail?: MailState; // mail its process has not read
   cwd?: string; // a shell pane's directory under the host's roots, for its writers
@@ -114,6 +116,7 @@ export interface Host {
   ask?: boolean; // the agent takes answers to questions
   mail?: boolean; // the agent holds mail for its panes
   dir?: boolean; // the agent lists directories under its roots for writers
+  later?: boolean; // the agent parks panes for later
   rename?: boolean; // the agent names panes for writers
   hub?: string; // as on a pane
 }

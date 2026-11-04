@@ -15,6 +15,8 @@ const (
 	clipRate     = 0.2 // spoken clips per second: one every five seconds
 	clipBurst    = 1
 	createRate   = 0.5 // panes or sessions made per second: one every two seconds
+	laterRate    = 5.0 // panes parked or woken per second
+	laterBurst   = 5.0
 	createBurst  = 1
 	pairAttempts = 3
 )
@@ -126,6 +128,11 @@ func (l *limiter) allowClip(tokenID string) bool {
 // the slot as much as one that went through.
 func (l *limiter) allowCreate(tokenID string) bool {
 	return l.allowNamed("create:"+tokenID, createRate, createBurst)
+}
+
+// allowLater takes one parking or waking of a pane.
+func (l *limiter) allowLater(tokenID string) bool {
+	return l.allowNamed("later:"+tokenID, laterRate, laterBurst)
 }
 
 func (l *limiter) allowNamed(key string, rate, burst float64) bool {

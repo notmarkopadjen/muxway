@@ -19,7 +19,11 @@ nothing but the hub to talk to.
    the word follows (`! permission`); an AI agent's pane that is busy
    shows `⟳ working` (see [the lens](#the-lens)). A click opens the pane.
    `I` opens the [inbox](inbox.md), every waiting pane oldest first, and
-   `o` the oldest of them; `⚑ n` beside the brand counts them.
+   `o` the oldest of them; `⚑ n` beside the brand counts them. `d` on
+   the selected row parks its pane for [later](notifications.md#later):
+   the row keeps its place with `☾ later`, the pane's tab goes last
+   wherever a strip shows it, and it stops calling; `d` again or opening
+   the pane wakes it.
    The pick box, `space` on the highlighted row, or a click while
    something is picked gathers up to four panes; a bar under the list
    then offers **open N side by side**. Each window has a button, `▦ 0:
@@ -277,7 +281,8 @@ view, each live and typable. The page is the Android client's pane view:
   the right the pane buttons, 32 px squares with a label under
   the pointer: `▦` arrangement, `⊞` equal shares, `↺` the host's
   layout (the window view's; off here), `⤢` fit, `▮` direct typing,
-  `⎇` changes, `⊡` zoom, `≡` go to a pane. The row is the same in
+  `⎇` changes, `☾` later (selected while the pane is parked), `⊡`
+  zoom, `≡` go to a pane. The row is the same in
   every view, the window view included: a button whose action does not
   apply is disabled, never left out, so nothing moves under the
   pointer; on a narrow screen (640 px and under) they fold into one
@@ -763,7 +768,8 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `K` | the keyboard: a window with a full terminal board for the focused pane (see [the keyboard](keyboard.md)); `Esc` closes it |
 | `v` | speak: record a clip for the hub's transcriber, onto the input line; held, it records until released; tapped, `v` again stops; `Esc` drops it |
 | `p` | selector: go to a pane or window, or start a session on a host |
-| `I` / `o` | the [inbox](inbox.md): every pane that waits for you, oldest first; `Enter` opens the selected one / open the oldest waiting pane |
+| `I` / `o` | the [inbox](inbox.md): every pane that waits for you, oldest first, the parked ones last; `Enter` opens the selected one (and wakes it) / open the oldest waiting pane that is not parked |
+| `d` | later: park the focused tile's pane, or the selected row's (see [notifications](notifications.md#later)); its tab goes last with `☾`, painted plain, the header says `☾ later` with the kind underneath, and no toast, flash or notification calls for it; `d` again, a click on its tab, opening it, typing, an answer or a mail wakes it; the `☾` pane button does the same, selected while parked; off on a read-only pane and on a host older than this |
 | `+` | the list: one more pane in the selected row's window; it opens. Tiles: the add menu |
 | `-` | tiles: minimise the focused tile to the row above the keys; a click on its tab there, or its entry in the add menu, brings it back |
 | `S` | a new session on the selected row's host (or the first that allows it): a one-line form, `Enter` starts, `Esc` cancels |

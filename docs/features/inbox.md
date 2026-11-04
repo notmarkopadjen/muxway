@@ -5,7 +5,9 @@ the listing. With a few agents on a few machines, the question is not
 "does this pane wait" but "what waits, and which first". The inbox is
 that list: every pane the principal may read that carries attention,
 oldest first, on every host, and on the web on every hub of the hubs
-box.
+box; after them, the panes the owner parked for
+[later](notifications.md#later), oldest parking first, which count with
+the rest.
 
 ![the inbox on the web](images/web-inbox.png)
 
@@ -33,7 +35,9 @@ alice-laptop/work/1.0	question	1767225660	deploy to staging?	yes|no
 ```
 
 one row per pane: address, kind, when (Unix seconds), the text, and the
-choices joined by `|` (a choice never contains one). `charset` works as
+choices joined by `|` (a choice never contains one); a parked pane's
+kind reads `later`, its time is the attention's or the parking's, and
+its text and choices are the attention's or empty. `charset` works as
 in every text-mode listing. A client that already lists panes can build
 the same list itself; the endpoint saves a small client the sorting and
 the filtering, and gives a script one call to poll.
@@ -47,7 +51,13 @@ buttons. `j` `k` or the arrows move, `Enter` or a click opens the pane,
 `Esc` closes. `o` anywhere opens the oldest waiting pane without the
 window. While anything waits the header shows `⚑ n` next to the brand; a
 click on it opens the inbox. A read-only pane's choices are shown
-disabled: you may see the question there but not answer it.
+disabled: you may see the question there but not answer it. A parked
+pane's row comes last, with `☾` and the kind underneath; its *later*
+button parks a row and *wake* wakes it (disabled on a read-only pane);
+`Enter` or a click on a parked row opens the pane and wakes it, and `o`
+skips the parked panes.
+
+![the inbox with a parked pane last](images/web-later-inbox.png)
 
 The native clients take the same list in their own way (the watch face
 already counts the waiting panes); see their repositories.

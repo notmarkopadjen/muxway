@@ -248,6 +248,12 @@ func (c *Client) Answer(ctx context.Context, address, choice string) error {
 	return err
 }
 
+// Later parks a pane for later, or wakes it.
+func (c *Client) Later(ctx context.Context, address string, on bool) error {
+	_, err := c.Do(ctx, http.MethodPost, "/v1/panes/"+address+"/later", "", map[string]any{"later": on})
+	return err
+}
+
 // Mail leaves a message for a pane's process, never typed, from the
 // client's pane when it has one; it returns the mail's id.
 func (c *Client) Mail(ctx context.Context, address, text string) (uint64, error) {
@@ -354,6 +360,10 @@ func (c *Client) Wait(ctx context.Context, address string) (*Event, error) {
 		return nil, err
 	}
 	for _, p := range inbox {
+		// A parked pane is not waiting on anyone.
+		if p.Later || p.Attention == nil {
+			continue
+		}
 		if address == "" || p.Address == address || (p.Alias != "" && p.Host+"/@"+p.Alias == address) {
 			return &Event{At: p.Attention.At, Host: p.Host, Address: p.Address, Alias: p.Alias,
 				Kind: p.Attention.Kind, Text: p.Attention.Text, Choices: p.Attention.Choices}, nil

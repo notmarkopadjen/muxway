@@ -12,17 +12,18 @@ function still(): boolean {
 export function Closing({ open, children }: { open: boolean; children: ReactNode }) {
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
-  // Opened again while closing, the window starts afresh, not mid-fade.
+  // Opened again while closing, the window starts afresh, not mid-fade:
+  // in this very render, so the one on its way out is never shown
+  // again, not even for the moment before an effect, and takes no key.
   const [gen, setGen] = useState(0);
+  if (open && closing) {
+    setClosing(false);
+    setGen((g) => g + 1);
+  }
+  if (open && !mounted) setMounted(true);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (open) {
-      setMounted(true);
-      if (closing) setGen((g) => g + 1);
-      setClosing(false);
-      return;
-    }
-    if (!mounted) return;
+    if (open || !mounted) return;
     // On its way out the window takes no keys and holds no focus.
     const active = document.activeElement;
     if (active instanceof HTMLElement && box.current?.contains(active)) active.blur();
@@ -35,7 +36,7 @@ export function Closing({ open, children }: { open: boolean; children: ReactNode
       still() ? 0 : 600,
     );
     return () => clearTimeout(t);
-  }, [open, mounted, closing]);
+  }, [open, mounted]);
   if (!mounted) return null;
   return (
     <div

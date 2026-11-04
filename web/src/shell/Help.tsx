@@ -27,7 +27,14 @@ const KEYS: [string, string][] = [
   ['Enter', 'open the selected pane, or the picked ones side by side'],
   ['Esc', 'back to the panes; or leave the input line (first closing its completion list)'],
   ['p', 'go to a pane or window, or start a session'],
-  ['I / o', 'the inbox: every pane that waits for you, oldest first / open the oldest'],
+  [
+    'I / o',
+    'the inbox: every pane that waits for you, oldest first, the parked ones last / open the oldest awake',
+  ],
+  [
+    'd',
+    'later: park the focused tile, or the selected row; its tab goes last with ☾ and it stops calling. d again, a click on its tab, opening it, typing, an answer or a mail wakes it',
+  ],
   [
     'T / M',
     "messages: what panes said to panes, mail and typed, across hosts, oldest first; Enter lays the two side by side, a click on a mail row opens that pane's mail / the open pane's mail window: its mail in full, what it sent, a line that mails it or whoever wrote to it (nothing is typed); the ✉ n on a tab, a header or a row opens it too",
