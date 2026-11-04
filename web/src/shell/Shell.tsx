@@ -3,8 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isOnline, onReachability, onUnauthorized } from '../api/client';
 import { useEventStream } from '../api/events';
-import { keys } from '../api/queries';
-import type { Pane, Tree, PaneContent } from '../api/types';
+import { knownPane } from '../api/queries';
 import { PaneTitle } from '../components/PaneTitle';
 import { label } from '../term/describe';
 import { useHeading } from './heading';
@@ -15,7 +14,7 @@ import { useToast } from '../components/Toast';
 import { cycleTheme, getNotify, toggleMotion, useSettings } from '../settings';
 import { Help } from './Help';
 import { Hubs } from './Hubs';
-import { shownName, splitAddress, useHubs } from '../hubs';
+import { shownName, useHubs } from '../hubs';
 import { Palette } from '../components/Palette';
 import { Inbox } from '../components/Inbox';
 import { loadSeen, markSeen, recent, Talk, unseen } from '../components/Talk';
@@ -118,21 +117,7 @@ export function Shell() {
 
   // The pane an event is about, as some list already has it.
   const qc = useQueryClient();
-  const known = useCallback(
-    (address: string): Pane | undefined => {
-      const open = qc.getQueryData<PaneContent>(keys.pane(address))?.pane;
-      if (open) return open;
-      const { hub, address: bare } = splitAddress(address);
-      const all = qc.getQueryData<Pane[]>(keys.panesOf(hub))?.find((p) => p.address === address);
-      if (all) return all;
-      const host = bare.split('/')[0];
-      for (const s of qc.getQueryData<Tree>(keys.tree(host, hub))?.sessions ?? [])
-        for (const w of s.windows)
-          for (const p of w.panes) if (p.address === bare) return hub ? { ...p, address, hub } : p;
-      return undefined;
-    },
-    [qc],
-  );
+  const known = useCallback((address: string) => knownPane(qc, address), [qc]);
   const onEvent = useCallback(
     (e: Event, live: boolean) => {
       noteEvent(e.address, e.kind);
