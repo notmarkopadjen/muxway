@@ -197,3 +197,9 @@ describe.
    (closes #286, #287, #288), redeploy after the merge.
 
 ## 9. Run
+
+- 2026-11-04 21:36 UTC, commit 23381cc: `make e2e`, 248 tests, 0 failed,
+  recorded as [#292](https://github.com/notmarkopadjen/muxway/issues/292);
+  the targeted run of spec 120 before it, 20261104-210347 at e62d786, was
+  green on the spec and red on three Go checks that counted the text
+  columns exactly, fixed in 5def017 and 23381cc.
