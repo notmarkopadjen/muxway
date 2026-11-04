@@ -8,7 +8,10 @@ feature phone, a pair of glasses, a script with `curl`. Ask for it with
 ## What it does
 
 - Pane listings come one pane per line, tab-separated: address, mode,
-  command, title, pending attention.
+  command, title, pending attention, unread mail, talk partners, alias,
+  and the folder the pane works in (for a writer, under a preview
+  root). Columns were added at the end over time, so a client reads the
+  ones it knows and ignores the rest.
 - The inbox comes one waiting pane per line, oldest first: address, kind,
   when, the text, and a question's choices joined by `|`, so a feature
   phone can offer them as a numbered menu (see [the inbox](inbox.md)).

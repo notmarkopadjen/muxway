@@ -94,7 +94,7 @@ func (e *env) textRow(tok, address string) []string {
 	// The last row keeps its empty columns: no TrimSpace.
 	for _, line := range strings.Split(strings.TrimSuffix(r.body, "\n"), "\n") {
 		if strings.HasPrefix(line, address+"\t") {
-			if f := strings.Split(line, "\t"); len(f) == 7 {
+			if f := strings.Split(line, "\t"); len(f) == 9 {
 				return f
 			}
 			e.t.Fatalf("row of %s: %q", address, line)
