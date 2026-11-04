@@ -50,7 +50,7 @@ sequenceDiagram
     H-->>P: alice-laptop TAB online TAB sessions|close|ask|mail|later|rename|keys2
     P->>R: GET /v1/panes (text)
     H-->>P: …/work/0.0 TAB write TAB claude TAB ✳ deploy TAB later TAB TAB TAB review TAB TAB permission
-    Note over P: the menu offers + session, Close and Mail only where the flags say so; the row reads zz · !
+    Note over P: the menu offers + session, Close and Mail only where the flags say so, and the row reads zz · !
 ```
 
 ### 2b. The web (#287)

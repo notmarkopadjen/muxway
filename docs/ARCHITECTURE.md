@@ -31,8 +31,11 @@ flowchart LR
 - **Agent** (`muxway agent run`): runs next to a tmux server. It connects
   out to its hub, so a host needs no open port. It answers the hub's
   requests for the panes its owner exposed (list, read, input, resize,
-  split, files, git's view, an answer to a question) and enforces
-  exposure and modes itself. It also listens on a socket for the
+  split, close, a new session, files, the files a pane prints the paths
+  of under its preview roots and the names in a pane's directory, git's
+  view, an answer to a question, a mail for a pane's process, a pane's
+  alias, the owner's *later* mark) and enforces exposure and modes
+  itself. It also listens on a socket for the
   processes in its panes (`muxway notify`, `muxway ask`) and watches the
   screens of the AI harnesses it knows.
 - **Hub** (`muxway hub serve`): the meeting point. It pairs agents,
@@ -49,9 +52,13 @@ flowchart LR
   [muxway-glasses-even](https://github.com/notmarkopadjen/muxway-glasses-even)
   and [muxway-midp](https://github.com/notmarkopadjen/muxway-midp).
 - **Web client**: served by the hub from embedded files at `/`; its
-  tile arrangements and the lens that says what a pane is up to
-  are browser state and never reach the hub; React, plain CSS, polling
-  the API with the session cookie. See
+  tile arrangements, the lens that says what a pane is up to, the order
+  of its tabs and the window view's arrangement are browser state and
+  never reach the hub; React, plain CSS, polling the API with the
+  session cookie. The window view mirrors a tmux window's own layout
+  and moves the panes on the host when every one is writable. With
+  several hubs set up as peers (`--peer`), a browser signed in on each
+  lists every hub's panes on one page. See
   [features/web-client.md](features/web-client.md). What every client
   shows alike, and what belongs to one device, is in
   [ui-guideline.md](ui-guideline.md).
@@ -75,6 +82,31 @@ flowchart LR
   handed over by the harness's hooks, never typed; see
   [features/mail.md](features/mail.md).
 
+- **Input**: text, and a fixed grammar of named keys (`keys: 2`), never
+  a raw escape sequence; the web's keyboard window and the phones' key
+  rows draw keys the grammar has. A client with a microphone sends a
+  clip to the hub, which hands it to a transcriber it was started with
+  and answers the words, for the person to read and send; see
+  [features/keyboard.md](features/keyboard.md),
+  [features/direct.md](features/direct.md) and
+  [features/transcription.md](features/transcription.md).
+- **Files and names**: a host with an inbox takes a file for a pane's
+  program and hands its path to the line; a host with preview roots
+  serves the files a pane prints the paths of, lists a pane's directory
+  for a writer (the shell helper's links and ghost word) and reports
+  git's view of the repository a pane works in; see
+  [features/attachments.md](features/attachments.md),
+  [features/preview.md](features/preview.md),
+  [features/shell-helper.md](features/shell-helper.md) and
+  [features/changes.md](features/changes.md).
+- **Later and names**: the owner parks a pane for later and names it;
+  both are marks kept by the host agent beside the pane, so every
+  client sees them, and an alias is an address (`host/@name`); see
+  [features/notifications.md](features/notifications.md#later) and
+  [features/web-client.md](features/web-client.md#what-a-pane-is-called).
+- **Share**: a writer makes a read-only link with a password for one
+  person, who observes the pane in a browser without a token; see
+  [features/share.md](features/share.md) and the trust boundaries below.
 - **The web client as an app**: the hub serves a manifest and a service
   worker beside the embedded files, so a browser installs the client as
   an app of its own; the worker keeps the client's files on the device
@@ -282,4 +314,63 @@ sequenceDiagram
     A-->>H: ok
     H-->>C: 204
     A-->>P: yes (stdout, exit 0)
+```
+
+### Mail
+
+```mermaid
+sequenceDiagram
+    participant C as Client (or an agent with a token)
+    participant H as Hub
+    participant A as Agent
+    participant P as process in the pane
+    C->>H: POST /v1/panes/alice-laptop/work/1.0/mail with the text and the origin pane
+    H->>H: write grant? pane writable? the origin a pane the token reads? audit
+    H->>A: mail %3, text, actor, origin
+    A->>A: mailbox of %3, unread, audited by length and never by text
+    A-->>H: ok, the mail's id
+    H-->>C: 201 and the id
+    H->>H: a talk entry, so the two panes are a group for every client
+    P->>A: muxway mail (over the socket), or the harness's Stop hook hands it over
+    A-->>P: the mail, marked read
+    P->>A: muxway mail reply ID "text"
+    A->>H: a mail for the origin pane, by the same path
+```
+
+### Transcription
+
+```mermaid
+sequenceDiagram
+    participant C as Client with a microphone
+    participant H as Hub
+    participant S as Transcriber
+    C->>H: GET /v1/transcribe (once per sign-in)
+    H-->>C: 204, there is one
+    C->>H: POST /v1/transcribe, a WAV clip
+    H->>H: a write grant? a WAV under the cap? rate limit, audit of bytes and seconds
+    H->>S: the clip
+    S-->>H: the words
+    H-->>C: the text, onto the input line, nothing sent until the person says so
+```
+
+### Share
+
+```mermaid
+sequenceDiagram
+    participant W as Writer (web)
+    participant H as Hub
+    participant O as Observer (a browser, no token)
+    participant A as Agent
+    W->>H: POST /v1/panes/alice-laptop/work/1.0/shares with a password and a lifetime
+    H-->>W: the link and the code, shown once
+    W->>O: the link and the password, out of band
+    O->>H: GET /s/id, then the password
+    H->>H: a lockout per share, a cookie scoped to that share alone
+    loop while the share lives
+        O->>H: GET /v1/share/id/screen
+        H->>A: read %3, by its id
+        A-->>H: the screen, the agent's marks enforced
+        H-->>O: the screen at the host's size, no input
+    end
+    W->>H: DELETE the share, or its lifetime ends
 ```

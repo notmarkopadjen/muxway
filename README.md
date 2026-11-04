@@ -68,11 +68,27 @@ until you come back. Claude Code is the harness tested daily.</td>
 <tr>
 <td valign="top"><img src="docs/images/icons/keys.png" width="54" alt=""></td>
 <td><strong>Agents drive it too.</strong> <code>muxway client</code> is the API from
-the command line (panes, inbox, read, send, answer, mail, wait, talk), <code>muxway
+the command line (panes, inbox, read, send, answer, mail, later, wait, talk), <code>muxway
 mcp</code> serves the same as MCP tools, and <code>muxway skill</code>
 prints the guide an agent in a pane reads, so an agent on one machine
 can watch, wait on and type into a pane on another, with a token that
 names exactly which.</td>
+</tr>
+<tr>
+<td valign="top"><img src="docs/images/icons/notify.png" width="54" alt=""></td>
+<td><strong>Agents talk, and you see it.</strong> An agent that writes or
+mails to another agent's pane names where it came from, and the two
+panes are framed as one group on every client, like a browser's tab
+group; a message for an agent is mail, held for its process and never
+typed into its prompt, and the messages window shows who said what to
+whom across your machines. Nothing pops up for it.</td>
+</tr>
+<tr>
+<td valign="top"><img src="docs/images/icons/tiles.png" width="54" alt=""></td>
+<td><strong>Share a pane, read-only, for a while.</strong> A link and a
+password for one person, with the link as a code to send: they watch
+the agent work in their browser, at the host's size, with the changes
+and the file you open over it, and type nothing. Revoke it when done.</td>
 </tr>
 <tr>
 <td valign="top"><img src="docs/images/icons/clients.png" width="54" alt=""></td>
@@ -108,7 +124,8 @@ into. Input is text and a fixed grammar of keys, never raw escapes.
 Every authentication step is rate limited and locked out, every write is
 audit logged on the host, secrets are hashed, compared in constant time
 and never logged. One Go binary per role, one third-party dependency,
-no cgo.
+no cgo. How a pane is exposed, and what that means: [exposing
+panes](docs/features/exposing-panes.md).
 
 **Anything that can speak HTTP is a client.** The clients prove it: a
 React web app served by the hub itself, an Android app with a Wear OS
@@ -154,7 +171,7 @@ muxway hub pair-code --host alice-laptop
 muxway agent pair <code>
 muxway agent run &
 muxway expose -t work:1.0 --write --name build   # or run the agent with --expose work=write
-muxway hooks claude-code   # hooks so Claude Code in a pane can call for you (also codex, gemini, copilot, opencode)
+muxway hooks claude-code   # hooks so Claude Code in a pane can call for you (also codex, gemini, agy, copilot, opencode)
 
 # back on the hub: a token for a client
 muxway hub token create --name phone --read 'alice-laptop/*' --write 'alice-laptop/@build'
@@ -186,7 +203,7 @@ muxway skill > .claude/skills/muxway/SKILL.md                          # the gui
 
 And with a token of its own, narrow as you like, an agent drives muxway
 back: `muxway client panes | inbox | read | send | key | answer | mail |
-mailbox | wait | events | talk`, or the same as MCP tools with `muxway
+mailbox | later | wait | events | talk`, or the same as MCP tools with `muxway
 mcp`, so an agent on one machine can watch, wait on and type into a pane
 on another. A message for another agent is mail, held for that pane's
 process and never typed: it reads it with `muxway mail`, or its Stop
@@ -201,14 +218,15 @@ exchange in the messages window. See
 
 ## The web client
 
-The client installs as an app from the browser (a manifest and a
-service worker that keeps the client's own files, never the hub's
-answers): a standalone window with its icon on Android, desktop and the
-iPhone, and a shell that opens with no network and says the hub is
-unreachable. See [the web client](docs/features/web-client.md#installing-it).
+Served by the hub, nothing to install; and it installs as an app from
+the browser when you want one (a manifest and a service worker that
+keeps the client's own files, never the hub's answers): a standalone
+window with its icon on Android, desktop and the iPhone, and a shell
+that opens with no network and says the hub is unreachable. See [the
+web client](docs/features/web-client.md#installing-it).
 
-Served by the hub, nothing to install. The pane list groups every host
-you may reach; a badge marks a pane that needs you.
+The pane list groups every host you may reach; a badge marks a pane
+that needs you.
 
 ![The pane list: two hosts, their sessions and windows, an AI agent's pane waiting for a permission](docs/images/panes.png)
 
@@ -232,6 +250,17 @@ without a keystroke in its pane.
 | The inbox | A question with fixed answers |
 |---|---|
 | ![the inbox window: two waiting panes, oldest first](docs/features/images/web-inbox.png) | ![a toast with a question and its three choices as buttons](docs/features/images/web-choices.png) |
+
+Name a pane (`N`): the name is shown first on every client and is an
+address for agents (`alice-laptop/@review`), and the folder the pane
+works in follows it. Panes that talked lately share one frame; `T`
+opens the messages window, `M` a pane's mail, `L` lays the partner
+beside. `g` docks git's view of the pane's repository to its tile, a
+click on a file its diff. In a shell pane the names of its directory
+are links (a click enters a directory or opens a file) and the rest of
+a line you typed before is offered after the cursor. `w` opens the
+window view, the host's own layout of a window; `H` lists the other
+hubs this browser knows, every one's panes in one list.
 
 Amber by default; phosphor green, and paper for daylight.
 
@@ -277,9 +306,9 @@ The features: [web client](docs/features/web-client.md),
 
 | Client | What it does | Get it |
 |---|---|---|
-| [**muxway-android**](https://github.com/notmarkopadjen/muxway-android) | Panes on a phone, one per screen or side by side, set up by scanning a code. A Wear OS watch face, complication and tile show which panes wait; a tap opens a pane's tail on the wrist with a few answers and the microphone. | [Latest APKs](https://github.com/notmarkopadjen/muxway-android/releases/latest): the app, the watch app and the watch face |
-| [**muxway-glasses-even**](https://github.com/notmarkopadjen/muxway-glasses-even) | Even Realities G2: the pane list at a glance, a pane through the Claude Code lens, a banner when it needs you, and a reply from a fixed set or by voice. | On the Even Hub: to be provided. Until then, pack it yourself |
-| [**muxway-midp**](https://github.com/notmarkopadjen/muxway-midp) | Java ME, MIDP 1.0 and 2.0: list, read, reply and send keys from a Nokia 6310i over GPRS, through a small relay. | [Latest JARs](https://github.com/notmarkopadjen/muxway-midp/releases/latest): MIDP 2.0 and MIDP 1.0 |
+| [**muxway-android**](https://github.com/notmarkopadjen/muxway-android) | Panes on a phone, one per screen or up to four side by side, set up by scanning a code, several hubs at once. The inbox, later, names, the talk frames with the mail and messages sheets, the changes and file sheets, the share sheet, the mail and the microphone, as on the web. A Wear OS watch face, complication and tile show which panes wait; a tap opens a pane's tail on the wrist with a few answers and the microphone. | [Latest APKs](https://github.com/notmarkopadjen/muxway-android/releases/latest): the app, the watch app and the watch face |
+| [**muxway-glasses-even**](https://github.com/notmarkopadjen/muxway-glasses-even) | Even Realities G2: the pane list at a glance with the names, the talk bars and the mail counts, two or three panes in columns, a pane through the Claude Code lens, a banner when it needs you, the inbox page, a question's choices and a reply from a fixed set or by voice, a pane parked for later. | On the Even Hub: to be provided. Until then, pack it yourself |
+| [**muxway-midp**](https://github.com/notmarkopadjen/muxway-midp) | Java ME, MIDP 1.0 and 2.0: list, read, reply and send keys from a Nokia 6310i over GPRS, through a small relay; on the 2.0 build the inbox with a question's choices, later, the names and folders, the talk edge and the mail counts, a picture from the camera onto the line. | [Latest JARs](https://github.com/notmarkopadjen/muxway-midp/releases/latest): MIDP 2.0 and MIDP 1.0 |
 
 | Even Realities G2: Claude Code through the lens | Nokia 6310i, 96 by 65 pixels: the same lens |
 |---|---|
