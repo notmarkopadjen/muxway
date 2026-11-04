@@ -113,7 +113,7 @@ func TestNamedExt(t *testing.T) {
 		"x.png/":              "",
 		"dir.d/file":          "",
 		"shot.jpeg":           "jpeg",
-		"weird.é":        "",
+		"weird.é":             "",
 		"20261025-102235.txt": "txt",
 	} {
 		if got := NamedExt(name); got != ext {
