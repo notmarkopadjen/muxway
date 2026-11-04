@@ -238,7 +238,8 @@ Several agents call at once, and some of them can wait: the owner has
 looked, decided not now, and wants the pane out of the way without
 losing it. **Later** is that decision, made on a pane from any client:
 its tab goes to the end of the strip with a sleeping mark (`☾`, or `zz`
-where a font has no moon), it stops calling (no toast, no pulse, no
+where a font has no moon), its name leans in the pane's header (italics,
+where the font has them), it stops calling (no toast, no pulse, no
 flash), and it counts among the done panes rather than the pressing
 ones, in the inbox last, until the owner opens it again or wakes it on
 purpose.

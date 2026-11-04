@@ -185,7 +185,8 @@ stateDiagram-v2
     Connecting --> Handshake: TLS + WebSocket up
     Handshake --> Ready: both signatures valid
     Handshake --> Backoff: invalid or timeout
-    Ready --> Backoff: connection lost
+    Ready --> Connecting: lost after 5 s or more, retried at once
+    Ready --> Backoff: lost within 5 s
     Backoff --> Connecting: 1 s doubling to 60 s, with jitter
 ```
 
