@@ -1772,6 +1772,9 @@ button.mx-window:focus-visible {
   overflow: auto;
   padding: 2px 0 4px;
 }
+.mx-changes[data-observed] .mx-change-row:not(.mx-change-dir) {
+  cursor: default;
+}
 .mx-changes-body > .mx-dim {
   display: block;
   padding: 4px 6px;

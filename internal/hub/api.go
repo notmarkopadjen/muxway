@@ -55,6 +55,8 @@ func (h *Hub) routes() http.Handler {
 	mux.HandleFunc("DELETE /v1/shares/{id}", h.withPrincipal(h.handleShareRevoke))
 	mux.HandleFunc("PUT /v1/share/{id}/showing", h.withPrincipal(h.handleShowingPut))
 	mux.HandleFunc("DELETE /v1/share/{id}/showing", h.withPrincipal(h.handleShowingDelete))
+	mux.HandleFunc("PUT /v1/share/{id}/changes", h.withPrincipal(h.handleChangesPut))
+	mux.HandleFunc("DELETE /v1/share/{id}/changes", h.withPrincipal(h.handleChangesDelete))
 	mux.HandleFunc("GET /v1/share/{id}", h.handleShareProbe)
 	mux.HandleFunc("POST /v1/share/{id}/open", h.handleShareOpen)
 	mux.HandleFunc("GET /v1/share/{id}/pane", h.withObserver(h.handleSharePane))

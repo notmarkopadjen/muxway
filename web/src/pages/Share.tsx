@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../api/client';
 import { openShare, pollShowing, probeShare, readSharedPane, showingFile } from '../api/shares';
-import type { Showing } from '../api/types';
+import type { SharedChanges, Showing } from '../api/types';
 import { Box } from '../components/Box';
+import { ChangesWindow } from '../components/Changes';
 import { FileWindow, gotOf, type Got } from '../components/FileWindow';
 import { PaneTitle } from '../components/PaneTitle';
 import { Screen } from '../term/Screen';
@@ -12,8 +13,9 @@ import { setHeading } from '../shell/heading';
 
 // The observer's view of a shared pane: the password once, then the
 // screen at the size the host has, scaled to the box, with the web links
-// in it and the window the owner opens over it. No input, no strip, no
-// buttons: this page can only look.
+// in it and the windows the owner opens over it: the changes window
+// docked to its edge, a file or a diff over the whole. No input, no
+// strip, no buttons: this page can only look.
 
 function until(at: number): string {
   return new Date(at * 1000).toLocaleString([], {
@@ -81,39 +83,53 @@ function Password({ id, onOpen }: { id: string; onOpen: () => void }) {
   );
 }
 
-// The owner's window, as the hub relays it: the meta from the long poll,
-// the bytes fetched once per revision.
+// The owner's windows, as the hub relays them: the meta and the changes
+// from the long poll, the file's bytes fetched once per revision.
+interface ObservedState {
+  rev: number;
+  showing: Showing | null;
+  changes: SharedChanges | null;
+  got: Got | null;
+}
+
 function useObserved(id: string, on: boolean) {
-  const [state, setState] = useState<{ rev: number; showing: Showing | null; got: Got | null }>({
+  const [state, setState] = useState<ObservedState>({
     rev: 0,
     showing: null,
+    changes: null,
     got: null,
   });
   const url = useRef<string | null>(null);
   useEffect(() => {
     if (!on) return;
     let stopped = false;
-    let rev = 0;
+    let have: ObservedState = { rev: 0, showing: null, changes: null, got: null };
+    const set = (s: ObservedState) => {
+      have = s;
+      setState(s);
+    };
     const ctl = new AbortController();
     (async () => {
       while (!stopped) {
         try {
-          const r = await pollShowing(id, rev, ctl.signal);
+          const r = await pollShowing(id, have.rev, ctl.signal);
           if (stopped) return;
-          if (r.rev === rev) continue;
-          rev = r.rev;
-          if (url.current) URL.revokeObjectURL(url.current);
-          url.current = null;
-          if (!r.showing) {
-            setState({ rev, showing: null, got: null });
+          if (r.rev === have.rev) continue;
+          // The bytes are fetched once per change of the file; a revision
+          // that moved only the view or the changes window keeps them.
+          if (r.showing && have.got && have.showing?.file_rev === r.showing.file_rev) {
+            set({ rev: r.rev, showing: r.showing, changes: r.changes, got: have.got });
             continue;
           }
-          setState({ rev, showing: r.showing, got: null });
+          if (url.current) URL.revokeObjectURL(url.current);
+          url.current = null;
+          set({ rev: r.rev, showing: r.showing, changes: r.changes, got: null });
+          if (!r.showing) continue;
           const blob = await showingFile(id);
           if (stopped) return;
           url.current = URL.createObjectURL(blob);
           const got = await gotOf(blob, url.current);
-          if (!stopped) setState({ rev, showing: r.showing, got });
+          if (!stopped) set({ ...have, got });
         } catch (err) {
           if (stopped || (err as Error).name === 'AbortError') return;
           if (err instanceof ApiError && (err.status === 401 || err.status === 404)) return;
@@ -169,6 +185,8 @@ export function SharePage() {
   if (probe.isError) return <div className="mx-empty">the hub could not be reached.</div>;
   if (!opened) return <Password id={id} onOpen={() => setOpened(true)} />;
   const showing = observed.showing;
+  const changes = observed.changes;
+  const nothing = () => undefined;
   return (
     <div className="mx-share" data-testid="share-view">
       <div className="mx-share-head">
@@ -197,6 +215,16 @@ export function SharePage() {
           bounds={p && { cols: p.width, rows: p.height }}
           testId="share-screen"
         />
+        {changes && (
+          <ChangesWindow
+            address={p?.address ?? ''}
+            folded={!!changes.folded}
+            onFold={nothing}
+            onClose={nothing}
+            onOpen={nothing}
+            observed={{ data: changes }}
+          />
+        )}
       </div>
       {showing && (
         <FileWindow

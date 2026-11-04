@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/notmarkopadjen/muxway/internal/wire"
 )
 
 func TestSharePasswords(t *testing.T) {
@@ -82,6 +84,27 @@ func showingBody(t *testing.T, meta string, typ string, data []byte) (*http.Requ
 	r := httptest.NewRequest("PUT", "/v1/share/x/showing", &buf)
 	r.Header.Set("Content-Type", mw.FormDataContentType())
 	return r, httptest.NewRecorder()
+}
+
+func TestValidChanges(t *testing.T) {
+	ok := wire.Changes{Root: "/home/alice/work", Branch: "main", Entries: []wire.Change{{Path: "a.go", Kind: "modified"}, {Path: "b", From: "c", Kind: "renamed"}, {Path: "quo\"te\n\t.txt", Kind: "untracked"}}}
+	if !validChanges(ok) {
+		t.Fatal("a listing as the agent gives it")
+	}
+	bad := []wire.Changes{
+		{Root: "", Branch: "main"},
+		{Root: "/w", Branch: "ma\x01in"},
+		{Root: "/w", Branch: "main", Ahead: -1},
+		{Root: "/w", Branch: "main", Entries: []wire.Change{{Path: "a", Kind: "edited"}}},
+		{Root: "/w", Branch: "main", Entries: []wire.Change{{Path: "", Kind: "added"}}},
+		{Root: "/w", Branch: "main", Entries: []wire.Change{{Path: "a", From: "b\x7f", Kind: "renamed"}}},
+		{Root: "/w", Branch: "main", Entries: make([]wire.Change, wire.MaxChanges+1)},
+	}
+	for i, c := range bad {
+		if validChanges(c) {
+			t.Fatalf("bad %d taken", i)
+		}
+	}
 }
 
 func TestReadShowing(t *testing.T) {

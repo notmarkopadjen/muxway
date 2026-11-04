@@ -238,7 +238,7 @@ func TestSec204_TheShowingIsTheSharersAlone(t *testing.T) {
 	expect(t, put(full, ct, body), http.StatusNoContent, "the sharer")
 	r := e.observe(cookie, "GET", "/v1/share/"+sh.ID+"/showing?after=0&wait=5")
 	expect(t, r, http.StatusOK, "the observer's showing")
-	if !strings.Contains(r.body, `"rev":1`) || !strings.Contains(r.body, `"kind":"diff"`) || !strings.Contains(r.body, `"bytes":15`) {
+	if !strings.Contains(r.body, `"rev":1`) || !strings.Contains(r.body, `"kind":"diff"`) || !strings.Contains(r.body, `"bytes":15`) || !strings.Contains(r.body, `"file_rev":1`) {
 		t.Fatal(r.body)
 	}
 	f := e.observe(cookie, "GET", "/v1/share/"+sh.ID+"/showing/file")
@@ -249,7 +249,7 @@ func TestSec204_TheShowingIsTheSharersAlone(t *testing.T) {
 	ct, body = showingBody(`{"kind":"diff","path":"src/a.go","view":"file"}`, "", nil)
 	expect(t, put(full, ct, body), http.StatusNoContent, "the view alone")
 	r = e.observe(cookie, "GET", "/v1/share/"+sh.ID+"/showing?after=1")
-	if !strings.Contains(r.body, `"rev":2`) || !strings.Contains(r.body, `"view":"file"`) {
+	if !strings.Contains(r.body, `"rev":2`) || !strings.Contains(r.body, `"view":"file"`) || !strings.Contains(r.body, `"file_rev":1`) {
 		t.Fatal(r.body)
 	}
 	expect(t, e.do("DELETE", full, "/v1/share/"+sh.ID+"/showing", "", ""), http.StatusNoContent, "cleared")
@@ -258,6 +258,51 @@ func TestSec204_TheShowingIsTheSharersAlone(t *testing.T) {
 		t.Fatal(r.body)
 	}
 	expect(t, e.observe(cookie, "GET", "/v1/share/"+sh.ID+"/showing/file"), http.StatusNotFound, "no file once cleared")
+}
+
+// 208
+func TestSec208_TheChangesWindowIsTheSharersAlone(t *testing.T) {
+	e, _, full, _ := shareEnv(t)
+	_, sh := e.share(full, shell0, `{}`)
+	_, cookie := e.open(sh.ID, sh.Password)
+	other := e.token("other", []string{host + "/*"}, []string{host + "/*"})
+	good := `{"root":"/home/alice/work","branch":"main","ahead":1,"entries":[{"path":"src/a.go","kind":"modified"},{"path":"b.txt","kind":"untracked"}],"folded":false}`
+	put := func(tok, body string) resp {
+		return e.do("PUT", tok, "/v1/share/"+sh.ID+"/changes", "", body, "Content-Type", "application/json")
+	}
+	expect(t, put(other, good), http.StatusNotFound, "another writer")
+	expect(t, e.do("PUT", "", "/v1/share/"+sh.ID+"/changes", "", good, "Content-Type", "application/json", "Cookie", shareCookie+"="+cookie, clientHeader, "e2e"), http.StatusUnauthorized, "the observer")
+	expect(t, put(full, `{"root":"/home/alice/work","branch":"main","entries":[{"path":"a","kind":"edited"}]}`), http.StatusBadRequest, "a kind outside the list")
+	expect(t, put(full, "{\"root\":\"/home/alice/work\",\"branch\":\"ma\u0001in\",\"entries\":[]}"), http.StatusBadRequest, "a control character in the branch")
+	expect(t, put(full, `{"root":"","branch":"main","entries":[]}`), http.StatusBadRequest, "no root")
+	expect(t, put(full, `{"root":"/home/alice/work","branch":"main","entries":[],"extra":1}`), http.StatusBadRequest, "a field outside the listing")
+	expect(t, put(full, `not json`), http.StatusBadRequest, "not JSON")
+	big := `{"root":"/home/alice/work","branch":"main","entries":[` + strings.Repeat(`{"path":"`+strings.Repeat("a", 1000)+`","kind":"added"},`, 1100) + `{"path":"z","kind":"added"}]}`
+	expect(t, put(full, big), http.StatusRequestEntityTooLarge, "over a MiB")
+	expect(t, put(full, good), http.StatusNoContent, "the sharer")
+	r := e.observe(cookie, "GET", "/v1/share/"+sh.ID+"/showing?after=0&wait=5")
+	expect(t, r, http.StatusOK, "the observer's poll")
+	if !strings.Contains(r.body, `"rev":1`) || !strings.Contains(r.body, `"showing":null`) || !strings.Contains(r.body, `"branch":"main"`) || !strings.Contains(r.body, `"path":"src/a.go"`) || strings.Contains(r.body, `"folded"`) {
+		t.Fatal(r.body)
+	}
+	expect(t, put(full, strings.Replace(good, `"folded":false`, `"folded":true`, 1)), http.StatusNoContent, "folded")
+	r = e.observe(cookie, "GET", "/v1/share/"+sh.ID+"/showing?after=1")
+	if !strings.Contains(r.body, `"rev":2`) || !strings.Contains(r.body, `"folded":true`) {
+		t.Fatal(r.body)
+	}
+	// A showing beside it: both are in the answer, and each clears alone.
+	ct, body := showingBody(`{"kind":"diff","path":"src/a.go","view":"diff"}`, "text/plain", []byte("+ added\n"))
+	expect(t, e.do("PUT", full, "/v1/share/"+sh.ID+"/showing", "", body, "Content-Type", ct), http.StatusNoContent, "a showing too")
+	r = e.observe(cookie, "GET", "/v1/share/"+sh.ID+"/showing?after=2")
+	if !strings.Contains(r.body, `"rev":3`) || !strings.Contains(r.body, `"kind":"diff"`) || !strings.Contains(r.body, `"branch":"main"`) {
+		t.Fatal(r.body)
+	}
+	expect(t, e.do("DELETE", full, "/v1/share/"+sh.ID+"/changes", "", ""), http.StatusNoContent, "cleared")
+	r = e.observe(cookie, "GET", "/v1/share/"+sh.ID+"/showing?after=3")
+	if !strings.Contains(r.body, `"rev":4`) || !strings.Contains(r.body, `"changes":null`) || !strings.Contains(r.body, `"kind":"diff"`) {
+		t.Fatal(r.body)
+	}
+	expect(t, e.do("DELETE", other, "/v1/share/"+sh.ID+"/changes", "", ""), http.StatusNotFound, "another writer clears nothing")
 }
 
 // 205

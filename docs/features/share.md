@@ -4,8 +4,9 @@ Someone should see what an agent is doing in a pane, for a while, without
 a token: a reviewer, a colleague on a call, a friend watching a build. A
 **share** is a link and a password, sent apart, that open one pane's
 screen in a browser, read only, at the size the owner's clients gave it,
-with the web addresses in it live and the file or diff the owner opens
-over it shown too. Nothing else of the hub is reachable through it.
+with the web addresses in it live and the windows the owner opens over
+it shown too: the changes window, a file, a diff. Nothing else of the
+hub is reachable through it.
 
 ![the share window: link, password, code](images/web-share-window.png)
 
@@ -30,20 +31,28 @@ The observer opens the link, `https://hub.example.com/s/<id>`, gives
 the password, and sees the **observer's view**: the brand, one header
 row naming the pane as the owner's tab does with `read only · shared ·
 until <time>`, and the screen under it, with the page's look. No tab
-strip, no pane buttons, no profile, no input line, no key bar: `t` and
-`m` are the only keys. The screen is drawn at the size the host has,
+strip, no pane buttons, no profile, no input line, no key bar: `t`,
+`m` and `?` are the only keys, the status bar says so, and the help
+lists those three with the theme and effects toggles and nothing of the
+pane view. The screen is drawn at the size the host has,
 which is the size the owner's fit gave it, scaled to the observer's
 window, so the observer sees exactly the owner's columns and rows. A
 web address in the text, and an OSC 8 link to `http` or `https`, is a
 link as in the pane view; a path of the inbox or of the host's preview
-roots is text. When the owner opens a file or a diff over the pane, the
-observer's page opens the same window: the path, the size, the content
+roots is text. When the owner opens the changes window over the pane,
+the observer's page opens the same, docked to the screen's right edge:
+the branch and the counts in its bar, the tree of changed paths with
+their marks, folded to its bar when the owner's is, with *as shown* in
+place of the fold and close buttons; a click on a path there opens
+nothing. When the owner opens a file or a diff, the observer's page
+opens the same window over the whole: the path, the size, the content
 as the owner sees it (Markdown rendered or plain, code with its
 colours, a diff with its rows, an image, a PDF), with no download, no
-switch and no close; it closes when the owner's does. When the share
+switch and no close. Each closes when the owner's does. When the share
 ends the page says `this share has ended` over the last screen.
 
 ![the observer's view](images/web-share-view.png)
+![the owner's changes window, shown to the observer](images/web-share-showing-changes.png)
 ![the owner's diff, shown to the observer](images/web-share-showing-diff.png)
 
 A share ends when its lifetime is up (never past the sharer's own
@@ -96,11 +105,15 @@ sequenceDiagram
         H-->>V: the screen, the pane's size, ETag
     end
     V->>H: GET /v1/share/<id>/showing?after=0&wait=25
-    O->>H: PUT /v1/share/<id>/showing (the diff the owner opened)
-    H-->>V: {rev 1, showing {kind diff, path, view, type, bytes}}
+    O->>H: PUT /v1/share/<id>/changes (the changes window the owner opened)
+    H-->>V: {rev 1, showing null, changes {root, branch, entries, folded}}
+    O->>H: PUT /v1/share/<id>/showing (the diff the owner opened from it)
+    H-->>V: {rev 2, showing {kind diff, path, view, type, bytes, file_rev}, changes {...}}
     V->>H: GET /v1/share/<id>/showing/file
     O->>H: DELETE /v1/share/<id>/showing
-    H-->>V: {rev 2, showing null}
+    H-->>V: {rev 3, showing null, changes {...}}
+    O->>H: DELETE /v1/share/<id>/changes
+    H-->>V: {rev 4, showing null, changes null}
 ```
 
 The owner's page relays what its file window shows: the kind (`file`
@@ -108,9 +121,17 @@ or `diff`), the path, the view and the bytes it already holds, up to 8
 MiB, to each live share of the pane; a change of the view alone sends
 the meta; the window's closing clears it; and the page says again every
 five minutes that the window is open, since the hub drops a showing
-that has not been refreshed for ten. The hub reads nothing from the
-host for the observer: the bytes come from the owner's browser, which
-had them under the owner's write grant.
+that has not been refreshed for ten. The owner's changes window relays
+the same way, to a slot of its own: the listing as the host gave it,
+with the root cut to the repository's name, and whether the window is
+folded, as JSON up to 1 MiB, sent when either changes and again every
+five minutes, cleared when the window closes.
+The observer's long poll answers both slots at once, under one
+revision; the showing says at which revision its bytes last changed, so
+the observer's page fetches a file once and keeps it while only the
+view or the changes window moves. The hub reads nothing from the host for the observer: the
+bytes and the listing come from the owner's browser, which had them
+under the owner's write grant.
 
 Protocol: [the share section](../protocol/v1.md#shares) of the
 protocol page.
@@ -118,8 +139,9 @@ protocol page.
 ## Security considerations
 
 - **What an attacker gains.** With the link and the password: one
-  pane's screen, read only, for the share's life, and the files the
-  owner chooses to open over it. With the link alone: the knowledge
+  pane's screen, read only, for the share's life, and the windows the
+  owner chooses to open over it: the changes window (the repository's
+  name and branch, its changed paths), a file, a diff. With the link alone: the knowledge
   that a share exists, and ten guesses before it burns, each counted
   toward the address lockout. With the password alone: nothing. With a
   share cookie: the same as the password, until the share ends; the
@@ -156,6 +178,12 @@ protocol page.
   share. A text must be UTF-8 without control bytes, an image or a PDF
   must sniff as itself, HTML is refused; the observer's page builds
   elements from its own parse, never from HTML.
+- **The changes window.** Its own slot, the same way: JSON up to 1 MiB
+  with no field outside the listing, a root and a branch without
+  control characters, each entry a path of a known kind (a tab or a
+  newline in a file's name is git's, and is drawn as text), at most
+  the host's own cap of entries. The observer's page draws rows from
+  the parsed fields, never from markup.
 - **The cookie.** `muxway_share`, `HttpOnly`, `Secure`,
   `SameSite=Strict`, `Path=/v1/share/<id>`, honoured only with the
   client header; the share's endpoints are not in the CORS list, so no
@@ -164,7 +192,8 @@ protocol page.
   expiry, the share's handle: a separate random name, never the id),
   each open and each failure (handle, address), a burn, a revoke, an
   expiry, the pane gone, each showing (handle, kind, view, bytes, the
-  path's length) and its clearing. Never the password, the id, the
+  path's length), each changes window (handle, the count of entries,
+  folded) and their clearing. Never the password, the id, the
   cookie, the screen or the file. The agent is asked to read with the
   sharer's name and the share's handle as the actor.
 - **Limits.** Twenty live shares per principal, two hundred per hub, a

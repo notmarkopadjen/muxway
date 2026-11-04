@@ -265,6 +265,12 @@ export interface Showing {
   view: ShowingView;
   type: string;
   bytes: number;
+  file_rev: number; // the revision the bytes last changed at
+}
+
+// The changes window the sharer's page has open, as the observer learns it.
+export interface SharedChanges extends Changes {
+  folded?: boolean;
 }
 
 // The shared pane as its observer reads it.

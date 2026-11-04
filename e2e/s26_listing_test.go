@@ -155,7 +155,8 @@ func TestSec185_OnlyADirectoryUnderARootIsListed(t *testing.T) {
 	if !strings.Contains(s, "op=list-dir") || !strings.Contains(s, "result=no_file") {
 		t.Fatal("the agent did not audit its refusals")
 	}
-	if strings.Contains(s, "shot.png") || strings.Contains(s, "bad") {
+	// both spellings of the quoted name; a bare "bad" matches a hex actor handle
+	if strings.Contains(s, "shot.png") || strings.Contains(s, "bad\nname") || strings.Contains(s, `bad\nname`) {
 		t.Fatal("a name in the log")
 	}
 }

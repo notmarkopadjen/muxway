@@ -401,3 +401,69 @@ Deviations:
   does not touch and which passed in the full run before it (the one
   that caught spec 90's count of the pane buttons).
 - `115-ghost` alone, same tree: [#242](https://github.com/notmarkopadjen/muxway/issues/242), passed.
+
+---
+
+## Follow-up 2026-11-04: the observer's bar and help, the changes window
+
+Two findings by the owner on the deployed feature, filed as
+[#277](https://github.com/notmarkopadjen/muxway/issues/277) and
+[#278](https://github.com/notmarkopadjen/muxway/issues/278), fixed
+together; the owner asked for the fix at once, without a plan round.
+
+**The observer's status bar and help (#277).** The bar read `? help ·
+t theme · / filter` and `?` opened the pane view's whole help. On
+`/s/…` the bar now reads `? help · t theme · m effects`, the help lists
+`t`, `m` and `?` with the theme and effects toggles and *close*, and
+`H` opens no hubs window (the header already hid its button there).
+
+**The changes window (#278).** The owner's words in section 1 were
+"the diff window and the file preview": the changes window was part of
+the ask and the relay covered the file window alone. Design:
+
+- The hub holds a second slot per share, the changes window: `PUT` and
+  `DELETE /v1/share/{id}/changes` by the sharer, the listing as JSON
+  (`root`, `branch`, `ahead`, `behind`, `truncated`, `entries`) with
+  `folded`. Validated as the agent would give it: no field outside the
+  listing, a root, a branch and each path without control characters
+  and under 1024 bytes, a kind among the six, at most 2000 entries, the
+  body at most 1 MiB (`413`). Logged `audit changes` with the handle,
+  the count of entries and the folding, never a path.
+- The observer's long poll answers `{"rev", "showing", "changes"}`,
+  one revision for both slots, so the page needs no second poll. The
+  changes slot goes stale and is dropped as the showing is, ten
+  minutes after the last `PUT`.
+- The owner's changes window relays its listing when it changes and
+  its folding when that does, says so again every five minutes, and
+  clears on close; a pane that leaves the repository clears too.
+- The observer's page draws the same window docked to the screen's
+  right edge: *as shown* in place of fold and close, folded when the
+  owner's is, directories foldable by the observer alone, a file row
+  that opens nothing and asks for nothing. The file or diff the owner
+  opens from it goes over it, as for the owner. The page keeps a file's
+  bytes across a revision that changed only the changes window or the
+  view, so folding the tree does not fetch the diff again.
+
+Security: the changes slot is the sharer's alone, under the same write
+grant check as the showing; the observer's endpoints stay six, and the
+observer's page builds rows from parsed fields, never from markup.
+
+Tests: `TestSec208` (another writer `404`, the observer `401`, a kind
+outside the list, a control character, no root, a field outside the
+listing, not JSON `400`, over a MiB `413`, the poll carries both slots,
+each clears alone), `TestValidChanges` (unit), and spec 119 (the bar,
+the help, `H`; the observer's window follows, folds, opens nothing,
+goes with the owner's; screenshots `119-share-help`,
+`119-share-showing-changes`).
+
+Docs: the feature page, the protocol page (two rows and the poll
+answer), the guideline's observer row.
+
+### Test run
+
+- Lint, unit tests, the dist check, the Go end-to-end suite and spec
+  119 on `6f5de10`: [#280](https://github.com/notmarkopadjen/muxway/issues/280),
+  246 tests, none failed, 5 skipped. A first run on the same change
+  was red: the fixture's file named with a newline made the hub refuse
+  the whole listing, which is why a change's path may hold a tab or a
+  newline.

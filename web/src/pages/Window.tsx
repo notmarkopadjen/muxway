@@ -400,6 +400,7 @@ export function WindowPage() {
     ? [...panes.values()].map((pc) => pc.pane).find((q) => q.address === shown.address)
     : undefined;
   const shownShares = sharesOf(shares.data, shownPane).map((sh) => sh.id);
+  const focusedShares = sharesOf(shares.data, focusedPane).map((sh) => sh.id);
   const [showing, setShowing] = useState(false);
   const show = useCallback((s: Shown) => {
     setShown(s);
@@ -875,6 +876,7 @@ export function WindowPage() {
                         change: { kind: c.kind, root },
                       })
                     }
+                    relay={focusedShares.length ? { ids: focusedShares } : undefined}
                   />
                 </Closing>
               ) : undefined

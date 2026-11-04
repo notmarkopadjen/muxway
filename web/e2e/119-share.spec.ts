@@ -3,8 +3,8 @@ import { control, openPane, profile, RO_TOKEN, settled, SHELL0, shot, signIn } f
 
 // A pane shared read-only: the owner makes a link and a password in the
 // share window; the observer opens the link, gives the password, and
-// sees the screen at the host's size, the web links in it and the file or
-// diff the owner opens over it, and nothing else.
+// sees the screen at the host's size, the web links in it, the changes
+// window and the file or diff the owner opens over it, and nothing else.
 
 const PREVIEW = process.env.MX_PREVIEW ?? '';
 const ADMIN = process.env.MX_ADMIN_TOKEN ?? '';
@@ -108,6 +108,20 @@ test('119 security: the observer has no input, no links to files, and nothing bu
   await screen.click();
   await viewer.waitForTimeout(800);
   expect(inputs).toEqual([]);
+  // The status bar offers the look alone; the help lists what the
+  // observer can use and nothing of the pane view; H opens no hubs.
+  await expect(viewer.getByTestId('status-keys')).toHaveText('? help · t theme · m effects');
+  await viewer.keyboard.press('?');
+  const help = viewer.getByTestId('help');
+  await expect(help).toBeVisible();
+  await expect(help.locator('dt')).toHaveText(['t', 'm', '?']);
+  await expect(help.locator('.mx-toggles button')).toHaveText([/^theme: /, /^effects: /, 'close']);
+  await shot(viewer, info, '119-share-help');
+  await viewer.keyboard.press('Escape');
+  await expect(help).toHaveCount(0, { timeout: 3000 });
+  await viewer.keyboard.press('H');
+  await viewer.waitForTimeout(300);
+  await expect(viewer.getByTestId('hubs')).toHaveCount(0);
   // The observer's cookie opens nothing of the API: a listing is refused.
   const refused = await viewer.evaluate(async () => {
     const r = await fetch('/v1/panes', { headers: { 'X-Muxway-Client': 'web' } });
@@ -226,18 +240,50 @@ test('119 the observer sees the host size, and the file or diff the owner opens,
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('picture')).toHaveCount(0, { timeout: 3000 });
   await expect(theirs).toHaveCount(0, { timeout: 5000 });
-  // A diff from the changes window.
+  // The changes window: the observer's follows, folds with the owner's,
+  // and a click on one of its rows opens nothing and asks for nothing.
+  const asked: string[] = [];
+  viewer.on('request', (r) => {
+    if (/\/git|\/preview/.test(r.url())) asked.push(r.url());
+  });
   await page.keyboard.press('g');
   await expect(page.getByTestId('changes-window')).toBeVisible();
+  const theirChanges = viewer.getByTestId('changes-window');
+  await expect(theirChanges).toBeVisible({ timeout: 5000 });
+  await expect(theirChanges).toHaveAttribute('data-observed', '');
+  await expect(theirChanges.locator('[data-testid="change"][data-path="src/a.go"]')).toBeVisible();
+  await expect(viewer.getByTestId('changes-where')).toHaveText(
+    (await page.getByTestId('changes-where').textContent()) ?? '',
+  );
+  await expect(viewer.getByTestId('changes-counts')).toHaveText(
+    (await page.getByTestId('changes-counts').textContent()) ?? '',
+  );
+  for (const id of ['changes-fold', 'changes-close'])
+    await expect(viewer.getByTestId(id)).toHaveCount(0);
+  await shot(viewer, info, '119-share-showing-changes');
+  await page.getByTestId('changes-fold').click();
+  await expect(theirChanges).toHaveAttribute('data-folded', '', { timeout: 5000 });
+  await page.getByTestId('changes-fold').click();
+  await expect(theirChanges).not.toHaveAttribute('data-folded', '', { timeout: 5000 });
+  await theirChanges.locator('[data-testid="change"][data-path="src/a.go"]').click();
+  await viewer.waitForTimeout(500);
+  await expect(viewer.getByTestId('picture')).toHaveCount(0);
+  expect(asked).toEqual([]);
+  // A diff from the changes window, over it.
   await page.locator('[data-testid="change"][data-path="src/a.go"]').click();
   await expect(page.getByTestId('diff')).toBeVisible();
   await expect(viewer.getByTestId('diff')).toBeVisible({ timeout: 5000 });
   await expect(viewer.getByTestId('picture-observed')).toContainText('diff');
   await expect(viewer.getByTestId('picture-name')).toHaveText('src/a.go');
+  await expect(theirChanges).toBeVisible();
   await shot(viewer, info, '119-share-showing-diff');
   await page.keyboard.press('Escape');
   await expect(viewer.getByTestId('picture')).toHaveCount(0, { timeout: 5000 });
+  await expect(theirChanges).toBeVisible();
+  // The owner closes the changes window: the observer's goes.
   await page.keyboard.press('Escape');
+  await expect(page.getByTestId('changes-window')).toHaveCount(0, { timeout: 3000 });
+  await expect(theirChanges).toHaveCount(0, { timeout: 5000 });
   // Revoked: the observer's page says so.
   await revokeAll(page);
   await expect(viewer.getByTestId('share-ended')).toBeVisible({ timeout: 5000 });
