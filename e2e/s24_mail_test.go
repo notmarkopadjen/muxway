@@ -449,7 +449,7 @@ func TestMailReachesTheProcessAndComesBack(t *testing.T) {
 	send(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}`)
 	io.WriteString(stdin, `{"jsonrpc":"2.0","method":"notifications/initialized"}`+"\n")
 	list := send(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)
-	if r, _ := list["result"].(map[string]any); r == nil || len(r["tools"].([]any)) != 11 {
+	if r, _ := list["result"].(map[string]any); r == nil || len(r["tools"].([]any)) != 12 {
 		t.Fatalf("tools/list: %v", list)
 	}
 	if sent := send(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"mail","arguments":{"address":"` + shell0 + `","text":"via mcp"}}}`); !strings.HasPrefix(text(sent), "mailed, id ") {

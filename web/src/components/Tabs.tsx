@@ -6,6 +6,7 @@ import { tabName, useLens } from '../term/lens';
 import { LensMark } from './Lens';
 import { AgentMark } from './PaneTitle';
 import { MailMark } from './TalkMark';
+import { openMailWindow } from '../shell/mailwin';
 
 // The strip: one tab per pane, painted with its state. Open tabs are
 // bordered, the focused one thick and bold, a hidden one dimmed. With
@@ -23,6 +24,7 @@ export function Tabs({
   hidden = [],
   addable = false,
   onTab,
+  onWake,
   onZoom,
   reorder,
   onDragPane,
@@ -33,6 +35,8 @@ export function Tabs({
   hidden?: string[];
   addable?: boolean;
   onTab: (address: string, add: boolean) => void;
+  // A click on a parked tab wakes it, besides focusing it.
+  onWake?: (address: string) => void;
   onZoom?: (address: string) => void;
   reorder?: (dragged: string, before: string | null) => void;
   onDragPane?: (address: string | null) => void;
@@ -92,7 +96,9 @@ export function Tabs({
     const p = panes.find((q) => q.address === a);
     if (!p?.talk?.length || p.talk.some((tp) => tp.at * 1000 > since)) loose.current.delete(a);
   }
-  const shown = pullTogether(rows, groups, new Set(loose.current.keys()));
+  // A parked tab stays last, outside its group's frame.
+  const parked = panes.filter((p) => p.later).map((p) => p.address);
+  const shown = pullTogether(rows, groups, new Set([...loose.current.keys(), ...parked]));
   // The pull is kept in the owner's order, so it holds once the group ends.
   useEffect(() => {
     if (!reorder) return;
@@ -156,7 +162,10 @@ export function Tabs({
               }
             : undefined
         }
-        onClick={(e) => onTab(address, e.shiftKey)}
+        onClick={(e) => {
+          if (pane?.later) onWake?.(address);
+          onTab(address, e.shiftKey);
+        }}
         onDoubleClick={onZoom && (() => onZoom(address))}
         title={
           (isHidden
@@ -168,7 +177,8 @@ export function Tabs({
             ? onDragPane
               ? ' · drag along the strip to reorder, onto a tile to lay it out there'
               : ' · drag along the strip to reorder'
-            : '')
+            : '') +
+          (pane?.cwd ? `\n${pane.cwd}` : '')
         }
       >
         {pane && <AgentMark agent={describe(pane).agent} />}
@@ -176,7 +186,9 @@ export function Tabs({
         <span className="mx-tab-name">
           {pane ? tabName(pane) : address.split('/').slice(1).join('/')}
         </span>
-        {pane?.mail && <MailMark unread={pane.mail.unread} />}
+        {pane?.mail && (
+          <MailMark unread={pane.mail.unread} onClick={() => openMailWindow({ address })} />
+        )}
       </button>
     );
   };

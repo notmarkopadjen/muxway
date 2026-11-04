@@ -30,7 +30,7 @@ const fitsOf = (rs: Resize[], address: string) =>
 const releasesOf = (rs: Resize[], address: string) =>
   rs.filter((r) => r.address === address && r.body.fit === 'auto');
 const sizeOf = async (page: Page, a: string) => {
-  const t = await page.locator(`[data-pane="${a}"] .mx-tile-head .mx-dim`).innerText();
+  const t = (await page.locator(`[data-pane="${a}"] .mx-tile-head .mx-size`).textContent()) ?? '';
   const m = /(\d+)×(\d+)/.exec(t)!;
   return { cols: Number(m[1]), rows: Number(m[2]) };
 };

@@ -64,7 +64,7 @@ async function revokeAll(page: Page) {
   await expect(win).toHaveCount(0);
 }
 
-test('116 security: the observer has no input, no links to files, and nothing but the pane', async ({
+test('119 security: the observer has no input, no links to files, and nothing but the pane', async ({
   page,
   browser,
   request,
@@ -87,7 +87,7 @@ test('116 security: the observer has no input, no links to files, and nothing bu
   await viewer.getByTestId('share-open').click();
   await expect(viewer.getByTestId('share-open-error')).toHaveText('that password was not accepted');
   await openAsObserver(viewer, url, password);
-  await shot(viewer, info, '116-share-view');
+  await shot(viewer, info, '119-share-view');
   const screen = viewer.getByTestId('share-screen');
   await expect(screen).toContainText('see plans/a.md and', { timeout: 5000 });
   // No input line, key bar, strip, pane buttons or profile.
@@ -124,7 +124,7 @@ test('116 security: the observer has no input, no links to files, and nothing bu
   await control(request, '/send', { target: 'work:0.0', text: 'clear' });
 });
 
-test('116 the share window: link, password, code, copy buttons, revoke; the header counts it', async ({
+test('119 the share window: link, password, code, copy buttons, revoke; the header counts it', async ({
   page,
   context,
   request,
@@ -132,7 +132,7 @@ test('116 the share window: link, password, code, copy buttons, revoke; the head
   test.skip(!PREVIEW, 'no preview root in this environment');
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const { url, password } = await makeShare(page);
-  await shot(page, info, '116-share-window');
+  await shot(page, info, '119-share-window');
   // The code holds the link alone: its markup carries no text at all.
   const qr = page.getByTestId('qr');
   await expect(qr).toBeVisible();
@@ -189,7 +189,7 @@ test('116 the share window: link, password, code, copy buttons, revoke; the head
     .toBe(404);
 });
 
-test('116 the observer sees the host size, and the file or diff the owner opens, until it closes', async ({
+test('119 the observer sees the host size, and the file or diff the owner opens, until it closes', async ({
   page,
   browser,
   request,
@@ -216,7 +216,7 @@ test('116 the observer sees the host size, and the file or diff the owner opens,
   await expect(viewer.getByTestId('picture-observed')).toContainText('rendered');
   for (const id of ['picture-download', 'picture-close', 'picture-view', 'picture-side'])
     await expect(viewer.getByTestId(id)).toHaveCount(0);
-  await shot(viewer, info, '116-share-showing-md');
+  await shot(viewer, info, '119-share-showing-md');
   // The owner switches to plain: the view follows without the bytes again.
   await page.getByTestId('picture-plain').click();
   await expect(viewer.getByTestId('picture-text')).toContainText('# plan a', { timeout: 5000 });
@@ -234,7 +234,7 @@ test('116 the observer sees the host size, and the file or diff the owner opens,
   await expect(viewer.getByTestId('diff')).toBeVisible({ timeout: 5000 });
   await expect(viewer.getByTestId('picture-observed')).toContainText('diff');
   await expect(viewer.getByTestId('picture-name')).toHaveText('src/a.go');
-  await shot(viewer, info, '116-share-showing-diff');
+  await shot(viewer, info, '119-share-showing-diff');
   await page.keyboard.press('Escape');
   await expect(viewer.getByTestId('picture')).toHaveCount(0, { timeout: 5000 });
   await page.keyboard.press('Escape');

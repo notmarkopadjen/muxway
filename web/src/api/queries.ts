@@ -1,4 +1,5 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { inboxOrder } from '../term/order';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError, target } from './client';
 import { joinAddress, originOfHub, splitAddress, useHubs, type Hub } from '../hubs';
@@ -10,6 +11,7 @@ import type {
   Diff,
   Listing,
   Host,
+  Mail,
   Me,
   Mouse,
   Pane,
@@ -37,6 +39,7 @@ export const keys = {
   panesOf: (hub?: string) => (hub ? (['panes', hub] as const) : (['panes'] as const)),
   inboxOf: (hub?: string) => (hub ? (['inbox', hub] as const) : (['inbox'] as const)),
   talkOf: (hub?: string) => (hub ? (['talk', hub] as const) : (['talk'] as const)),
+  mailbox: (address: string) => ['mailbox', address] as const,
   transcriber: ['transcriber'] as const,
   admin: ['admin'] as const,
   files: (address: string) => ['files', address] as const,
@@ -260,6 +263,72 @@ export function useMail() {
       qc.invalidateQueries({ queryKey: keys.pane(address) });
       qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
       qc.invalidateQueries({ queryKey: keys.talkOf(hub) });
+      qc.invalidateQueries({ queryKey: ['mailbox'] });
+    },
+  });
+}
+
+// The mail a pane holds, read and unread, for a reader of the pane: the
+// mail window asks every five seconds while it is open. Origins come
+// back at this page's addresses, hub and all.
+export function mailboxOptions(address: string) {
+  const { hub } = splitAddress(address);
+  return {
+    queryKey: keys.mailbox(address),
+    queryFn: () => {
+      const t = target(address);
+      return api<{ mail: Mail[] | null }>(`/v1/panes/${t.address}/mail`, { hub: t.hub }).then((v) =>
+        (v.mail ?? []).map((m) =>
+          m.from && hub
+            ? { ...m, from: { ...m.from, address: joinAddress(hub, m.from.address) } }
+            : m,
+        ),
+      );
+    },
+    refetchInterval: 5_000,
+    retry: (count: number, err: unknown) => !(err instanceof ApiError) && count < 2,
+  };
+}
+
+export function useMailbox(address: string) {
+  return useQuery({
+    ...mailboxOptions(address),
+    placeholderData: (prev: Mail[] | undefined) => prev,
+  });
+}
+
+// The mailboxes of several panes at once, by address.
+export function useMailboxes(addresses: string[]): Record<string, Mail[]> {
+  const data = useQueries({
+    queries: addresses.map((a) => mailboxOptions(a)),
+    combine: (rs) => rs.map((r) => r.data),
+  });
+  return useMemo(() => {
+    const out: Record<string, Mail[]> = {};
+    addresses.forEach((a, i) => {
+      if (data[i]) out[a] = data[i];
+    });
+    return out;
+  }, [addresses, data]);
+}
+
+// The owner's name for a pane: its alias, set on the host for a writer.
+export function useRename() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ address, alias }: { address: string; alias: string }) => {
+      const t = target(address);
+      return api<{ pane: Pane }>(`/v1/panes/${t.address}/alias`, {
+        method: 'POST',
+        body: JSON.stringify({ alias }),
+        hub: t.hub,
+      });
+    },
+    onSuccess: (_v, { address }) => {
+      const { hub, address: bare } = splitAddress(address);
+      qc.invalidateQueries({ queryKey: keys.pane(address) });
+      qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
+      qc.invalidateQueries({ queryKey: keys.tree(bare.split('/')[0], hub) });
     },
   });
 }
@@ -272,6 +341,29 @@ export function useAnswer() {
       return api<void>(`/v1/panes/${t.address}/answer`, {
         method: 'POST',
         body: JSON.stringify({ choice }),
+        hub: t.hub,
+      });
+    },
+    onSuccess: (_v, { address }) => {
+      qc.invalidateQueries({ queryKey: keys.pane(address) });
+      const { hub, address: bare } = splitAddress(address);
+      qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
+      qc.invalidateQueries({ queryKey: keys.inboxOf(hub) });
+      qc.invalidateQueries({ queryKey: keys.tree(bare.split('/')[0], hub) });
+    },
+  });
+}
+
+// Later: the owner parks a pane, or wakes it; the host keeps the mark
+// beside the pane's attention, so every client sees it.
+export function useLater() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ address, later }: { address: string; later: boolean }) => {
+      const t = target(address);
+      return api<void>(`/v1/panes/${t.address}/later`, {
+        method: 'POST',
+        body: JSON.stringify({ later }),
         hub: t.hub,
       });
     },
@@ -338,9 +430,7 @@ export function useInbox(enabled: boolean) {
       data:
         lists[0]?.data === undefined
           ? undefined
-          : lists
-              .flatMap((l) => l.data ?? [])
-              .sort((a, b) => (a.attention?.at ?? 0) - (b.attention?.at ?? 0)),
+          : lists.flatMap((l) => l.data ?? []).sort(inboxOrder),
     }),
     [lists],
   );

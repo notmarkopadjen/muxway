@@ -106,7 +106,7 @@ test('109 a question with fixed answers is answered with a click, from the toast
   await control(request, '/notify', { pane: pane2, kind: 'question', text: 'read-only question' });
   await page.keyboard.press('I');
   await expect(page.getByTestId('inbox-row').first()).toContainText('read-only question');
-  await expect(page.getByTestId('inbox-row').first().getByRole('button')).toHaveCount(0);
+  await expect(page.getByTestId('inbox-row').first().getByTestId('choices')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await control(request, '/notify', { pane: pane2, kind: 'working', text: '' });
 });

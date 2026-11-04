@@ -436,7 +436,8 @@ button:disabled {
   color: var(--mx-warn);
   text-shadow: 0 0 6px var(--mx-warn);
 }
-.mx-badge.mx-idle {
+.mx-badge.mx-idle,
+.mx-badge.mx-later {
   color: var(--mx-ink-dim);
 }
 .mx-badge.mx-done {
@@ -631,7 +632,8 @@ button:disabled {
   text-overflow: ellipsis;
   text-shadow: var(--mx-glow-text);
 }
-.mx-title-status {
+.mx-title-status,
+.mx-title-folder {
   color: var(--mx-ink-dim);
   font-style: italic;
   white-space: nowrap;

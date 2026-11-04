@@ -50,6 +50,7 @@ func TestUI_WebClient(t *testing.T) {
 	os.MkdirAll(filepath.Join(preview, "docs", "plans"), 0o700)
 	os.WriteFile(filepath.Join(preview, "docs", "plans", "a.md"), []byte("# plan a\n\nThe goal, in a line.\n\n- one\n- two\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, "docs", "report.csv"), []byte("day,count\n1,2\n2,3\n"), 0o600)
+	os.WriteFile(filepath.Join(preview, "docs", "plans", "2026-11-03-a-plan-whose-name-is-long-enough-to-widen-the-bar-past-the-text-column.md"), []byte("# plan b\n\nA line.\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, "docs", "evil.md"), []byte("# Hostile\n\n<script>alert(1)</script> <img src=x onerror=alert(1)>\n\n[go](javascript:alert(1)) and [fine](https://example.com/x)\n\n- a `code` span\n\n```js\nconst x = 1; // one\n```\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, "docs", "Program.cs"), []byte("// a program\npublic class Program { static void Main() { var s = \"hi\"; int n = 42; } }\n"), 0o600)
 	os.WriteFile(filepath.Join(preview, "docs", "data.json"), []byte("{\"name\": \"muxway\", \"ports\": [7600, 7601], \"on\": true}\n"), 0o600)
@@ -200,18 +201,19 @@ func TestUI_Keyboard(t *testing.T) {
 // The inbox, questions with answers and the lens for another harness get
 // their own environment: the watcher works on the panes here, and a
 // question in flight must not meet another spec's typing. Specs 109,
-// 110 (talk between panes) and 111 (mail) run here with MX_AGENTS set.
+// 110 (talk between panes), 111 (mail), 117 (the mail window) and 118 (later) run here with
+// MX_AGENTS set.
 func TestUI_Agents(t *testing.T) {
 	npx, webDir := uiTools(t)
 	if g := os.Getenv("MX_GREP"); g != "" {
 		in := false
-		for _, spec := range []string{"109-", "110-", "111-"} {
+		for _, spec := range []string{"109-", "110-", "111-", "117-", "118-"} {
 			if ok, _ := regexp.MatchString(g, spec); ok {
 				in = true
 			}
 		}
 		if !in {
-			t.Skip("MX_GREP leaves specs 109, 110 and 111 out")
+			t.Skip("MX_GREP leaves specs 109, 110, 111, 117 and 118 out")
 		}
 	}
 	e := newEnv(t)
@@ -223,8 +225,9 @@ func TestUI_Agents(t *testing.T) {
 	e.expose(ts, "work:0.1", "--write")
 	e.expose(ts, "work:0.2")
 	full := e.token("browser", []string{"*"}, []string{"*"})
+	readOnly := e.token("reader", []string{"*"}, nil)
 	control := e.startControl(t, ts, a)
-	runPlaywright(t, e, npx, webDir, "109-|110-|111-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_AGENTS=1")
+	runPlaywright(t, e, npx, webDir, "109-|110-|111-|117-|118-", "MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_CONTROL="+control, "MX_AGENTS=1")
 }
 
 func uiTools(t *testing.T) (npx, webDir string) {

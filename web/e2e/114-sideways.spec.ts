@@ -7,6 +7,8 @@ import { control, HOST, paneLoaded, settled, shot, SHELL0, signIn } from './fixt
 // the cell it draws and the box clips the rest.
 
 const LOGS = `${HOST}/work/1.0`;
+// A pane without an alias: a long title shows on its tab.
+const OTHER = `${HOST}/work/0.1`;
 const tile = (page: Page, a: string) => page.locator(`[data-testid="tile"][data-pane="${a}"]`);
 const fits = (l: Locator) => l.evaluate((el) => el.scrollWidth <= el.clientWidth);
 
@@ -15,17 +17,17 @@ test('114 the add menu and the go-to list never scroll sideways', async ({
   request,
 }, info) => {
   const long = `wide ${'x'.repeat(160)} title`;
-  await control(request, '/rename', { what: 'title', target: 'work:1.0', name: long });
+  await control(request, '/rename', { what: 'title', target: 'work:0.1', name: long });
   await signIn(page);
   await page.goto(`/p/${SHELL0}`);
   await paneLoaded(page);
   await settled(page);
-  await expect(page.locator(`[data-testid="tab"][data-address="${LOGS}"]`)).toContainText('wide', {
+  await expect(page.locator(`[data-testid="tab"][data-address="${OTHER}"]`)).toContainText('wide', {
     timeout: 10_000,
   });
   await page.getByTestId('add').click();
   const menu = page.getByTestId('add-menu');
-  await expect(menu.locator(`[data-testid="add-pane"][data-address="${LOGS}"]`)).toBeVisible();
+  await expect(menu.locator(`[data-testid="add-pane"][data-address="${OTHER}"]`)).toBeVisible();
   expect(await fits(menu)).toBe(true);
   const vw = await page.evaluate(() => document.documentElement.clientWidth);
   expect((await menu.boundingBox())!.width).toBeLessThan(vw);
@@ -39,7 +41,7 @@ test('114 the add menu and the go-to list never scroll sideways', async ({
   for (const row of await page.getByTestId('palette-row').all()) expect(await fits(row)).toBe(true);
   await shot(page, info, '114-go-to');
   await page.keyboard.press('Escape');
-  await control(request, '/rename', { what: 'title', target: 'work:1.0', name: '' });
+  await control(request, '/rename', { what: 'title', target: 'work:0.1', name: '' });
 });
 
 test('114 tiles side by side show no bar for a line as wide as the pane', async ({

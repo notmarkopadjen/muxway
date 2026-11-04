@@ -26,6 +26,7 @@ muxway client read alice-laptop/work/0.0 --lines 50
 muxway client send alice-laptop/work/0.0 "make test" --enter
 muxway client key alice-laptop/work/0.0 C-c
 muxway client answer alice-laptop/work/0.0 yes
+muxway client later alice-laptop/work/0.0       # park it: its tab goes last, it stops calling; --off wakes it
 muxway client mail alice-laptop/work/0.0 "run the tests and tell me"   # for its process, never typed
 muxway client mailbox alice-laptop/work/0.0   # what it holds, and whether it was read
 muxway client wait alice-laptop/work/0.0 --timeout 20m
@@ -68,7 +69,7 @@ panes, and `talk` prints that record; see [talk](talk.md) and
 
 ## `muxway mcp`
 
-The same operations, eleven tools, as [MCP](https://modelcontextprotocol.io) tools
+The same operations, twelve tools, as [MCP](https://modelcontextprotocol.io) tools
 over stdio, for an AI agent's MCP configuration:
 
 ```sh
@@ -85,6 +86,7 @@ claude mcp add muxway -- muxway mcp            # Claude Code
 | `send_text` | type into a pane (`address`, `text`, `enter`) |
 | `send_key` | press a named key (`address`, `key`, `count`) |
 | `answer` | answer a question with one of its choices (`address`, `choice`) |
+| `later` | park a pane for later, or wake it (`address`, `off`); see [notifications](notifications.md#later) |
 | `wait` | block until a pane, or any pane, needs its owner (`address`, `timeout_seconds`, at most 3600) |
 | `talk` | what panes said to panes lately: who, to whom, the kind and the text |
 | `mail` | leave a message for a pane's process, never typed (`address`, `text`) |

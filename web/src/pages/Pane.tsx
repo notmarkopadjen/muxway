@@ -14,6 +14,7 @@ import {
   useChanges,
   useHosts,
   useInput,
+  useLater,
   useListing,
   usePane,
   usePaneCached,
@@ -32,12 +33,12 @@ import { InputPanel } from '../components/InputPanel';
 import { LensMark } from '../components/Lens';
 import { Choices } from '../components/Choices';
 import { MinimisedRow } from '../components/Minimised';
-import { PaneTitle } from '../components/PaneTitle';
+import { PaneTitle, RenameField, paneTooltip, slowSecond } from '../components/PaneTitle';
 import { Tabs } from '../components/Tabs';
 import { useToast } from '../components/Toast';
 import { noteChange, noteOwn, useLens } from '../term/lens';
 import { drawn, nameFor, useMoving } from '../term/drawn';
-import { inOrder, move, step } from '../term/order';
+import { inOrder, move, parkedLast, step } from '../term/order';
 import { setTabOrder, useHelper, useTabOrder } from '../settings';
 import { Screen } from '../term/Screen';
 import {
@@ -76,6 +77,7 @@ import { screenWords } from '../term/complete';
 import { countOf, summary } from '../term/changes';
 import { Backlog, keyToBody, pasteText, type Body } from '../term/direct';
 import { setHeading } from '../shell/heading';
+import { openMailWindow } from '../shell/mailwin';
 import { InHeader } from '../shell/HeaderSlot';
 import { AddMenu } from '../components/AddMenu';
 import { Closing } from '../components/Closing';
@@ -222,6 +224,11 @@ interface TileProps {
   partnerName: (p: TalkPartner) => string;
   onBeside: (p: TalkPartner) => void;
   grouped?: boolean;
+  // The name as a field: a slow second click on it, or N, asks; the
+  // host names panes and the pane is writable.
+  renamable: boolean;
+  renaming: boolean;
+  onRename: (on: boolean) => void;
 }
 
 // The leaves of a tile tree: the tiles' indexes under it.
@@ -238,6 +245,7 @@ function Tile(props: TileProps) {
   const pointer = useRef('mouse');
   const { address, focused, several, refitTick, dragging, alone, zoomable, windowFit } = props;
   const pane = usePane(address, focused ? 1_000 : 2_000);
+  const titleClickAt = useRef<number>(undefined);
   const moving = useMoving();
   const box = useRef<HTMLDivElement>(null);
   const p = pane.data?.pane;
@@ -429,6 +437,7 @@ function Tile(props: TileProps) {
       <div
         className="mx-tile-head mx-painted"
         data-state={st === 'quiet' ? undefined : st}
+        data-mode={p?.mode}
         onClick={props.onFocus}
         draggable={several}
         onDragStart={(e) => {
@@ -443,16 +452,29 @@ function Tile(props: TileProps) {
             : undefined
         }
       >
-        {p ? <PaneTitle pane={p} /> : <span>{address}</span>}
+        {p && props.renaming ? (
+          <RenameField pane={p} onDone={() => props.onRename(false)} />
+        ) : p ? (
+          <PaneTitle
+            pane={p}
+            folder={p.cwd}
+            title={paneTooltip(p)}
+            onClick={
+              props.renamable
+                ? () => {
+                    const now = Date.now();
+                    if (focused && slowSecond(titleClickAt.current, now)) props.onRename(true);
+                    titleClickAt.current = now;
+                  }
+                : undefined
+            }
+          />
+        ) : (
+          <span>{address}</span>
+        )}
         {p && (
           <>
-            <span className="mx-dim">
-              {address} ·{' '}
-              <span data-testid={focused ? 'pane-size' : undefined}>
-                {p.width}×{p.height}
-              </span>
-            </span>
-            <span className={`mx-mode ${p.mode}`}>{p.mode}</span>
+            {p.mode !== 'write' && <span className="mx-mode read">read-only</span>}
             {p.talk && p.talk.length > 0 && (
               <button
                 type="button"
@@ -467,7 +489,16 @@ function Tile(props: TileProps) {
                 <ChainMark />
               </button>
             )}
-            {p.mail && <MailMark unread={p.mail.unread} />}
+            {p.mail && (
+              <MailMark unread={p.mail.unread} onClick={() => openMailWindow({ address })} />
+            )}
+            <span
+              className="mx-size"
+              data-testid={focused ? 'pane-size' : undefined}
+              data-shown={held || syncing ? '' : undefined}
+            >
+              {p.width}×{p.height}
+            </span>
             {held && (
               <span
                 className="mx-warn"
@@ -489,13 +520,22 @@ function Tile(props: TileProps) {
             {st !== 'quiet' && (
               <span
                 className={st === 'waiting' ? 'mx-attention' : 'mx-dim'}
-                data-testid={st === 'waiting' && focused ? 'pane-attention' : undefined}
+                data-testid={
+                  focused && st === 'waiting'
+                    ? 'pane-attention'
+                    : focused && st === 'later'
+                      ? 'pane-later'
+                      : undefined
+                }
               >
                 <LensMark status={st} attention={p.attention} withWord />
-                {p.attention?.text ? `: ${p.attention.text}` : ''}
+                {p.attention?.text &&
+                (p.attention.kind === 'question' || p.attention.kind === 'permission')
+                  ? `: ${p.attention.text}`
+                  : ''}
               </span>
             )}
-            {st === 'waiting' && (
+            {(st === 'waiting' || st === 'later') && (
               <Choices address={address} attention={p.attention} writable={p.mode === 'write'} />
             )}
           </>
@@ -802,7 +842,28 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const hosts = useHosts();
   const hostCloses = (a: string) => !!hostOf(hosts.data, a)?.close;
   const hostPreviews = (a: string) => !!hostOf(hosts.data, a)?.preview;
+  const hostParks = (a: string) => !!hostOf(hosts.data, a)?.later;
+  // Later: the owner parks the pane on its host, or wakes it; a click on
+  // a parked tab wakes it too.
+  const later = useLater();
+  const setLater = (a: string, on: boolean) => {
+    const p = (all.data ?? []).find((q) => q.address === a);
+    if (!p || p.mode !== 'write' || !hostParks(a) || !!p.later === on) return;
+    later.mutate(
+      { address: a, later: on },
+      { onError: (err) => toast.push({ kind: 'later', title: a, text: String(err) }) },
+    );
+  };
+  const toggleLater = (a: string) => {
+    const p = (all.data ?? []).find((q) => q.address === a);
+    if (p) setLater(a, !p.later);
+  };
   const hostLists = (a: string) => !!hostOf(hosts.data, a)?.dir;
+  const hostRenames = (a: string) => !!hostOf(hosts.data, a)?.rename;
+  // The pane whose name is a field right now.
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const renamable = (a: string) =>
+    hostRenames(a) && (all.data ?? []).find((q) => q.address === a)?.mode === 'write';
   // Direct typing: keys go to the focused pane as pressed, while it is
   // writable; focusing a read-only tile ends it, as does leaving the view.
   const [direct, setDirect] = useState(false);
@@ -1183,7 +1244,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // The strip in the owner's order; an open address the listing lacks
   // goes last.
   const tabOrder = useTabOrder();
-  const stripPanes = useMemo(() => inOrder(shownPanes, tabOrder), [shownPanes, tabOrder]);
+  const stripPanes = useMemo(
+    () => parkedLast(inOrder(shownPanes, tabOrder)),
+    [shownPanes, tabOrder],
+  );
   const strip = useMemo(() => {
     const order = stripPanes.map((p) => p.address);
     for (const a of addresses) if (!order.includes(a)) order.push(a);
@@ -1195,15 +1259,21 @@ function Tiles({ addresses }: { addresses: string[] }) {
   );
   // A tab focuses its tile, or swaps into the focused one; with Shift it
   // opens beside the others instead.
-  const onTab = useCallback(
-    (address: string, add = false) => {
-      const at = addresses.indexOf(address);
-      if (at >= 0) setFocusedIndex(at);
-      else if (add && addresses.length < MAX_TILES) go([...addresses, address]);
-      else go(replace(addresses, index, address));
-    },
-    [addresses, index, go],
-  );
+  // A slow second click on the focused pane's tab asks for its name.
+  const tabClick = useRef<{ address: string; at: number } | null>(null);
+  const onTab = (address: string, add = false) => {
+    const now = Date.now();
+    const prev = tabClick.current;
+    tabClick.current = { address, at: now };
+    if (address === focused && prev?.address === address && slowSecond(prev.at, now)) {
+      if (renamable(address)) setRenaming(address);
+      return;
+    }
+    const at = addresses.indexOf(address);
+    if (at >= 0) setFocusedIndex(at);
+    else if (add && addresses.length < MAX_TILES) go([...addresses, address]);
+    else go(replace(addresses, index, address));
+  };
   // Android's swipe: the focused tile shows the neighbouring pane of the strip.
   const neighbour = (step: number) => {
     const at = strip.indexOf(focused);
@@ -1255,8 +1325,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
         touch();
         drawn(() => setWeights({}));
       } else if (ev.key === 'g' && writable && hostPreviews(focused)) setChanges((c) => !c);
+      else if (ev.key === 'd') toggleLater(focused);
       else if (ev.key === 's' && writable) setShare((s) => !s);
       else if (ev.key === 'i' && writable) enterDirect();
+      else if (ev.key === 'N' && focusedPane && renamable(focused)) setRenaming(focused);
       else if (ev.key === 'L' && focusedPane?.talk?.length)
         beside(focused, withHub(focused, focusedPane.talk[0].address));
       else if (ev.key === ':') focusLine();
@@ -1562,6 +1634,9 @@ function Tiles({ addresses }: { addresses: string[] }) {
         partnerName={(tp) => nameOf(all.data, withHub(a, tp.address), tp.pane_id)}
         onBeside={(tp) => beside(a, withHub(a, tp.address))}
         grouped={groups.has(a)}
+        renamable={renamable(a)}
+        renaming={renaming === a}
+        onRename={(on) => setRenaming(on ? a : null)}
       />
     );
   };
@@ -1579,6 +1654,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
             open={addresses}
             focused={focused}
             onTab={onTab}
+            onWake={(a) => setLater(a, false)}
             reorder={reorder}
             onDragPane={setDragging}
             onZoom={(a) => {
@@ -1689,6 +1765,21 @@ function Tiles({ addresses }: { addresses: string[] }) {
                 : !hostPreviews(focused)
                   ? "the repository's changes; the host has no preview roots"
                   : "git's changes of the pane's repository, over the tile (g)",
+            },
+            {
+              id: 'later',
+              glyph: '☾',
+              label: 'later',
+              onClick: () => toggleLater(focused),
+              disabled: !writable || !hostParks(focused),
+              on: !!focusedPane?.later,
+              title: !writable
+                ? 'later: park the pane, its tab goes last; needs a writable pane'
+                : !hostParks(focused)
+                  ? 'later: park the pane; the host is older than this'
+                  : focusedPane?.later
+                    ? 'later: parked; wake it (d)'
+                    : 'later: park the pane, its tab goes last and it stops calling (d)',
             },
             {
               id: 'share',

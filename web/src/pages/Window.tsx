@@ -9,13 +9,14 @@ import {
   useChanges,
   useHosts,
   useInput,
+  useLater,
   useWindow,
 } from '../api/queries';
 import type { Change, Mouse, PaneContent } from '../api/types';
 import { LensMark } from '../components/Lens';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
-import { PaneTitle } from '../components/PaneTitle';
+import { PaneTitle, paneTooltip } from '../components/PaneTitle';
 import { Tabs } from '../components/Tabs';
 import { useToast } from '../components/Toast';
 import {
@@ -170,7 +171,7 @@ function Tree(props: TreeProps) {
           data-state={state}
           onClick={() => onFocus(node.id)}
         >
-          <PaneTitle pane={p} />
+          <PaneTitle pane={p} folder={p.cwd} title={paneTooltip(p)} />
           <span className="mx-dim">
             {p.address.split('/').slice(1).join('/')} · {p.width}×{p.height}
           </span>
@@ -407,6 +408,19 @@ export function WindowPage() {
   const hide = useCallback(() => setShowing(false), []);
   const hosts = useHosts();
   const previews = !!hosts.data?.find((h) => h.name === host && !h.hub)?.preview;
+  const parks = !!hosts.data?.find((h) => h.name === host && !h.hub)?.later;
+  const later = useLater();
+  const setLater = useCallback(
+    (address: string, on: boolean) => {
+      const p = stripPanes.find((q) => q.address === address);
+      if (!p || p.mode !== 'write' || !parks || !!p.later === on) return;
+      later.mutate(
+        { address, later: on },
+        { onError: (err) => toast.push({ kind: 'later', title: address, text: String(err) }) },
+      );
+    },
+    [stripPanes, parks, later, toast],
+  );
   const repeats = useRef(false);
   repeats.current = !!hostOf(hosts.data, focusedPane?.address ?? '')?.repeat;
   // The changes window shows for a writer on a host with roots; the
@@ -551,6 +565,7 @@ export function WindowPage() {
       else if (ev.key === 'i' && writable) enterDirect();
       else if (ev.key === ':') focusLine();
       else if (ev.key === 'g' && writable && previews) setChanges((c) => !c);
+      else if (ev.key === 'd' && focusedPane) setLater(focusedPane.address, !focusedPane.later);
       else if (ev.key === 's' && writable) setShare((s) => !s);
       else return;
       ev.preventDefault();
@@ -573,6 +588,7 @@ export function WindowPage() {
     enterDirect,
     focusLine,
     previews,
+    setLater,
   ]);
 
   const send = async (body: { text: string } | { key: string } | { mouse: Mouse }) => {
@@ -687,6 +703,7 @@ export function WindowPage() {
             focused={focusedPane?.address ?? null}
             hidden={hiddenAddresses}
             onTab={onTab}
+            onWake={(a) => setLater(a, false)}
           />
           <AddMenu
             pane={focusedPane}
@@ -772,6 +789,21 @@ export function WindowPage() {
                 : !previews
                   ? "the repository's changes; the host has no preview roots"
                   : "git's changes of the pane's repository, over the cell (g)",
+            },
+            {
+              id: 'later',
+              glyph: '☾',
+              label: 'later',
+              onClick: () => focusedPane && setLater(focusedPane.address, !focusedPane.later),
+              disabled: !writable || !parks,
+              on: !!focusedPane?.later,
+              title: !writable
+                ? 'later: park the pane, its tab goes last; needs a writable pane'
+                : !parks
+                  ? 'later: park the pane; the host is older than this'
+                  : focusedPane?.later
+                    ? 'later: parked; wake it (d)'
+                    : 'later: park the pane, its tab goes last and it stops calling (d)',
             },
             {
               id: 'share',

@@ -261,6 +261,8 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		Ask      bool   `json:"ask,omitempty"`
 		Mail     bool   `json:"mail,omitempty"`
 		Dir      bool   `json:"dir,omitempty"`
+		Later    bool   `json:"later,omitempty"`
+		Rename   bool   `json:"rename,omitempty"`
 	}
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
@@ -273,6 +275,8 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 			v.Ask = a.asks(r.Context())
 			v.Mail = a.mails(r.Context())
 			v.Dir = a.listsDirs(r.Context())
+			v.Later = a.parks(r.Context())
+			v.Rename = a.renames(r.Context())
 		}
 		out = append(out, v)
 	}
@@ -343,10 +347,7 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 		w.Header().Set("Content-Type", text.ContentType(charset))
 		var b strings.Builder
 		for _, v := range out {
-			kind := ""
-			if v.Attention != nil {
-				kind = v.Attention.Kind
-			}
+			kind := textKind(v.Pane)
 			mail := ""
 			if v.Mail != nil && v.Mail.Unread > 0 {
 				mail = strconv.Itoa(v.Mail.Unread)
@@ -550,6 +551,8 @@ func statusFor(code string) (int, string) {
 		return http.StatusConflict, "no_question"
 	case wire.ErrMailboxFull:
 		return http.StatusConflict, "mailbox_full"
+	case wire.ErrAliasTaken:
+		return http.StatusConflict, "alias_taken"
 	}
 	return http.StatusBadGateway, "host_error"
 }
@@ -574,6 +577,14 @@ func (h *Hub) handlePost(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	if strings.HasSuffix(r.PathValue("path"), "/mail") {
 		h.handleMail(w, r, t)
+		return
+	}
+	if strings.HasSuffix(r.PathValue("path"), "/later") {
+		h.handleLater(w, r, t)
+		return
+	}
+	if strings.HasSuffix(r.PathValue("path"), "/alias") {
+		h.handleAlias(w, r, t)
 		return
 	}
 	if strings.HasSuffix(r.PathValue("path"), "/shares") {

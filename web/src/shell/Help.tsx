@@ -27,16 +27,27 @@ const KEYS: [string, string][] = [
   ['Enter', 'open the selected pane, or the picked ones side by side'],
   ['Esc', 'back to the panes; or leave the input line (first closing its completion list)'],
   ['p', 'go to a pane or window, or start a session'],
-  ['I / o', 'the inbox: every pane that waits for you, oldest first / open the oldest'],
+  [
+    'I / o',
+    'the inbox: every pane that waits for you, oldest first, the parked ones last / open the oldest awake',
+  ],
+  [
+    'd',
+    'later: park the focused tile, or the selected row; its tab goes last with ☾ and it stops calling. d again, a click on its tab, opening it, typing, an answer or a mail wakes it',
+  ],
   [
     'T / M',
-    'messages: what panes said to panes, mail and typed, across hosts, oldest first; Enter lays the two side by side / the same with the line focused, to mail the open pane (nothing is typed for it)',
+    "messages: what panes said to panes, mail and typed, across hosts, oldest first; Enter lays the two side by side, a click on a mail row opens that pane's mail / the open pane's mail window: its mail in full, what it sent, a line that mails it or whoever wrote to it (nothing is typed); the ✉ n on a tab, a header or a row opens it too",
   ],
   [
     'L',
     'tiles: lay the pane the focused tile talks with beside it (opens it, or swaps it next to the tile); the ⛓ on the header the same. Panes that talk share one frame, on the strip and on the tiles',
   ],
   ['+ / S', "one more pane in the selected row's window / a new session on its host"],
+  [
+    'N',
+    'name the focused pane (or click its tab or its header name again, slowly): the name is its alias, a-z 0-9 and -, shown first everywhere and an address for agents; Enter saves, Esc leaves, empty takes it away',
+  ],
   ['/', 'filter panes'],
   ['f', 'fit: the host pane (window view: the window) follows this box, at the chosen font'],
   ['s', 'share the pane read-only: a link and a password for one person, with a code to send'],

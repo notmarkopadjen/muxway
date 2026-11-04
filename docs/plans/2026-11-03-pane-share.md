@@ -368,7 +368,7 @@ generated one is committed. Screenshots come from the e2e run only.
       the sharer's write grant is checked on every call; the password
       is hashed and compared in constant time, counted toward the
       lockout and burns the share at ten; nothing is logged but handles,
-      addresses, kinds and sizes (tests 200 to 206, spec 116)
+      addresses, kinds and sizes (tests 200 to 206, spec 119)
 - [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
 - [x] Docs and diagrams updated
 

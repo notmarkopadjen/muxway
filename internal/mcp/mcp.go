@@ -88,6 +88,10 @@ var Tools = []Tool{
 		"address": str("the pane's address"),
 		"choice":  str("one of the question's choices, exactly"),
 	}, "address", "choice")},
+	{"later", "Park a pane for later: its tab goes to the end of every client's strip with a sleeping mark and it stops calling for its owner until opened; or wake it.", schema(map[string]any{
+		"address": str("the pane's address"),
+		"off":     map[string]any{"type": "boolean", "description": "wake the pane instead"},
+	}, "address")},
 	{"wait", "Block until a pane (or any pane) needs its owner, up to timeout_seconds, and return what it waits for.", schema(map[string]any{
 		"address":         str("the pane's address; empty for any pane"),
 		"timeout_seconds": num("how long to wait at most, default 300, at most 3600"),
@@ -198,6 +202,7 @@ type args struct {
 	Key     string `json:"key"`
 	Count   int    `json:"count"`
 	Choice  string `json:"choice"`
+	Off     bool   `json:"off"`
 	Timeout int    `json:"timeout_seconds"`
 }
 
@@ -270,9 +275,16 @@ func (s *Server) call(ctx context.Context, name string, raw json.RawMessage) (st
 		}
 		var b strings.Builder
 		for _, p := range panes {
-			fmt.Fprintf(&b, "%s\t%s\t%s", p.Address, p.Attention.Kind, p.Attention.Text)
-			if len(p.Attention.Choices) > 0 {
-				fmt.Fprintf(&b, "\tchoices: %s", strings.Join(p.Attention.Choices, " | "))
+			kind, text, choices := "later", "", []string(nil)
+			if p.Attention != nil {
+				text, choices = p.Attention.Text, p.Attention.Choices
+				if !p.Later {
+					kind = p.Attention.Kind
+				}
+			}
+			fmt.Fprintf(&b, "%s\t%s\t%s", p.Address, kind, text)
+			if len(choices) > 0 {
+				fmt.Fprintf(&b, "\tchoices: %s", strings.Join(choices, " | "))
 			}
 			b.WriteByte('\n')
 		}
@@ -315,6 +327,17 @@ func (s *Server) call(ctx context.Context, name string, raw json.RawMessage) (st
 			return "", err
 		}
 		return "answered", nil
+	case "later":
+		if a.Address == "" {
+			return "", errors.New("address is required")
+		}
+		if err := s.Client.Later(ctx, a.Address, !a.Off); err != nil {
+			return "", err
+		}
+		if a.Off {
+			return "awake", nil
+		}
+		return "parked", nil
 	case "wait":
 		timeout := a.Timeout
 		if timeout <= 0 {

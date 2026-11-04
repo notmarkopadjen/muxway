@@ -81,6 +81,35 @@ test('86 a plan opens rendered; plain shows the source, and the choice survives 
   await control(request, '/send', { target: 'work:0.0', text: 'clear' });
 });
 
+test('86 a long name is cut in the bar; the text column sizes the window', async ({
+  page,
+  request,
+}, info) => {
+  test.skip(!PREVIEW, 'no preview root in this environment');
+  await signIn(page);
+  await openPane(page, SHELL0);
+  await settled(page);
+  const path =
+    'plans/2026-11-03-a-plan-whose-name-is-long-enough-to-widen-the-bar-past-the-text-column.md';
+  await control(request, '/send', { target: 'work:0.0', text: `echo ${path}` });
+  const screen = page.getByTestId('screen');
+  await expect(screen).toContainText('text-column.md', { timeout: 5000 });
+  await screen.locator(`a.mx-path-link[data-path="${path}"]`).last().click();
+  const body = page.getByTestId('picture-rendered-body');
+  await expect(body.locator('h1')).toHaveText('plan b');
+  const picture = await page.getByTestId('picture').boundingBox();
+  const text = await body.boundingBox();
+  // the body's padding and the border, nothing more, right of the text
+  expect(picture!.x + picture!.width - (text!.x + text!.width)).toBeLessThan(12);
+  const name = page.getByTestId('picture-name');
+  await expect(name).toHaveAttribute('title', path);
+  expect(await name.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  await shot(page, info, '86-long-name');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('picture')).toHaveCount(0, { timeout: 3000 });
+  await control(request, '/send', { target: 'work:0.0', text: 'clear' });
+});
+
 test('86 code and JSON show with their colours', async ({ page, request }, info) => {
   test.skip(!PREVIEW, 'no preview root in this environment');
   await signIn(page);

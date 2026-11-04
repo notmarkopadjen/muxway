@@ -1,6 +1,6 @@
 import type { Attention } from '../api/types';
 import { glyph, word, type Status } from '../term/lens';
-import { Badge } from './Badge';
+import { Badge, GLYPH } from './Badge';
 
 // A turning ring: the working mark, drawn rather than typed, so it is the
 // same in every font.
@@ -28,6 +28,20 @@ export function LensMark({
       <>
         <Badge attention={attention} />
         {withWord && <span className="mx-word">{word(status, attention?.kind)}</span>}
+      </>
+    );
+  }
+  if (status === 'later') {
+    return (
+      <>
+        <Badge attention={attention} later />
+        {withWord && <span className="mx-word">{word(status)}</span>}
+        {withWord && attention && (
+          <span className="mx-dim" data-testid="under-later">
+            {' '}
+            · {GLYPH[attention.kind]} {attention.kind}
+          </span>
+        )}
       </>
     );
   }

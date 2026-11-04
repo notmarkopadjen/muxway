@@ -19,7 +19,11 @@ nothing but the hub to talk to.
    the word follows (`! permission`); an AI agent's pane that is busy
    shows `⟳ working` (see [the lens](#the-lens)). A click opens the pane.
    `I` opens the [inbox](inbox.md), every waiting pane oldest first, and
-   `o` the oldest of them; `⚑ n` beside the brand counts them.
+   `o` the oldest of them; `⚑ n` beside the brand counts them. `d` on
+   the selected row parks its pane for [later](notifications.md#later):
+   the row keeps its place with `☾ later`, the pane's tab goes last
+   wherever a strip shows it, and it stops calling; `d` again or opening
+   the pane wakes it.
    The pick box, `space` on the highlighted row, or a click while
    something is picked gathers up to four panes; a bar under the list
    then offers **open N side by side**. Each window has a button, `▦ 0:
@@ -133,9 +137,17 @@ Everywhere a pane is named, in the list, the pane header, the tab title,
 the window view and the selector, it is named by what runs in
 it, not by tmux: the command, and after it what the program says about
 itself in the pane title when that adds something (`vim · notes.md`).
+A pane you named goes by that name first (see *Naming a pane* below),
+and what the program says about itself becomes its status.
 A tile's header names its pane, and a notification names the pane the same way: the mark,
-the name upright, what the program says about itself in italics, and
-the place dimmed after it, all on one line.
+the name upright, the folder the pane works in and what the program
+says about itself in italics, all on one line. The header carries what
+is read at a glance and nothing else: the address, the size and the
+mode (and, for a named pane, what the program calls itself) wait in the
+tooltip on the name, and the size also shows beside *held* and *sync*.
+A read-only pane says `read-only`; a writable one says nothing. A
+notice's text shows for a question or a permission, not for idle or
+done, whose word says it all.
 A pane running **Claude Code** is named *Claude*, with its mark, and the
 status Claude writes into the title follows (`Claude · fixing the
 build`); it is recognised by its command, or by the spark Claude Code
@@ -148,6 +160,34 @@ chevron, in the list, the tabs, the headers and the add menu, as
 Claude's spark does.
 
 ![a pane running Claude](images/web-titles.png)
+
+### Naming a pane
+
+Four Claude sessions on one subject read like four copies of the same
+codename. Give a pane a name: press `N` with it focused, or click its
+tab, or the name in its header, a second time, slowly (between half a
+second and three after the click that focused it; a quick double-click
+still zooms). The name becomes a field in the header; `Enter` saves,
+`Esc` leaves it, an empty name takes it away. What you type becomes an
+alias as you go: lower case, `a-z`, `0-9` and `-`, a space to a dash,
+up to 32. The name is the pane's **alias**, the same one `muxway
+expose --name` sets: it shows first on the tab, the header, the list,
+the messages window and the selector, with the program's mark and its
+codename after it in italics, and agents address the pane by it
+(`alice-laptop/@review`), which the agent playbook asks for. A name
+another pane of the host already has is refused and the field says
+so. It needs a write grant on the pane and a host whose agent names
+panes (`hosts[].rename`); elsewhere the key and the click do nothing.
+
+### The folder
+
+On a host with preview roots the header shows, after the name and in
+italics, the last segment of the directory the pane works in: the
+checkout a Claude session was started in, the directory a shell is
+in. The whole path is under the pointer, and on the tab's tooltip.
+Nothing is shown for a pane outside the roots, for a reader, or on a
+host without roots: a path on the host is for its writers, under the
+roots the owner named.
 
 When an AI CLI in a pane calls for you (see
 [notifications](notifications.md)) the badge appears, a toast slides in,
@@ -252,7 +292,8 @@ view, each live and typable. The page is the Android client's pane view:
   the right the pane buttons, 32 px squares with a label under
   the pointer: `▦` arrangement, `⊞` equal shares, `↺` the host's
   layout (the window view's; off here), `⤢` fit, `▮` direct typing,
-  `⎇` changes, `⇗` share, `⊡` zoom, `≡` go to a pane. The row is the same in
+  `⎇` changes, `☾` later (selected while the pane is parked), `⇗` share,
+  `⊡` zoom, `≡` go to a pane. The row is the same in
   every view, the window view included: a button whose action does not
   apply is disabled, never left out, so nothing moves under the
   pointer; on a narrow screen (640 px and under) they fold into one
@@ -525,7 +566,7 @@ is the pane view's: `‹` back to the list, then a **tab per pane of the
 window** in layout order, painted with its state, the focused one with
 the thick border, its name in bold and the accent bar under it; a click
 focuses that pane. The
-controls at the right are the pane view's nine, in its order, each
+controls at the right are the pane view's ten, in its order, each
 disabled where it does not apply here, the tooltip naming each with
 its key:
 
@@ -738,7 +779,8 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `K` | the keyboard: a window with a full terminal board for the focused pane (see [the keyboard](keyboard.md)); `Esc` closes it |
 | `v` | speak: record a clip for the hub's transcriber, onto the input line; held, it records until released; tapped, `v` again stops; `Esc` drops it |
 | `p` | selector: go to a pane or window, or start a session on a host |
-| `I` / `o` | the [inbox](inbox.md): every pane that waits for you, oldest first; `Enter` opens the selected one / open the oldest waiting pane |
+| `I` / `o` | the [inbox](inbox.md): every pane that waits for you, oldest first, the parked ones last; `Enter` opens the selected one (and wakes it) / open the oldest waiting pane that is not parked |
+| `d` | later: park the focused tile's pane, or the selected row's (see [notifications](notifications.md#later)); its tab goes last with `☾`, painted plain, the header says `☾ later` with the kind underneath, and no toast, flash or notification calls for it; `d` again, a click on its tab, opening it, typing, an answer or a mail wakes it; the `☾` pane button does the same, selected while parked; off on a read-only pane and on a host older than this |
 | `+` | the list: one more pane in the selected row's window; it opens. Tiles: the add menu |
 | `-` | tiles: minimise the focused tile to the row above the keys; a click on its tab there, or its entry in the add menu, brings it back |
 | `S` | a new session on the selected row's host (or the first that allows it): a one-line form, `Enter` starts, `Esc` cancels |

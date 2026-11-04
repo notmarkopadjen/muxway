@@ -18,13 +18,21 @@ export function ChainMark({ fresh = false }: { fresh?: boolean }) {
 }
 
 // Mail waiting for a pane's process: the envelope and the count, in the
-// talk hue, on a tab, a row or a header.
-export function MailMark({ unread }: { unread: number }) {
+// talk hue, on a tab, a row or a header. A click opens the pane's mail.
+export function MailMark({ unread, onClick }: { unread: number; onClick?: () => void }) {
   return (
     <span
       className="mx-mail-count"
       data-testid="mail-mark"
-      title={`${unread} unread mail for the process in this pane`}
+      role={onClick ? 'button' : undefined}
+      title={`${unread} unread mail for the process in this pane${onClick ? ': click reads it' : ''}`}
+      onClick={
+        onClick &&
+        ((e) => {
+          e.stopPropagation();
+          onClick();
+        })
+      }
     >
       ✉ {unread}
     </span>

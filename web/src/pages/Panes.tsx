@@ -7,6 +7,7 @@ import {
   splitWindow,
   useHubHosts,
   useHubMe,
+  useLater,
   useTree,
   type HubList,
 } from '../api/queries';
@@ -16,6 +17,7 @@ import { Box } from '../components/Box';
 import { LensMark } from '../components/Lens';
 import { PaneTitle } from '../components/PaneTitle';
 import { MailMark } from '../components/TalkMark';
+import { openMailWindow } from '../shell/mailwin';
 import { groupsOf, pullTogether } from '../term/groups';
 import { useToast } from '../components/Toast';
 import { label } from '../term/describe';
@@ -285,12 +287,14 @@ function HostTree({
                         <LensMark status={st} attention={p.attention} />
                         <span className="mx-meta">
                           <PaneTitle pane={p} />
-                          {p.mail && <MailMark unread={p.mail.unread} />}
+                          {p.mail && (
+                            <MailMark
+                              unread={p.mail.unread}
+                              onClick={() => openMailWindow({ address: p.address })}
+                            />
+                          )}
                         </span>
-                        <span className="mx-addr">
-                          {p.alias && <span className="mx-dim">@{p.alias} </span>}
-                          {p.address}
-                        </span>
+                        <span className="mx-addr">{p.address}</span>
                         <span className="mx-state">{word(st, p.attention?.kind)}</span>
                       </div>
                     );
@@ -378,6 +382,28 @@ export function PanesPage() {
     (addresses: string[]) => navigate({ to: '/p/$', params: { _splat: routeFor(addresses) } }),
     [navigate],
   );
+  // Later: d parks the selected pane on its host, or wakes it; opening a
+  // parked pane wakes it too.
+  const later = useLater();
+  const setLater = useCallback(
+    (address: string, on: boolean) => {
+      const p = [...panesOf.values()].flat().find((q) => q.address === address);
+      const host = p && hosts.data?.find((h) => h.name === p.host && h.hub === p.hub);
+      if (!p || p.mode !== 'write' || !host?.later || !!p.later === on) return;
+      later.mutate(
+        { address, later: on },
+        { onError: (err) => toast.push({ kind: 'later', title: address, text: String(err) }) },
+      );
+    },
+    [panesOf, hosts.data, later, toast],
+  );
+  const openOne = useCallback(
+    (address: string) => {
+      setLater(address, false);
+      open([address]);
+    },
+    [setLater, open],
+  );
   const pick = useCallback((address: string) => {
     setPicked((p) =>
       p.includes(address)
@@ -432,7 +458,8 @@ export function PanesPage() {
       const target = ev.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
         if (ev.key === 'Enter' && target === filterRef.current && ordered.length) {
-          open(picked.length ? picked : [selected ?? ordered[0]]);
+          if (picked.length) open(picked);
+          else openOne(selected ?? ordered[0]);
         }
         return;
       }
@@ -453,8 +480,10 @@ export function PanesPage() {
       else if (ev.key === ' ' && selected) {
         ev.preventDefault();
         pick(selected);
-      } else if (ev.key === 'Enter' && (picked.length || selected))
-        open(picked.length ? picked : [selected!]);
+      } else if (ev.key === 'Enter' && (picked.length || selected)) {
+        if (picked.length) open(picked);
+        else openOne(selected!);
+      } else if (ev.key === 'd' && current) setLater(current.address, !current.later);
       else if (ev.key === '/') {
         ev.preventDefault();
         filterRef.current?.focus();
@@ -476,7 +505,19 @@ export function PanesPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ordered, selected, picked, open, pick, split, canStart, hosts.data, panesOf]);
+  }, [
+    ordered,
+    selected,
+    picked,
+    open,
+    openOne,
+    setLater,
+    pick,
+    split,
+    canStart,
+    hosts.data,
+    panesOf,
+  ]);
 
   return (
     <div data-testid="panes">
@@ -516,7 +557,7 @@ export function PanesPage() {
                 picked={picked}
                 naming={naming === key}
                 canStart={canStart(h)}
-                onOpen={(a) => open([a])}
+                onOpen={openOne}
                 onPick={pick}
                 onSplit={(panes) => void split(panes)}
                 onNaming={setNaming}

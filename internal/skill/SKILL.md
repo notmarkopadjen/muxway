@@ -63,6 +63,7 @@ muxway client read alice-laptop/work/0.0 --lines 50
 muxway client send alice-laptop/work/0.0 "make test" --enter
 muxway client key alice-laptop/work/0.0 C-c
 muxway client answer alice-laptop/work/0.0 yes
+muxway client later alice-laptop/work/0.0        # park it: its tab goes last, it stops calling; --off wakes it
 muxway client mail alice-laptop/work/0.0 "run the tests on your branch and tell me what fails"
 muxway client mailbox alice-laptop/work/0.0      # what that pane holds, and whether it was read
 muxway client wait alice-laptop/work/0.0 --timeout 20m   # until it needs someone
@@ -82,5 +83,5 @@ record, `--follow` keeps printing it, so you can see what the other
 panes are saying.
 
 As MCP tools (`muxway mcp` in your MCP configuration): `list_panes`,
-`inbox`, `read_pane`, `send_text`, `send_key`, `answer`, `wait`, `talk`,
-`mail`, `mailbox`, `my_mail`.
+`inbox`, `read_pane`, `send_text`, `send_key`, `answer`, `later`, `wait`,
+`talk`, `mail`, `mailbox`, `my_mail`.

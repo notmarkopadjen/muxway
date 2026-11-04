@@ -121,6 +121,9 @@ type Pane struct {
 	CursorY int `json:"cursor_y,omitempty"`
 	// Last: the only pane of its session, so closing it ends the session.
 	Last bool `json:"last,omitempty"`
+	// Later: the owner parked the pane; LaterAt is when.
+	Later   bool  `json:"later,omitempty"`
+	LaterAt int64 `json:"later_at,omitempty"`
 	// Cwd is the directory a shell pane is in, when the agent may say:
 	// under one of its roots, for a writer. Path is what tmux reports.
 	Cwd            string `json:"cwd,omitempty"`
@@ -717,11 +720,16 @@ func (s Server) SetAlias(ctx context.Context, target, alias string) error {
 	if Scope(target) != "pane" {
 		return errors.New("an alias names one pane: use session:window.pane")
 	}
+	return s.SetPaneAlias(ctx, target, alias)
+}
+
+// SetPaneAlias is SetAlias for a pane named by its id.
+func (s Server) SetPaneAlias(ctx context.Context, paneID, alias string) error {
 	if alias == "" {
-		_, err := s.run(ctx, "set-option", "-p", "-u", "-t", target, optAlias)
+		_, err := s.run(ctx, "set-option", "-p", "-u", "-t", paneID, optAlias)
 		return err
 	}
-	_, err := s.run(ctx, "set-option", "-p", "-t", target, optAlias, alias)
+	_, err := s.run(ctx, "set-option", "-p", "-t", paneID, optAlias, alias)
 	return err
 }
 

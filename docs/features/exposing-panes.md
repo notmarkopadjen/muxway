@@ -48,6 +48,18 @@ flowchart TD
     D -->|write| X[listed, readable and writable]
 ```
 
+## Names
+
+`--name` gives one pane an alias, `[a-z0-9-]{1,32}`: a second address
+for it (`alice-laptop/@build`), a name a grant may use, and what every
+client shows first, before whatever the program in the pane says about
+itself. A client with a write grant on the pane may set or clear the
+alias too (`POST /v1/panes/{address}/alias`; on the web a slow second
+click on the pane's tab or `N`), so the owner names a Claude session
+`review` from the browser and agents address it by that name. The
+agent refuses a name another pane of the server has, and logs every
+change with who made it, the old name and the new.
+
 The agent re-reads the marks for every request. As a second guard it
 refuses a pane whose process changed under the same pane id on the same
 tmux server; a restarted server hands out the same ids with new
@@ -135,6 +147,12 @@ stateDiagram-v2
   to 8 MiB, written into that one directory under a name the agent
   chooses and kept a day. The default is off. See
   [attachments](attachments.md).
+- **A name follows the pane, a grant by name follows the name.** A
+  grant on `alice-laptop/@review` reaches whichever pane holds that
+  alias. A writer of a pane may rename it, from a client or from the
+  pane's own shell, so a grant by alias trusts the pane's writers;
+  grant by address where that is not wanted. A taken name is refused,
+  so no pane can slip under another's grant while that pane lives.
 - `Escape` is among the keys a client may send, because AI command-line
   tools use it to interrupt. In editors it opens command mode, so a pane
   running an editor is as powerful as a shell.

@@ -9,7 +9,7 @@ test('83 tiles: a read-only token types nowhere; a bad route asks the hub for no
   await signIn(page, RO_TOKEN);
   await page.goto(`/p/${SHELL0},${HOST}/work/0.1`);
   await expect(page.getByTestId('tile')).toHaveCount(2);
-  await expect(page.getByTestId('pane').locator('.mx-mode')).toHaveCount(2);
+  await expect(page.getByTestId('pane').locator('.mx-tile-head[data-mode]')).toHaveCount(2);
   await expect(page.getByTestId('input')).toBeDisabled();
   await expect(page.getByTestId('readonly')).toBeVisible();
   await expect(page.getByTestId('fit')).toBeDisabled();
