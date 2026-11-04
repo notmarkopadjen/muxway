@@ -32,7 +32,7 @@ client's `AGENTS.md` points here.
 | Claude Code | recognised by its command or by the spark it puts first in its title; named *Claude*, with its mark; the status it writes (the "codename") follows: `Claude · fixing the build` |
 | the other AI CLIs | recognised by their command (Codex, Gemini, Antigravity `agy`, OpenCode, Copilot, aider, goose, Amp, Cursor) or their name in the title under an interpreter; named, and Codex and Antigravity have marks of their own (a hexagon, a lifted chevron) wherever Claude's spark shows; the title follows as the status |
 | tab | the alias; else the codename alone for Claude Code, else the name |
-| folder | the last segment of the directory the pane works in (`cwd`: under a preview root, for a writer, every program), in *italics*, dimmer than the name, after it and before the status; the whole path under the pointer (web); nothing when the host gives none |
+| folder | the last segment of the directory the pane works in (`cwd`: under a preview root, for a writer, every program), in *italics*, dimmer than the name, after it and before the status; the whole path under the pointer (web); nothing when the host gives none. MIDP: after the name with a slash in front (`review /muxway · fixing the build`) on the 2.0 build, left out on the 96x65 build |
 | place | the tmux address `host/session/window.pane`, dimmed, second to the name; on the web the tile's header keeps it under the pointer, not in the row |
 | status style | the codename, any program status and the folder are set in *italics*, dimmer than the name |
 
@@ -231,7 +231,7 @@ The same action on every client, triggered the way the device does it.
 | back to the list | `Esc`, the brand | `‹`, system back | back |
 | open the selected pane | `Enter` | tap | select |
 | pick several | `space`, `[ ]`; Shift+click a tab opens it beside | hold; a tab held opens it beside | — |
-| name the pane: the focused pane's alias, `a-z 0-9 -` up to 32, shown first everywhere and an address for agents (`host/@name`); `Enter` saves, `Esc` leaves it, empty takes the name away; needs a write grant and a host that names (`hosts[].rename`); `POST /v1/panes/{address}/alias` | `N`; a second click on its tab or its header name between half a second and three after the click that focused it (a double-click still zooms) | — (follow-up: long-press the tab) | — |
+| name the pane: the focused pane's alias, `a-z 0-9 -` up to 32, shown first everywhere and an address for agents (`host/@name`); `Enter` saves, `Esc` leaves it, empty takes the name away; needs a write grant and a host that names (`hosts[].rename`); `POST /v1/panes/{address}/alias` | `N`; a second click on its tab or its header name between half a second and three after the click that focused it (a double-click still zooms) | — (follow-up: long-press the tab) | — (both show the alias as the name; MIDP reads it from the text listing's `alias` column) |
 | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it, coming round at either end | `]` / `[` | tap the tile, swipe | D-pad left / right |
 | move the strip | wheel over it, `‹ ›` | drag | — |
 | reorder the strip: a tab to another place, kept across reloads | drag a tab along the strip (a mark shows where it lands); `}` / `{` move the focused pane's tab one place right / left | — | — |
