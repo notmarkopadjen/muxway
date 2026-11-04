@@ -45,7 +45,9 @@ nothing but the hub to talk to.
    resize: with fit on, the pane keeps its size while you write and the
    screen scrolls under the line instead. What the line sends to one
    pane goes one request after another, so keys pressed in a burst
-   arrive in the order pressed. A text with several lines is
+   arrive in the order pressed, and the screen is read back once per
+   burst rather than once per key, so the burst stays under the hub's
+   rate. A text with several lines is
    pasted into the pane as one block (bracketed, when the program asked
    for it), so Claude Code takes it as one message and a shell as one
    editable block; then `Enter` is sent. While the first word is typed a

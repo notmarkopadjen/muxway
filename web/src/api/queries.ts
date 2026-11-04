@@ -1,9 +1,16 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { inboxOrder } from '../term/order';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError, target } from './client';
 import { joinAddress, originOfHub, splitAddress, useHubs, type Hub } from '../hubs';
 import { noteOwn } from '../term/lens';
+import { Settle } from './settle';
 import { extOf, isTextName } from '../term/types';
 import type {
   AuthMethods,
@@ -211,6 +218,26 @@ function inOrder<T>(address: string, go: () => Promise<T>): Promise<T> {
   return next;
 }
 
+// The pane an address names, as the open view or some list has it;
+// fetches nothing.
+export function knownPane(qc: QueryClient, address: string): Pane | undefined {
+  const open = qc.getQueryData<PaneContent>(keys.pane(address))?.pane;
+  if (open) return open;
+  const { hub, address: bare } = splitAddress(address);
+  const all = qc.getQueryData<Pane[]>(keys.panesOf(hub))?.find((p) => p.address === address);
+  if (all) return all;
+  const host = bare.split('/')[0];
+  for (const s of qc.getQueryData<Tree>(keys.tree(host, hub))?.sessions ?? [])
+    for (const w of s.windows)
+      for (const p of w.panes) if (p.address === bare) return hub ? { ...p, address, hub } : p;
+  return undefined;
+}
+
+// What input reads back settles once per burst, not once per key:
+// sixteen keys at once are sixteen requests and a few reads, under the
+// hub's burst of forty.
+const settled = new Settle(250);
+
 export function useInput(address: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -220,11 +247,16 @@ export function useInput(address: string) {
     },
     onSuccess: () => {
       noteOwn(address);
-      qc.invalidateQueries({ queryKey: keys.pane(address) });
-      // Text and keys clear the pane's attention: the lists say so at once.
-      const { hub, address: bare } = splitAddress(address);
-      qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
-      qc.invalidateQueries({ queryKey: keys.tree(bare.split('/')[0], hub) });
+      // Text and keys clear the pane's attention: the lists say so at
+      // once, and only then has a key changed anything in them.
+      const lists = !!knownPane(qc, address)?.attention;
+      settled.run(address, () => {
+        qc.invalidateQueries({ queryKey: keys.pane(address) });
+        if (!lists) return;
+        const { hub, address: bare } = splitAddress(address);
+        qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
+        qc.invalidateQueries({ queryKey: keys.tree(bare.split('/')[0], hub) });
+      });
     },
   });
 }
