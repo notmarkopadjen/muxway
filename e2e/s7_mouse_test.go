@@ -90,3 +90,39 @@ func TestFlow81_ClickReachesAProgramWithTheMouse(t *testing.T) {
 		t.Fatalf("hub audit:\n%s", logs)
 	}
 }
+
+// 207
+func TestFlow207_AClickIsNotAnAnswer(t *testing.T) {
+	e, ts, a := basic(t)
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	ts.must("send-keys", "-t", "work:0.0", "-l", `printf '\033[?1000h\033[?1006h'; cat -v`)
+	ts.must("send-keys", "-t", "work:0.0", "Enter")
+	waitFor(t, "cat running", func() bool {
+		return ts.must("display-message", "-p", "-t", "work:0.0", "#{pane_current_command}") == "cat"
+	})
+	ask := e.ask(a, paneIDOf(ts, "work:0.0"), "30s", "deploy?", "yes", "no")
+	waitFor(t, "question", func() bool { return e.attention(tok, shell0) == "question" })
+	expect(t, e.later(tok, shell0, true), http.StatusNoContent, "park")
+	waitFor(t, "parked", func() bool { return e.parked(tok, shell0) })
+	// A click reaches the program, and that is all it does.
+	expect(t, e.input(tok, shell0, map[string]any{"mouse": map[string]any{"button": "left", "x": 5, "y": 3}}), http.StatusNoContent, "click")
+	waitFor(t, "click shown", func() bool { return strings.Contains(ts.capture("work:0.0"), "^[[<0;5;3M") })
+	time.Sleep(1500 * time.Millisecond) // past the hub's listing cache
+	if kind := e.attention(tok, shell0); kind != "question" {
+		t.Fatalf("a click changed the attention to %q", kind)
+	}
+	if !e.parked(tok, shell0) {
+		t.Fatal("a click woke the pane")
+	}
+	select {
+	case <-ask.done:
+		t.Fatal("a click ended the question")
+	default:
+	}
+	// A key is the owner's turn: the attention, the question and the parking go.
+	expect(t, e.input(tok, shell0, map[string]any{"key": "Enter"}), http.StatusNoContent, "key")
+	waitFor(t, "a key clears", func() bool { return e.attention(tok, shell0) == "" && !e.parked(tok, shell0) })
+	if code, out := ask.wait(t, 5*time.Second); code != 3 {
+		t.Fatalf("ask ended with %d %q, want 3 (typed)", code, out)
+	}
+}

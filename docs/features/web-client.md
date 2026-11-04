@@ -193,7 +193,7 @@ When an AI CLI in a pane calls for you (see
 [notifications](notifications.md)) the badge appears, a toast slides in,
 the tab title flashes until you come back, and, if you turned them on, a
 browser notification names the pane while the tab is hidden. Typing into
-the pane clears it.
+the pane clears it; a click on the pane does not.
 
 ## Sharing a pane
 
