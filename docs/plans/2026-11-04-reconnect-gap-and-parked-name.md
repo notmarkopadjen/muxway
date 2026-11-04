@@ -170,8 +170,25 @@ placeholder hosts.
 
 ## Review (after implementation)
 
-(see below)
+- The diff was read against the plan, the security rules and the
+  privacy rules. One addition on review: after a failed write the hub
+  cancels the agent connection, so a poisoned session cannot leave a
+  host online and unreachable until its reads notice.
+- A replaced connection (a second agent attaching under the same name)
+  does not count as a gap: `detach` marks the host gone only when the
+  connection that ended was the current one.
+- The old reset after a minute held is subsumed: a connection that held
+  five seconds is retried at once and the backoff starts again from one
+  second if that fails.
+- The run's agent logs carry no `failed authentication`, which proves
+  nothing by itself (the drift needed a cancelled fetch queued behind
+  another frame); the unit test is what pins the fix.
 
 ## Test run
 
-(see below)
+- Full suite on the feature tree (`a5ea880`):
+  [#264](https://github.com/notmarkopadjen/muxway/issues/264), 242
+  tests, none failed. The Go tests of this change are 208 and 209 in
+  `e2e/s29_reconnect_test.go`; the browser checks are in spec 118, with
+  the screenshot `118-later-window-header`.
+- The pull request's own e2e check passed on the same commit.
