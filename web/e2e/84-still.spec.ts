@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page, type Request } from '@playwright/test';
 import { control, HOST, openPane, settled, SHELL0, shot, signIn } from './fixtures';
 
 // Fit keeps still: the line's growth is not a resize; = evens one
@@ -134,7 +134,7 @@ test('84 the + stays on a read-only pane of a host without sessions, its items d
   await page.keyboard.press('Escape');
 });
 
-test('84 keys pressed in a burst reach the pane in order', async ({ page, request }) => {
+test('84 keys pressed in a burst reach the pane in order', async ({ page, request }, info) => {
   await control(request, '/send', { target: 'work:0.0', text: PLAIN_CAT });
   await signIn(page);
   await openPane(page, SHELL0);
@@ -152,14 +152,28 @@ test('84 keys pressed in a burst reach the pane in order', async ({ page, reques
     'ArrowRight',
   ];
   const want = '^[[A^[[5~^[[1~^[[4~^[[B^[[6~^[[D^[[C';
-  // Sixteen keys at once: a burst a hand can make, within the hub's rate,
-  // and twice what reached the pane out of order before the queue.
+  // Sixteen keys at once: a burst a hand can make, and twice what reached
+  // the pane out of order before the queue. The hub takes forty requests
+  // in a burst and a key once cost three, so the burst is counted too:
+  // sixteen inputs, the screen read a few times, the list at most on its
+  // own poll.
+  const seen: string[] = [];
+  const onRequest = (r: Request) => {
+    const u = new URL(r.url());
+    if (u.pathname.startsWith('/v1/')) seen.push(`${r.method()} ${u.pathname}`);
+  };
+  page.on('request', onRequest);
   for (let round = 0; round < 2; round++) {
     for (const k of keys) await page.keyboard.press(k);
   }
   await expect
     .poll(() => control(request, '/capture', { target: 'work:0.0' }), { timeout: 10_000 })
     .toContain(want.repeat(2));
+  page.off('request', onRequest);
+  expect(seen.filter((s) => s.endsWith('/input'))).toHaveLength(16);
+  expect(seen.filter((s) => s === 'GET /v1/panes').length).toBeLessThanOrEqual(1);
+  expect(seen.length).toBeLessThan(30);
+  await shot(page, info, '84-burst');
   await page.getByTestId('keybar').getByRole('button', { name: 'C-c', exact: true }).click();
   await expect.poll(() => control(request, '/command', { target: 'work:0.0' })).toBe('bash');
   await control(request, '/send', { target: 'work:0.0', text: 'clear' });
