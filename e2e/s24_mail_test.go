@@ -311,7 +311,7 @@ func TestMailReachesTheProcessAndComesBack(t *testing.T) {
 	// Text mode of the mailbox, and from the command line.
 	r := e.getText(full, "/v1/panes/"+shell0+"/mail")
 	expect(t, r, http.StatusOK, "mailbox text")
-	if !strings.HasPrefix(r.body, fmt.Sprintf("%d\t", id)) || !strings.Contains(r.body, "\t"+shell1+"\tfull\t") || !strings.HasSuffix(r.body, "\trun the tests, then tell me\n") {
+	if !strings.HasPrefix(r.body, fmt.Sprintf("%d\t", id)) || !strings.Contains(r.body, "\t"+shell1+"\tfull\t") || !strings.HasSuffix(r.body, "\trun the tests, then tell me\t\n") {
 		t.Fatalf("text mode: %q", r.body)
 	}
 	if out, _, code := e.runClient(env, "mailbox", shell0); code != 0 || out != r.body {

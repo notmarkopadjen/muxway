@@ -11,7 +11,7 @@ feature phone, a pair of glasses, a script with `curl`. Ask for it with
 | `GET /v1/panes/{address}` | row of the screen | the text, see below |
 | `GET /v1/inbox` | waiting pane, oldest first, parked last | address, kind, when, the text, choices joined by `\|`, pending |
 | `GET /v1/events` | event | seq, when, address, kind, text; then `next` and the cursor |
-| `GET /v1/panes/{address}/mail` | mail | id, when, from, actor, read at (or 0), the text |
+| `GET /v1/panes/{address}/mail` | mail | id, when, from, actor, read at (or 0), the text, `1` when the pane answered it |
 | `GET /v1/talk` | message | seq, when, from, to, kind, the text |
 | `POST /v1/panes/{address}/alias` | the answer | address, alias |
 | `POST /v1/transcribe` | the answer | the text heard, one line |
