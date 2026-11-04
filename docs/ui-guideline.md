@@ -281,7 +281,7 @@ The same action on every client, triggered the way the device does it.
 | speak: record a clip, stop it, drop it | `v` or `◉`: held, records until released; tapped, the next tap, `■` or the meter stops; `Esc` drops | `◉` the same: held records until the finger lifts, tapped the next tap or `■` stops; back drops | the glasses' own mic |
 | answer from the watch: a key of its pane screen, or a spoken line confirmed there | — | a tap on the watch's pane screen; the phone validates and sends | — |
 | another hub | `H`, `⇄`: a link to its own page and sign-in | every hub with a token is in use at once; the connect screen's hubs list adds one | — |
-| share the pane read-only: a link and a password for one person, the link as a code to send; the window lists the pane's live shares with *revoke* | `s`, `⇗` among the pane buttons, the `⇗ n` count on the tile's header | — (follow-up: a *share* action that opens the same window) | — |
+| share the pane read-only: a link and a password for one person, the link as a code to send; the window lists the pane's live shares with *revoke* | `s`, `⇗` among the pane buttons, the `⇗ n` count on the tile's header | *⇗ share* in the pane menu (a tab or a header held still) opens the share sheet, the same form and the once-shown link, password and code, which the system share sheet carries on; the `⇗ n` count on the tile's header opens it too; observing stays in a browser | — |
 | the admin page (an admin principal only) | `admin` in the header | Settings → *admin* | — |
 | deny the address of a log line | `deny` on the row | — | — |
 | end a client's session | `end` on the row | `end` on the row | — |
