@@ -10,8 +10,8 @@ import { Code, render } from '../term/markdown';
 import { size } from './InputPanel';
 
 // A file of the host, shown in a window over the page: an image as
-// itself, a PDF in a frame, a text as it is, an archive as its download
-// only, with its name, size and a download in the bar. Escape, the bar's × or a click
+// itself, a PDF in a frame, a text as it is, anything else as its
+// download only, with its name, size and a download in the bar. Escape, the bar's × or a click
 // outside closes it. A file of the inbox is asked for by name; one the
 // pane printed the path of, by that path, from under the host's roots. A
 // change of the repository opens with a diff / file switch: its diff

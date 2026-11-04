@@ -16,8 +16,8 @@ import (
 
 // Files for a pane's program: a client sends one, the hub checks it and
 // hands the bytes to the agent, which writes it into its inbox and
-// answers the path. The hub keeps nothing; the client's own name for the
-// file goes nowhere.
+// answers the path. The hub keeps nothing; of the client's own name for
+// the file only its extension travels, as one short word.
 const (
 	fileRate  = 0.5 // one file every two seconds per principal
 	fileBurst = 1
@@ -174,7 +174,7 @@ func (h *Hub) handleFile(w http.ResponseWriter, r *http.Request, t Principal) {
 		}
 		return
 	}
-	typ, data, code := readFilePart(w, r)
+	typ, ext, data, code := readFilePart(w, r)
 	if code != "" {
 		status := map[string]int{"too_large": http.StatusRequestEntityTooLarge, "unsupported": http.StatusUnsupportedMediaType}[code]
 		if status == 0 {
@@ -189,9 +189,9 @@ func (h *Hub) handleFile(w http.ResponseWriter, r *http.Request, t Principal) {
 		fail(w, http.StatusTooManyRequests, "rate_limited")
 		return
 	}
-	attrs = append(attrs, "type", typ, "bytes", len(data))
+	attrs = append(attrs, "type", typ, "ext", ext, "bytes", len(data))
 	start := time.Now()
-	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpFile, Actor: t.ID, Pane: p.PaneID, Type: typ, Data: data})
+	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpFile, Actor: t.ID, Pane: p.PaneID, Type: typ, Ext: ext, Data: data})
 	if err != nil {
 		fail(w, http.StatusServiceUnavailable, "host_offline")
 		return
@@ -217,40 +217,49 @@ func (h *Hub) handleFile(w http.ResponseWriter, r *http.Request, t Principal) {
 	created(w, map[string]any{"path": resp.Path, "bytes": len(data)})
 }
 
-// readFilePart takes the request's one part named file: its declared
-// type, which must be one the inbox takes and agree with the bytes, and
-// at most wire.MaxFile of them.
-func readFilePart(w http.ResponseWriter, r *http.Request) (string, []byte, string) {
+// readFilePart takes the request's one part named file: at most
+// wire.MaxFile bytes, their type, and the extension they are kept under.
+// A known type, declared or named by the file's extension, must agree
+// with the bytes and gives the extension; anything else is bytes under
+// the word the client's name ended in, which is all of the name that is
+// looked at.
+func readFilePart(w http.ResponseWriter, r *http.Request) (string, string, []byte, string) {
 	mt, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mt != "multipart/form-data" || params["boundary"] == "" {
-		return "", nil, "bad_input"
+		return "", "", nil, "bad_input"
 	}
 	mr := multipart.NewReader(http.MaxBytesReader(w, r.Body, wire.MaxFile+64<<10), params["boundary"])
 	part, err := mr.NextPart()
 	if err != nil {
-		return "", nil, sizeOr(err, "bad_input")
+		return "", "", nil, sizeOr(err, "bad_input")
 	}
 	if part.FormName() != "file" {
-		return "", nil, "bad_input"
+		return "", "", nil, "bad_input"
 	}
 	typ, _, err := mime.ParseMediaType(part.Header.Get("Content-Type"))
 	if err != nil {
-		return "", nil, "unsupported"
+		typ = wire.Bytes
+	}
+	named := wire.NamedExt(part.FileName())
+	if _, known := wire.FileTypes[typ]; !known {
+		if typ = wire.FileTypeByExt(named); typ == "" {
+			typ = wire.Bytes
+		}
 	}
 	data, err := io.ReadAll(io.LimitReader(part, wire.MaxFile+1))
 	if err != nil {
-		return "", nil, sizeOr(err, "bad_input")
+		return "", "", nil, sizeOr(err, "bad_input")
 	}
 	if len(data) > wire.MaxFile {
-		return "", nil, "too_large"
+		return "", "", nil, "too_large"
 	}
 	if _, err := mr.NextPart(); err != io.EOF {
-		return "", nil, sizeOr(err, "bad_input")
+		return "", "", nil, sizeOr(err, "bad_input")
 	}
 	if !wire.ValidFile(typ, data) {
-		return "", nil, "unsupported"
+		return "", "", nil, "unsupported"
 	}
-	return typ, data, ""
+	return typ, wire.FileExt(typ, named), data, ""
 }
 
 func sizeOr(err error, code string) string {

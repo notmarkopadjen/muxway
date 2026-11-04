@@ -471,7 +471,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		a.audit(req, resp.Error)
 	case wire.OpFile:
 		resp.Path, resp.Error = a.file(ctx, req)
-		a.audit(req, resp.Error, "type", req.Type, "bytes", len(req.Data), "path", resp.Path)
+		a.audit(req, resp.Error, "type", req.Type, "ext", req.Ext, "bytes", len(req.Data), "path", resp.Path)
 	case wire.OpReadFile:
 		resp.Type, resp.Data, resp.Error = a.fileBack(ctx, req)
 		a.audit(req, resp.Error, "name", req.Name, "bytes", len(resp.Data))
@@ -754,7 +754,7 @@ func (a *Agent) file(ctx context.Context, req wire.Request) (string, string) {
 	if p.Mode != tmux.ModeWrite {
 		return "", wire.ErrReadOnly
 	}
-	path, err := a.saveFile(req.Type, req.Data)
+	path, err := a.saveFile(req.Type, req.Ext, req.Data)
 	switch {
 	case errors.Is(err, errInboxFull):
 		return "", wire.ErrInboxFull

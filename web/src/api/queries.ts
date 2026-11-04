@@ -596,21 +596,32 @@ export const FILE_TYPES: Record<string, string> = {
   zip: 'application/zip',
 };
 
-export function fileType(f: File): string | null {
+// fileType is the type a file goes as: a known one by the browser's type
+// or the name's extension, which the host checks and names; a text with
+// no usable extension as plain text, so it lands as .txt; anything else
+// as bytes, kept under the extension the name ends in.
+export function fileType(f: File): string {
   const known = Object.values(FILE_TYPES);
   if (known.includes(f.type)) return f.type;
   const byName = FILE_TYPES[extOf(f.name)];
   if (byName) return byName;
-  // Any other text lands as plain text: the host names a file by its type.
-  if (f.type.startsWith('text/') || isTextName(f.name)) return 'text/plain';
-  return null;
+  if (!fileExt(f.name) && (f.type.startsWith('text/') || isTextName(f.name))) return 'text/plain';
+  return 'application/octet-stream';
+}
+
+// fileExt is all of the browser's name for a file that travels: the word
+// after its last dot, lowercased, when it is one the host takes.
+export function fileExt(name: string): string {
+  const ext = extOf(name);
+  return /^[a-z0-9]{1,8}$/.test(ext) ? ext : '';
 }
 
 // sendFile hands a file to the pane's host; the answer is where it went.
-// The browser's name for the file is not sent.
+// Of the browser's name for the file only the extension is sent.
 export function sendFile(address: string, f: File, type: string): Promise<{ path: string }> {
   const form = new FormData();
-  form.append('file', new Blob([f], { type }), 'file');
+  const ext = fileExt(f.name);
+  form.append('file', new Blob([f], { type }), ext ? `file.${ext}` : 'file');
   const t = target(address);
   return api<{ path: string }>(`/v1/panes/${t.address}/files`, {
     method: 'POST',
