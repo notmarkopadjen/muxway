@@ -50,7 +50,11 @@ A held key is a few requests, not one per repeat: the client queues
 what it sends to a pane and, while one request is in flight, joins text
 to the text waiting and counts a key equal to the key waiting, up to 50
 (`{"key": "Down", "count": 7}`), on a host whose agent takes a count;
-an older host gets one request per press. A refused key is a toast and
+an older host gets one request per press. The screen is read once per
+burst, not once per key: at the first key and again a quarter second
+after the last, and the pane lists only when the key cleared the pane's
+attention, so sixteen keys at once are sixteen requests and a few reads,
+under the hub's burst of forty. A refused key is a toast and
 is dropped, as the line's is. On a touch screen a tap keeps the line's
 ways: the row the program waits on focuses the line, and `i` from a
 hardware keyboard turns direct typing on. Focusing a read-only tile
@@ -118,5 +122,6 @@ and `"repeat": true` in the hosts listing for an agent that takes it.
   `Ctrl+V` and `Shift+Insert` send no key: a program in the pane never
   hears a paste chord, it gets the text.
 - **Limits.** The per-principal rate stands as the backstop; the
-  client's queue keeps a held key under it. Audit lines as before, with
+  client's queue keeps a held key under it, and what it reads back
+  settles once per burst rather than once per key. Audit lines as before, with
   `count` on a key; never the text.
