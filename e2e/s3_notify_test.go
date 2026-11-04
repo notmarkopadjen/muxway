@@ -328,7 +328,7 @@ func TestFlow26_ClaudeCodeHooksTypedInThePane(t *testing.T) {
 		t.Fatal("no attention on the pane")
 	}
 	text := e.getText(tok, "/v1/panes").body
-	if !strings.Contains(text, addr+"\twrite\tbash\ttest-pane\tpermission\t\t\t\t\n") {
+	if !strings.Contains(text, addr+"\twrite\tbash\ttest-pane\tpermission\t\t\t") {
 		t.Fatalf("text listing: %q", text)
 	}
 	hook(`{"session_id":"test","cwd":"/tmp/project","hook_event_name":"Notification","notification_type":"auth_success","message":"ignored"}`)
