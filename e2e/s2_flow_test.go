@@ -190,8 +190,18 @@ func TestFlow18_TwoHostsAreRoutedSeparately(t *testing.T) {
 	if strings.Contains(ts1.capture("work:0.0"), "on-bob") || strings.Contains(ts2.capture("work:0.0"), "on-alice") {
 		t.Fatal("input reached the wrong host")
 	}
+	// Two columns a 0.8 phone reads, then the flags; a reader that splits
+	// on tabs and takes the first two is what the phone does.
 	hosts := e.getText(tok, "/v1/hosts").body
-	if hosts != host+"\tonline\nbob-desktop\tonline\n" && hosts != "alice-laptop\tonline\nbob-desktop\tonline\n" {
+	var seen []string
+	for _, row := range strings.Split(strings.TrimSuffix(hosts, "\n"), "\n") {
+		f := strings.Split(row, "\t")
+		if len(f) != 3 || f[1] != "online" || !strings.Contains(f[2], "ask") || !strings.Contains(f[2], "keys2") {
+			t.Fatalf("host row %q: want name, online, the flags", row)
+		}
+		seen = append(seen, f[0])
+	}
+	if strings.Join(seen, ",") != host+",bob-desktop" && strings.Join(seen, ",") != "alice-laptop,bob-desktop" {
 		t.Fatalf("hosts: %q", hosts)
 	}
 }

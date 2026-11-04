@@ -29,6 +29,32 @@ func textKind(p tmux.Pane) string {
 	return ""
 }
 
+// textPending is the column after the ones a 0.8 phone knows: what waits
+// under a parked pane, so a row can read "zz · !"; empty for an awake
+// pane, whose kind column says it.
+func textPending(p tmux.Pane) string {
+	if p.Later && p.Attention != nil {
+		return p.Attention.Kind
+	}
+	return ""
+}
+
+// textFlags is the third column of a text-mode host row: the features
+// the host's agent takes, named as the JSON flags are, joined by |, in a
+// fixed order, so a small client finds one with a substring search.
+func textFlags(v hostView) string {
+	var f []string
+	for _, x := range []struct {
+		on   bool
+		name string
+	}{{v.Sessions, "sessions"}, {v.Close, "close"}, {v.Preview, "preview"}, {v.Repeat, "repeat"}, {v.Ask, "ask"}, {v.Mail, "mail"}, {v.Later, "later"}, {v.Dir, "dir"}, {v.Rename, "rename"}, {v.Keys == 2, "keys2"}} {
+		if x.on {
+			f = append(f, x.name)
+		}
+	}
+	return strings.Join(f, "|")
+}
+
 // sortInbox puts the awake panes first, then the parked ones, each
 // oldest first.
 func sortInbox(out []PaneView) {
@@ -76,8 +102,8 @@ func (h *Hub) handleInbox(w http.ResponseWriter, r *http.Request, t Principal) {
 			if att == nil {
 				att = &tmux.Attention{}
 			}
-			fmt.Fprintf(&b, "%s\t%s\t%d\t%s\t%s\n", v.Address, textKind(v.Pane), inboxAt(v.Pane),
-				text.Fold(att.Text, charset), text.Fold(strings.Join(att.Choices, "|"), charset))
+			fmt.Fprintf(&b, "%s\t%s\t%d\t%s\t%s\t%s\n", v.Address, textKind(v.Pane), inboxAt(v.Pane),
+				text.Fold(att.Text, charset), text.Fold(strings.Join(att.Choices, "|"), charset), textPending(v.Pane))
 		}
 		w.Write(text.Encode(b.String(), charset))
 		return

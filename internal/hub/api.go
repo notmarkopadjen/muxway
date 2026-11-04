@@ -252,20 +252,38 @@ func (h *Hub) visibleHosts(t Principal) []string {
 }
 
 func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
-	type hostView struct {
-		Name     string `json:"name"`
-		Online   bool   `json:"online"`
-		Sessions bool   `json:"sessions,omitempty"`
-		Close    bool   `json:"close,omitempty"`
-		Keys     int    `json:"keys,omitempty"`
-		Preview  bool   `json:"preview,omitempty"`
-		Repeat   bool   `json:"repeat,omitempty"`
-		Ask      bool   `json:"ask,omitempty"`
-		Mail     bool   `json:"mail,omitempty"`
-		Dir      bool   `json:"dir,omitempty"`
-		Later    bool   `json:"later,omitempty"`
-		Rename   bool   `json:"rename,omitempty"`
+	out := h.hostViews(r, t)
+	if wantsText(r) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		for _, v := range out {
+			state := "offline"
+			if v.Online {
+				state = "online"
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\n", v.Name, state, textFlags(v))
+		}
+		return
 	}
+	reply(w, map[string]any{"hosts": out})
+}
+
+type hostView struct {
+	Name     string `json:"name"`
+	Online   bool   `json:"online"`
+	Sessions bool   `json:"sessions,omitempty"`
+	Close    bool   `json:"close,omitempty"`
+	Keys     int    `json:"keys,omitempty"`
+	Preview  bool   `json:"preview,omitempty"`
+	Repeat   bool   `json:"repeat,omitempty"`
+	Ask      bool   `json:"ask,omitempty"`
+	Mail     bool   `json:"mail,omitempty"`
+	Dir      bool   `json:"dir,omitempty"`
+	Later    bool   `json:"later,omitempty"`
+	Rename   bool   `json:"rename,omitempty"`
+}
+
+// hostViews lists the hosts the token may read with what each agent takes.
+func (h *Hub) hostViews(r *http.Request, t Principal) []hostView {
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
 		a := h.await(r.Context(), host)
@@ -282,18 +300,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		}
 		out = append(out, v)
 	}
-	if wantsText(r) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		for _, v := range out {
-			state := "offline"
-			if v.Online {
-				state = "online"
-			}
-			fmt.Fprintf(w, "%s\t%s\n", v.Name, state)
-		}
-		return
-	}
-	reply(w, map[string]any{"hosts": out})
+	return out
 }
 
 // readable lists the panes of one host that the token may read.
@@ -360,7 +367,7 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 			for _, p := range v.Talk {
 				partners = append(partners, p.Address)
 			}
-			fmt.Fprintf(&b, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", v.Address, v.Mode, text.Fold(v.Command, charset), text.Fold(v.Title, charset), kind, mail, strings.Join(partners, "|"), v.Alias, text.Fold(oneRow.Replace(v.Cwd), charset))
+			fmt.Fprintf(&b, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", v.Address, v.Mode, text.Fold(v.Command, charset), text.Fold(v.Title, charset), kind, mail, strings.Join(partners, "|"), v.Alias, text.Fold(oneRow.Replace(v.Cwd), charset), textPending(v.Pane))
 		}
 		w.Write(text.Encode(b.String(), charset))
 		return

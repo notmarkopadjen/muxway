@@ -36,4 +36,26 @@ func TestInboxOrderAndKinds(t *testing.T) {
 	if at := inboxAt(out[3].Pane); at != 30 {
 		t.Fatalf("a parked pane with attention waits since %d, want the attention", at)
 	}
+	if p := textPending(out[3].Pane); p != "done" {
+		t.Fatalf("what waits under a parked pane %q, want done", p)
+	}
+	if p := textPending(out[2].Pane); p != "" {
+		t.Fatalf("a parked pane with nothing underneath says %q", p)
+	}
+	if p := textPending(out[0].Pane); p != "" {
+		t.Fatalf("an awake pane's pending column %q, want empty: its kind column says it", p)
+	}
+}
+
+func TestTextFlags(t *testing.T) {
+	all := hostView{Online: true, Sessions: true, Close: true, Keys: 2, Preview: true, Repeat: true, Ask: true, Mail: true, Dir: true, Later: true, Rename: true}
+	if f := textFlags(all); f != "sessions|close|preview|repeat|ask|mail|later|dir|rename|keys2" {
+		t.Fatalf("every flag: %q", f)
+	}
+	if f := textFlags(hostView{Online: true, Ask: true, Later: true, Keys: 1}); f != "ask|later" {
+		t.Fatalf("some flags: %q", f)
+	}
+	if f := textFlags(hostView{}); f != "" {
+		t.Fatalf("an offline host's flags %q, want empty", f)
+	}
 }
