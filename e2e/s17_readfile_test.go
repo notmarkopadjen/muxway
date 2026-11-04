@@ -49,8 +49,8 @@ func TestSec131_OnlyAnInboxNameIsLookedAt(t *testing.T) {
 	pathOf(t, e, full, "image/png", png2)
 	for _, name := range []string{
 		"..%2Fagent.key", "..%2F..%2Fagent.key", "agent.key", "20261025-102235-56fwge.png.exe",
-		"20261025-102235-56fwge.PNG", "20261025-102235-56fwge.svg", strings.Repeat("a", 300) + ".png",
-		"%2Fetc%2Fpasswd", "20261025-102235-56fwge.png%00",
+		"20261025-102235-56fwge.PNG", "20261025-102235-56fwge.tar.gz", strings.Repeat("a", 300) + ".png",
+		"%2Fetc%2Fpasswd", "20261025-102235-56fwge.png%00", "20261025-102235-56fwge.abcdefghi",
 	} {
 		expect(t, e.get(full, "/v1/panes/"+shell0+"/files/"+name), http.StatusBadRequest, name)
 	}
@@ -58,8 +58,8 @@ func TestSec131_OnlyAnInboxNameIsLookedAt(t *testing.T) {
 	if strings.Contains(string(raw), "op=read-file") {
 		t.Fatal("a bad name reached the agent")
 	}
-	// A well-formed name that is not there, and a symlink of the right shape.
-	expect(t, e.get(full, "/v1/panes/"+shell0+"/files/20261025-102235-56fwge.png"), http.StatusNotFound, "absent")
+	// A well-formed name that is not there, of any extension, and a symlink of the right shape.
+	expect(t, e.get(full, "/v1/panes/"+shell0+"/files/20261025-102235-56fwge.svg"), http.StatusNotFound, "absent")
 	link := filepath.Join(inbox, "20261025-102235-linkyy.png")
 	if err := os.Symlink(filepath.Join(a.dir, "agent.key"), link); err != nil {
 		t.Fatal(err)
