@@ -134,4 +134,4 @@ names are `alice-laptop` and `shot.png`; no real host, person or secret.
 
 ## Test run
 
-Recorded in the test-run issue linked from the pull request.
+Run 20261104-145130-b2d5314, recorded as notmarkopadjen/muxway#274: 244 tests, 0 failed, on b2d5314 (2df85d3 on top is gofmt only).
