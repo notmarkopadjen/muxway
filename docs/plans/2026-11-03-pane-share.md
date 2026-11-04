@@ -461,4 +461,9 @@ answer), the guideline's observer row.
 
 ### Test run
 
-- (recorded below after the run)
+- Lint, unit tests, the dist check, the Go end-to-end suite and spec
+  119 on `6f5de10`: [#280](https://github.com/notmarkopadjen/muxway/issues/280),
+  246 tests, none failed, 5 skipped. A first run on the same change
+  was red: the fixture's file named with a newline made the hub refuse
+  the whole listing, which is why a change's path may hold a tab or a
+  newline.
