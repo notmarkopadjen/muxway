@@ -34,7 +34,7 @@ Several files go one after another, each path appended.
 Once the program has the path, so does everyone reading the pane: a
 path of the inbox's shape printed in a pane is a link. In the browser a
 click shows the file in a window over the page, an image as itself, a
-PDF in a frame, a text as plain text, an archive as its download only,
+PDF in a frame, a text as plain text, a kind it cannot show as its download only,
 with its name, size and a `⤓` download in the bar; `Escape`, the bar's `×` or a click outside closes
 it. A click on the link is not a click on the pane, mouse mode or not.
 The link is the name only: the host serves a file of its inbox by that
@@ -44,12 +44,18 @@ see [preview](preview.md).
 
 ![an inbox image shown over the page](images/web-file-window.png)
 
-The types: PNG, JPEG, GIF and WebP images, PDF, plain text, Markdown,
-JSON and zip archives, up to 8 MiB each; an archive is kept as it came,
-never unpacked. Any other text file, a `.py`, a `.cs`, a `.csv`, by the
-browser's type or by an extension of [the preview
-list](preview.md), goes as plain text and lands as `.txt`: the host
-names a file by its type, never by what the client called it. Files are kept a day. On a host whose agent runs
+Any file goes, up to 8 MiB. The host **knows** nine kinds, PNG, JPEG,
+GIF and WebP images, PDF, plain text, Markdown, JSON and zip archives:
+it checks that such a file is what it says and names it by its type,
+`.png`, `.jpg`, `.gif`, `.webp`, `.pdf`, `.txt`, `.md`, `.json`, `.zip`;
+an archive is kept as it came, never unpacked. Anything else, a `.pcap`,
+a `.py`, a `.csv`, a spreadsheet, a binary, is kept as it came under the
+extension its name ends in (one short word of letters and digits,
+lowercased; `.bin` when there is none), so the program in the pane sees
+what kind of file it got. A text with no extension, a `Makefile`, goes
+as plain text and lands as `.txt`. Of the name you gave the file only
+that extension is sent: the host names a file, never the client (decided
+by the owner on 2026-11-04, see [the plan](../plans/2026-11-04-any-file-type.md)). Files are kept a day. On a host whose agent runs
 without `--inbox` there is no `⇪`, and a paste or a drop answers with a
 toast, `no inbox on alice-laptop: its agent needs --inbox`, and sends
 nothing. On Android an image pasted into the line, a file picked with
@@ -64,12 +70,12 @@ sequenceDiagram
     participant C as Client
     participant H as Hub
     participant A as Agent
-    P->>C: paste / drop / pick a PNG
+    P->>C: paste / drop / pick a file
     C->>H: GET /v1/panes/{address}/files (204: show ⇪)
-    C->>H: POST /v1/panes/{address}/files (multipart: file)
-    H->>H: write grant? type allowed? ≤ 8 MiB? sniffed type agrees? one per 2 s?
-    H->>A: file {pane, type, data}
-    A->>A: inbox enabled? writable pane? checks again, room? write 0600 as stamp-random.png
+    C->>H: POST /v1/panes/{address}/files (multipart: file.ext, type)
+    H->>H: write grant? ≤ 8 MiB? a known type: bytes agree? else ext a word? one per 2 s?
+    H->>A: file {pane, type, ext, data}
+    A->>A: inbox enabled? writable pane? checks again, room? write 0600 as stamp-random.ext
     A-->>H: {path}
     H-->>C: 201 {"path", "bytes"}
     C->>C: path on the input line, a space after, focus
@@ -77,7 +83,8 @@ sequenceDiagram
 ```
 
 The agent creates the inbox `0700` and each file `0600`, names it
-`<yyyymmdd-hhmmss>-<6 random>.<ext>` with the extension from the type,
+`<yyyymmdd-hhmmss>-<6 random>.<ext>` with the extension from the type
+it knows, else the word the client's name ended in, checked again, or `bin`,
 refuses when the inbox holds 500 files (`--inbox-max-files` lowers that)
 or 256 MiB, and removes files older than 24 hours at start and every
 hour. Protocol: [`GET` and `POST
@@ -97,7 +104,7 @@ sequenceDiagram
     H->>A: read-file {pane, name}
     A->>A: inbox on? pane exposed? a regular file of the inbox by that name, ≤ 8 MiB?
     A-->>H: {type, data}
-    H-->>C: 200, the type from the extension, nosniff, no-store
+    H-->>C: 200, the type from the extension (a download when unknown), nosniff, no-store
     C->>P: the image in a window over the page
 ```
 
@@ -113,20 +120,30 @@ the owner on 2026-10-24):
 - **Off** unless the host's owner starts the agent with `--inbox`; the
   hub cannot turn it on.
 - **One directory**, created by the agent, `0700`; names chosen by the
-  agent; the extension from an allow-list keyed by the type, which must
-  agree with the bytes; no execute bit; nothing is ever run, unpacked or
-  followed.
+  agent; the extension from the type for a known one, which must agree
+  with the bytes, else one short lowercase word of letters and digits
+  taken from the end of the client's name and checked by hub and agent
+  alike, else `bin`; no execute bit; nothing is ever run, unpacked or
+  followed. Any file is taken since 2026-11-04 (the owner's decision,
+  [plan](../plans/2026-11-04-any-file-type.md)): whoever may write a pane
+  may already run anything in it, so an unchecked file on disk adds no
+  right; what the inbox still guards is what it shows back, below.
 - **Limits**: 8 MiB a file, 500 files or 256 MiB in the inbox, one file
   every two seconds per principal, a day's lifetime; a full inbox
   refuses rather than evicts.
 - **The pane's write grant** is required, so a read-only token cannot
   fill the disk, and an audit line on hub and agent names who put what
   type and size where. Never the content.
-- **Text** types must be UTF-8 without control bytes but tab, newline and
-  return, so a text cannot smuggle an escape sequence into whatever cats
-  it; JSON must parse. The agent checks the type again itself.
-- **The client's own name** for the file is used for its toast only and
-  never sent, so no `../` or shell characters come anywhere near a path.
+- **Known text** types must be UTF-8 without control bytes but tab,
+  newline and return, so a `.txt`, `.md` or `.json` cannot smuggle an
+  escape sequence into whatever cats it; JSON must parse. The agent
+  checks the type again itself. A file of any other kind is bytes, as a
+  `.pcap` or a `.py` copied in by hand would be.
+- **The client's own name** for the file is used for its toast and, for
+  a kind the host does not know, for the extension only: one word of one
+  to eight lowercase letters or digits, nothing else, so no `../`, dot,
+  slash or shell character comes anywhere near a path, and the audit line
+  names the extension, never the name.
 - **The person types the path** into the prompt; the client never sends
   it to the pane on its own. A hostile image or PDF read by the program
   in the pane through its path is what pasting it locally does.
@@ -138,7 +155,9 @@ the owner on 2026-10-24):
   the agent joins it to its inbox; a name of any other shape is refused
   by the hub before the host hears of it, and a symlink or a directory
   under a right-shaped name is not a file. The type is the extension's,
-  never sniffed, texts as plain text; the browser shows an image from a
-  blob of its own (`img-src 'self' blob:` in the policy) and never
-  renders a file as a page. One read a second per principal; an audit
+  never sniffed, texts as plain text, a kind the host does not show as
+  a download; so an `.html` or an `.svg` comes back as plain text and a
+  `.pcap` or an `.exe` as bytes; the browser shows an image from a blob
+  of its own (`img-src 'self' blob:` in the policy) and never renders a
+  file as a page. One read a second per principal; an audit
   line on hub and agent names who read which file and its size.

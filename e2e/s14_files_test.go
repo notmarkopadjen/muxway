@@ -23,7 +23,7 @@ import (
 
 var (
 	png2      = []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02\x08\x06\x00\x00\x00r\xb6\r$\x00\x00\x00\x16IDATx\x9cc\xf8\xcf\xc0\xf0\x9f\x81\xe1?\x03\xc3\x7f\x06\x00\x1a\xf6\x05\xfd\x95\x8b\xd8\x1d\x00\x00\x00\x00IEND\xaeB`\x82")
-	inboxName = regexp.MustCompile(`^\d{8}-\d{6}-[a-z0-9]{6}\.(png|txt|json|pdf|zip)$`)
+	inboxName = regexp.MustCompile(`^\d{8}-\d{6}-[a-z0-9]{6}\.[a-z0-9]{1,8}$`)
 	// The smallest archive: one empty file, stored.
 	zip2 = []byte("PK\x03\x04\x0a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00aPK\x01\x02\x0a\x00\x0a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00aPK\x05\x06\x00\x00\x00\x00\x01\x00\x01\x00\x2f\x00\x00\x00\x1f\x00\x00\x00\x00\x00")
 )
@@ -92,22 +92,24 @@ func TestSec115_NoInboxNoFiles(t *testing.T) {
 func TestSec116_AFileMustBeWhatItsTypeSays(t *testing.T) {
 	e, _, inbox := filesEnv(t, "--inbox", "default")
 	full := e.token("full", []string{host + "/*"}, []string{host + "/*"})
-	for _, c := range []struct{ typ, data string }{
-		{"image/png", "\x7fELF\x02\x01\x01\x00 a binary"},
-		{"text/plain", "red\x1b[31m text"},
-		{"application/json", `{"a": `},
-		{"image/svg+xml", "<svg onload=alert(1)/>"},
-		{"application/x-sh", "#!/bin/sh\nrm -rf /\n"},
-		{"text/html", "<script>alert(1)</script>"},
-		{"application/zip", "\x7fELF\x02\x01\x01\x00 not an archive"},
-		{"application/zip", string(png2)},
+	for _, c := range []struct{ name, typ, data string }{
+		{"x", "image/png", "\x7fELF\x02\x01\x01\x00 a binary"},
+		{"x", "text/plain", "red\x1b[31m text"},
+		{"x", "application/json", `{"a": `},
+		{"x", "application/zip", "\x7fELF\x02\x01\x01\x00 not an archive"},
+		{"x", "application/zip", string(png2)},
+		// A known extension names the type when the declared one is not known.
+		{"shot.png", "application/octet-stream", "MZ not a picture"},
+		{"notes.txt", "", "red\x1b[31m text"},
+		{"data.JSON", "application/x-unknown", `{"a": `},
 	} {
-		r := e.sendFile(full, shell0, "x", c.typ, []byte(c.data))
-		expect(t, r, http.StatusUnsupportedMediaType, c.typ)
+		r := e.sendFile(full, shell0, c.name, c.typ, []byte(c.data))
+		expect(t, r, http.StatusUnsupportedMediaType, c.name+" "+c.typ)
 		if !strings.Contains(r.body, "unsupported") {
 			t.Fatalf("%s: %s", c.typ, r.body)
 		}
 	}
+	expect(t, e.sendFile(full, shell0, "empty.pcap", "application/octet-stream", nil), http.StatusUnsupportedMediaType, "nothing")
 	expect(t, e.do("POST", full, "/v1/panes/"+shell0+"/files", "", "plain", "Content-Type", "text/plain"), http.StatusBadRequest, "not multipart")
 	if n := len(inboxFiles(t, inbox)); n != 0 {
 		t.Fatalf("%d files written", n)
@@ -125,6 +127,71 @@ func TestSec116_AFileMustBeWhatItsTypeSays(t *testing.T) {
 	data, _ := os.ReadFile(filepath.Join(inbox, entries[0].Name()))
 	if !bytes.Equal(data, zip2) {
 		t.Fatal("the archive was changed")
+	}
+}
+
+// 207
+func TestSec207_AnyOtherTypeIsBytesUnderTheNamedExtension(t *testing.T) {
+	e, _, inbox := filesEnv(t, "--inbox", "default")
+	full := e.token("full", []string{host + "/*"}, []string{host + "/*"})
+	pcap := []byte("\xd4\xc3\xb2\xa1\x02\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\x00\x00\x01\x00\x00\x00")
+	for i, c := range []struct{ name, typ, data, ext, served string }{
+		{"capture.pcap", "application/vnd.tcpdump.pcap", string(pcap), "pcap", "application/octet-stream"},
+		// Of the name only the word after the last dot counts, lowercased; none is bin.
+		{"../../etc/passwd", "application/octet-stream", "root:x:0:0\n", "bin", "application/octet-stream"},
+		{"Shot.PNG", "application/octet-stream", string(png2), "png", "image/png"},
+		// Never a page, whatever it claims: a text the inbox did not check is plain text.
+		{"page.html", "text/html", "<script>alert(1)</script>", "html", "text/plain; charset=utf-8"},
+		{"evil.sh", "application/x-sh", "#!/bin/sh\nrm -rf /\n", "sh", "text/plain; charset=utf-8"},
+	} {
+		if i > 0 {
+			time.Sleep(2100 * time.Millisecond)
+		}
+		r := e.sendFile(full, shell0, c.name, c.typ, []byte(c.data))
+		expect(t, r, http.StatusCreated, c.name)
+		var out struct {
+			Path  string `json:"path"`
+			Bytes int    `json:"bytes"`
+		}
+		json.Unmarshal([]byte(r.body), &out)
+		name := filepath.Base(out.Path)
+		if filepath.Dir(out.Path) != inbox || !inboxName.MatchString(name) || !strings.HasSuffix(name, "."+c.ext) || out.Bytes != len(c.data) {
+			t.Fatalf("answer for %q: %s", c.name, r.body)
+		}
+		info, err := os.Stat(out.Path)
+		if err != nil || info.Mode().Perm() != 0o600 {
+			t.Fatalf("%s: %v %v", out.Path, info.Mode(), err)
+		}
+		raw, _ := os.ReadFile(out.Path)
+		if string(raw) != c.data {
+			t.Fatalf("%s: the file differs from what was sent", c.name)
+		}
+		got := e.get(full, "/v1/panes/"+shell0+"/files/"+name)
+		expect(t, got, http.StatusOK, "read "+name)
+		if ct := got.header.Get("Content-Type"); ct != c.served {
+			t.Fatalf("%s served as %q, want %q", name, ct, c.served)
+		}
+		if got.header.Get("X-Content-Type-Options") != "nosniff" || got.body != c.data {
+			t.Fatalf("%s: headers %v", name, got.header)
+		}
+	}
+	if n := len(inboxFiles(t, inbox)); n != 5 {
+		t.Fatalf("%d files, want 5", n)
+	}
+	if _, err := os.Stat("/etc/passwd.bin"); err == nil {
+		t.Fatal("a name reached outside the inbox")
+	}
+	// The audit lines carry the type and the extension, never the client's name.
+	for _, f := range []string{"hub.log", "agent-" + host + ".log"} {
+		raw, _ := os.ReadFile(filepath.Join(e.logs, f))
+		if !strings.Contains(string(raw), "ext=pcap") {
+			t.Fatalf("%s: no audit line with the extension", f)
+		}
+		for _, word := range []string{"passwd", "capture", "evil", "Shot"} {
+			if strings.Contains(string(raw), word) {
+				t.Fatalf("%s names the client's file: %s", f, word)
+			}
+		}
 	}
 }
 

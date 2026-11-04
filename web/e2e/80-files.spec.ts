@@ -8,7 +8,7 @@ const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVR4nGP4z8DwHyiI+z8DwwYAGvYF/ZWL2B0AAAAASUVORK5CYII=',
   'base64',
 );
-const PATH = /\/inbox\/\d{8}-\d{6}-[a-z0-9]{6}\.(png|txt)$/;
+const PATH = /\/inbox\/\d{8}-\d{6}-[a-z0-9]{6}\.[a-z0-9]{1,8}$/;
 
 // Builds a File in the page and dispatches it as a paste or a drop.
 async function deliver(page: Page, how: 'paste' | 'drop', name: string, type: string, b64: string) {
@@ -72,22 +72,35 @@ test('80 a pasted screenshot lands on the host; its path on the line, focused', 
   await input.fill('');
 });
 
-test('80 the picker sends each file in turn; a type the host does not take is refused', async ({
+test('80 the picker sends each file in turn, of any type; a known type that lies is refused', async ({
   page,
-}) => {
+}, info) => {
   await signIn(page);
   await openPane(page, SHELL0);
   await settled(page);
   await page.waitForTimeout(2100);
+  // The picker filters nothing: a capture goes as bytes under its own extension.
+  await expect(page.getByTestId('file-picker')).not.toHaveAttribute('accept', /./);
   await page.getByTestId('file-picker').setInputFiles([
     { name: 'a.png', mimeType: 'image/png', buffer: PNG },
-    { name: 'evil.exe', mimeType: 'application/octet-stream', buffer: Buffer.from('MZ') },
+    { name: 'fake.png', mimeType: 'image/png', buffer: Buffer.from('MZ') },
   ]);
   const input = page.getByTestId('input');
   await expect.poll(async () => paths(await input.inputValue()).length, { timeout: 8000 }).toBe(1);
-  await expect(page.getByTestId('toast').filter({ hasText: 'evil.exe' })).toContainText(
-    'not a type the host takes',
+  await expect(page.getByTestId('toast').filter({ hasText: 'fake.png' })).toContainText(
+    'unsupported',
   );
+  await page.waitForTimeout(2100);
+  await page.getByTestId('file-picker').setInputFiles([
+    {
+      name: 'Capture.PCAP',
+      mimeType: 'application/vnd.tcpdump.pcap',
+      buffer: Buffer.from('d4c3b2a1020004000000000000000000ffff000001000000', 'hex'),
+    },
+  ]);
+  await expect.poll(async () => paths(await input.inputValue()).length, { timeout: 8000 }).toBe(2);
+  expect(paths(await input.inputValue())[1]).toMatch(/\.pcap$/);
+  await shot(page, info, '80-any-type');
   await input.fill('');
 });
 

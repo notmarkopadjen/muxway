@@ -67,8 +67,10 @@ type Request struct {
 	Direction string `json:"direction,omitempty"`
 	// Name of the session to start, or of the inbox file to read.
 	Name string `json:"name,omitempty"`
-	// Type and Data of a file for the inbox; the agent names it.
+	// Type and Data of a file for the inbox; the agent names it, with
+	// Ext, the word the client's name ended in, for a type it does not know.
 	Type string `json:"type,omitempty"`
+	Ext  string `json:"ext,omitempty"`
 	Data []byte `json:"data,omitempty"`
 	// Path of a file to preview, as a pane printed it; or of a change to
 	// diff, as the status listed it.

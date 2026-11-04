@@ -73,12 +73,13 @@ func (a *Agent) sweep() {
 }
 
 // saveFile writes a file a client sent, after checking it again, and
-// answers its path.
-func (a *Agent) saveFile(typ string, data []byte) (string, error) {
-	ext, ok := wire.FileTypes[typ]
-	if !ok || !wire.ValidFile(typ, data) {
+// answers its path. A known type names the extension; any other file is
+// bytes under the word the client named, checked again here, or bin.
+func (a *Agent) saveFile(typ, named string, data []byte) (string, error) {
+	if !wire.ValidFile(typ, data) {
 		return "", errBadFile
 	}
+	ext := wire.FileExt(typ, named)
 	entries, err := os.ReadDir(a.cfg.Inbox)
 	if err != nil {
 		return "", err
@@ -108,8 +109,9 @@ func (a *Agent) saveFile(typ string, data []byte) (string, error) {
 }
 
 // readFile answers one file of the inbox by name: the bytes and the
-// type they are served as. The name is a base name of the inbox's own
-// shape or nothing is looked at; a symlink is not a file.
+// type they are served as, a known extension's or, for any other, what
+// a preview shows it as, text or a download. The name is a base name of
+// the inbox's own shape or nothing is looked at; a symlink is not a file.
 func (a *Agent) readFile(name string) (string, []byte, error) {
 	if !wire.ValidFileName(name) {
 		return "", nil, errBadFile
@@ -123,7 +125,11 @@ func (a *Agent) readFile(name string) (string, []byte, error) {
 	if err != nil {
 		return "", nil, os.ErrNotExist
 	}
-	return wire.FileTypeOf(name), data, nil
+	typ := wire.FileTypeOf(name)
+	if typ == "" {
+		typ = previewType(name)
+	}
+	return typ, data, nil
 }
 
 func lowerRandom(n int) string {

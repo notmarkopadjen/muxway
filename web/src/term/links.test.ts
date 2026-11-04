@@ -92,17 +92,22 @@ describe('findFiles', () => {
     expect(findFiles('/i/20261025-102235-d4e5f6.zip')).toEqual([
       [0, 29, '20261025-102235-d4e5f6.zip'],
     ]);
+    // Any short extension: the inbox keeps files it does not know as bytes.
+    for (const ext of ['pcap', 'bin', 'svg', 'exe', '7z', 'abcdefgh'])
+      expect(findFiles(`/i/20261025-102235-d4e5f6.${ext}`), ext).toEqual([
+        [0, 26 + ext.length, `20261025-102235-d4e5f6.${ext}`],
+      ]);
   });
   it('wants a path and the exact name', () => {
     for (const s of [
       name,
       `/tmp/${name}.exe`,
-      `/tmp/${name}x`,
       `/tmp/${name}_old`,
       `/tmp/x${name}`,
       '/tmp/20261025-102235-56fwg.png',
       '/tmp/20261025-102235-56fwge.PNG',
-      '/tmp/20261025-102235-56fwge.svg',
+      '/tmp/20261025-102235-56fwge.tar.gz',
+      '/tmp/20261025-102235-56fwge.abcdefghi',
       '/tmp/20261025-102235-56fwge',
     ])
       expect(findFiles(s), s).toEqual([]);
