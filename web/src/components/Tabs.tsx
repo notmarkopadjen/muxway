@@ -6,6 +6,7 @@ import { tabName, useLens } from '../term/lens';
 import { LensMark } from './Lens';
 import { AgentMark } from './PaneTitle';
 import { MailMark } from './TalkMark';
+import { openMailWindow } from '../shell/mailwin';
 
 // The strip: one tab per pane, painted with its state. Open tabs are
 // bordered, the focused one thick and bold, a hidden one dimmed. With
@@ -176,7 +177,8 @@ export function Tabs({
             ? onDragPane
               ? ' · drag along the strip to reorder, onto a tile to lay it out there'
               : ' · drag along the strip to reorder'
-            : '')
+            : '') +
+          (pane?.cwd ? `\n${pane.cwd}` : '')
         }
       >
         {pane && <AgentMark agent={describe(pane).agent} />}
@@ -184,7 +186,9 @@ export function Tabs({
         <span className="mx-tab-name">
           {pane ? tabName(pane) : address.split('/').slice(1).join('/')}
         </span>
-        {pane?.mail && <MailMark unread={pane.mail.unread} />}
+        {pane?.mail && (
+          <MailMark unread={pane.mail.unread} onClick={() => openMailWindow({ address })} />
+        )}
       </button>
     );
   };

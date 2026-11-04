@@ -250,6 +250,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 		Mail     bool   `json:"mail,omitempty"`
 		Dir      bool   `json:"dir,omitempty"`
 		Later    bool   `json:"later,omitempty"`
+		Rename   bool   `json:"rename,omitempty"`
 	}
 	var out []hostView
 	for _, host := range h.visibleHosts(t) {
@@ -263,6 +264,7 @@ func (h *Hub) handleHosts(w http.ResponseWriter, r *http.Request, t Principal) {
 			v.Mail = a.mails(r.Context())
 			v.Dir = a.listsDirs(r.Context())
 			v.Later = a.parks(r.Context())
+			v.Rename = a.renames(r.Context())
 		}
 		out = append(out, v)
 	}
@@ -535,6 +537,8 @@ func statusFor(code string) (int, string) {
 		return http.StatusConflict, "no_question"
 	case wire.ErrMailboxFull:
 		return http.StatusConflict, "mailbox_full"
+	case wire.ErrAliasTaken:
+		return http.StatusConflict, "alias_taken"
 	}
 	return http.StatusBadGateway, "host_error"
 }
@@ -563,6 +567,10 @@ func (h *Hub) handlePost(w http.ResponseWriter, r *http.Request, t Principal) {
 	}
 	if strings.HasSuffix(r.PathValue("path"), "/later") {
 		h.handleLater(w, r, t)
+		return
+	}
+	if strings.HasSuffix(r.PathValue("path"), "/alias") {
+		h.handleAlias(w, r, t)
 		return
 	}
 	h.handleInput(w, r, t)

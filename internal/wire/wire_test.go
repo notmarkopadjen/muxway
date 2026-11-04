@@ -61,3 +61,16 @@ func TestKnownKind(t *testing.T) {
 		}
 	}
 }
+
+func TestValidAlias(t *testing.T) {
+	for _, ok := range []string{"a", "review", "build-2", "0123456789012345678901234567890a"} {
+		if !ValidAlias(ok) {
+			t.Errorf("%q refused", ok)
+		}
+	}
+	for _, bad := range []string{"", "Review", "a b", "a_b", "ü", "../x", "$(id)", "a\x00b", "012345678901234567890123456789012"} {
+		if ValidAlias(bad) {
+			t.Errorf("%q taken", bad)
+		}
+	}
+}

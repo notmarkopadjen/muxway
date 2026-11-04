@@ -137,9 +137,17 @@ Everywhere a pane is named, in the list, the pane header, the tab title,
 the window view and the selector, it is named by what runs in
 it, not by tmux: the command, and after it what the program says about
 itself in the pane title when that adds something (`vim · notes.md`).
+A pane you named goes by that name first (see *Naming a pane* below),
+and what the program says about itself becomes its status.
 A tile's header names its pane, and a notification names the pane the same way: the mark,
-the name upright, what the program says about itself in italics, and
-the place dimmed after it, all on one line.
+the name upright, the folder the pane works in and what the program
+says about itself in italics, all on one line. The header carries what
+is read at a glance and nothing else: the address, the size and the
+mode (and, for a named pane, what the program calls itself) wait in the
+tooltip on the name, and the size also shows beside *held* and *sync*.
+A read-only pane says `read-only`; a writable one says nothing. A
+notice's text shows for a question or a permission, not for idle or
+done, whose word says it all.
 A pane running **Claude Code** is named *Claude*, with its mark, and the
 status Claude writes into the title follows (`Claude · fixing the
 build`); it is recognised by its command, or by the spark Claude Code
@@ -152,6 +160,34 @@ chevron, in the list, the tabs, the headers and the add menu, as
 Claude's spark does.
 
 ![a pane running Claude](images/web-titles.png)
+
+### Naming a pane
+
+Four Claude sessions on one subject read like four copies of the same
+codename. Give a pane a name: press `N` with it focused, or click its
+tab, or the name in its header, a second time, slowly (between half a
+second and three after the click that focused it; a quick double-click
+still zooms). The name becomes a field in the header; `Enter` saves,
+`Esc` leaves it, an empty name takes it away. What you type becomes an
+alias as you go: lower case, `a-z`, `0-9` and `-`, a space to a dash,
+up to 32. The name is the pane's **alias**, the same one `muxway
+expose --name` sets: it shows first on the tab, the header, the list,
+the messages window and the selector, with the program's mark and its
+codename after it in italics, and agents address the pane by it
+(`alice-laptop/@review`), which the agent playbook asks for. A name
+another pane of the host already has is refused and the field says
+so. It needs a write grant on the pane and a host whose agent names
+panes (`hosts[].rename`); elsewhere the key and the click do nothing.
+
+### The folder
+
+On a host with preview roots the header shows, after the name and in
+italics, the last segment of the directory the pane works in: the
+checkout a Claude session was started in, the directory a shell is
+in. The whole path is under the pointer, and on the tab's tooltip.
+Nothing is shown for a pane outside the roots, for a reader, or on a
+host without roots: a path on the host is for its writers, under the
+roots the owner named.
 
 When an AI CLI in a pane calls for you (see
 [notifications](notifications.md)) the badge appears, a toast slides in,

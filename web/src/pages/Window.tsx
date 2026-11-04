@@ -16,7 +16,7 @@ import type { Change, Mouse, PaneContent } from '../api/types';
 import { LensMark } from '../components/Lens';
 import { Divider } from '../components/Divider';
 import { InputPanel } from '../components/InputPanel';
-import { PaneTitle } from '../components/PaneTitle';
+import { PaneTitle, paneTooltip } from '../components/PaneTitle';
 import { Tabs } from '../components/Tabs';
 import { useToast } from '../components/Toast';
 import {
@@ -170,7 +170,7 @@ function Tree(props: TreeProps) {
           data-state={state}
           onClick={() => onFocus(node.id)}
         >
-          <PaneTitle pane={p} />
+          <PaneTitle pane={p} folder={p.cwd} title={paneTooltip(p)} />
           <span className="mx-dim">
             {p.address.split('/').slice(1).join('/')} · {p.width}×{p.height}
           </span>

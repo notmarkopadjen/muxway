@@ -19,6 +19,8 @@ import { shownName, splitAddress, useHubs } from '../hubs';
 import { Palette } from '../components/Palette';
 import { Inbox } from '../components/Inbox';
 import { loadSeen, markSeen, recent, Talk, unseen } from '../components/Talk';
+import { Mail } from '../components/Mail';
+import { closeMailWindow, openMailWindow, useMailWindow, type MailWindow } from './mailwin';
 import { onUpdate, reloadWithUpdate, updateWaiting } from '../sw';
 import { useAnswer, useInbox, useTalk } from '../api/queries';
 import { HeaderSlot } from './HeaderSlot';
@@ -85,9 +87,14 @@ export function Shell() {
     setTalkLine(line);
     setTalkOpen(true);
   };
+  // The mail window: one pane's mail, from an envelope, a mail row or M.
+  // It stays mounted while it powers off, so the last one asked for is kept.
+  const mailWin = useMailWindow();
+  const lastMail = useRef<MailWindow | null>(null);
+  if (mailWin) lastMail.current = mailWin;
   useEffect(() => {
-    if (talkOpen) setSeen(markSeen(talkList.data));
-  }, [talkOpen, talkList.data]);
+    if (talkOpen || mailWin) setSeen(markSeen(talkList.data));
+  }, [talkOpen, mailWin, talkList.data]);
   // mutate keeps its identity; the mutation object does not, and onEvent
   // must stay the same or the event stream re-subscribes on every render.
   const { mutate: answerQuestion } = useAnswer();
@@ -182,6 +189,7 @@ export function Shell() {
       if (ev.key === 'Escape') {
         if (palette) setPalette(false);
         else if (inbox) setInbox(false);
+        else if (mailWin) closeMailWindow();
         else if (talkOpen) setTalkOpen(false);
         else if (hubsOpen) setHubsOpen(false);
         else if (help) setHelp(false);
@@ -208,7 +216,7 @@ export function Shell() {
         else openTalk();
         ev.preventDefault();
       } else if (ev.key === 'M' && signedIn && heading.pane) {
-        openTalk(true);
+        openMailWindow({ address: heading.pane.address, line: true });
         ev.preventDefault();
       } else if (ev.key === 'H') {
         setHubsOpen((h) => !h);
@@ -234,6 +242,7 @@ export function Shell() {
     palette,
     inbox,
     talkOpen,
+    mailWin,
     hubsOpen,
     signedIn,
     location.pathname,
@@ -270,7 +279,7 @@ export function Shell() {
             type="button"
             className="mx-talk-count"
             data-unseen={talkCount > 0 ? '' : undefined}
-            title="messages: what panes said to panes, mail and typed (T); M mails the open pane"
+            title="messages: what panes said to panes, mail and typed (T); M opens the open pane's mail"
             data-testid="talk-count"
             onClick={() => openTalk()}
           >
@@ -348,6 +357,9 @@ export function Shell() {
       </Closing>
       <Closing open={talkOpen}>
         <Talk onClose={() => setTalkOpen(false)} to={heading.pane?.address} line={talkLine} />
+      </Closing>
+      <Closing open={!!mailWin}>
+        {lastMail.current && <Mail w={lastMail.current} onClose={closeMailWindow} />}
       </Closing>
     </>
   );

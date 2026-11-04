@@ -176,6 +176,7 @@ type agentConn struct {
 	later   bool // the agent parks panes for later
 	mailbox bool // the agent holds mail for its panes
 	dir     bool // the agent lists directories under its roots
+	rename  bool // the agent names panes for writers
 	evts    bucket
 	warned  time.Time
 }
@@ -235,7 +236,7 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 	}
 	sanePanes(r.Panes)
 	a.mu.Lock()
-	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys, a.ask, a.mailbox, a.dir, a.later = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys, r.Ask, r.Mailbox, r.Dir, r.Later
+	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys, a.ask, a.mailbox, a.dir, a.later, a.rename = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys, r.Ask, r.Mailbox, r.Dir, r.Later, r.Rename
 	a.mu.Unlock()
 	return r.Panes, nil
 }
@@ -302,6 +303,15 @@ func (a *agentConn) previews(ctx context.Context) bool {
 }
 
 // listsDirs says, from the agent's listing, whether the agent lists directories.
+func (a *agentConn) renames(ctx context.Context) bool {
+	if _, err := a.panes(ctx); err != nil {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.rename
+}
+
 func (a *agentConn) listsDirs(ctx context.Context) bool {
 	if _, err := a.panes(ctx); err != nil {
 		return false

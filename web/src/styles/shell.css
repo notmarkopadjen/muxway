@@ -632,7 +632,8 @@ button:disabled {
   text-overflow: ellipsis;
   text-shadow: var(--mx-glow-text);
 }
-.mx-title-status {
+.mx-title-status,
+.mx-title-folder {
   color: var(--mx-ink-dim);
   font-style: italic;
   white-space: nowrap;

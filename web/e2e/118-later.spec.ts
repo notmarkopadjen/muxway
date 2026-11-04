@@ -24,7 +24,7 @@ const tabOf = (page: Page, address: string) =>
 const rowOf = (page: Page, address: string) =>
   page.locator(`[data-testid="inbox-row"][data-address="${address}"]`);
 
-test('117 d parks the focused pane: its tab goes last with ☾, it stops calling, d or its tab wakes it', async ({
+test('118 d parks the focused pane: its tab goes last with ☾, it stops calling, d or its tab wakes it', async ({
   page,
   request,
 }, info) => {
@@ -37,7 +37,7 @@ test('117 d parks the focused pane: its tab goes last with ☾, it stops calling
   const before = await tabOrder(page);
   const parked = [...before.filter((a) => a !== other.address), other.address];
   await tab.click();
-  await expect(page.getByTestId('pane-attention')).toContainText('done: tests green');
+  await expect(page.getByTestId('pane-attention')).toContainText('done');
   // d parks it: the tab goes last, plain, with the moon; the header says
   // later and the kind underneath; the button is on.
   await page.keyboard.press('d');
@@ -45,12 +45,12 @@ test('117 d parks the focused pane: its tab goes last with ☾, it stops calling
   await expect.poll(() => tabOrder(page), { timeout: 10_000 }).toEqual(parked);
   await expect(tab.getByTestId('badge')).toHaveAttribute('data-kind', 'later');
   await expect(tab.getByTestId('badge')).toHaveText('☾');
-  await shot(page, info, '117-later-tab');
+  await shot(page, info, '118-later-tab');
   const header = page.getByTestId('pane-later');
   await expect(header).toContainText('later');
   await expect(header.getByTestId('under-later')).toContainText('✓ done');
   await expect(page.getByTestId('later')).toHaveAttribute('data-on', '1');
-  await shot(page, info, '117-later-header');
+  await shot(page, info, '118-later-header');
   // A parked pane does not call: no toast, no title flash on a new notification.
   await control(request, '/notify', { pane: other.id, kind: 'permission', text: 'run make?' });
   await expect(header.getByTestId('under-later')).toContainText('! permission', {
@@ -78,7 +78,7 @@ test('117 d parks the focused pane: its tab goes last with ☾, it stops calling
   await expect(page.getByTestId('pane-attention')).toHaveCount(0, { timeout: 10_000 });
 });
 
-test('117 o skips a parked pane; the inbox lists it last, with later and wake; Enter opens and wakes', async ({
+test('118 o skips a parked pane; the inbox lists it last, with later and wake; Enter opens and wakes', async ({
   page,
   request,
 }, info) => {
@@ -111,7 +111,7 @@ test('117 o skips a parked pane; the inbox lists it last, with later and wake; E
   await expect(olderRow).toContainText('later · done: older');
   await expect(olderRow.getByTestId('inbox-later')).toHaveText('wake');
   await expect(page.getByTestId('inbox-count')).toContainText('⚑');
-  await shot(page, info, '117-later-inbox');
+  await shot(page, info, '118-later-inbox');
   await page.keyboard.press('Escape');
   // o opens the oldest awake pane, not the parked one.
   await page.keyboard.press('o');
@@ -126,7 +126,7 @@ test('117 o skips a parked pane; the inbox lists it last, with later and wake; E
   await expect(olderRow).toHaveClass(/mx-selected/);
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(new RegExp(`/p/${olderAddress.replace(/\//g, '\\/')}`));
-  await expect(page.getByTestId('pane-attention')).toContainText('done: older', {
+  await expect(page.getByTestId('pane-attention')).toContainText('done', {
     timeout: 10_000,
   });
   await control(request, '/notify', { pane: older.id, kind: 'working', text: '' });
@@ -134,7 +134,7 @@ test('117 o skips a parked pane; the inbox lists it last, with later and wake; E
   await expect(page.getByTestId('pane-attention')).toHaveCount(0, { timeout: 10_000 });
 });
 
-test('117 the list: d parks the selected row in its place; opening it wakes it; a reader sees the mark and cannot move it', async ({
+test('118 the list: d parks the selected row in its place; opening it wakes it; a reader sees the mark and cannot move it', async ({
   page,
   browser,
   request,
@@ -161,7 +161,7 @@ test('117 the list: d parks the selected row in its place; opening it wakes it; 
     .getByTestId('pane-row')
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-address')));
   expect(addressesAfter).toEqual(addressesBefore);
-  await shot(page, info, '117-later-list');
+  await shot(page, info, '118-later-list');
   // A reader sees the mark; the button, d and the inbox's later are off for them.
   const reader = await browser.newContext({ ignoreHTTPSErrors: true });
   const page2 = await reader.newPage();
