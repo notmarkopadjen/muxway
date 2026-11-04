@@ -137,11 +137,18 @@ taken against the test environment.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan. One deviation: the attention check runs
+  when the key succeeds, not when the settled read runs, so the first
+  key of a burst into a pane that waits reads the lists at once; a
+  later key sees the cache the first one refreshed.
+- [x] Security rules (AGENTS.md section 2) hold: client only, fewer
+  requests, the hub's limit untouched.
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read.
+- [x] Docs and diagrams updated.
 
 ## Test run
 
-Link to the recorded run: result, commit, logs, screenshots.
+[#272](https://github.com/notmarkopadjen/muxway/issues/272): passed,
+242 tests (141 browser specs), commit ea35c34, 2026-11-04. Spec 84's
+burst was sixteen inputs and under thirty requests; screenshot
+`84-burst`.
