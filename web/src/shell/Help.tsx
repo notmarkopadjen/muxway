@@ -61,12 +61,20 @@ const KEYS: [string, string][] = [
     "move the focused pane's tab one place along the strip (or drag a tab); the order is kept in this browser",
   ],
   [
-    '1 – 4 / l / x / F / z / w',
-    "tiles: focus one, next arrangement, close the pane on its host (asks y / n; elsewhere the tile), fit all, zoom (one pane alone and back; or double-click a tile, its header or tab), the mirror layout; Shift+click a tab to open it beside; drag a header onto a tile's middle to swap, onto its edge to split",
+    '1 – 4 / l / = / x / F / z / w',
+    "tiles: focus one, next arrangement, equal shares, close the pane on its host (asks y / n; elsewhere the tile), fit all, zoom (one pane alone and back; or double-click a tile, its header or tab), the mirror layout; Shift+click a tab to open it beside; drag a header onto a tile's middle to swap, onto its edge to split",
   ],
   [
     '+ / -',
     'tiles: the add menu (one more pane beside the focused one, a new session, a minimised pane back, any other pane as one more tile) / minimise the focused tile to the row above the keys; a click on its tab there brings it back',
+  ],
+  [
+    'e / E',
+    "tiles: lay the focused tile across the whole view's width / height, on the side its middle is; a click on the strip inside a tile's inner edge the same",
+  ],
+  [
+    'g',
+    "the changes window: git's view of the focused tile's repository, docked to its right edge, on a writable pane of a host with preview roots (window view: over the focused cell); g, Esc or × closes it, _ folds it to its bar",
   ],
   [
     'x / z / 0 / = / + / -',
@@ -106,7 +114,6 @@ const KEYS: [string, string][] = [
   ],
   ['t', 'next theme (amber, green, paper)'],
   ['m', 'effects on / off'],
-  ['n', 'browser notifications on / off'],
   ['?', 'this help'],
 ];
 

@@ -26,6 +26,7 @@ import { onSessionRequest } from '../term/intent';
 import { useLens, word } from '../term/lens';
 import { MAX_TILES, routeFor } from '../term/tiles';
 import { joinAddress, shownName } from '../hubs';
+import { hostState } from '../term/hoststate';
 
 // The pane list: every hub of the hubs box, its hosts, their sessions,
 // windows and panes. A click opens a pane; the pick box, space, or a
@@ -212,7 +213,9 @@ function HostTree({
             }}
           />
         )}
-        <span className="mx-host-state">{host.online ? 'online' : 'offline'}</span>
+        <span className="mx-host-state" data-testid="host-state">
+          {hostState(host.online, !!tree.data, panes.length, !!filter)}
+        </span>
       </span>
       {host.online && tree.isPending && <div className="mx-empty">listing…</div>}
       {host.online && tree.isError && (

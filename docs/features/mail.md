@@ -174,7 +174,9 @@ with no links made clickable.
 The native clients take `mail` from the listing for the mark: `✉ n` on
 the phone and the watch, the word `mail n` on the glasses (whose font
 has no envelope), `✉ n` or `M n` on the keypad phone by its charset.
-Sending and the window are follow-ups in their repositories.
+Android has the mail sheet and sends from its line; the glasses and the
+keypad phone read a pane's mail and send through the same endpoints as
+pages of text rows, as `docs/ui-guideline.md` §1.6 says for each.
 
 ## Security considerations
 

@@ -68,7 +68,9 @@ export function AddMenu({
       const t = ev.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
       if (ev.key === '+' && pane) {
+        // The window view scales a cell with + too: one press, one meaning.
         ev.preventDefault();
+        ev.stopImmediatePropagation();
         const r = box.current?.getBoundingClientRect();
         setFlip(!!r && r.left + 440 > window.innerWidth);
         setOpen(true);
