@@ -416,7 +416,10 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 				code = wire.ErrBadInput
 			}
 		}
-		if code == "" {
+		// Text and keys are the owner's turn at the prompt; a click only
+		// focuses, scrolls or follows a link, so it leaves the attention,
+		// the question and the parking as they were.
+		if code == "" && req.Mouse == nil {
 			a.clearAttention(p.PaneID)
 			a.endAsk(ctx, p.PaneID, AskTyped, false)
 		}

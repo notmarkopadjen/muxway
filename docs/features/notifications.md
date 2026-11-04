@@ -224,7 +224,10 @@ Every pane in a listing carries `attention` while something is pending:
 
 The newest notification wins. Attention clears when a `working`
 notification arrives (the hooks send one as soon as you submit a
-prompt) and when anybody types into the pane through muxway. It vanishes
+prompt) and when anybody types text or a key into the pane through
+muxway. A mouse click does not clear it: a click focuses the pane,
+scrolls it or follows a link, it is not an answer, so a pane that
+waits at its prompt keeps waiting through a click. It vanishes
 with the pane and with the agent process; it survives a hub restart.
 `GET /v1/inbox` lists every pane with attention, oldest first (see
 [the inbox](inbox.md)).
@@ -253,7 +256,7 @@ stateDiagram-v2
     Awake --> Later: the owner marks it, from any client
     Later --> Awake: the owner opens the pane, a tab, a row, the inbox
     Later --> Awake: the owner unmarks it
-    Later --> Awake: input, an answer or mail from a client
+    Later --> Awake: text or a key, an answer or mail from a client
     Later --> Later: a notification arrives, the pane stays parked
     Later --> [*]: pane gone, agent restarted
 ```
@@ -262,7 +265,7 @@ A notification that arrives while the pane is parked does not wake it:
 the owner said later, and the listing still carries the kind underneath
 for anyone who looks. Typing into it, answering its question or mailing
 its process is the owner coming back, so that wakes it, as it clears
-attention today. Opening the pane is the owner coming back too: the
+attention today; a mouse click is not, and leaves it parked. Opening the pane is the owner coming back too: the
 client that opens a parked pane sends the wake itself. On the web `d`
 parks the focused tile or the selected row and wakes it again, the `☾`
 pane button does the same, the inbox row has *later* and *wake*, and a
@@ -278,7 +281,7 @@ stateDiagram-v2
     Quiet --> Attention: question / permission / idle / done
     Attention --> Attention: another kind, newest wins
     Attention --> Quiet: working
-    Attention --> Quiet: input through muxway, or an answer
+    Attention --> Quiet: text or a key through muxway, or an answer
     Attention --> [*]: pane gone
 ```
 

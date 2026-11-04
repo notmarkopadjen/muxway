@@ -221,7 +221,7 @@ export function useInput(address: string) {
     onSuccess: () => {
       noteOwn(address);
       qc.invalidateQueries({ queryKey: keys.pane(address) });
-      // Input clears the pane's attention: the lists say so at once.
+      // Text and keys clear the pane's attention: the lists say so at once.
       const { hub, address: bare } = splitAddress(address);
       qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
       qc.invalidateQueries({ queryKey: keys.tree(bare.split('/')[0], hub) });
