@@ -133,6 +133,13 @@ before any credential is read, and a principal with the admin grant can
 read the hub's log and manage tokens, sessions and the lists; see
 [features/admin.md](features/admin.md).
 
+A fourth kind of caller stands outside the grants: the **observer** of
+a [shared pane](features/share.md), who holds a link and a password a
+writer handed out, and a cookie scoped to that share's own six endpoints
+under `/v1/share/{id}/`. The hub reads one pane for them, by its id,
+through the same agent path as any read, and the agent's enforcement
+stands; everything else answers them as it answers no credential.
+
 Details: [features/hub-and-agent.md](features/hub-and-agent.md) and
 [features/exposing-panes.md](features/exposing-panes.md).
 

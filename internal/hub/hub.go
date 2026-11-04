@@ -49,6 +49,7 @@ type Hub struct {
 	mails    *mailIDs
 	talk     *talkLog
 	sessions *sessions
+	shares   *shareState
 	logs     *logRingBuf
 	refused  refusals
 	bearers  bearerClients
@@ -87,7 +88,7 @@ func New(cfg Config, log *slog.Logger) (*Hub, error) {
 	logs := newLogRing()
 	log = slog.New(&ringHandler{next: log.Handler(), ring: logs})
 	return &Hub{cfg: cfg, key: key, store: store, log: log, limits: newLimiter(), events: newEventLog(), talk: newTalkLog(), mails: newMailIDs(),
-		sessions: newSessions(cfg.SessionTTL), logs: logs, agents: map[string]*agentConn{}, codes: map[string]*pairCode{}}, nil
+		sessions: newSessions(cfg.SessionTTL), shares: newShareState(), logs: logs, agents: map[string]*agentConn{}, codes: map[string]*pairCode{}}, nil
 }
 
 // PublicKey is the key agents pin.
@@ -133,6 +134,7 @@ func (h *Hub) Serve(ctx context.Context) error {
 		ErrorLog:          slog.NewLogLogger(h.log.Handler(), slog.LevelWarn),
 	}
 	go h.serveAdmin(ctx, admin)
+	go h.sweepShares(ctx)
 	go func() {
 		<-ctx.Done()
 		admin.Close()

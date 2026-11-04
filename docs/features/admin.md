@@ -59,6 +59,8 @@ Signed in with it, the web client shows **admin** in the header. The page
   seen. **end** ends a browser session; a bearer client is ended by
   revoking its token. Below them, the agents: online, from where, for how
   long.
+- **shares**, under the clients: every pane [shared](share.md) read-only,
+  with the sharer, who is watching, until when, and **revoke**.
 - **access**: the address lists, one address or CIDR a line, and the
   addresses locked out after failed sign-ins, with **unlock**.
 

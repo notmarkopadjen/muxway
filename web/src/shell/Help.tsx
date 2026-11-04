@@ -50,6 +50,7 @@ const KEYS: [string, string][] = [
   ],
   ['/', 'filter panes'],
   ['f', 'fit: the host pane (window view: the window) follows this box, at the chosen font'],
+  ['s', 'share the pane read-only: a link and a password for one person, with a code to send'],
   ['r', 'fit again, after another client sized the window'],
   [
     '] / [',

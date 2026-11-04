@@ -2356,3 +2356,108 @@ button.mx-window:focus-visible {
   color: var(--mx-talk);
   text-shadow: 0 0 6px var(--mx-talk);
 }
+/* Sharing a pane read-only: the owner's window, and the observer's view. */
+.mx-tile-head .mx-tile-shared {
+  color: var(--mx-ink-dim);
+}
+.mx-share-box {
+  width: min(92vw, 78ch);
+}
+.mx-share-pane {
+  margin-bottom: var(--mx-gap);
+}
+.mx-share-list {
+  margin: 0 0 var(--mx-gap);
+  padding: 0;
+  list-style: none;
+}
+.mx-share-list li {
+  display: flex;
+  gap: var(--mx-gap);
+  align-items: baseline;
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--mx-ink-faint);
+}
+.mx-share-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mx-gap);
+  align-items: center;
+}
+.mx-share-form label {
+  display: flex;
+  flex: 1 1 24ch;
+  gap: var(--mx-gap);
+  align-items: center;
+}
+.mx-share-form input {
+  flex: 1;
+  min-width: 14ch;
+}
+.mx-share-ttl {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.mx-share-ttl button.on {
+  color: var(--mx-ink);
+  border-color: var(--mx-ink);
+}
+.mx-share-made {
+  margin-top: var(--mx-gap);
+  border: 1px solid var(--mx-warn);
+  padding: var(--mx-gap);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mx-gap);
+}
+.mx-share-made-text {
+  flex: 1 1 30ch;
+  min-width: 0;
+  display: grid;
+  gap: var(--mx-gap);
+}
+.mx-share-field {
+  display: grid;
+  grid-template-columns: 9ch minmax(0, 1fr) auto;
+  gap: var(--mx-gap);
+  align-items: center;
+}
+.mx-share-field code {
+  color: var(--mx-ink);
+  word-break: break-all;
+  user-select: all;
+}
+/* The observer's view: a head and the screen, nothing else on the page. */
+.mx-share {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  min-height: 0;
+}
+.mx-share-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+  font-size: 14px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--mx-ink-faint);
+}
+.mx-share-head .mx-spacer {
+  flex: 1;
+}
+.mx-share-body {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  padding: 2px;
+}
+.mx-share-ended {
+  place-items: center;
+}
+/* The observer's window has no close: the back lets no click through. */
+.mx-picture-back[data-observed] {
+  cursor: default;
+}

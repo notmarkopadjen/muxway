@@ -109,6 +109,7 @@ func (h *Hub) dropToken(id, by string) error {
 	}
 	h.sessions.dropRef("token", id)
 	h.bearers.forget(id)
+	h.dropSharesBy(id)
 	h.log.Info("token revoked", "token", id, "by", by)
 	return nil
 }
@@ -122,6 +123,7 @@ func (h *Hub) dropUser(key, by string) error {
 		return errNotFound
 	}
 	h.sessions.dropRef("user", u.ID)
+	h.dropSharesBy(u.ID)
 	h.log.Info("user removed", "user", u.ID, "by", by)
 	return nil
 }
@@ -202,6 +204,20 @@ func hubVersion() string {
 	return rev
 }
 
+// adminShareView is a share as the overview lists it: the id is there
+// so revoke can name it; the link is nothing without the password.
+type adminShareView struct {
+	Handle   string `json:"handle"`
+	ID       string `json:"id"`
+	By       string `json:"by"`
+	Host     string `json:"host"`
+	PaneID   string `json:"pane_id"`
+	Address  string `json:"address,omitempty"`
+	Created  int64  `json:"created"`
+	Expires  int64  `json:"expires"`
+	Watching int    `json:"watching"`
+}
+
 func (h *Hub) handleAdminOverview(w http.ResponseWriter, r *http.Request, p Principal) {
 	type agentView struct {
 		Host      string `json:"host"`
@@ -271,7 +287,18 @@ func (h *Hub) handleAdminOverview(w http.ResponseWriter, r *http.Request, p Prin
 	}
 	sort.Slice(locked, func(i, j int) bool { return locked[i].Addr < locked[j].Addr })
 
-	reply(w, map[string]any{"hub": facts, "agents": agents, "tokens": tokens, "users": users, "clients": clients,
+	shares := []adminShareView{}
+	for _, sh := range h.store.shares() {
+		v := adminShareView{Handle: sh.Handle, ID: sh.ID, By: sh.By, Host: sh.Host, PaneID: sh.PaneID,
+			Created: sh.Created.Unix(), Expires: sh.Expires.Unix(), Watching: h.shares.watching(sh.ID)}
+		if p, ok := h.sharedPane(r.Context(), sh); ok {
+			v.Address = sh.Host + "/" + p.Address()
+		}
+		shares = append(shares, v)
+	}
+	sort.Slice(shares, func(i, j int) bool { return shares[i].Expires < shares[j].Expires })
+
+	reply(w, map[string]any{"hub": facts, "agents": agents, "tokens": tokens, "users": users, "clients": clients, "shares": shares,
 		"locked": locked, "access": h.store.access(), "you": map[string]string{"id": p.ID, "addr": h.clientAddr(r)}})
 }
 

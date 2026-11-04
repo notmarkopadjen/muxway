@@ -14,6 +14,7 @@ import { PanesPage } from './pages/Panes';
 import { WindowPage } from './pages/Window';
 import { SignInPage } from './pages/SignIn';
 import { AdminPage } from './pages/Admin';
+import { SharePage } from './pages/Share';
 import { queryClient } from './query';
 import { boardPanes, routeFor } from './term/tiles';
 import { keys } from './api/queries';
@@ -75,6 +76,12 @@ const admin = createRoute({
   beforeLoad: requireSession,
   component: AdminPage,
 });
+// A shared pane: its own password, no session.
+const share = createRoute({
+  getParentRoute: () => root,
+  path: '/s/$id',
+  component: SharePage,
+});
 const notFound = createRoute({
   getParentRoute: () => root,
   path: '$',
@@ -86,7 +93,7 @@ const notFound = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: root.addChildren([signIn, panes, pane, window, board, admin, notFound]),
+  routeTree: root.addChildren([signIn, panes, pane, window, board, admin, share, notFound]),
   // Several panes travel in one splat, comma separated.
   pathParamsAllowedCharacters: [','],
 });

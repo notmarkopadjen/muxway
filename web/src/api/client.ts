@@ -91,7 +91,14 @@ export async function api<T>(
     } catch {
       /* not json */
     }
-    if (!hub && res.status === 401 && !path.startsWith('/v1/auth/') && path !== '/v1/me')
+    // A share's refusal is the observer's page's to handle, not a lost session.
+    if (
+      !hub &&
+      res.status === 401 &&
+      !path.startsWith('/v1/auth/') &&
+      !path.startsWith('/v1/share/') &&
+      path !== '/v1/me'
+    )
       unauthorized.forEach((fn) => fn());
     throw new ApiError(res.status, code);
   }
