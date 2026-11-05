@@ -241,6 +241,103 @@ func (c *layoutCell) scale(w, h, x, y int) error {
 	return nil
 }
 
+// least is the smallest size the cell can be laid out in with every pane
+// at the floor: along a split's axis the parts and a line between each
+// two, across it the largest part.
+func (c *layoutCell) least() (int, int) {
+	if c.kind == 0 {
+		return floorCols, floorRows
+	}
+	w, h := 0, 0
+	for _, child := range c.children {
+		cw, ch := child.least()
+		if c.kind == '{' {
+			w += cw
+			h = max(h, ch)
+		} else {
+			w = max(w, cw)
+			h += ch
+		}
+	}
+	if c.kind == '{' {
+		w += len(c.children) - 1
+	} else {
+		h += len(c.children) - 1
+	}
+	return w, h
+}
+
+// scaleFloor is scale with the floor kept: a part that would go under
+// what its panes need takes the difference from the parts with room,
+// the roomiest first. A cell too small for its floors is laid out as
+// scale would; the caller sizes the window to least first.
+func (c *layoutCell) scaleFloor(w, h, x, y int) error {
+	c.w, c.h, c.x, c.y = w, h, x, y
+	if c.kind == 0 {
+		return nil
+	}
+	n := len(c.children)
+	weights := make([]int, n)
+	least := make([]int, n)
+	for i, child := range c.children {
+		lw, lh := child.least()
+		if c.kind == '{' {
+			weights[i], least[i] = child.w, lw
+		} else {
+			weights[i], least[i] = child.h, lh
+		}
+	}
+	total := h - (n - 1)
+	if c.kind == '{' {
+		total = w - (n - 1)
+	}
+	sizes, err := share(weights, total)
+	if err != nil {
+		return err
+	}
+	for i := range sizes {
+		for sizes[i] < least[i] {
+			j := -1
+			for k := range sizes {
+				if k != i && sizes[k] > least[k] && (j < 0 || sizes[k]-least[k] > sizes[j]-least[j]) {
+					j = k
+				}
+			}
+			if j < 0 {
+				break
+			}
+			sizes[j]--
+			sizes[i]++
+		}
+	}
+	at := 0
+	for i, child := range c.children {
+		if c.kind == '{' {
+			err = child.scaleFloor(sizes[i], h, x+at, y)
+		} else {
+			err = child.scaleFloor(w, sizes[i], x, y+at)
+		}
+		if err != nil {
+			return err
+		}
+		at += sizes[i] + 1
+	}
+	return nil
+}
+
+// fits says every pane of the cell still has a column and a row.
+func (c *layoutCell) fits() bool {
+	if c.kind == 0 {
+		return c.w > 0 && c.h > 0
+	}
+	for _, child := range c.children {
+		if !child.fits() {
+			return false
+		}
+	}
+	return true
+}
+
 // shift moves the cell and everything in it.
 func (c *layoutCell) shift(dx, dy int) {
 	c.x += dx
@@ -291,6 +388,8 @@ func (c *layoutCell) grow(id, dw, dh int) bool {
 
 // GrowLayout is the layout with the pane dw columns wider and dh rows
 // taller, its neighbours as they were, and the window's size after it.
+// A negative delta shrinks the pane and the window by as much; one that
+// would leave a pane without a column or a row is an error.
 func GrowLayout(layout, paneID string, dw, dh int) (string, int, int, error) {
 	root, err := parseLayout(layout)
 	if err != nil {
@@ -300,7 +399,21 @@ func GrowLayout(layout, paneID string, dw, dh int) (string, int, int, error) {
 	if err != nil || !root.grow(id, dw, dh) {
 		return "", 0, 0, fmt.Errorf("layout: %s is not in the window", paneID)
 	}
+	if !root.fits() {
+		return "", 0, 0, fmt.Errorf("layout: %s cannot give %d columns and %d rows", paneID, -dw, -dh)
+	}
 	return root.String(), root.w, root.h, nil
+}
+
+// LeastLayout is the smallest window the layout fits in with every pane
+// at the floor.
+func LeastLayout(layout string) (int, int, error) {
+	root, err := parseLayout(layout)
+	if err != nil {
+		return 0, 0, err
+	}
+	w, h := root.least()
+	return w, h, nil
 }
 
 // LayoutPanes lists the pane ids a layout names, as "%<n>", sorted.

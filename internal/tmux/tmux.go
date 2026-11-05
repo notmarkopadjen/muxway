@@ -442,10 +442,18 @@ func (s Server) SendKey(ctx context.Context, paneID, key string, count int) erro
 // panes out inside in the proportions of layout, or, without one, the
 // proportions they had: tmux's own resize does not keep them. With zoom
 // the pane is then shown alone; without, a zoom is undone. The window
-// keeps that size until released.
+// keeps that size until released. A pane the proportions would leave
+// under the floor takes the difference from the panes with room, the
+// zoomed pane's own cell among them; the window grows only when every
+// pane at the floor does not fit it.
 func (s Server) ResizeWindow(ctx context.Context, paneID string, cols, rows int, layout string, zoom bool) error {
 	if layout == "" {
 		layout, _ = s.WindowLayout(ctx, paneID)
+	}
+	// The floor holds here too: the panes with room give what one under
+	// it lacks (lay), and only a window too small for every floor grows.
+	if lw, lh, err := LeastLayout(layout); err == nil {
+		cols, rows = max(cols, lw), max(rows, lh)
 	}
 	s.unzoom(ctx, paneID)
 	if _, err := s.run(ctx, "resize-window", "-t", paneID, "-x", strconv.Itoa(cols), "-y", strconv.Itoa(rows)); err != nil {
@@ -481,13 +489,21 @@ type Size struct{ Cols, Rows int }
 // window is sized, as for a window alone; on an axis it shares, the
 // window grows by what the pane lacks and the pane's own cell takes it,
 // or the neighbours take what it gives up, and any pane left under the
-// floor is grown the same way. Nothing shrinks the window below what it
-// has. The other panes of the window that were fitted (others) are given
-// their sizes again first; this pane is sized last and wins where two
-// cannot both be had, and a few rounds settle the rest.
+// floor is grown the same way. A fitted pane left wider or taller than
+// its fit on a shared axis, by a zoom or a neighbour's fit that gave it
+// room, gives the excess back and the window shrinks by as much: a
+// fitted pane never keeps what its client did not ask for, while an
+// unfitted one keeps what it has. The other panes of the window that
+// were fitted (others) are given their sizes again first; this pane is
+// sized last and wins where two cannot both be had, and a few rounds
+// settle the rest.
 func (s Server) ResizePane(ctx context.Context, paneID string, cols, rows int, others map[string]Size) error {
 	// A pane shown beside a sibling is no longer alone: the zoom goes.
 	s.unzoom(ctx, paneID)
+	asks := map[string]Size{paneID: {cols, rows}}
+	for id, sz := range others {
+		asks[id] = sz
+	}
 	for round := 0; ; round++ {
 		for id, sz := range others {
 			// A pane gone since its fit is skipped, not an error.
@@ -504,28 +520,41 @@ func (s Server) ResizePane(ctx context.Context, paneID string, cols, rows int, o
 		if err != nil {
 			return err
 		}
-		var ww, wh int
-		grown, kept := false, true
+		ww, wh, err := s.windowSize(ctx, paneID)
+		if err != nil {
+			return err
+		}
+		changed, kept := false, true
 		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 			var id string
 			var w, h int
 			if _, err := fmt.Sscan(line, &id, &w, &h); err != nil {
 				continue
 			}
-			if w < floorCols || h < floorRows {
-				if layout, ww, wh, err = GrowLayout(layout, id, max(0, floorCols-w), max(0, floorRows-h)); err != nil {
+			dw, dh := max(0, floorCols-w), max(0, floorRows-h)
+			// Excess on a shared axis only: a spanning axis is the window's.
+			if sz, ok := asks[id]; ok {
+				if w > sz.Cols && w < ww {
+					dw = sz.Cols - w
+				}
+				if h > sz.Rows && h < wh {
+					dh = sz.Rows - h
+				}
+			}
+			if dw != 0 || dh != 0 {
+				if layout, ww, wh, err = GrowLayout(layout, id, dw, dh); err != nil {
 					return err
 				}
-				grown = true
+				changed = true
 			}
 			if sz, ok := others[id]; ok && (w != sz.Cols || h != sz.Rows) {
 				kept = false
 			}
 		}
-		if (!grown && kept) || round == 3 {
+		if (!changed && kept) || round == 3 {
 			return nil
 		}
-		if grown {
+		if changed {
 			if err := s.ResizeWindow(ctx, paneID, ww, wh, layout, false); err != nil {
 				return err
 			}
@@ -643,7 +672,7 @@ func (s Server) lay(ctx context.Context, paneID, layout string, w, h int) error 
 	if err != nil {
 		return err
 	}
-	if err := root.scale(w, h, 0, 0); err != nil {
+	if err := root.scaleFloor(w, h, 0, 0); err != nil {
 		return err
 	}
 	out, err := s.run(ctx, "list-panes", "-t", paneID, "-F", "#{pane_id}")

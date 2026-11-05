@@ -75,7 +75,7 @@ import { cellsFor, inner } from '../term/measure';
 import { releaseKept, useFit } from '../term/useFit';
 import { screenWords } from '../term/complete';
 import { countOf, summary } from '../term/changes';
-import { Backlog, keyToBody, pasteText, type Body } from '../term/direct';
+import { Backlog, keyToBody, paneChord, pasteText, type Body } from '../term/direct';
 import { setHeading } from '../shell/heading';
 import { openMailWindow } from '../shell/mailwin';
 import { InHeader } from '../shell/HeaderSlot';
@@ -106,8 +106,26 @@ let minimisedKept: { panes: string[]; minimised: string[] } | null = null;
 const HOLD_FRAME_MS = 3000;
 
 // The last settled frame of each pane, shown again when the pane comes
-// back into a tile while the host catches up.
+// back into a tile while the host catches up. Kept by address, trusted
+// by pane: an address is a position, and the host renumbers panes when
+// one closes, so a frame is used only for the pane it was taken from.
 const frames = new Map<string, PaneContent>();
+
+// Which pane a tile shows: the host's id, with the hub the pane came
+// from. A tile learns it from the listing when it opens (or from its
+// first frame when the listing has no entry yet) and keeps it: a frame
+// of any other pane is never drawn in it.
+export interface Identity {
+  hub?: string;
+  host: string;
+  pane_id: string;
+}
+export const identityOf = (p: Pane): Identity => ({ hub: p.hub, host: p.host, pane_id: p.pane_id });
+const sameIdentity = (a: Identity, b: Identity) =>
+  (a.hub ?? '') === (b.hub ?? '') && a.host === b.host && a.pane_id === b.pane_id;
+
+// How long the CRT warm-up plays over a tile once its first frame is in.
+const WARMUP_MS = 600;
 
 export function forgetFrames() {
   frames.clear();
@@ -175,6 +193,12 @@ interface TileProps {
   onClose: () => void;
   // The pane is no longer there: the tile goes, with a word.
   onGone: () => void;
+  // The pane this tile is for, from the listing; learnt from the first
+  // frame when the view had none. The first frame drawn confirms it.
+  identity?: Identity;
+  onIdentity: (id: Identity) => void;
+  // A frame of another pane came for this address.
+  onStranger: () => void;
   // The tile out of the arrangement, into the minimised row; off on the last tile.
   minimisable: boolean;
   onMinimise: () => void;
@@ -248,7 +272,32 @@ function Tile(props: TileProps) {
   const titleClickAt = useRef<number>(undefined);
   const moving = useMoving();
   const box = useRef<HTMLDivElement>(null);
-  const p = pane.data?.pane;
+  // A frame is the tile's own when it is its pane's. Without an identity
+  // yet, the first frame names the pane.
+  const learnt = useRef<Identity | null>(null);
+  const identity = props.identity ?? learnt.current;
+  const mine = (f: PaneContent | undefined): f is PaneContent =>
+    !!f && (!identity || sameIdentity(identityOf(f.pane), identity));
+  useEffect(() => {
+    if (!props.identity && !learnt.current && pane.data)
+      learnt.current = identityOf(pane.data.pane);
+  }, [props.identity, pane.data]);
+  const data = mine(pane.data) ? pane.data : undefined;
+  const p = data?.pane;
+  // The first frame drawn confirms which pane this is.
+  const { onIdentity } = props;
+  const confirmed = useRef(false);
+  useEffect(() => {
+    if (p && !confirmed.current) {
+      confirmed.current = true;
+      onIdentity(identityOf(p));
+    }
+  }, [p, onIdentity]);
+  const stranger = !!pane.data && !data;
+  const { onStranger } = props;
+  useEffect(() => {
+    if (stranger) onStranger();
+  }, [stranger, pane.data, onStranger]);
   const writable = p?.mode === 'write';
   // The names of a shell pane's directory, when the host lists it for
   // this writer and the person wants them: a click enters a directory or
@@ -294,19 +343,26 @@ function Tile(props: TileProps) {
   // While a fit is in flight the host still answers at its old size; the
   // tile keeps showing the last frame it had rather than that one, for a
   // moment at most, so switching panes does not flash a smaller screen.
-  const frame = useRef<PaneContent | null>(frames.get(address) ?? null);
+  const kept = () => {
+    const f = frames.get(address);
+    return f && mine(f) ? f : null;
+  };
+  const frame = useRef<PaneContent | null>(kept());
   const [, bump] = useState(0);
   const since = useRef(Date.now());
   useEffect(() => {
     since.current = Date.now();
-    frame.current = frames.get(address) ?? null;
+    frame.current = kept();
+    // A kept frame of another pane at this address is no use to anyone.
+    const f = frames.get(address);
+    if (f && !mine(f)) frames.delete(address);
   }, [address]);
   useEffect(() => {
     const t = window.setTimeout(() => bump((n) => n + 1), HOLD_FRAME_MS + 50);
     return () => window.clearTimeout(t);
   }, [address, asked]);
   const sentAt = asked?.at ?? since.current;
-  let shown = pane.data;
+  let shown = data;
   let settled = false;
   if (fitting && shown) {
     settled = !!fitted && shown.pane.width === fitted.cols && shown.pane.height === fitted.rows;
@@ -334,10 +390,20 @@ function Tile(props: TileProps) {
   useEffect(() => {
     if (refitTick) refit();
   }, [refitTick, refit]);
+  // The warm-up: over the box while the tile has nothing of its own to
+  // draw, and for a moment more once its first frame is in, so the frame
+  // comes up through the bloom.
+  const hasOwn = !!shown;
+  const [warm, setWarm] = useState(() => !hasOwn);
+  useEffect(() => {
+    if (!hasOwn) return;
+    const t = window.setTimeout(() => setWarm(false), WARMUP_MS);
+    return () => window.clearTimeout(t);
+  }, [hasOwn]);
   // A change of content while the tile reads the pane counts as working,
   // unless it is the first read or the pane was just resized: that is the
   // reflow, not the program.
-  const content = pane.data?.content;
+  const content = data?.content;
   const size = p ? `${p.width}x${p.height}` : '';
   const seen = useRef<{ content: string; size: string } | null>(null);
   useEffect(() => {
@@ -625,9 +691,17 @@ function Tile(props: TileProps) {
           pointer.current = e.pointerType;
         }}
       >
+        {warm && (
+          <div
+            className="mx-warmup"
+            data-testid="warmup"
+            data-warm={hasOwn ? '0' : '1'}
+            aria-hidden="true"
+          />
+        )}
         <Screen
           content={shown?.content ?? ''}
-          burn={!pane.isPlaceholderData}
+          burn={!pane.isPlaceholderData && hasOwn}
           cols={(fitting && !held) || (windowFit && props.windowFitted) ? undefined : sp?.width}
           rows={(fitting && !held) || (windowFit && props.windowFitted) ? undefined : sp?.height}
           boxRef={box}
@@ -784,6 +858,24 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const navigate = useNavigate();
   const toast = useToast();
   const all = useAllPanes(true);
+  // Which pane each tile is for, learnt from the listing when the tile
+  // opens; the tiles follow their panes when the host renumbers them,
+  // and close when their pane is in no listing while its host is.
+  const identities = useRef(new Map<string, { id: Identity; confirmed: boolean }>());
+  // The tiles whose read found no pane at their address: the listing
+  // says whether the pane moved or is gone.
+  const missing = useRef(new Set<string>());
+  const [missingTick, setMissingTick] = useState(0);
+  const strangerAt = useRef(0);
+  const listed = all.data;
+  useEffect(() => {
+    if (!listed) return;
+    for (const a of addresses) {
+      if (identities.current.has(a)) continue;
+      const e = listed.find((q) => q.address === a);
+      if (e) identities.current.set(a, { id: identityOf(e), confirmed: false });
+    }
+  }, [listed, addresses]);
   const [focusedIndex, setFocusedIndex] = useState(() => {
     const at = focusNext ? addresses.indexOf(focusNext) : -1;
     focusNext = null;
@@ -954,6 +1046,59 @@ function Tiles({ addresses }: { addresses: string[] }) {
       carried = { panes: rest, layout, custom: prune(shape, addresses.indexOf(a)), weights: {} };
     go(rest);
   };
+  // The listing moved or lost a tile's pane: the tile goes with it, or
+  // goes. A pane in no listing is gone when its read found no pane at
+  // the address, or when its host is listed without it (another pane
+  // sits at the address now). That holds for a pane a frame confirmed;
+  // an identity the listing alone gave may have come from a listing a
+  // second stale, so a later listing naming another pane at the address
+  // corrects it rather than closing a tile just opened. A tile whose
+  // pane the view never knew goes on its read alone, as before.
+  useEffect(() => {
+    if (!listed) return;
+    for (const [i, a] of addresses.entries()) {
+      const entry = identities.current.get(a);
+      if (!entry) {
+        if (missing.current.has(a)) {
+          missing.current.delete(a);
+          toast.push({ kind: 'gone', title: `${a} is gone` });
+          closeTile(a);
+          return;
+        }
+        continue;
+      }
+      const { id, confirmed } = entry;
+      const now = listed.find((q) => sameIdentity(identityOf(q), id));
+      if (!confirmed) {
+        const at = listed.find((q) => q.address === a);
+        if (at && !sameIdentity(identityOf(at), id))
+          identities.current.set(a, { id: identityOf(at), confirmed: false });
+        else if (!at && !now && missing.current.has(a)) {
+          identities.current.delete(a);
+          missing.current.delete(a);
+          toast.push({ kind: 'gone', title: `${a} is gone` });
+          closeTile(a);
+          return;
+        }
+        continue;
+      }
+      if (now && now.address !== a) {
+        identities.current.delete(a);
+        identities.current.set(now.address, entry);
+        missing.current.delete(a);
+        void go(replace(addresses, i, now.address));
+        return;
+      }
+      const hostListed = listed.some((q) => (q.hub ?? '') === (id.hub ?? '') && q.host === id.host);
+      if (!now && (hostListed || missing.current.has(a))) {
+        identities.current.delete(a);
+        missing.current.delete(a);
+        toast.push({ kind: 'gone', title: `${a} is gone` });
+        closeTile(a);
+        return;
+      }
+    }
+  }, [listed, addresses, missingTick]);
   // The tile out of the arrangement, as a closed one, and its pane into
   // the row; the last tile stays.
   const minimise = (a: string) => {
@@ -1290,17 +1435,29 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const toggleFit = (address: string, on?: boolean) =>
     setFit((f) => ({ ...f, [address]: on ?? !(f[address] ?? writable) }));
 
+  // ] and [ go to the next pane: the next tile, or with one tile open the
+  // strip's neighbour shown in it; Ctrl+] and Ctrl+[ the same from
+  // anywhere, the line and direct typing included.
+  const cycle = (d: number) => {
+    if (several) setFocusedIndex((index + d + n) % n);
+    else neighbour(d);
+  };
+  const cycleRef = useRef(cycle);
+  cycleRef.current = cycle;
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
+      const chord = paneChord(ev);
+      if (chord) {
+        cycle(chord);
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        return;
+      }
       const target = ev.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
       if (ev.ctrlKey || ev.metaKey || ev.altKey || directOn) return;
-      // ] and [ go to the next pane: the next tile, or with one tile open
-      // the strip's neighbour shown in it.
       if (ev.key === ']' || ev.key === '[') {
-        const d = ev.key === ']' ? 1 : -1;
-        if (several) setFocusedIndex((index + d + n) % n);
-        else neighbour(d);
+        cycle(ev.key === ']' ? 1 : -1);
       } else if (ev.key === '}' || ev.key === '{') {
         // The focused pane's tab one place along the strip.
         setTabOrder(step(tabOrder, strip, focused, ev.key === '}' ? 1 : -1));
@@ -1390,6 +1547,15 @@ function Tiles({ addresses }: { addresses: string[] }) {
     };
     const onKey = (ev: KeyboardEvent) => {
       if (elsewhere(ev.target)) return;
+      // The pane chords move the focus and stay in direct typing: the next
+      // pane is typed into at once. They never reach the pane.
+      const chord = paneChord(ev);
+      if (chord) {
+        cycleRef.current(chord);
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        return;
+      }
       if (ev.key === 'Escape' && ev.shiftKey && !ev.ctrlKey && !ev.altKey && !ev.metaKey) {
         setDirect(false);
         ev.preventDefault();
@@ -1538,9 +1704,19 @@ function Tiles({ addresses }: { addresses: string[] }) {
         onFocus={() => setFocusedIndex(i)}
         onClose={() => closeTile(a)}
         onGone={() => {
-          toast.push({ kind: 'gone', title: `${a} is gone` });
-          closeTile(a);
+          missing.current.add(a);
+          setMissingTick((t) => t + 1);
+          void qc.invalidateQueries({ queryKey: keys.panesOf() });
         }}
+        onStranger={() => {
+          // Another pane answers at this address: the listing says where
+          // this tile's pane went, so it is asked for now, not in five seconds.
+          if (Date.now() - strangerAt.current < 2_000) return;
+          strangerAt.current = Date.now();
+          void qc.invalidateQueries({ queryKey: keys.panesOf() });
+        }}
+        identity={identities.current.get(a)?.id}
+        onIdentity={(id) => identities.current.set(a, { id, confirmed: true })}
         minimisable={several}
         onMinimise={() => minimise(a)}
         hostCloses={hostCloses(a)}

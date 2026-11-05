@@ -57,6 +57,10 @@ const KEYS: [string, string][] = [
     "next / previous pane: the tile, or with one tile open the strip's neighbour, round at the ends (window view: pane)",
   ],
   [
+    'Ctrl+] / Ctrl+[',
+    'the same from anywhere: on the line, while typing directly (direct typing stays on, the next pane is typed into at once) and in the window view; the chords never reach the pane, the keyboard window sends Esc and Ctrl+] themselves',
+  ],
+  [
     '} / {',
     "move the focused pane's tab one place along the strip (or drag a tab); the order is kept in this browser",
   ],

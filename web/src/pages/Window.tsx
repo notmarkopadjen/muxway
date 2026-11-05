@@ -48,7 +48,7 @@ import {
 } from '../term/tiles';
 import { countOf, summary } from '../term/changes';
 import { screenWords } from '../term/complete';
-import { Backlog, keyToBody, pasteText, type Body } from '../term/direct';
+import { Backlog, keyToBody, paneChord, pasteText, type Body } from '../term/direct';
 import { requestPalette } from '../term/intent';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
@@ -536,13 +536,26 @@ export function WindowPage() {
     [key],
   );
 
+  // ] and [ move between the cells; Ctrl+] and Ctrl+[ the same from
+  // anywhere, the line and direct typing included.
+  const by = (d: number) => {
+    const i = focus ? visible.indexOf(focus) : -1;
+    move(visible[(i + d + visible.length) % visible.length] ?? null);
+  };
+  const byRef = useRef(by);
+  byRef.current = by;
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
+      const chord = paneChord(ev);
+      if (chord) {
+        by(chord);
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        return;
+      }
       const target = ev.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
       if (ev.ctrlKey || ev.metaKey || ev.altKey || directOn) return;
-      const i = focus ? visible.indexOf(focus) : -1;
-      const by = (d: number) => move(visible[(i + d + visible.length) % visible.length] ?? null);
       if (ev.key === ']') by(1);
       else if (ev.key === '[') by(-1);
       else if ((ev.key === 'z' || ev.key === 'Enter') && focus) open(focus);
@@ -629,6 +642,14 @@ export function WindowPage() {
     const push = (b: Body) => backlog.push(b);
     const onKey = (ev: KeyboardEvent) => {
       if (elsewhere(ev.target)) return;
+      // The pane chords move the focus and stay in direct typing.
+      const chord = paneChord(ev);
+      if (chord) {
+        byRef.current(chord);
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        return;
+      }
       if (ev.key === 'Escape' && ev.shiftKey && !ev.ctrlKey && !ev.altKey && !ev.metaKey) {
         setDirect(false);
         ev.preventDefault();

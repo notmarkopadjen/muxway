@@ -181,7 +181,7 @@ type Agent struct {
 	watched   map[string]*watched    // pane id -> what the watcher last saw there
 	// panes whose last turn ended with work still running in the background
 	background map[string]bool
-	resized    map[string]time.Time            // window id -> last resize applied
+	resized    map[string]bucket               // window id -> the resizes it may still take
 	layouts    map[string]string               // window id -> layout before its first resize, put back on release
 	fits       map[string]map[string]tmux.Size // window id -> pane id -> size given at pane scope, kept by later fits
 	fitters    map[string]map[string]bool      // window id -> the panes that fitted it; all gone, the window is given back
@@ -241,7 +241,7 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 		return nil, err
 	}
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
-		seen: map[string]process{}, attention: map[string]tmux.Attention{}, later: map[string]int64{}, background: map[string]bool{}, resized: map[string]time.Time{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{},
+		seen: map[string]process{}, attention: map[string]tmux.Attention{}, later: map[string]int64{}, background: map[string]bool{}, resized: map[string]bucket{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{},
 		made: map[string]time.Time{}, sessions: map[string]bool{}, standing: map[string]bool{}, asks: map[string]*pendingAsk{}, hooked: map[string]bool{}, watched: map[string]*watched{},
 		mail: map[string]*mailbox{}, replies: map[uint64]chan string{}, reads: make(chan struct{}, readPermits), writes: map[string]chan struct{}{}, captures: map[captureKey]*capture{}}, nil
 }
@@ -539,8 +539,37 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 	return resp
 }
 
+// A window takes a few resizes at once, the fits a grid of tiles sends
+// together, then one more a second.
+const (
+	resizeBurst  = 4
+	resizeRefill = time.Second
+)
+
+// bucket is what a window may still take: tokens left at a time.
+type bucket struct {
+	left float64
+	at   time.Time
+}
+
+// take spends one token if the bucket has it, refilled since at.
+func (b *bucket) take(now time.Time) bool {
+	if b.at.IsZero() {
+		b.left = resizeBurst
+	} else {
+		b.left = min(resizeBurst, b.left+now.Sub(b.at).Seconds()/resizeRefill.Seconds())
+	}
+	b.at = now
+	if b.left < 1 {
+		return false
+	}
+	b.left--
+	return true
+}
+
 // resize changes the size of the pane's window, or releases it. It is a
-// write: the person at the host sees it. One per second per window.
+// write: the person at the host sees it. A burst per window, then one a
+// second.
 func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	p, code := a.find(ctx, req.Pane)
 	if code != "" {
@@ -591,15 +620,17 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 			return wire.ErrReadOnly
 		}
 	}
-	// One resize per second per window; a release is always taken, so a
-	// client leaving right after a resize can still hand the window back.
+	// A burst per window, then one a second; a release is always taken,
+	// so a client leaving right after a resize can still hand the window
+	// back.
 	a.mu.Lock()
-	last := a.resized[p.WindowID]
-	if !release && time.Since(last) < time.Second {
+	b := a.resized[p.WindowID]
+	if !release && !b.take(time.Now()) {
+		a.resized[p.WindowID] = b
 		a.mu.Unlock()
 		return wire.ErrRateLimit
 	}
-	a.resized[p.WindowID] = time.Now()
+	a.resized[p.WindowID] = b
 	saved, kept := a.layouts[p.WindowID]
 	if release {
 		delete(a.layouts, p.WindowID)
