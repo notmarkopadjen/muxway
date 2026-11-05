@@ -227,10 +227,48 @@ commit and on `main` before it, on the same host.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan, deviations explained here
+- [x] Security rules (AGENTS.md section 2) hold
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Docs and diagrams updated
+
+Deviations:
+
+- **The activity time is the window's**, not the pane's: tmux (3.6
+  here) keeps `window_activity` and no activity time per pane, and the
+  pane's own fields (cursor, size, history) miss a program that redraws
+  in place. So a printing pane beside an idle one in the same window
+  makes the idle one capture again; still correct, and no dearer than
+  before. The docs say so.
+- **A shared listing older than the kept capture is replaced by a
+  fresh one** before the capture is trusted, when the listing shows the
+  pane unmoved. Without it, a tile read every second with the listing
+  half a second old would capture again every time (the listing could
+  not say whether the pane moved after the capture). The fresh listing
+  is single-flighted, so it is one `list-panes` for every idle pane read
+  in that moment, where a capture is one per pane. A pane the shared
+  listing already shows as moved captures without a fresh listing.
+- **`file` (a file for the inbox) runs in the write lane**, per pane,
+  with the other writes; the plan's table did not place it.
+- **Observers' reads of a shared pane** go through the hub's shared
+  read too, keyed by pane, lines and form like a client's.
+- **Numbering**: the relative-paths feature took `s30` and tests
+  210–213, so the lanes are `e2e/s31_lanes_test.go`, tests 214–222 (the
+  plan's 1 to 8 and 12, in that order).
+- The unit tests fake tmux with a script first on `PATH` that lists
+  the panes given, sleeps a fifth of a second per capture and logs each
+  call, so permits and single-flighting are observed, not inferred.
+
+Measured by test 214 on this host, the suite's own flood of sixteen
+readers over two printing panes, twenty keys typed meanwhile:
+
+| | main (c26018c) | this branch |
+|---|---|---|
+| input round trip, median | 397 ms | 34 ms |
+| input round trip, worst | 672 ms | 72 ms |
+| reads the flood served in the same two seconds | 375 | 1048 |
+| captures for thirty reads of an idle pane (test 219) | 30 | 1 |
+| captures for sixty reads of a printing pane by two clients at once (test 222) | 60 | 30 |
 
 ## Test run
 
