@@ -28,9 +28,16 @@ type mailRecord struct {
 }
 
 type mailIDs struct {
-	mu   sync.Mutex
-	next uint64
-	m    map[uint64]*mailRecord
+	mu      sync.Mutex
+	next    uint64
+	m       map[uint64]*mailRecord
+	changed func() // told after every change, for the file
+}
+
+func (l *mailIDs) note() {
+	if l.changed != nil {
+		l.changed()
+	}
 }
 
 // newMailIDs starts the ids where a hub restarted cannot reissue what an
@@ -50,6 +57,7 @@ func (l *mailIDs) issue(rec mailRecord) uint64 {
 	l.next++
 	rec.At = time.Now()
 	l.m[l.next] = &rec
+	l.note()
 	return l.next
 }
 
@@ -57,6 +65,7 @@ func (l *mailIDs) drop(id uint64) {
 	l.mu.Lock()
 	delete(l.m, id)
 	l.mu.Unlock()
+	l.note()
 }
 
 // get is the record of an id the hub issued within the day.
@@ -76,6 +85,7 @@ func (l *mailIDs) replied(id uint64) {
 		r.Replied = true
 	}
 	l.mu.Unlock()
+	l.note()
 }
 
 // handleMail leaves a mail for a pane: POST /v1/panes/{address}/mail.

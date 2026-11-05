@@ -19,8 +19,9 @@ import (
 // lately with their partners.
 const (
 	talkRing   = 500
-	talkWindow = 10 * time.Minute
-	talkChars  = 200 // of a text, kept for the feed
+	talkWindow = 10 * time.Minute // typed talk chains the panes this long
+	mailWindow = 24 * time.Hour   // mail, slow by nature, as long as it is held
+	talkChars  = 200              // of a text, kept for the feed
 )
 
 // origin is the from field of an input or an answer: the sender's pane.
@@ -51,10 +52,11 @@ type talkEntry struct {
 func (e talkEntry) hasFrom() bool { return e.FromHost != "" }
 
 type talkLog struct {
-	mu   sync.Mutex
-	seq  uint64
-	ring []talkEntry
-	wake chan struct{}
+	mu      sync.Mutex
+	seq     uint64
+	ring    []talkEntry
+	wake    chan struct{}
+	changed func() // told after every entry, for the file
 }
 
 func newTalkLog() *talkLog { return &talkLog{wake: make(chan struct{})} }
@@ -71,6 +73,9 @@ func (l *talkLog) add(e talkEntry) talkEntry {
 	l.ring = append(l.ring, e)
 	close(l.wake)
 	l.wake = make(chan struct{})
+	if l.changed != nil {
+		l.changed()
+	}
 	return e
 }
 
@@ -195,7 +200,9 @@ type TalkPartner struct {
 // withTalk adds to each view the panes it talked with in the window,
 // among those the principal may read, at their current addresses.
 func (h *Hub) withTalk(ctx context.Context, t Principal, views []PaneView) {
-	entries := h.talk.recent(time.Now().Add(-talkWindow).Unix())
+	now := time.Now()
+	entries := h.talk.recent(now.Add(-mailWindow).Unix())
+	typedSince := now.Add(-talkWindow).Unix()
 	if len(entries) == 0 {
 		return
 	}
@@ -219,7 +226,7 @@ func (h *Hub) withTalk(ctx context.Context, t Principal, views []PaneView) {
 		v := &views[i]
 		partners := map[string]*TalkPartner{}
 		for _, e := range entries {
-			if !e.hasFrom() {
+			if !e.hasFrom() || (e.Kind != "mail" && e.At < typedSince) {
 				continue
 			}
 			var host, id, way string

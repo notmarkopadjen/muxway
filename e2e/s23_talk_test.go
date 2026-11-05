@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -468,4 +469,78 @@ func TestClientAndMCPSpeakFromTheirPane(t *testing.T) {
 	}
 	stdin.Close()
 	cmd.Wait()
+}
+
+// The talk log survives the hub: the feed, the chains it draws and the
+// mail ids a reply is checked against are read back from talk.json. A
+// chain of mail lasts a day, typed talk ten minutes.
+func TestTalkSurvivesTheHubAndMailChainsForADay(t *testing.T) {
+	e, ts, a := basic(t)
+	ts.split("work:0.0")
+	ts.split("work:0.0")
+	e.expose(ts, "work:0.1", "--write")
+	e.expose(ts, "work:0.2", "--write")
+	full := e.token("full", []string{host + "/*"}, []string{host + "/*"})
+	shell1 := host + "/work/0.1"
+	id0, id1, id2 := paneIDOf(ts, "work:0.0"), paneIDOf(ts, "work:0.1"), paneIDOf(ts, "work:0.2")
+	expect(t, e.input(full, shell0, map[string]any{"text": "echo typed-before", "from": from(host, id1)}), http.StatusNoContent, "typed from 0.1")
+	r := e.mail(full, shell0, "mailed before the restart", from(host, id2))
+	expect(t, r, http.StatusCreated, "mail from 0.2")
+	var sent, next struct {
+		Mail struct {
+			ID uint64 `json:"id"`
+		} `json:"mail"`
+	}
+	json.Unmarshal([]byte(r.body), &sent)
+	waitFor(t, "two partners", func() bool { return len(e.partners(full, shell0)) == 2 })
+	before := e.feed(full)
+	// The file is written within the second.
+	path := filepath.Join(e.hubDir, "talk.json")
+	waitFor(t, "talk.json", func() bool {
+		raw, err := os.ReadFile(path)
+		return err == nil && strings.Contains(string(raw), "mailed before the restart")
+	})
+	if st, _ := os.Stat(path); st.Mode().Perm() != 0o600 {
+		t.Fatalf("talk.json mode %v", st.Mode())
+	}
+	e.stopHub()
+	// While it is down: the typed entry and the mail are moved back twelve
+	// minutes, past typed talk's window and well within mail's.
+	raw, _ := os.ReadFile(path)
+	var f struct {
+		Seq     uint64           `json:"seq"`
+		Entries []map[string]any `json:"entries"`
+		Mail    map[string]any   `json:"mail"`
+		Next    uint64           `json:"next"`
+	}
+	if err := json.Unmarshal(raw, &f); err != nil || len(f.Entries) != 2 || len(f.Mail) != 1 {
+		t.Fatalf("talk.json: %v %d entries %d mail", err, len(f.Entries), len(f.Mail))
+	}
+	for _, en := range f.Entries {
+		en["At"] = time.Now().Add(-12 * time.Minute).Unix()
+	}
+	raw, _ = json.Marshal(f)
+	os.WriteFile(path, raw, 0o600)
+	e.startHub()
+	e.waitOnline(host, true)
+	after := e.feed(full)
+	if len(after.Talk) != len(before.Talk) || after.Talk[len(after.Talk)-1].Text != "mailed before the restart" {
+		t.Fatalf("the feed after the restart: %+v", after.Talk)
+	}
+	// The chain: the mail's partner stays, the typed one is past its ten minutes.
+	p0 := e.partners(full, shell0)
+	if len(p0) != 1 || p0[0].PaneID != id2 || p0[0].Way != "from" {
+		t.Fatalf("partners of 0.0 after the restart: %+v", p0)
+	}
+	// A reply to the mail sent before the restart is checked against the
+	// id read back, and the next id issued is past it.
+	if out, errs, code := e.readMail(a, id0, "reply", strconv.FormatUint(sent.Mail.ID, 10), "got it"); code != 0 {
+		t.Fatalf("reply after the restart: %d %q %q", code, out, errs)
+	}
+	r = e.mail(full, shell1, "after the restart", nil)
+	expect(t, r, http.StatusCreated, "mail after")
+	json.Unmarshal([]byte(r.body), &next)
+	if next.Mail.ID <= sent.Mail.ID {
+		t.Fatalf("the id after the restart went back: %d after %d", next.Mail.ID, sent.Mail.ID)
+	}
 }

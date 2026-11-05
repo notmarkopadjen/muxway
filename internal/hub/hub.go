@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/notmarkopadjen/muxway/internal/auth"
@@ -40,19 +41,21 @@ type Config struct {
 
 // Hub is a running hub.
 type Hub struct {
-	cfg      Config
-	key      ed25519.PrivateKey
-	store    *Store
-	log      *slog.Logger
-	limits   *limiter
-	events   *eventLog
-	mails    *mailIDs
-	talk     *talkLog
-	sessions *sessions
-	shares   *shareState
-	logs     *logRingBuf
-	refused  refusals
-	bearers  bearerClients
+	cfg    Config
+	key    ed25519.PrivateKey
+	store  *Store
+	log    *slog.Logger
+	limits *limiter
+	events *eventLog
+	mails  *mailIDs
+	talk   *talkLog
+	// The talk file is stale: written by flushTalk.
+	talkDirty atomic.Bool
+	sessions  *sessions
+	shares    *shareState
+	logs      *logRingBuf
+	refused   refusals
+	bearers   bearerClients
 
 	mu     sync.Mutex
 	agents map[string]*agentConn
@@ -93,8 +96,12 @@ func New(cfg Config, log *slog.Logger) (*Hub, error) {
 	}
 	logs := newLogRing()
 	log = slog.New(&ringHandler{next: log.Handler(), ring: logs})
-	return &Hub{cfg: cfg, key: key, store: store, log: log, limits: newLimiter(), events: newEventLog(), talk: newTalkLog(), mails: newMailIDs(),
-		sessions: newSessions(cfg.SessionTTL), shares: newShareState(), logs: logs, agents: map[string]*agentConn{}, gone: map[string]time.Time{}, arrive: make(chan struct{}), codes: map[string]*pairCode{}}, nil
+	h := &Hub{cfg: cfg, key: key, store: store, log: log, limits: newLimiter(), events: newEventLog(), talk: newTalkLog(), mails: newMailIDs(),
+		sessions: newSessions(cfg.SessionTTL), shares: newShareState(), logs: logs, agents: map[string]*agentConn{}, gone: map[string]time.Time{}, arrive: make(chan struct{}), codes: map[string]*pairCode{}}
+	h.talk.changed = h.noteTalk
+	h.mails.changed = h.noteTalk
+	h.loadTalk()
+	return h, nil
 }
 
 // PublicKey is the key agents pin.
@@ -141,6 +148,7 @@ func (h *Hub) Serve(ctx context.Context) error {
 	}
 	go h.serveAdmin(ctx, admin)
 	go h.sweepShares(ctx)
+	go h.flushTalk(ctx)
 	go func() {
 		<-ctx.Done()
 		admin.Close()
