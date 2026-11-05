@@ -476,9 +476,14 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		resp.Type, resp.Data, resp.Error = a.fileBack(ctx, req)
 		a.audit(req, resp.Error, "name", req.Name, "bytes", len(resp.Data))
 	case wire.OpReadPath:
-		var file string
-		file, resp.Type, resp.Data, resp.Error = a.preview(ctx, req)
-		a.audit(req, resp.Error, "path", req.Path, "file", file, "bytes", len(resp.Data))
+		var file, found string
+		file, found, resp.Type, resp.Data, resp.Error = a.preview(ctx, req)
+		extra := []any{"path", req.Path, "file", file}
+		if found != "" {
+			resp.Path = file
+			extra = append(extra, "found", found)
+		}
+		a.audit(req, resp.Error, append(extra, "bytes", len(resp.Data))...)
 	case wire.OpListDir:
 		var dir string
 		dir, resp.Listing, resp.Error = a.listDir(ctx, req)
