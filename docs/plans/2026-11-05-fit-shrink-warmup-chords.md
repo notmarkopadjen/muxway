@@ -325,4 +325,13 @@ Deviations:
 
 ## Test run
 
-To be recorded.
+[#302](https://github.com/notmarkopadjen/muxway/issues/302): run
+`20261105-170711-9feccf7`, **passed**, 259 tests, 0 failed, at 9feccf7
+(the full suite: lint, the unit tests, the dist check, the Go end-to-end
+tests with the race detector, the browser specs with screenshots and
+traces). An earlier full run at b27409c
+(`20261105-163850-b27409c`) was red only from the new specs leaving a
+window of eleven panes behind for the specs after them (Playwright runs
+the files in string order, so `122-` runs before `62-`) and from the
+moving-panes security test still expecting the one-per-second gate;
+both fixed in 9feccf7.
