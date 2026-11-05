@@ -226,7 +226,12 @@ func (h *Hub) handleMailbox(w http.ResponseWriter, r *http.Request, t Principal,
 				from = v.From.Address
 			}
 			text := strings.NewReplacer("\t", " ", "\n", " ").Replace(v.Text)
-			fmt.Fprintf(w, "%d\t%d\t%s\t%s\t%d\t%s\n", v.ID, v.At, from, v.Actor.Name, v.ReadAt, text)
+			// The last column says the pane answered it; a phone of 0.8 reads six columns and ignores it.
+			replied := ""
+			if v.Replied {
+				replied = "1"
+			}
+			fmt.Fprintf(w, "%d\t%d\t%s\t%s\t%d\t%s\t%s\n", v.ID, v.At, from, v.Actor.Name, v.ReadAt, text, replied)
 		}
 		return
 	}

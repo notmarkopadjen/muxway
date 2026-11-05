@@ -15,7 +15,7 @@ nothing but the hub to talk to.
    panes, laid out as the Android client lays them out. A row has a pick
    box, `*` when you may type there, what runs in the pane with its
    state, and the address; offline hosts are dimmed. A badge marks a pane
-   that needs you: `?` question, `!` permission, `…` idle, `✓` done, and
+   that needs you: `?` question, `!` permission, `z` idle, `✓` done, and
    the word follows (`! permission`); an AI agent's pane that is busy
    shows `⟳ working` (see [the lens](#the-lens)). A click opens the pane.
    `I` opens the [inbox](inbox.md), every waiting pane oldest first, and
@@ -63,7 +63,7 @@ nothing but the hub to talk to.
    From an empty line the console keys
    (`↑` `↓` `←` `→`, `PageUp` `PageDown` `Home` `End`, `Tab`) go to the
    pane, so a menu in it is driven without leaving the line; with text
-   they move the caret. `i` focuses the line, `Esc` leaves it, and
+   they move the caret. `:` focuses the line, `Esc` leaves it, and
    `Shift+Esc` sends `Escape` to the pane while typing goes on. The key
    bar sends the named keys the protocol allows. A click on the screen of
    a pane whose program asked for the mouse, Claude Code among them, is a
@@ -196,6 +196,32 @@ When an AI CLI in a pane calls for you (see
 the tab title flashes until you come back, and, if you turned them on, a
 browser notification names the pane while the tab is hidden. Typing into
 the pane clears it; a click on the pane does not.
+
+## Talk and mail
+
+Panes that wrote or mailed to each other in the last ten minutes form a
+group (see [talk](talk.md)): their tabs sit side by side in one frame in
+the talk hue, their rows on the list and their tiles are framed the
+same, the header of a grouped tile carries a chain, and the divider
+between two of them side by side is painted with it. `L`, or a click on
+the chain, lays the partner beside the focused tile: swapped next to it
+when open, opened there when not. A pane whose process has unread
+[mail](mail.md) carries `✉ n` after its name, on its tab, its header
+and its row; the count beside `⚑ n` by the brand counts the messages
+not looked at.
+
+`T` opens the **messages window**: what panes said to panes, mail and
+typed, across hosts, oldest at the top, each with who, to whom, the
+time and the token on one line and the text's first 200 characters
+under it, a reply indented under what it answers; `Enter` or `⇆` on a
+row lays the two panes side by side, a click on a mail row opens the
+mail window on that mail. `M`, or the `✉ n` on a tab, a header or a row,
+opens the **mail window** for one pane: what came in (`←`, the sender,
+`unread` until the process read it, `replied`) and what it sent (`→`),
+merged by time, and a line at the bottom that mails the pane's process,
+or whoever wrote to it (*mail back*), never typing into the pane;
+`Esc` closes, `L` lays the pane beside the line's target. Nothing pops
+up for a message: the frame, the counts and the windows carry it.
 
 ## Sharing a pane
 
@@ -750,7 +776,7 @@ per hub in its keystore and lists every hub's panes together; see
 
 ## Admin
 
-For a principal with the admin grant, **admin** in the header opens
+For a principal with the admin grant, *admin* in the profile menu opens
 `/admin`: the hub's log tailing live, tokens and users with *create* and
 *revoke*, connected clients with *end*, and the address lists. Anyone
 else sees no entry, and `/admin` says *not yours to see*. See
@@ -790,7 +816,12 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `r` | fit again: this client's size, after another client sized the window |
 | `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view: pane), coming round at either end |
 | `}` / `{` | move the focused pane's tab one place right / left along the strip (or drag it); the order is kept in the browser |
-| `1`–`4`, `l`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
+| `1`–`4`, `l`, `=`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, equal shares, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
+| `Enter` | tiles: with several open, the focused one alone (as `z`) |
+| `N` | name the focused pane: its alias, `a-z 0-9 -` up to 32, the name everywhere and an address for agents (`host/@name`); `Enter` saves, `Esc` leaves, empty takes it away (see [what a pane is called](#what-a-pane-is-called)) |
+| `T` | the messages window: what panes said to panes, mail and typed, across hosts; `Enter` or `⇆` lays the two side by side, a click on a mail row opens the mail window (see [talk and mail](#talk-and-mail)) |
+| `M` | the mail window for the open pane with its line focused: its mail in full, and a message for its process or its partners, never typed; `L` inside it lays the pane beside the line's target |
+| `L` | lay the pane the focused tile talks with beside it (the header's chain does the same) |
 | `e` / `E` | tiles: lay the focused tile across the whole view's width / height, on the side its middle is |
 | `g` | tiles: the changes window over the focused tile, git's view of its repository, on a writable pane of a host with preview roots; `g`, `Esc` or `×` closes it, `_` folds it to its bar (see [changes](changes.md)) |
 | `s` | the share window for the focused pane: its live shares with *revoke*, and a link and a password for one person to watch it read-only, with the link as a code to send (see [share](share.md)); `Esc` closes |
@@ -802,7 +833,7 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `H` | hubs: the other hubs this browser knows; `go` is that hub's own page and sign-in, once; the list then shows every hub's panes |
 | `?` then `font` | screen font: 11 to 20 px, the cell fit sizes the host by |
 | `m` | effects on / off |
-| `n` | browser notifications on / off (in the help overlay) |
+| `?` then `notifications`, `names`, `suggest`, `forget`, `a file opens with` | the settings in the help overlay: browser notifications on / off, the shell helper's names and ghost word, forgetting the lines this browser sent, and what a click on a file name does |
 | `?` | help |
 
 Everything is reachable by touch too; on a phone the list and the pane

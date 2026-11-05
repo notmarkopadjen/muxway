@@ -43,8 +43,8 @@ func TestFlow16_ListTreeAndReadInJSONAndTextMode(t *testing.T) {
 		t.Fatalf("list:\n%s", strings.Join(got, "\n"))
 	}
 	text := e.getText(tok, "/v1/panes")
-	// The alias is the row's eighth column, the folder its ninth (empty here: no preview roots).
-	if lines := strings.Split(strings.TrimSuffix(text.body, "\n"), "\n"); len(lines) != 3 || !strings.HasPrefix(lines[2], host+"/work/1.0\twrite\t") || !strings.HasSuffix(lines[2], "\tlogs\t") {
+	// The alias is the row's eighth column, the folder its ninth (empty here: no preview roots), the pending column its tenth (empty: awake).
+	if lines := strings.Split(strings.TrimSuffix(text.body, "\n"), "\n"); len(lines) != 3 || !strings.HasPrefix(lines[2], host+"/work/1.0\twrite\t") || !strings.HasSuffix(lines[2], "\tlogs\t\t") {
 		t.Fatalf("text list:\n%s", text.body)
 	}
 	// The title is the program's own; a small phone asks for it folded like the content.
@@ -61,7 +61,7 @@ func TestFlow16_ListTreeAndReadInJSONAndTextMode(t *testing.T) {
 		if r.status != http.StatusOK || r.header.Get("Content-Type") != c.ct {
 			t.Fatalf("list%s: %d %q", c.q, r.status, r.header.Get("Content-Type"))
 		}
-		if lines := strings.Split(strings.TrimSpace(r.body), "\n"); len(lines) != 3 || lines[1] != host+"/work/0.1\twrite\tbash\t"+c.title+"\t\t\t\t\t" {
+		if lines := strings.Split(strings.TrimSpace(r.body), "\n"); len(lines) != 3 || lines[1] != host+"/work/0.1\twrite\tbash\t"+c.title+"\t\t\t\t\t\t" {
 			t.Fatalf("list%s:\n%q", c.q, r.body)
 		}
 	}
@@ -190,8 +190,18 @@ func TestFlow18_TwoHostsAreRoutedSeparately(t *testing.T) {
 	if strings.Contains(ts1.capture("work:0.0"), "on-bob") || strings.Contains(ts2.capture("work:0.0"), "on-alice") {
 		t.Fatal("input reached the wrong host")
 	}
+	// Two columns a 0.8 phone reads, then the flags; a reader that splits
+	// on tabs and takes the first two is what the phone does.
 	hosts := e.getText(tok, "/v1/hosts").body
-	if hosts != host+"\tonline\nbob-desktop\tonline\n" && hosts != "alice-laptop\tonline\nbob-desktop\tonline\n" {
+	var seen []string
+	for _, row := range strings.Split(strings.TrimSuffix(hosts, "\n"), "\n") {
+		f := strings.Split(row, "\t")
+		if len(f) != 3 || f[1] != "online" || !strings.Contains(f[2], "ask") || !strings.Contains(f[2], "keys2") {
+			t.Fatalf("host row %q: want name, online, the flags", row)
+		}
+		seen = append(seen, f[0])
+	}
+	if strings.Join(seen, ",") != host+",bob-desktop" && strings.Join(seen, ",") != "alice-laptop,bob-desktop" {
 		t.Fatalf("hosts: %q", hosts)
 	}
 }

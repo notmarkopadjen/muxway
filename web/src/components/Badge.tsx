@@ -3,7 +3,7 @@ import type { Attention } from '../api/types';
 export const GLYPH: Record<Attention['kind'], string> = {
   question: '?',
   permission: '!',
-  idle: '…',
+  idle: 'z',
   done: '✓',
 };
 

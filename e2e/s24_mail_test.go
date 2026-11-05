@@ -311,7 +311,7 @@ func TestMailReachesTheProcessAndComesBack(t *testing.T) {
 	// Text mode of the mailbox, and from the command line.
 	r := e.getText(full, "/v1/panes/"+shell0+"/mail")
 	expect(t, r, http.StatusOK, "mailbox text")
-	if !strings.HasPrefix(r.body, fmt.Sprintf("%d\t", id)) || !strings.Contains(r.body, "\t"+shell1+"\tfull\t") || !strings.HasSuffix(r.body, "\trun the tests, then tell me\n") {
+	if !strings.HasPrefix(r.body, fmt.Sprintf("%d\t", id)) || !strings.Contains(r.body, "\t"+shell1+"\tfull\t") || !strings.HasSuffix(r.body, "\trun the tests, then tell me\t\n") {
 		t.Fatalf("text mode: %q", r.body)
 	}
 	if out, _, code := e.runClient(env, "mailbox", shell0); code != 0 || out != r.body {
@@ -455,7 +455,7 @@ func TestMailReachesTheProcessAndComesBack(t *testing.T) {
 	if sent := send(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"mail","arguments":{"address":"` + shell0 + `","text":"via mcp"}}}`); !strings.HasPrefix(text(sent), "mailed, id ") {
 		t.Fatalf("mail: %v", sent)
 	}
-	if box := send(`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"mailbox","arguments":{"address":"` + shell0 + `"}}}`); !strings.Contains(text(box), "\tvia mcp\n") {
+	if box := send(`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"mailbox","arguments":{"address":"` + shell0 + `"}}}`); !strings.Contains(text(box), "\tvia mcp\t\n") {
 		t.Fatalf("mailbox: %v", box)
 	}
 	if mine := send(`{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"my_mail","arguments":{}}}`); text(mine) != "no mail" {

@@ -30,14 +30,18 @@ Each entry is a pane as `GET /v1/panes` lists it. Text mode, for a
 feature phone or a script:
 
 ```
-bob-desktop/work/0.0	done	1767225600	finished	
-alice-laptop/work/1.0	question	1767225660	deploy to staging?	yes|no
+bob-desktop/work/0.0	done	1767225600	finished		
+alice-laptop/work/1.0	question	1767225660	deploy to staging?	yes|no	
+alice-laptop/work/2.0	later	1767225700	Claude needs your permission to use Bash		permission
 ```
 
-one row per pane: address, kind, when (Unix seconds), the text, and the
-choices joined by `|` (a choice never contains one); a parked pane's
-kind reads `later`, its time is the attention's or the parking's, and
-its text and choices are the attention's or empty. `charset` works as
+one row per pane: address, kind, when (Unix seconds), the text, the
+choices joined by `|` (a choice never contains one), and what waits
+underneath; a parked pane's kind reads `later`, its time is the
+attention's or the parking's, its text and choices are the attention's
+or empty, and the last column is the attention's kind, so a keypad phone
+draws `zz · !` (empty for an awake pane and for a parked one with
+nothing underneath). `charset` works as
 in every text-mode listing. A client that already lists panes can build
 the same list itself; the endpoint saves a small client the sorting and
 the filtering, and gives a script one call to poll.

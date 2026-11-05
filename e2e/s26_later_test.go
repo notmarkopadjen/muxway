@@ -268,7 +268,51 @@ func TestFlow194_TheInboxListsParkedPanesLast(t *testing.T) {
 	if len(rows) != 4 || !strings.HasPrefix(rows[2], p(2)+"\tlater\t") || !strings.HasPrefix(rows[3], p(3)+"\tlater\t") {
 		t.Fatalf("text inbox: %q", rows)
 	}
-	if f := strings.Split(rows[2], "\t"); f[2] == "0" || f[3] != "" {
-		t.Fatalf("a parked pane without attention waits since its parking, with no text: %q", rows[2])
+	if f := strings.Split(rows[2], "\t"); len(f) != 6 || f[2] == "0" || f[3] != "" || f[5] != "" {
+		t.Fatalf("a parked pane without attention waits since its parking, with no text and nothing pending: %q", rows[2])
+	}
+	// The sixth column is what waits under a parked pane, so a keypad phone draws zz · !;
+	// an awake pane's kind column says it already and its pending column stays empty.
+	if f := strings.Split(rows[3], "\t"); len(f) != 6 || f[1] != "later" || f[5] != "permission" {
+		t.Fatalf("a parked pane with a permission underneath: %q", rows[3])
+	}
+	if f := strings.Split(rows[0], "\t"); len(f) != 6 || f[1] != "question" || f[5] != "" {
+		t.Fatalf("an awake pane's row: %q", rows[0])
+	}
+	if f := e.textRow(full, p(3)); f[4] != "later" || f[9] != "permission" {
+		t.Fatalf("the listing's row of a parked pane: %q", f)
+	}
+	if f := e.textRow(full, p(1)); f[4] != "question" || f[9] != "" {
+		t.Fatalf("the listing's row of an awake pane: %q", f)
+	}
+}
+
+// 195
+func TestSec195_TextHostsCarryTheFlagsOfVisibleHostsOnly(t *testing.T) {
+	e, _, _ := basic(t)
+	full := e.token("full", []string{host + "/*"}, []string{host + "/*"})
+	rows := strings.Split(strings.TrimSuffix(e.getText(full, "/v1/hosts").body, "\n"), "\n")
+	if len(rows) != 1 {
+		t.Fatalf("hosts: %q", rows)
+	}
+	f := strings.Split(rows[0], "\t")
+	if len(f) != 3 || f[0] != host || f[1] != "online" {
+		t.Fatalf("host row: %q", rows[0])
+	}
+	// The flags name what the agent takes, in the protocol's order, and nothing it does not.
+	for _, want := range []string{"ask", "mail", "later", "rename", "keys2"} {
+		if !strings.Contains("|"+f[2]+"|", "|"+want+"|") {
+			t.Fatalf("flags %q lack %s", f[2], want)
+		}
+	}
+	for _, not := range []string{"sessions", "close"} {
+		if strings.Contains("|"+f[2]+"|", "|"+not+"|") {
+			t.Fatalf("flags %q claim %s, which this agent does not take", f[2], not)
+		}
+	}
+	// A token for another host sees no row, flags or not.
+	other := e.token("other", []string{"bob-desktop/*"}, nil)
+	if body := e.getText(other, "/v1/hosts").body; strings.Contains(body, host) {
+		t.Fatalf("a token without the grant read the host's row: %q", body)
 	}
 }

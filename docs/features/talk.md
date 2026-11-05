@@ -133,8 +133,10 @@ the alert red, like a browser's tab group:
 The native clients take the listing's `talk` for their lists: Android
 frames the rows and tabs of a group as the web does and edges its tiles;
 the glasses draw a bar before a group's rows; the keypad phone an edge
-column (`[`, `|`, `]`) at the row's left. The feed and the lay-beside
-gesture are follow-ups in their repositories.
+column (`[`, `|`, `]`) at the row's left. Android has the messages
+sheet with `⇆` on every row and *partner beside* in its pane menu; the
+glasses and the keypad phone read `GET /v1/talk` in text mode as a page
+of rows, as `docs/ui-guideline.md` §1.6 says for each.
 
 ## Security considerations
 

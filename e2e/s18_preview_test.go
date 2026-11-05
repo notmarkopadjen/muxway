@@ -92,11 +92,11 @@ func TestSec140_PreviewNeedsRootsAndAWriter(t *testing.T) {
 	expect(t, e2.preview(full, host+"/work/0.1", "plans/a.md"), http.StatusForbidden, "read-only pane")
 	expect(t, e2.preview(full, host+"/work/7.0", "plans/a.md"), http.StatusNotFound, "no such pane")
 	expect(t, e2.preview(full, shell0, "plans/a.md"), http.StatusOK, "a writer")
-	// The listing's text row ends in the folder for a writer, and in nothing for a reader or outside the roots.
+	// The listing's text row carries the folder for a writer, and nothing for a reader or outside the roots; the pending column after it is empty for an awake pane.
 	rows := func(tok string) []string {
 		return strings.Split(strings.TrimSuffix(e2.getText(tok, "/v1/panes").body, "\n"), "\n")
 	}
-	if r := rows(full); len(r) != 2 || !strings.HasSuffix(r[0], "\t\t"+filepath.Join(root, "docs")) || !strings.HasSuffix(r[1], "\t\t") {
+	if r := rows(full); len(r) != 2 || !strings.HasSuffix(r[0], "\t\t"+filepath.Join(root, "docs")+"\t") || !strings.HasSuffix(r[1], "\t\t\t") {
 		t.Fatalf("text rows for a writer: %q", r)
 	}
 	if r := rows(reader); len(r) != 2 || !strings.HasSuffix(r[0], "\t\t") {
