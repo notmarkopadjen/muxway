@@ -272,4 +272,13 @@ readers over two printing panes, twenty keys typed meanwhile:
 
 ## Test run
 
-To be linked.
+- 2026-11-05 12:29 UTC, commit d9ed0bd: `make e2e` with the race detector
+  on the agent's and the hub's unit tests, 262 tests, 0 failed, recorded
+  as [#297](https://github.com/notmarkopadjen/muxway/issues/297). Test
+  214 measured a median input round trip of 30 ms (worst 50 ms) under
+  1006 reads in that run. Three runs before it were red on one test
+  each: 218 paced past the token's rate (fixed in d04ca74), the specs'
+  `otherPane` meeting the hub's listing still naming a pane just closed
+  (the fixture tries again, d9ed0bd), and spec 87 once, a window zoom
+  landing mid-output on the shell's line; it passed alone and in the
+  recorded run, with the audit order the same as main's.
