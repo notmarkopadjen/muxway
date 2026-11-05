@@ -49,6 +49,16 @@ import {
 import { countOf, summary } from '../term/changes';
 import { screenWords } from '../term/complete';
 import { Backlog, keyToBody, pasteText, type Body } from '../term/direct';
+import {
+  deskPanes,
+  knownDesk,
+  noteDesk,
+  sameDesk,
+  useDesk,
+  writeDesk,
+  type Desk,
+} from '../api/desk';
+import { routeFor } from '../term/tiles';
 import { requestPalette } from '../term/intent';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
@@ -349,6 +359,28 @@ export function WindowPage() {
   );
   const move = (id: string | null) => setFocused(id);
   const focusedPane = focus ? panes.get(focus)?.pane : undefined;
+  // The desk: this window, written, and the other clients' changes followed.
+  const desk = useDesk();
+  const mine = useMemo<Desk>(
+    () => ({ view: 'window', window: `${host}/${session}/${win}`, focused: focusedPane?.address }),
+    [host, session, win, focusedPane?.address],
+  );
+  useEffect(() => {
+    if (data.data) writeDesk(mine);
+  }, [mine, data.data]);
+  useEffect(() => {
+    const d = desk.data;
+    if (!d || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
+    const last = knownDesk()?.updated;
+    if (!last || (d.updated ?? 0) < last) return;
+    noteDesk(d);
+    if (d.view === 'window' && d.window && d.window !== `${host}/${session}/${win}`) {
+      const [h, s, w] = d.window.split('/');
+      void navigate({ to: `/w/${h}/${s}/${w}` });
+    } else if (deskPanes(d).length) {
+      void navigate({ to: '/p/$', params: { _splat: routeFor(deskPanes(d)) } });
+    }
+  }, [desk.data, mine, host, session, win, navigate]);
   const focusedContent = focus ? panes.get(focus)?.content : undefined;
   const words = useMemo(() => screenWords(focusedContent ?? ''), [focusedContent]);
   const focusLine = useCallback(() => {

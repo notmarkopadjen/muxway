@@ -49,6 +49,7 @@ export const keys = {
   mailbox: (address: string) => ['mailbox', address] as const,
   transcriber: ['transcriber'] as const,
   admin: ['admin'] as const,
+  desk: ['desk'] as const,
   files: (address: string) => ['files', address] as const,
   changes: (address: string) => ['changes', address] as const,
   listing: (address: string, cwd: string) => ['listing', address, cwd] as const,

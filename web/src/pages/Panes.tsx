@@ -27,6 +27,27 @@ import { useLens, word } from '../term/lens';
 import { MAX_TILES, routeFor } from '../term/tiles';
 import { joinAddress, shownName } from '../hubs';
 import { hostState } from '../term/hoststate';
+import { deskPanes, noteDesk, useDesk, type Desk } from '../api/desk';
+import { openingDesk } from './Pane';
+import { setTabOrder as keepTabOrder } from '../settings';
+
+// The app started on the list: the desk opens at once when it holds
+// panes. A link to a view goes where it points, and coming back to the
+// list later shows the list.
+let startedHere = typeof window !== 'undefined' && window.location.pathname === '/';
+
+// How a desk reads on its row.
+export function deskWords(d: Desk | undefined): string {
+  if (!d) return 'desk';
+  if (d.view === 'window' && d.window) return `desk · the window ${d.window}`;
+  const n = deskPanes(d).length;
+  if (!n) return 'desk · empty';
+  const parts = [`${n} pane${n === 1 ? '' : 's'}`];
+  if (d.arrangement && n > 1) parts.push(d.arrangement);
+  if (d.minimised?.length) parts.push(`${d.minimised.length} minimised`);
+  if (d.by) parts.push(`by ${d.by}`);
+  return `desk · ${parts.join(' · ')}`;
+}
 
 // The pane list: every hub of the hubs box, its hosts, their sessions,
 // windows and panes. A click opens a pane; the pick box, space, or a
@@ -407,6 +428,29 @@ export function PanesPage() {
     },
     [setLater, open],
   );
+  // The desk: its row opens it, as the start does.
+  const desk = useDesk();
+  const openDesk = useCallback(() => {
+    const d = desk.data;
+    if (!d) return;
+    noteDesk(d);
+    if (d.view === 'window' && d.window) {
+      const [host, session, win] = d.window.split('/');
+      void navigate({ to: `/w/${host}/${session}/${win}` });
+      return;
+    }
+    const panes = deskPanes(d);
+    if (!panes.length) return;
+    if (d.order) keepTabOrder(d.order);
+    openingDesk(d);
+    void open(panes);
+  }, [desk.data, navigate, open]);
+  useEffect(() => {
+    if (!startedHere || !desk.data) return;
+    startedHere = false;
+    if (deskPanes(desk.data).length || (desk.data.view === 'window' && desk.data.window))
+      openDesk();
+  }, [desk.data, openDesk]);
   const pick = useCallback((address: string) => {
     setPicked((p) =>
       p.includes(address)
@@ -487,6 +531,7 @@ export function PanesPage() {
         if (picked.length) open(picked);
         else openOne(selected!);
       } else if (ev.key === 'd' && current) setLater(current.address, !current.later);
+      else if (ev.key === 'D') openDesk();
       else if (ev.key === '/') {
         ev.preventDefault();
         filterRef.current?.focus();
@@ -524,6 +569,16 @@ export function PanesPage() {
 
   return (
     <div data-testid="panes">
+      <button
+        type="button"
+        className="mx-desk-row"
+        data-testid="desk-row"
+        data-empty={deskPanes(desk.data).length || desk.data?.window ? undefined : ''}
+        onClick={openDesk}
+        title="the view every client shares, kept by the hub (D)"
+      >
+        <span className="mx-glyph">▤</span> {deskWords(desk.data)}
+      </button>
       <div className="mx-filter">
         <span className="mx-dim">/</span>
         <input

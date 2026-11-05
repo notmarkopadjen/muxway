@@ -31,6 +31,11 @@ export function useEventStream(onEvent: (e: Event, live: boolean) => void, enabl
           delay = 1000;
           const live = cursor !== undefined;
           for (const raw of res.events) {
+            // The desk changed: this hub's own desk is asked for again.
+            if (raw.kind === 'desk') {
+              if (own && live) qc.invalidateQueries({ queryKey: keys.desk });
+              continue;
+            }
             const e = own ? raw : { ...raw, address: joinAddress(name, raw.address) };
             if (live) {
               qc.invalidateQueries({ queryKey: keys.tree(e.host, name) });

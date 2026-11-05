@@ -49,6 +49,27 @@
 }
 
 /* panes */
+/* The desk's row at the top of the list: the view every client shares. */
+.mx-desk-row {
+  display: block;
+  width: 100%;
+  margin: 0 0 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--mx-line);
+  background: color-mix(in srgb, var(--mx-ink) 6%, transparent);
+  color: var(--mx-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mx-desk-row:hover,
+.mx-desk-row:focus-visible {
+  background: color-mix(in srgb, var(--mx-ink) 14%, transparent);
+  outline: none;
+}
+.mx-desk-row[data-empty] {
+  color: var(--mx-ink-dim);
+}
 .mx-filter {
   display: flex;
   gap: var(--mx-gap);
