@@ -476,6 +476,53 @@
   background-repeat: no-repeat;
   animation: mx-tune 900ms linear infinite;
 }
+/* A tile with nothing of its own to draw yet warms up like the tube: a
+   bright line across the middle opens to the box with a bloom, the fill
+   settles through scanlines and fades, the first frame coming up under
+   it. In the theme's ink; gone with effects off. */
+@keyframes mx-warmup {
+  0% {
+    transform: scaleY(0.01);
+    opacity: 1;
+    filter: brightness(4);
+  }
+  30% {
+    transform: scaleY(1);
+    opacity: 0.9;
+    filter: brightness(2.2);
+  }
+  60% {
+    opacity: 0.45;
+    filter: brightness(1.2);
+  }
+  100% {
+    opacity: 0;
+    filter: brightness(1);
+  }
+}
+.mx-warmup {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  transform-origin: center;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--mx-ink) 55%, transparent) 0,
+    color-mix(in srgb, var(--mx-ink) 55%, transparent) 2px,
+    color-mix(in srgb, var(--mx-ink) 25%, transparent) 2px,
+    color-mix(in srgb, var(--mx-ink) 25%, transparent) 4px
+  );
+  box-shadow: var(--mx-glow-text);
+  animation: mx-warmup var(--mx-motion-slow) var(--mx-ease-crt) both;
+}
+/* With nothing to draw yet the line holds, lit, until the frame comes. */
+.mx-warmup[data-warm='1'] {
+  animation-play-state: paused;
+}
+:root[data-motion='off'] .mx-warmup {
+  display: none;
+}
 :root[data-motion='off'] .mx-sync {
   animation: none;
 }
@@ -483,6 +530,9 @@
   display: none;
 }
 @media (prefers-reduced-motion: reduce) {
+  .mx-warmup {
+    display: none;
+  }
   .mx-sync {
     animation: none;
   }
