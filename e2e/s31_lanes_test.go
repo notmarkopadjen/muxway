@@ -261,12 +261,14 @@ func TestFlow218_TwoInputsBackToBackArriveInOrderUnderLoad(t *testing.T) {
 	stop := make(chan struct{})
 	wg, _ := e.flood(t, stop)
 	time.Sleep(300 * time.Millisecond)
+	// Sixty pairs under the token's twenty requests a second.
 	var want strings.Builder
 	for i := 0; i < 60; i++ {
 		a, b := string(rune('a'+i%26)), string(rune('A'+i%26))
 		expect(t, e.input(full, shell0, map[string]any{"text": a}), http.StatusNoContent, "first of the pair")
 		expect(t, e.input(full, shell0, map[string]any{"text": b}), http.StatusNoContent, "second of the pair")
 		want.WriteString(a + b)
+		time.Sleep(110 * time.Millisecond)
 	}
 	close(stop)
 	wg.Wait()
