@@ -208,4 +208,10 @@ Deviations:
 
 ## Test run
 
-Pending.
+- 2026-11-05 10:39 UTC, commit dd74a41: `make e2e`, 254 tests, 0 failed,
+  recorded as [#295](https://github.com/notmarkopadjen/muxway/issues/295).
+  The run before it, 20261105-094050 at a70d5af, was red on two counts
+  fixed since: the CORS test expected `ETag` alone among the exposed
+  headers, and the specs' `otherPane` met the hub's listing still naming
+  a pane the spec before had closed (a race main has too); it tries
+  again now.
