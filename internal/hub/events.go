@@ -37,11 +37,11 @@ type eventLog struct {
 
 func newEventLog() *eventLog { return &eventLog{wake: make(chan struct{})} }
 
-// The desk changed: an event with no pane, its text the desk's updated time.
+// The desk changed: an event with no pane, its text the desk's revision.
 const deskKind = "desk"
 
-func wireDeskEvent(updated int64) wire.Event {
-	return wire.Event{Kind: deskKind, Text: strconv.FormatInt(updated, 10)}
+func wireDeskEvent(rev uint64) wire.Event {
+	return wire.Event{Kind: deskKind, Text: strconv.FormatUint(rev, 10)}
 }
 
 func (l *eventLog) add(host string, ev wire.Event) event {

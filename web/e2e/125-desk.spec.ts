@@ -62,20 +62,23 @@ test('125 the desk comes back at the start: the tiles, the arrangement, the mini
       focused: SPLIT,
       arrangement: layout,
     });
-  // The app started at its own start: the desk opens.
-  await page.goto('/');
-  await expect(page.getByTestId('tile')).toHaveCount(2, { timeout: 10_000 });
-  await expect(page.getByTestId('pane')).toHaveAttribute('data-layout', layout!);
-  await expect(page.locator('[data-testid="tile"][data-focused]')).toHaveAttribute(
+  // The client, still in its view, opened again in a new tab (the same
+  // browser): the desk opens.
+  const again = await page.context().newPage();
+  await again.goto('/');
+  await expect(again.getByTestId('tile')).toHaveCount(2, { timeout: 10_000 });
+  await expect(again.getByTestId('pane')).toHaveAttribute('data-layout', layout!);
+  await expect(again.locator('[data-testid="tile"][data-focused]')).toHaveAttribute(
     'data-pane',
     SPLIT,
   );
   await expect(
-    page.locator(`[data-testid="minimised-tab"][data-address="${SPLIT2}"]`),
+    again.locator(`[data-testid="minimised-tab"][data-address="${SPLIT2}"]`),
   ).toBeVisible();
-  await shot(page, info, '125-after');
-  // Back to the list by the brand: the list, with the desk's row.
-  await page.locator('.mx-brand').click();
+  await shot(again, info, '125-after');
+  await again.close();
+  // A navigation in this tab to the list shows the list, with the desk's row.
+  await page.goto('/');
   await expect(page.getByTestId('desk-row')).toContainText('2 panes');
   await expect(page.getByTestId('tile')).toHaveCount(0);
   // D opens it again.

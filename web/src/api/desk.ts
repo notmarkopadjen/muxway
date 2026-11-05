@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from './client';
 import { keys } from './queries';
+import type { Me } from './types';
 import { queryClient } from '../query';
 import type { Layout, TileNode, Weights } from '../term/tiles';
 
@@ -23,6 +24,8 @@ export interface Desk {
   window?: string;
   updated?: number;
   by?: string;
+  // The hub's count of writes: how desks are ordered.
+  rev?: number;
 }
 
 export const DESK_DEBOUNCE_MS = 500;
@@ -73,6 +76,9 @@ async function flush() {
   pending = null;
   timer = null;
   if (!d || sameDesk(d, known)) return;
+  // A read-only principal reads the desk and cannot move it.
+  const me = queryClient.getQueryData<Me>(keys.me);
+  if (me && !me.write?.length) return;
   known = d;
   try {
     const r = await api<{ desk: Desk }>('/v1/desk', { method: 'PUT', body: JSON.stringify(d) });

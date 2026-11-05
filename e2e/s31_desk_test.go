@@ -103,7 +103,7 @@ func TestFlow197_DeskIsSharedTellsEveryClientAndSurvivesTheHub(t *testing.T) {
 	cursor = strings.TrimRight(cursor, "}\n ")
 	r := e.putDesk(full, deskTwo)
 	expect(t, r, http.StatusOK, "the desk written")
-	if !strings.Contains(r.body, `"by":"full"`) || !strings.Contains(r.body, `"updated":`) {
+	if !strings.Contains(r.body, `"by":"full"`) || !strings.Contains(r.body, `"updated":`) || !strings.Contains(r.body, `"rev":1`) {
 		t.Fatalf("the answer: %s", r.body)
 	}
 	// Read back with the ETag.

@@ -29,12 +29,17 @@ import { joinAddress, shownName } from '../hubs';
 import { hostState } from '../term/hoststate';
 import { deskPanes, noteDesk, useDesk, type Desk } from '../api/desk';
 import { openingDesk } from './Pane';
-import { setTabOrder as keepTabOrder } from '../settings';
+import { freshTab, getLastPlace, setLastPlace, setTabOrder as keepTabOrder } from '../settings';
 
-// The app started on the list: the desk opens at once when it holds
-// panes. A link to a view goes where it points, and coming back to the
-// list later shows the list.
-let startedHere = typeof window !== 'undefined' && window.location.pathname === '/';
+// The app started on the list after being closed in a view: the desk
+// opens at once when it holds panes. A link to a view goes where it
+// points, a client closed on the list starts on the list, and coming
+// back to the list later shows the list.
+let startedHere =
+  typeof window !== 'undefined' &&
+  window.location.pathname === '/' &&
+  getLastPlace() === 'view' &&
+  freshTab();
 
 // How a desk reads on its row.
 export function deskWords(d: Desk | undefined): string {
@@ -450,7 +455,12 @@ export function PanesPage() {
     startedHere = false;
     if (deskPanes(desk.data).length || (desk.data.view === 'window' && desk.data.window))
       openDesk();
+    else setLastPlace('list');
   }, [desk.data, openDesk]);
+  // Being on the list is the place to come back to, once the start is past.
+  useEffect(() => {
+    if (!startedHere) setLastPlace('list');
+  }, []);
   const pick = useCallback((address: string) => {
     setPicked((p) =>
       p.includes(address)

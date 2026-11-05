@@ -59,6 +59,7 @@ import {
   type Desk,
 } from '../api/desk';
 import { routeFor } from '../term/tiles';
+import { setLastPlace } from '../settings';
 import { requestPalette } from '../term/intent';
 import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
@@ -361,6 +362,7 @@ export function WindowPage() {
   const focusedPane = focus ? panes.get(focus)?.pane : undefined;
   // The desk: this window, written, and the other clients' changes followed.
   const desk = useDesk();
+  useEffect(() => setLastPlace('view'), []);
   const mine = useMemo<Desk>(
     () => ({ view: 'window', window: `${host}/${session}/${win}`, focused: focusedPane?.address }),
     [host, session, win, focusedPane?.address],
@@ -371,8 +373,8 @@ export function WindowPage() {
   useEffect(() => {
     const d = desk.data;
     if (!d || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
-    const last = knownDesk()?.updated;
-    if (!last || (d.updated ?? 0) < last) return;
+    const last = knownDesk()?.rev;
+    if (!last || (d.rev ?? 0) < last) return;
     noteDesk(d);
     if (d.view === 'window' && d.window && d.window !== `${host}/${session}/${win}`) {
       const [h, s, w] = d.window.split('/');

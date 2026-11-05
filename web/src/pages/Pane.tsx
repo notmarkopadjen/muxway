@@ -95,7 +95,7 @@ import {
   writeDesk,
   type Desk,
 } from '../api/desk';
-import { setTabOrder as keepTabOrder } from '../settings';
+import { setLastPlace, setTabOrder as keepTabOrder } from '../settings';
 
 // Tiles as they were, kept across the navigation a change of count makes:
 // the tiles a zoom came from, to go back to, and what a closed tile left.
@@ -1068,6 +1068,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // opening only (focusNext, set by whoever opened the desk).
   const desk = useDesk();
   const tabOrder = useTabOrder();
+  useEffect(() => setLastPlace('view'), []);
   const mine = useMemo<Desk>(
     () => ({
       view: 'panes',
@@ -1090,8 +1091,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
     // A view opened by a link writes its own desk first; until the hub
     // has answered that, what it holds is older than this view, and a
     // desk older than the view's last write is never applied.
-    const last = knownDesk()?.updated;
-    if (!last || (d.updated ?? 0) < last) return;
+    const last = knownDesk()?.rev;
+    if (!last || (d.rev ?? 0) < last) return;
     noteDesk(d);
     if (d.view === 'window' && d.window) {
       const [host, session, win] = d.window.split('/');

@@ -105,11 +105,17 @@ func (st *Store) desk() (Desk, bool) {
 	return *st.s.Desk, true
 }
 
-func (st *Store) setDesk(d Desk) error {
+// setDesk stores the desk as the next revision and answers it.
+func (st *Store) setDesk(d Desk) (Desk, error) {
 	st.mu.Lock()
 	defer st.mu.Unlock()
+	if st.s.Desk != nil {
+		d.Rev = st.s.Desk.Rev + 1
+	} else {
+		d.Rev = 1
+	}
 	st.s.Desk = &d
-	return st.save()
+	return d, st.save()
 }
 
 func (st *Store) agentKey(host string) (ed25519.PublicKey, bool) {

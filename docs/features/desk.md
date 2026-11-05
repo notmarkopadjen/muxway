@@ -29,8 +29,9 @@ One document per hub, in `hub.json` beside the tokens (see
 `window`), up to four `panes`, the `focused` one, the `arrangement` and,
 for a custom one, the `tree` and `weights` the tiles are laid out by,
 the `minimised` panes, the tab `order`, or the `window` the window view
-shows; `updated` and `by`, the principal that wrote it last. Panes are
-named by address, as everywhere.
+shows; `updated`, `by`, the principal that wrote it last, and `rev`, the
+hub's count of writes, by which clients order desks. Panes are named by
+address, as everywhere.
 
 ## What the clients do
 
@@ -39,13 +40,16 @@ named by address, as everywhere.
   the minimised row, the focus and the tab order (which leaves the
   browser's storage for the desk), and in the window view on a change
   of the window or the focus. The list has a `desk` row at the top (and
-  `D`) that opens it; a client started at `/`, the app's own start, opens
-  the desk at once when it holds panes, while a link to a view goes
-  where it points. An open client applies another client's `desk` event
-  within a second: the panes, the arrangement and the minimised row; the
-  focus is restored on opening only, so typing on the phone does not
-  move the web's focus. A desk older than the client's own last change
-  is ignored, so a write in flight is not undone.
+  `D`) that opens it; a client that was in a view when it was closed and
+  is started on the list opens the desk at once when it holds panes,
+  while a link to a view goes where it points and a client closed on
+  the list starts on the list. An open client applies another client's
+  `desk` event within a second: the panes, the arrangement and the
+  minimised row; the focus is restored on opening only, so typing on
+  the phone does not move the web's focus. A desk of a lower revision
+  than the client's own last write is ignored, so a write in flight is
+  not undone, and a view opened by a link writes its own desk before it
+  follows any.
 - **Android** reads and writes the desk the same way; the glasses and
   the phone open the desk's focused pane from their lists (parity to
   follow).

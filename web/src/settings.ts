@@ -43,6 +43,32 @@ export function applyRoot() {
 }
 
 // The font size a pane is read at, and the cell the host is sized by.
+// Where the client last was, a view or the list: a client closed in a
+// view opens the desk when started on the list. Started means a new
+// tab or the app opened, not a navigation in a tab that is open: the
+// tab carries a mark of its own (session storage) from its first view.
+export type Place = 'view' | 'list';
+export function getLastPlace(): Place {
+  return read('mx-last') === 'view' ? 'view' : 'list';
+}
+export function setLastPlace(p: Place) {
+  write('mx-last', p);
+  if (p === 'view') {
+    try {
+      sessionStorage.setItem('mx-tab', '1');
+    } catch {
+      /* no storage */
+    }
+  }
+}
+export function freshTab(): boolean {
+  try {
+    return !sessionStorage.getItem('mx-tab');
+  } catch {
+    return true;
+  }
+}
+
 export function getFont(): number {
   const n = Number(read('mx-font'));
   return (FONTS as readonly number[]).includes(n) ? n : 14;

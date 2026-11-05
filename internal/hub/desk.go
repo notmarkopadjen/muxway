@@ -44,6 +44,8 @@ type Desk struct {
 	Window      string               `json:"window,omitempty"`
 	Updated     int64                `json:"updated"`
 	By          string               `json:"by,omitempty"`
+	// Rev counts the writes, so a client orders desks a second apart.
+	Rev uint64 `json:"rev"`
 }
 
 var arrangements = map[string]bool{"row": true, "column": true, "grid": true, "main-left": true, "main-top": true, "custom": true}
@@ -305,12 +307,13 @@ func (h *Hub) handlePutDesk(w http.ResponseWriter, r *http.Request, t Principal)
 		return
 	}
 	d.Updated, d.By = time.Now().Unix(), t.Name
-	if err := h.store.setDesk(d); err != nil {
+	stored, err := h.store.setDesk(d)
+	if err != nil {
 		h.log.Error("desk not saved", "err", err)
 		fail(w, http.StatusInternalServerError, "error")
 		return
 	}
-	h.log.Info("audit desk", append(attrs, "view", d.View, "panes", len(d.Panes), "result", "ok")...)
-	h.events.add("", wireDeskEvent(d.Updated))
-	reply(w, map[string]any{"desk": d})
+	h.log.Info("audit desk", append(attrs, "view", d.View, "panes", len(d.Panes), "rev", stored.Rev, "result", "ok")...)
+	h.events.add("", wireDeskEvent(stored.Rev))
+	reply(w, map[string]any{"desk": stored})
 }
