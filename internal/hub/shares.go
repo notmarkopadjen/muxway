@@ -872,7 +872,7 @@ func (h *Hub) handleSharePane(w http.ResponseWriter, r *http.Request, sh Share, 
 		fail(w, http.StatusNotFound, "not_found")
 		return
 	}
-	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpRead, Actor: sh.Name + " share:" + sh.Handle, Pane: p.PaneID,
+	resp, err := a.read(r.Context(), wire.Request{Op: wire.OpRead, Actor: sh.Name + " share:" + sh.Handle, Pane: p.PaneID,
 		Lines: lines, ANSI: r.URL.Query().Get("ansi") == "1", Wrapped: true})
 	if err != nil {
 		fail(w, http.StatusServiceUnavailable, "host_offline")

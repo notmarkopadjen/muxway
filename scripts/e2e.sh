@@ -31,6 +31,11 @@ else
     export MUXWAY_SKIP_UI=1
 fi
 
+# The agent and the hub serve requests concurrently: their unit tests run
+# under the race detector too.
+go test -race -count=1 ./internal/agent/ ./internal/hub/ > "$run/logs/race.log" 2>&1 \
+    || { echo "race detector: see $run/logs/race.log" >&2; exit 1; }
+
 set +e
 MUXWAY_RUN_DIR="$run" go test -tags e2e -count=1 -json -timeout 30m ./... > "$run/test.json"
 set -e
