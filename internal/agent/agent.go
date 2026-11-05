@@ -252,6 +252,7 @@ func (a *Agent) Run(ctx context.Context) error {
 		a.log.Info("preview roots, read as this user; git status and diff run for repositories under them", "roots", a.cfg.Preview, "hidden", a.cfg.PreviewHidden)
 	}
 	a.ensureExtendedKeys(ctx)
+	a.loadMail(ctx)
 	if a.cfg.Dir != "" {
 		ln, err := a.listenNotify()
 		if err != nil {
@@ -853,8 +854,10 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 	a.applyStanding(ctx, panes)
 	a.mu.Lock()
 	alive := map[string]bool{}
+	server := map[string]int{}
 	for i := range panes {
 		alive[panes[i].PaneID] = true
+		server[panes[i].PaneID] = panes[i].ServerPID
 		if att, ok := a.attention[panes[i].PaneID]; ok {
 			panes[i].Attention = &att
 		}
@@ -886,8 +889,12 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 	// Mail goes with its pane, or after a day; what is left shows as a count.
 	now := time.Now()
 	for id, b := range a.mail {
+		had := len(b.items)
 		if !alive[id] || !b.sweep(now) {
 			delete(a.mail, id)
+			a.saveMail(id, 0)
+		} else if len(b.items) != had {
+			a.saveMail(id, server[id])
 		}
 	}
 	for i := range panes {

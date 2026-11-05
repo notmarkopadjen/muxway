@@ -84,6 +84,7 @@ func (a *Agent) storeMail(ctx context.Context, req wire.Request) (int, string) {
 	close(b.wake)
 	b.wake = make(chan struct{})
 	n, _ := b.unread()
+	a.saveMail(p.PaneID, p.ServerPID)
 	a.mu.Unlock()
 	// A mail is the owner coming back: the pane is no longer parked.
 	if p.Later {
@@ -135,6 +136,7 @@ func (a *Agent) takeMail(ctx context.Context, paneID, how string, all bool) ([]w
 		out = append(out, *m)
 	}
 	if read > 0 {
+		a.saveMail(p.PaneID, p.ServerPID)
 		a.log.Info("mail read", "pane", p.PaneID, "count", read, "how", how)
 	}
 	return out, ""
@@ -242,6 +244,7 @@ func (a *Agent) replyMail(ctx context.Context, paneID string, mailID uint64, tex
 					b.items[i].Replied = true
 				}
 			}
+			a.saveMail(p.PaneID, p.ServerPID)
 		}
 		a.mu.Unlock()
 	}
