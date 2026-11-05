@@ -199,8 +199,9 @@ the pane clears it; a click on the pane does not.
 
 ## Talk and mail
 
-Panes that wrote or mailed to each other in the last ten minutes form a
-group (see [talk](talk.md)): their tabs sit side by side in one frame in
+Panes that wrote to each other in the last ten minutes, or mailed each
+other in the last day (mail is slow by nature: a hook delivers it at the
+end of a turn), form a group (see [talk](talk.md)): their tabs sit side by side in one frame in
 the talk hue, their rows on the list and their tiles are framed the
 same, the header of a grouped tile carries a chain, and the divider
 between two of them side by side is painted with it. `L`, or a click on

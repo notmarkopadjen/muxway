@@ -22,7 +22,7 @@ sequenceDiagram
     H->>A: input {actor, pane, text, from}
     A->>A: type into the pane, audit with from
     A-->>H: ok
-    H->>H: talk entry, both panes marked for ten minutes
+    H->>H: talk entry, both panes chained (typed: ten minutes, mail: a day)
     H-->>R: 204
     W->>H: GET /v1/talk?after=41&wait=30
     H-->>W: the entry
@@ -149,8 +149,10 @@ of rows, as `docs/ui-guideline.md` §1.6 says for each.
   that may read both of its panes; a pane the principal may not see is
   not named, not counted and not hinted at.
 - The feed is the one place where typed content lives outside a pane:
-  200 characters per entry, 500 entries in memory, never on disk, never
-  in a log. The same characters are on the destination's screen, which
+  200 characters per entry, 500 entries, in `talk.json` under the hub's
+  directory (mode 0600, beside `hub.json`, written at most once a second
+  and read back at start, so a hub restart keeps the chains), never in a
+  log. The same characters are on the destination's screen, which
   the same principal may read. This is the owner's decision; a feed
   without text is a one-line change.
 - `from` is validated like any address (a host name, a pane id `%` and

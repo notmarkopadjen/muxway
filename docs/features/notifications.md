@@ -246,9 +246,10 @@ purpose. In text mode the listing's `kind` column reads `later` and its
 last column, `pending`, names what waits underneath, so a keypad phone
 draws `zz · !` as the web draws `☾ later · ! permission`.
 
-The mark lives on the host's agent beside the pane's attention, so
-every client sees it, it survives a hub restart, and it dies with the
-pane and with the agent process. A client sets it with
+The mark lives on the pane itself, a tmux pane option the agent sets
+and reads back like the pane's alias, so every client sees it, it
+survives a restart of the hub and of the agent alike, and it dies with
+the pane. A client sets it with
 [`POST /v1/panes/{address}/later`](../protocol/v1.md#post-v1panesaddresslater),
 under the write grant, like an answer; the listing carries `"later":
 true` and when it was parked, with the attention underneath as it is.
@@ -261,7 +262,7 @@ stateDiagram-v2
     Later --> Awake: the owner unmarks it
     Later --> Awake: text or a key, an answer or mail from a client
     Later --> Later: a notification arrives, the pane stays parked
-    Later --> [*]: pane gone, agent restarted
+    Later --> [*]: pane gone
 ```
 
 A notification that arrives while the pane is parked does not wake it:

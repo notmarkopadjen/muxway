@@ -202,7 +202,8 @@ everything. Nothing else on a page is coloured by the hue.
 
 **Talk is the third exception** (decided by the owner on 2026-10-31,
 "reddish but in theme", and on 2026-11-01, "grouped in one border, like
-a group in Chrome tabs"): panes that talked lately are framed as one
+a group in Chrome tabs"): panes that talked lately (typed talk within
+ten minutes, mail within a day, the mail's own lifetime) are framed as one
 group in the talk hue, a red that leans toward each theme's ink and
 stays apart from the alert red, which keeps meaning an error. It is a
 relation between panes, not a state of one, which a glyph alone cannot

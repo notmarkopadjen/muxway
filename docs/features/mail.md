@@ -37,7 +37,10 @@ sequenceDiagram
 
 ## Where mail lives
 
-The host agent keeps a mailbox per exposed, writable pane, in memory:
+The host agent keeps a mailbox per exposed, writable pane, written to
+`mail/<pane>.json` under its directory whenever it changes and read
+back when the agent starts (a file for a pane that is gone, or from an
+earlier tmux server, is removed then), so a restart loses no mail:
 at most 50 mails, each at most 4000 characters, kept 24 hours or until
 the pane goes away. A mail is the id the hub gave it, when it came, the
 sender (the token's id and name, and the origin pane when the sender
@@ -211,7 +214,8 @@ pages of text rows, as `docs/ui-guideline.md` §1.6 says for each.
   again on the agent; `from` as for talk; the id is an integer the hub
   issued; the hook's output is JSON-encoded, so a mail cannot change
   the hook's decision.
-- Bounds: 50 mails per pane, 4000 characters each, 24 hours, in memory,
+- Bounds: 50 mails per pane, 4000 characters each, 24 hours, on the
+  host's disk under the agent's directory (mode 0600, beside the inbox),
   `409 mailbox_full` beyond. Sending is under the per-token write
   limit; replies under the per-agent event rate.
 - Logged: `audit mail token=<id> host=<host> pane=%5 bytes=52 mail=7
