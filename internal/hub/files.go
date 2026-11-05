@@ -118,7 +118,8 @@ func serveBytes(w http.ResponseWriter, typ string, data []byte) {
 
 // handlePreview serves a file a pane printed the path of, to a writer of
 // the pane, when the host's agent has it under a root. Every refusal of
-// the agent's is one 404, so nothing is learnt of the host.
+// the agent's is one 404, so nothing is learnt of the host. A file the
+// agent found elsewhere in the pane's repository is named in Muxway-File.
 func (h *Hub) handlePreview(w http.ResponseWriter, r *http.Request, t Principal, path string) {
 	asked := r.URL.Query().Get("path")
 	if !wire.ValidPath(asked) {
@@ -160,6 +161,10 @@ func (h *Hub) handlePreview(w http.ResponseWriter, r *http.Request, t Principal,
 		status, code := statusFor(resp.Error)
 		fail(w, status, code)
 		return
+	}
+	if resp.Path != "" {
+		attrs = append(attrs, "file", resp.Path)
+		w.Header().Set("Muxway-File", resp.Path)
 	}
 	h.log.Info("audit preview", append(attrs, "result", "ok", "bytes", len(resp.Data))...)
 	serveBytes(w, resp.Type, resp.Data)

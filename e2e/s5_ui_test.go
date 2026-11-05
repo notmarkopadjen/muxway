@@ -67,7 +67,13 @@ func TestUI_WebClient(t *testing.T) {
 	os.WriteFile(filepath.Join(preview, "docs", "'; rm -rf ~ #"), []byte("harmless\n"), 0o600)
 	// The root is a repository with a change of each kind, for the changes window.
 	gitRepo(t, preview)
-	a := e.pairAgent(host, ts, "--allow-sessions", "--inbox", "default", "--preview", preview)
+	// A linked worktree of it under a second root, with a file of its own,
+	// for a relative path the main checkout does not hold.
+	side := filepath.Join(e.dir, "side")
+	git(t, preview, "worktree", "add", "-q", "-b", "side", side)
+	os.MkdirAll(filepath.Join(side, "docs", "plans"), 0o700)
+	os.WriteFile(filepath.Join(side, "docs", "plans", "side.md"), []byte("# side\n\nA plan from the side worktree.\n"), 0o600)
+	a := e.pairAgent(host, ts, "--allow-sessions", "--inbox", "default", "--preview", preview, "--preview", side)
 	ts.must("send-keys", "-t", "work:0.0", "cd "+filepath.Join(preview, "docs")+" && clear", "Enter")
 	ts.split("work:0.0")
 	ts.must("new-window", "-t", "work:1", "-n", "logs", shell())
@@ -94,7 +100,7 @@ func TestUI_WebClient(t *testing.T) {
 	attack := startAttackPage(t, e.url())
 	runPlaywright(t, e, npx, webDir, os.Getenv("MX_GREP"),
 		"MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_ADMIN_TOKEN="+admin, "MX_CONTROL="+control, "MX_ATTACK="+attack,
-		"MX_HUB2="+e2.url(), "MX_HUB2_TOKEN="+hub2, "MX_CONTROL2="+control2, "MX_PREVIEW="+preview)
+		"MX_HUB2="+e2.url(), "MX_HUB2_TOKEN="+hub2, "MX_CONTROL2="+control2, "MX_PREVIEW="+preview, "MX_WORKTREE="+side)
 }
 
 // The microphone needs a hub with a transcriber: the stand-in from the
