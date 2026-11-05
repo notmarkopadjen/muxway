@@ -189,10 +189,22 @@ secret in the plan, the code, the tests or the docs.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan, deviations explained here
+- [x] Security rules (AGENTS.md section 2) hold
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Docs and diagrams updated
+
+Deviations:
+
+- The CORS answer exposes `Muxway-File` beside `ETag`, so the web client
+  on another origin (a second hub) reads it; the plan did not say.
+- The UI harness gains a linked worktree of its repository under a
+  second preview root, not inside the first: a worktree nested in the
+  main checkout would show as an untracked directory in the changes
+  specs.
+- The web window's bar shows the found path as `found <path>`, dim,
+  with the whole path in its tooltip; the printed path keeps its place.
+- Android parity: muxway-android#92.
 
 ## Test run
 
