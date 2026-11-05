@@ -175,6 +175,56 @@ web; see [the admin overview](admin.md).
 
 ## Operations
 
+### What a request costs the host
+
+The agent serves the hub's requests concurrently, in lanes, so that a
+key typed into a pane never waits behind the reads of the open tiles:
+
+- **Reads** (`read`, the files and directories under the roots, git's
+  view, a mailbox) hold one of four permits: at most four captures run
+  at once, however many clients ask.
+- **Writes** (`input`, an answer, a mail, *later*, an alias, a file for
+  the inbox) wait only for the earlier writes to the same pane, in
+  their order of arrival; the audit log keeps that order.
+- **Ops that move windows** (`resize`, `split`, a new session, closing)
+  run one at a time.
+- `list` is single-flighted: concurrent listings, the watcher's own
+  included, share one `list-panes`.
+
+Every request runs under the hub's ten-second deadline, at most 256 at
+once; past that the agent reads no more from the hub until one ends.
+
+A read of a pane that stands still costs no process. The agent keeps
+the last capture of each pane (per lines, `ansi` and wrapping) and
+answers from it while the listing says the pane has not moved: tmux's
+activity time for the window falls in a second before the capture was
+taken (whole seconds, so output in the capture's own second counts as
+moved), the cursor and the size are unchanged, the listing is younger
+than the capture, and the capture is under five seconds old. Reads may
+share a listing up to half a second old; one older than the kept
+capture is replaced by a fresh one, shared by whoever asks at that
+moment. Writes list afresh every time, so a pane unexposed or made
+read-only is refused the moment tmux says so. At most 256 captures are
+kept, the oldest out, and a pane's goes with the pane. The activity
+time is the window's: a printing pane beside an idle one in the same
+window makes the idle one capture again.
+
+```mermaid
+flowchart TD
+    A[read %1 lines 400 ansi] --> B{capture kept for %1 400 ansi}
+    B -- no --> C[capture-pane]
+    B -- yes --> D{activity second earlier than the capture, cursor and size same, listing newer, under 5 s}
+    D -- no --> C
+    D -- yes --> E[answer from the kept capture]
+    C --> F[keep it with the time]
+    F --> E
+```
+
+The hub, for its part, asks the agent once for the clients reading the
+same pane, lines and form at the same moment; the content is the
+pane's alone, and the view, the talk and the shares around it are
+still built per principal.
+
 ### As a service
 
 The hub as a system service under its own user, its state in a directory

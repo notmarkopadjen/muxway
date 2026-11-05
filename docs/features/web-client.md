@@ -240,13 +240,21 @@ else; the tile's header carries `⇗ n` while a share lives. See
 A terminal tells tmux its size; the browser does the same when **fit** is
 on (`f`, or the button in the header). A pane alone in the pane view
 sizes its *window* to the box and is zoomed in it with tmux's own zoom,
-so its neighbours are not squeezed; a pane that is alone in its window
-sizes the window without a zoom. With several tiles, each *pane* on the
+so its neighbours are not squeezed, and the floor holds under the zoom:
+a neighbour the proportions would leave under 20 columns or 5 rows takes
+the difference from the zoomed pane's own cell underneath, so the zoomed
+pane stays the size of its box; a pane that is alone in its window
+sizes the window without a zoom. The host takes the four fits a grid of
+tiles sends at once, then one more a second. With several tiles, each *pane* on the
 host becomes the columns and rows that fit its tile: where it spans its
 window, the window is sized; where it shares the window with neighbours,
 the window grows by what the pane lacks and the pane's own cell takes
 it, so no neighbour is squeezed, or the neighbours take what it gives
 up, and a pane left under 20 columns or 5 rows is grown the same way;
+a fitted pane is never left wider or taller than its tile asked on an
+axis it shares (a zoom, or a neighbour's fit, may have given it room):
+the window shrinks by the excess, so a tile is never drawn scaled for
+room nobody asked for, while a pane nobody fitted keeps what it has;
 the host remembers the size
 each pane of the window was given and gives it again when a sibling is
 fitted, so the second fit does not take the first one's size. Tiles that are every pane of
@@ -365,6 +373,19 @@ view, each live and typable. The page is the Android client's pane view:
   comes in as one more tile on that side, the others keeping their
   places; on a divider it goes across the split. With four tiles open
   the whole tile is its middle, and the pane takes its place.
+- A tile shows **its own pane or nothing**. An address is a position
+  (`work/1.1`), and the host renumbers panes when one closes, so a tile
+  learns which pane it is for by the pane's id when it opens and draws
+  no frame of any other pane: not a frame the page kept for the address,
+  not a read the hub answered a second late. While it has nothing of its
+  own to draw yet, the tile **warms up** like the tube: a bright line
+  across the middle of the box opens into it with a bloom and settles
+  through scanlines, in the theme's ink, and the first frame comes up
+  under it; with effects off (`m`) the box is simply blank until the
+  frame arrives. When the host renumbers a tile's pane, the tile
+  **follows it** to its new address (the route changes, the focus and
+  the arrangement stay); when the pane is gone, the tile closes with a
+  word, and no other tile changes pane.
 - **Tiles** share the area in one of the Android arrangements: two panes
   have a `row` and a `column`; three add `main-left` (a main pane with
   the others stacked beside it) and `main-top`; four add a `grid`. `▦`,

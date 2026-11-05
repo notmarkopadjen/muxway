@@ -31,7 +31,14 @@ the pane while it is on, so `g` types a `g`; the header buttons and the
 mouse keep working, and the [changes window](changes.md) closes by `×`
 or `⎇`. While the [file window](preview.md) is open its `Esc` closes it
 and no key reaches the pane; the [keyboard window](keyboard.md)'s caps
-send as they do.
+send as they do. Three chords are the client's even here: `Ctrl+V` and
+`Shift+Insert` paste as a terminal does (see below), and `Ctrl+]` /
+`Ctrl+[` go to the next / previous pane, direct typing staying on so the
+next pane is typed into at once, from the line and the page the same;
+they never reach the pane, and whoever needs the keys themselves
+(`Ctrl+[` is what a terminal sends for `Escape`, `Ctrl+]` is telnet's
+escape) sends them from the keyboard window, whose `Esc` cap and `Ctrl`
+with `]` are there for it.
 
 ![direct typing: the block cursor, ▮ as the prompt, the status bar](images/web-direct.png)
 
@@ -102,6 +109,37 @@ sequenceDiagram
 
 Protocol: `count` with `key` under [`POST /v1/panes/{address}/input`](../protocol/v1.md),
 and `"repeat": true` in the hosts listing for an agent that takes it.
+
+On the host, a key never waits behind the reads of the open tiles: the
+agent serves the hub's requests in lanes, each in a goroutine of its
+own. A read takes one of four permits, so a flood of reads holds at most
+four captures at once; a write to a pane waits only for the writes that
+came before it to that pane, in their order of arrival, which the audit
+log keeps; and a pane that has not moved since its last capture is
+answered from that capture without a process (see [hub and
+agent](hub-and-agent.md#what-a-request-costs-the-host)). A key's round
+trip is then the network, one listing and one `send-keys`.
+
+```mermaid
+sequenceDiagram
+    participant H as Hub
+    participant L as Agent loop
+    participant R as Read lane, four permits
+    participant W as Write lane, one pane in order
+    participant T as tmux
+    H->>L: read %1
+    L->>R: a goroutine, permit one
+    H->>L: read %2
+    L->>R: a goroutine, permit two
+    H->>L: input %1 key a
+    L->>W: a goroutine, no permit
+    W->>T: send-keys
+    T-->>W: ok
+    W-->>H: the answer for input %1
+    R->>T: capture-pane %1
+    T-->>R: content
+    R-->>H: the answer for read %1
+```
 
 ## Security considerations
 

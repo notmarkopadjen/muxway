@@ -87,15 +87,21 @@ func TestSec53_ResizeBoundsAndBurst(t *testing.T) {
 			limited++
 		}
 	}
-	if limited < 27 {
+	// A window takes four at once, then one a second.
+	for i := 1; i < 4; i++ {
+		if statuses[i] != http.StatusOK {
+			t.Fatalf("resize %d of the burst: %d", i, statuses[i])
+		}
+	}
+	if limited < 24 {
 		t.Fatalf("burst not limited: %v", statuses)
 	}
 	size := ts.windowSize("work:0")
-	if size == before || !strings.HasPrefix(size, "110x") && !strings.HasPrefix(size, "111x") {
+	if size == before || !strings.HasPrefix(size, "113x") && !strings.HasPrefix(size, "114x") {
 		t.Fatalf("window size after the burst: %s (before %s)", size, before)
 	}
 	logs, _ := os.ReadFile(filepath.Join(e.logs, "agent-"+host+".log"))
-	if !strings.Contains(string(logs), "op=resize") || !strings.Contains(string(logs), "cols=110 rows=31 result=ok") ||
+	if !strings.Contains(string(logs), "op=resize") || !strings.Contains(string(logs), "cols=113 rows=31 result=ok") ||
 		!strings.Contains(string(logs), "result=rate_limited") {
 		t.Fatalf("agent audit:\n%s", logs)
 	}
@@ -614,5 +620,95 @@ func TestFlow177_ANarrowerFitGivesToTheNeighbour(t *testing.T) {
 		t.Fatalf("the window is %s", got)
 	}
 	time.Sleep(1100 * time.Millisecond)
+	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")
+}
+
+// 178: a window widened by a zoom, then three of its four panes fitted:
+// a fitted pane keeps nothing its fit did not ask for, so the window
+// shrinks to the three fits and the fourth pane's share.
+func TestFlow178_AFitGivesTheWindowBack(t *testing.T) {
+	e, ts, _ := basic(t)
+	for i := 0; i < 3; i++ {
+		ts.title(ts.must("split-window", "-h", "-t", "work:0.0", "-P", "-F", "#{pane_id}", shell()))
+	}
+	ts.must("select-layout", "-t", "work:0", "even-horizontal")
+	e.expose(ts, "work", "--write")
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	expect(t, e.resize(tok, shell0, `{"cols":340,"rows":30,"scope":"window","zoom":true}`), http.StatusOK, "zoom")
+	if ww := windowWidth(t, ts, "work:0"); ww != 340 {
+		t.Fatalf("the window is %d wide after the zoom", ww)
+	}
+	for _, p := range []string{"0.0", "0.1", "0.2"} {
+		expect(t, e.resize(tok, host+"/work/"+p, `{"cols":40,"rows":30}`), http.StatusOK, "fit "+p)
+	}
+	widths := paneWidths(t, ts, "work:0")
+	for i := 0; i < 3; i++ {
+		if widths[i] != 40 {
+			t.Fatalf("the fitted panes are %v", widths)
+		}
+	}
+	if widths[3] < 20 {
+		t.Fatalf("the fourth pane went under the floor: %v", widths)
+	}
+	if ww := windowWidth(t, ts, "work:0"); ww != 3*40+widths[3]+3 {
+		t.Fatalf("the window is %d wide for panes %v", ww, widths)
+	}
+	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")
+}
+
+// 179: a window-scope zoom to a size the proportions would leave a pane
+// under the floor at: the pane with room gives it, the window stays as
+// asked; a zoom too small for every floor grows the window to them.
+func TestFlow179_AZoomKeepsTheFloor(t *testing.T) {
+	e, ts, _ := basic(t)
+	for i := 0; i < 3; i++ {
+		ts.title(ts.must("split-window", "-h", "-t", "work:0.0", "-P", "-F", "#{pane_id}", shell()))
+	}
+	ts.must("select-layout", "-t", "work:0", "even-horizontal")
+	ts.title(ts.must("split-window", "-v", "-f", "-t", "work:0.0", "-P", "-F", "#{pane_id}", shell()))
+	e.expose(ts, "work", "--write")
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	// 100 columns for a row of four: 24 each, above the floor; 20 rows
+	// for the row above the one: the row at 2 rows by proportion, so the
+	// bottom pane gives it the floor.
+	expect(t, e.resize(tok, shell0, `{"cols":100,"rows":20,"scope":"window","zoom":true}`), http.StatusOK, "zoom")
+	if got := ts.windowSize("work:0"); got != "100x20" {
+		t.Fatalf("the window is %s after the zoom", got)
+	}
+	ts.must("resize-pane", "-Z", "-t", "work:0.0")
+	for _, line := range strings.Fields(ts.must("list-panes", "-t", "work:0", "-F", "#{pane_width}x#{pane_height}")) {
+		var w, h int
+		fmt.Sscanf(line, "%dx%d", &w, &h)
+		if w < 20 || h < 5 {
+			t.Fatalf("a pane was left %s under the zoom", line)
+		}
+	}
+	// Five floors need 83 columns: a zoom to 60 grows the window to them.
+	expect(t, e.resize(tok, shell0, `{"cols":60,"rows":20,"scope":"window","zoom":true}`), http.StatusOK, "small zoom")
+	if ww := windowWidth(t, ts, "work:0"); ww != 83 {
+		t.Fatalf("the window is %d wide for five floors", ww)
+	}
+	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")
+}
+
+// 180: the four fits of a grid, sent together, are all taken, and each
+// pane ends at its ask.
+func TestFlow180_AGridsFitsLandTogether(t *testing.T) {
+	e, ts, _ := basic(t)
+	for i := 0; i < 3; i++ {
+		ts.title(ts.must("split-window", "-h", "-t", "work:0.0", "-P", "-F", "#{pane_id}", shell()))
+	}
+	ts.must("select-layout", "-t", "work:0", "even-horizontal")
+	ts.title(ts.must("split-window", "-v", "-f", "-t", "work:0.0", "-P", "-F", "#{pane_id}", shell()))
+	e.expose(ts, "work", "--write")
+	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
+	for _, p := range []string{"0.0", "0.1", "0.2", "0.3"} {
+		expect(t, e.resize(tok, host+"/work/"+p, `{"cols":60,"rows":25}`), http.StatusOK, "fit "+p)
+	}
+	for _, line := range strings.Fields(ts.must("list-panes", "-t", "work:0", "-F", "#{pane_index}:#{pane_width}x#{pane_height}"))[:4] {
+		if !strings.HasSuffix(line, ":60x25") {
+			t.Fatalf("a pane of the grid is not at its ask: %s", line)
+		}
+	}
 	expect(t, e.resize(tok, shell0, `{"fit":"auto"}`), http.StatusOK, "release")
 }

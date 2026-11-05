@@ -57,7 +57,7 @@ func (a *Agent) watch(ctx context.Context) {
 }
 
 func (a *Agent) watchOnce(ctx context.Context) {
-	panes, err := a.list(ctx)
+	panes, _, err := a.listShared(ctx, 0)
 	if err != nil {
 		return
 	}

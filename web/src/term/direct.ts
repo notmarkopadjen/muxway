@@ -43,6 +43,16 @@ export const bytesOf = (s: string) => new TextEncoder().encode(s).length;
 export const MAX_TEXT = 4096;
 export const MAX_COUNT = 50;
 
+// The pane chords: Ctrl+] goes to the next pane, Ctrl+[ to the previous,
+// from anywhere, direct typing included; they are never sent. Matched on
+// the key, or on the code for a layout where the bracket is elsewhere.
+export function paneChord(ev: KeyLike & { code?: string }): -1 | 0 | 1 {
+  if (!ev.ctrlKey || ev.altKey || ev.metaKey || ev.shiftKey) return 0;
+  if (ev.key === ']' || ev.code === 'BracketRight') return 1;
+  if (ev.key === '[' || ev.code === 'BracketLeft') return -1;
+  return 0;
+}
+
 // The body a key press becomes, or null when it is the browser's, a
 // modifier alone, a key under composition, or one the grammar has no name
 // for. `selected` says text is selected on the page: Ctrl+C then copies.

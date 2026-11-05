@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Backlog, keyToBody, pasteText, type KeyLike } from './direct';
+import { Backlog, keyToBody, pasteText, type KeyLike, paneChord } from './direct';
 
 const k = (key: string, mods: Partial<KeyLike> = {}): KeyLike => ({
   key,
@@ -147,5 +147,26 @@ describe('Backlog', () => {
     r.push({ text: 'after' });
     await tick();
     expect(sent).toEqual([{ key: 'Enter' }, { text: 'after' }]);
+  });
+});
+
+describe('paneChord', () => {
+  const ev = (o: Partial<Parameters<typeof paneChord>[0]>) => ({
+    key: '',
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
+    ...o,
+  });
+  it('is Ctrl with a bracket, by key or by code, and nothing else', () => {
+    expect(paneChord(ev({ key: ']', ctrlKey: true }))).toBe(1);
+    expect(paneChord(ev({ key: '[', ctrlKey: true }))).toBe(-1);
+    expect(paneChord(ev({ key: 'Dead', code: 'BracketRight', ctrlKey: true }))).toBe(1);
+    expect(paneChord(ev({ key: 'Dead', code: 'BracketLeft', ctrlKey: true }))).toBe(-1);
+    expect(paneChord(ev({ key: ']' }))).toBe(0);
+    expect(paneChord(ev({ key: ']', ctrlKey: true, shiftKey: true }))).toBe(0);
+    expect(paneChord(ev({ key: ']', ctrlKey: true, altKey: true }))).toBe(0);
+    expect(paneChord(ev({ key: 'Escape', ctrlKey: true }))).toBe(0);
   });
 });
