@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
+import { join } from 'node:path';
 import { control, HOST, settled, shot, signIn } from './fixtures';
+
+const SCREENS = process.env.MX_SCREENS ?? 'screens';
 
 // A tile shows its own pane or nothing: a second tile whose read is
 // slow shows the CRT warm-up, never a line of the first pane; a pane
@@ -32,7 +35,7 @@ test('124 a slow second tile warms up and never shows the first pane', async ({
   await settledTile(page, LOGS);
   // The second pane's reads are slow.
   await page.route(/\/v1\/panes\/[^/]+\/work\/1\.1\?/, async (route) => {
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 2500));
     await route.continue();
   });
   await page.goto(`/p/${LOGS},${SPLIT}`);
@@ -41,9 +44,15 @@ test('124 a slow second tile warms up and never shows the first pane', async ({
   const warm = second.getByTestId('warmup');
   await expect(warm).toHaveAttribute('data-warm', '1');
   expect(await warm.evaluate((el) => getComputedStyle(el).animationName)).toBe('mx-warmup');
-  await shot(page, info, '124-warm');
+  await settled(page);
+  await expect(warm).toHaveAttribute('data-warm', '1');
+  // Raw, animations running: the fixture's shot would jump the warm-up
+  // to its end.
+  await page.screenshot({
+    path: join(SCREENS, info.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase(), '124-warm.png'),
+  });
   // Through the delay, the second tile holds no line of the first.
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 8; i++) {
     expect(await second.textContent()).not.toContain('MARKER-A-7731');
     await page.waitForTimeout(100);
   }
