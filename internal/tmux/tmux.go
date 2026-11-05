@@ -30,6 +30,7 @@ const (
 const (
 	optMode  = "@muxway-mode"
 	optAlias = "@muxway-alias"
+	optLater = "@muxway-later" // when the owner parked the pane, unix seconds
 )
 
 // listSep is the field separator of one listing. It is random each time:
@@ -157,6 +158,7 @@ var fields = []string{
 	"#{window_activity}", "#{" + optMode + "}", "#{" + optAlias + "}", "#{pane_pid}",
 	"#{window_zoomed_flag}", "#{mouse_any_flag}#{mouse_button_flag}#{mouse_standard_flag}#{mouse_all_flag}",
 	"#{cursor_x}", "#{cursor_y}", "#{session_created}", "#{pid}", "#{pane_current_path}",
+	"#{" + optLater + "}",
 }
 
 // List returns every pane of the server, marked or not. Lines it cannot
@@ -184,6 +186,7 @@ func (s Server) List(ctx context.Context) (panes []Pane, skipped int, err error)
 		atoi := func(s string) int { n, _ := strconv.Atoi(s); return n }
 		act, _ := strconv.ParseInt(f[14], 10, 64)
 		created, _ := strconv.ParseInt(f[22], 10, 64)
+		later, _ := strconv.ParseInt(f[25], 10, 64)
 		panes = append(panes, Pane{
 			SessionID: f[0], SessionName: f[1], WindowID: f[2], WindowIndex: atoi(f[3]), WindowName: f[4],
 			WindowLayout: f[5], WindowActive: f[6] == "1", PaneID: f[7], PaneIndex: atoi(f[8]),
@@ -191,7 +194,7 @@ func (s Server) List(ctx context.Context) (panes []Pane, skipped int, err error)
 			Activity: act, Mode: f[15], Alias: f[16], PID: atoi(f[17]),
 			Zoomed: f[18] == "1" && f[9] == "1", Mouse: strings.Contains(f[19], "1"),
 			CursorX: atoi(f[20]) + 1, CursorY: atoi(f[21]) + 1, SessionCreated: created, ServerPID: atoi(f[23]),
-			Path: f[24],
+			Path: f[24], Later: later > 0, LaterAt: later,
 		})
 	}
 	count := map[string]int{}
@@ -730,6 +733,18 @@ func (s Server) SetPaneAlias(ctx context.Context, paneID, alias string) error {
 		return err
 	}
 	_, err := s.run(ctx, "set-option", "-p", "-t", paneID, optAlias, alias)
+	return err
+}
+
+// SetPaneLater marks a pane parked since at, a pane option like the
+// alias, so the mark lives with the pane and not with the agent; 0
+// wakes it.
+func (s Server) SetPaneLater(ctx context.Context, paneID string, at int64) error {
+	if at == 0 {
+		_, err := s.run(ctx, "set-option", "-p", "-u", "-t", paneID, optLater)
+		return err
+	}
+	_, err := s.run(ctx, "set-option", "-p", "-t", paneID, optLater, strconv.FormatInt(at, 10))
 	return err
 }
 

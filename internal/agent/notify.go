@@ -358,8 +358,10 @@ func (a *Agent) answer(ctx context.Context, req wire.Request) string {
 	}
 	delete(a.asks, p.PaneID)
 	delete(a.attention, p.PaneID)
-	delete(a.later, p.PaneID)
 	a.mu.Unlock()
+	if p.Later {
+		a.wake(ctx, p.PaneID)
+	}
 	q.finish(askResult{answer: req.Choice})
 	return ""
 }

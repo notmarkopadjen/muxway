@@ -84,9 +84,11 @@ func (a *Agent) storeMail(ctx context.Context, req wire.Request) (int, string) {
 	close(b.wake)
 	b.wake = make(chan struct{})
 	n, _ := b.unread()
-	// A mail is the owner coming back: the pane is no longer parked.
-	delete(a.later, p.PaneID)
 	a.mu.Unlock()
+	// A mail is the owner coming back: the pane is no longer parked.
+	if p.Later {
+		a.wake(ctx, p.PaneID)
+	}
 	return n, ""
 }
 
