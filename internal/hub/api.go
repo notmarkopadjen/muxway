@@ -686,7 +686,7 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 		fail(w, status, "not_found")
 		return
 	}
-	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpRead, Actor: t.ID, Pane: p.PaneID, Lines: lines, ANSI: ansi && !wantsText(r), Wrapped: !wantsText(r)})
+	resp, err := a.read(r.Context(), wire.Request{Op: wire.OpRead, Actor: t.ID, Pane: p.PaneID, Lines: lines, ANSI: ansi && !wantsText(r), Wrapped: !wantsText(r)})
 	if err != nil {
 		fail(w, http.StatusServiceUnavailable, "host_offline")
 		return
