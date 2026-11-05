@@ -292,7 +292,7 @@ address the proxy saw, never one the client wrote in a header of its own.
 ### Backup, upgrade, rotation
 
 - **Back up** the hub's directory: `hub.key` (losing it means re-pairing
-  every agent) and `hub.json` (paired agents, token hashes, users, the
+  every agent) and `hub.json` (paired agents, token hashes, users, the [desk](desk.md), the
   address lists). Browser sessions and the log ring live in memory and
   are gone with a restart: people sign in again. The agent's directory
   holds `agent.key` and `agent.json`; without them the host pairs again.
