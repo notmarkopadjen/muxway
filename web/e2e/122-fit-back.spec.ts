@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { control, HOST, settled, shot, signIn } from './fixtures';
 
 // A fit gives the window back: three of a window's four panes as tiles,
@@ -10,6 +10,19 @@ const LOGS = `${HOST}/work/1.0`;
 const SPLIT = `${HOST}/work/1.1`;
 const SPLIT2 = `${HOST}/work/1.2`;
 const SPLIT3 = `${HOST}/work/1.3`;
+
+// The panes this file splits off are killed after each test: the specs
+// after it in the run match rows by text, and a window of ten and more
+// panes makes `work/1.1` match `work/1.10` too.
+const made: string[] = [];
+async function split(request: APIRequestContext, target: string) {
+  const id = await control(request, '/split', { target, dir: 'h' });
+  made.push(id);
+  return id;
+}
+test.afterEach(async ({ request }) => {
+  for (const id of made.splice(0).reverse()) await control(request, '/kill-pane', { target: id });
+});
 
 interface Resize {
   address: string;
@@ -43,7 +56,7 @@ test('122 three of four panes as tiles: a zoom in and out leaves every tile at i
   page,
   request,
 }, info) => {
-  for (let i = 0; i < 3; i++) await control(request, '/split', { target: 'work:1.0', dir: 'h' });
+  for (let i = 0; i < 3; i++) await split(request, 'work:1.0');
   const resizes = watchResizes(page);
   await signIn(page);
   await expect(page.locator(`[data-testid="pane-row"][data-address="${SPLIT3}"]`)).toBeVisible({
@@ -103,7 +116,7 @@ test('122 a grid of four of a five-pane window: the fits land together, none rat
   page,
   request,
 }, info) => {
-  for (let i = 0; i < 4; i++) await control(request, '/split', { target: 'work:1.0', dir: 'h' });
+  for (let i = 0; i < 4; i++) await split(request, 'work:1.0');
   const resizes = watchResizes(page);
   await signIn(page);
   await expect(page.getByTestId('pane-row').filter({ hasText: `${HOST}/work/1.4` })).toBeVisible({

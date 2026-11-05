@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { join } from 'node:path';
 import { control, HOST, settled, shot, signIn } from './fixtures';
 
@@ -14,6 +14,19 @@ const LOGS = `${HOST}/work/1.0`;
 const SPLIT = `${HOST}/work/1.1`;
 const SPLIT2 = `${HOST}/work/1.2`;
 
+// The panes this file splits off are killed after each test: the specs
+// after it in the run match rows by text, and a window of ten and more
+// panes makes `work/1.1` match `work/1.10` too.
+const made: string[] = [];
+async function split(request: APIRequestContext, target: string) {
+  const id = await control(request, '/split', { target, dir: 'h' });
+  made.push(id);
+  return id;
+}
+test.afterEach(async ({ request }) => {
+  for (const id of made.splice(0).reverse()) await control(request, '/kill-pane', { target: id });
+});
+
 const tile = (page: Page, a: string) => page.locator(`[data-pane="${a}"]`);
 // The pane's screen, settled: the fit landed and the tile is not syncing.
 async function settledTile(page: Page, a: string) {
@@ -24,7 +37,7 @@ test('124 a slow second tile warms up and never shows the first pane', async ({
   page,
   request,
 }, info) => {
-  await control(request, '/split', { target: 'work:1.0', dir: 'h' });
+  await split(request, 'work:1.0');
   await control(request, '/send', { target: 'work:1.0', text: 'echo MARKER-A-7731' });
   await signIn(page);
   await expect(page.locator(`[data-testid="pane-row"][data-address="${SPLIT}"]`)).toBeVisible({
@@ -73,7 +86,7 @@ test("124 a pane at a closed pane's address never shows the old pane's frame", a
   page,
   request,
 }, info) => {
-  await control(request, '/split', { target: 'work:1.0', dir: 'h' });
+  await split(request, 'work:1.0');
   await control(request, '/send', { target: 'work:1.1', text: 'echo MARKER-B-4455' });
   await signIn(page);
   await expect(page.locator(`[data-testid="pane-row"][data-address="${SPLIT}"]`)).toBeVisible({
@@ -90,7 +103,7 @@ test("124 a pane at a closed pane's address never shows the old pane's frame", a
   // the next one; either way a different pane answers there).
   const old = await control(request, '/pane-id', { target: 'work:1.1' });
   await control(request, '/kill-pane', { target: 'work:1.1' });
-  await control(request, '/split', { target: 'work:1.0', dir: 'h' });
+  await split(request, 'work:1.0');
   await expect
     .poll(() => control(request, '/pane-id', { target: 'work:1.1' }), { timeout: 10_000 })
     .not.toBe(old);
@@ -109,8 +122,8 @@ test("124 when the host renumbers, the exited pane's tile closes and the other f
   page,
   request,
 }, info) => {
-  await control(request, '/split', { target: 'work:1.0', dir: 'h' });
-  await control(request, '/split', { target: 'work:1.1', dir: 'h' });
+  await split(request, 'work:1.0');
+  await split(request, 'work:1.1');
   await control(request, '/send', { target: 'work:1.2', text: 'echo MARKER-C-9900' });
   await signIn(page);
   await expect(page.locator(`[data-testid="pane-row"][data-address="${SPLIT2}"]`)).toBeVisible({

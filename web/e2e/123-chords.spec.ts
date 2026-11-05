@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { control, HOST, settled, shot, signIn } from './fixtures';
 
 // Ctrl+] and Ctrl+[ go to the next and the previous pane from anywhere:
@@ -9,6 +9,19 @@ import { control, HOST, settled, shot, signIn } from './fixtures';
 
 const LOGS = `${HOST}/work/1.0`;
 const SPLIT = `${HOST}/work/1.1`;
+
+// The panes this file splits off are killed after each test: the specs
+// after it in the run match rows by text, and a window of ten and more
+// panes makes `work/1.1` match `work/1.10` too.
+const made: string[] = [];
+async function split(request: APIRequestContext, target: string) {
+  const id = await control(request, '/split', { target, dir: 'h' });
+  made.push(id);
+  return id;
+}
+test.afterEach(async ({ request }) => {
+  for (const id of made.splice(0).reverse()) await control(request, '/kill-pane', { target: id });
+});
 
 interface Input {
   address: string;
@@ -29,7 +42,7 @@ test('123 the chords cycle the tiles from direct typing, the line and the page, 
   page,
   request,
 }, info) => {
-  await control(request, '/split', { target: 'work:1.0', dir: 'h' });
+  await split(request, 'work:1.0');
   const inputs = watchInput(page);
   await signIn(page);
   await expect(page.locator(`[data-testid="pane-row"][data-address="${SPLIT}"]`)).toBeVisible({
@@ -91,7 +104,7 @@ test("123 with one tile open the chords bring the strip's neighbour in; the wind
   page,
   request,
 }) => {
-  await control(request, '/split', { target: 'work:1.0', dir: 'h' });
+  await split(request, 'work:1.0');
   await signIn(page);
   await expect(page.locator(`[data-testid="pane-row"][data-address="${SPLIT}"]`)).toBeVisible({
     timeout: 10_000,

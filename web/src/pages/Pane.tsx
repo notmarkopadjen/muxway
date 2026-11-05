@@ -194,7 +194,7 @@ interface TileProps {
   // The pane is no longer there: the tile goes, with a word.
   onGone: () => void;
   // The pane this tile is for, from the listing; learnt from the first
-  // frame when the view had none, and told back.
+  // frame when the view had none. The first frame drawn confirms it.
   identity?: Identity;
   onIdentity: (id: Identity) => void;
   // A frame of another pane came for this address.
@@ -278,15 +278,21 @@ function Tile(props: TileProps) {
   const identity = props.identity ?? learnt.current;
   const mine = (f: PaneContent | undefined): f is PaneContent =>
     !!f && (!identity || sameIdentity(identityOf(f.pane), identity));
-  const { onIdentity } = props;
   useEffect(() => {
-    if (!props.identity && !learnt.current && pane.data) {
+    if (!props.identity && !learnt.current && pane.data)
       learnt.current = identityOf(pane.data.pane);
-      onIdentity(learnt.current);
-    }
-  }, [props.identity, pane.data, onIdentity]);
+  }, [props.identity, pane.data]);
   const data = mine(pane.data) ? pane.data : undefined;
   const p = data?.pane;
+  // The first frame drawn confirms which pane this is.
+  const { onIdentity } = props;
+  const confirmed = useRef(false);
+  useEffect(() => {
+    if (p && !confirmed.current) {
+      confirmed.current = true;
+      onIdentity(identityOf(p));
+    }
+  }, [p, onIdentity]);
   const stranger = !!pane.data && !data;
   const { onStranger } = props;
   useEffect(() => {
@@ -387,8 +393,8 @@ function Tile(props: TileProps) {
   // The warm-up: over the box while the tile has nothing of its own to
   // draw, and for a moment more once its first frame is in, so the frame
   // comes up through the bloom.
-  const [warm, setWarm] = useState(true);
   const hasOwn = !!shown;
+  const [warm, setWarm] = useState(() => !hasOwn);
   useEffect(() => {
     if (!hasOwn) return;
     const t = window.setTimeout(() => setWarm(false), WARMUP_MS);
@@ -855,7 +861,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // Which pane each tile is for, learnt from the listing when the tile
   // opens; the tiles follow their panes when the host renumbers them,
   // and close when their pane is in no listing while its host is.
-  const identities = useRef(new Map<string, Identity>());
+  const identities = useRef(new Map<string, { id: Identity; confirmed: boolean }>());
   // The tiles whose read found no pane at their address: the listing
   // says whether the pane moved or is gone.
   const missing = useRef(new Set<string>());
@@ -867,7 +873,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
     for (const a of addresses) {
       if (identities.current.has(a)) continue;
       const e = listed.find((q) => q.address === a);
-      if (e) identities.current.set(a, identityOf(e));
+      if (e) identities.current.set(a, { id: identityOf(e), confirmed: false });
     }
   }, [listed, addresses]);
   const [focusedIndex, setFocusedIndex] = useState(() => {
@@ -1043,13 +1049,16 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // The listing moved or lost a tile's pane: the tile goes with it, or
   // goes. A pane in no listing is gone when its read found no pane at
   // the address, or when its host is listed without it (another pane
-  // sits at the address now); a tile whose pane the view never knew
-  // goes on its read alone, as before.
+  // sits at the address now). That holds for a pane a frame confirmed;
+  // an identity the listing alone gave may have come from a listing a
+  // second stale, so a later listing naming another pane at the address
+  // corrects it rather than closing a tile just opened. A tile whose
+  // pane the view never knew goes on its read alone, as before.
   useEffect(() => {
     if (!listed) return;
     for (const [i, a] of addresses.entries()) {
-      const id = identities.current.get(a);
-      if (!id) {
+      const entry = identities.current.get(a);
+      if (!entry) {
         if (missing.current.has(a)) {
           missing.current.delete(a);
           toast.push({ kind: 'gone', title: `${a} is gone` });
@@ -1058,10 +1067,24 @@ function Tiles({ addresses }: { addresses: string[] }) {
         }
         continue;
       }
+      const { id, confirmed } = entry;
       const now = listed.find((q) => sameIdentity(identityOf(q), id));
+      if (!confirmed) {
+        const at = listed.find((q) => q.address === a);
+        if (at && !sameIdentity(identityOf(at), id))
+          identities.current.set(a, { id: identityOf(at), confirmed: false });
+        else if (!at && !now && missing.current.has(a)) {
+          identities.current.delete(a);
+          missing.current.delete(a);
+          toast.push({ kind: 'gone', title: `${a} is gone` });
+          closeTile(a);
+          return;
+        }
+        continue;
+      }
       if (now && now.address !== a) {
         identities.current.delete(a);
-        identities.current.set(now.address, id);
+        identities.current.set(now.address, entry);
         missing.current.delete(a);
         void go(replace(addresses, i, now.address));
         return;
@@ -1692,8 +1715,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
           strangerAt.current = Date.now();
           void qc.invalidateQueries({ queryKey: keys.panesOf() });
         }}
-        identity={identities.current.get(a)}
-        onIdentity={(id) => identities.current.set(a, id)}
+        identity={identities.current.get(a)?.id}
+        onIdentity={(id) => identities.current.set(a, { id, confirmed: true })}
         minimisable={several}
         onMinimise={() => minimise(a)}
         hostCloses={hostCloses(a)}

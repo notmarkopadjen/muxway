@@ -286,10 +286,42 @@ owner's report (340, 257, 39×55, 12 columns) carry no personal data.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan, deviations explained here
+- [x] Security rules (AGENTS.md section 2) hold
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Docs and diagrams updated
+
+Deviations:
+
+- **The floor on a window resize (2.2)** is one algorithm for both
+  cases, not two: the layout is laid out with every part at least what
+  its panes need, the parts with room giving (`scaleFloor`), under a
+  zoom and without one alike, and the window grows only when every pane
+  at the floor does not fit it (`LeastLayout`). The plan had the
+  no-zoom case grow the window as a pane fit does; taking from the
+  roomiest cell of the split is the same promise with less movement,
+  and the window view's exact layout rarely meets it. The protocol page
+  says what is done.
+- **Gone and moved (2.4)** are decided in the tiles view from the
+  listing, not in the tile: a read's 404 only marks the tile as
+  missing and asks the listing again at once, because when a pane in
+  the middle of a window exits, the tile of the pane after it gets the
+  404 first and would have closed before the listing could show where
+  its pane went. A tile whose pane the view never knew still goes on
+  its 404 alone. A frame of a stranger also asks the listing again (at
+  most every two seconds), so a tile follows its pane in a second or
+  two rather than at the listing's five-second poll.
+- **The warm-up (2.5)** holds its bright line, paused, while the tile
+  has nothing of its own; the 600 ms opening plays once the first frame
+  is in, so the frame comes up through the bloom, as the issue asked.
+- **Spec 122** reads the pane widths from tmux itself after the zoom
+  out (every fitted pane exactly its ask, the fourth at the floor or
+  above, the window their sum), rather than comparing window widths
+  before and after the zoom: in the test browser a zoomed window is
+  narrower than three fitted tiles, so the comparison said nothing.
+- The resize bucket per window is never garbage collected, as the
+  timestamp before it was not; it is one small struct per window ever
+  resized.
 
 ## Test run
 
