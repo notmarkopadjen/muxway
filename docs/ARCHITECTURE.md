@@ -35,7 +35,10 @@ flowchart LR
   of under its preview roots and the names in a pane's directory, git's
   view, an answer to a question, a mail for a pane's process, a pane's
   alias, the owner's *later* mark) and enforces exposure and modes
-  itself. It also listens on a socket for the
+  itself. Requests are served concurrently, in lanes (reads hold one of
+  four permits, writes to one pane keep their order, window changes run
+  alone), and a pane that has not moved is answered from its last
+  capture without a process. It also listens on a socket for the
   processes in its panes (`muxway notify`, `muxway ask`) and watches the
   screens of the AI harnesses it knows.
 - **Hub** (`muxway hub serve`): the meeting point. It pairs agents,
