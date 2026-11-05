@@ -3,9 +3,11 @@ package agent
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/notmarkopadjen/muxway/internal/wire"
 )
@@ -109,13 +111,177 @@ func previewType(file string) string {
 
 var errNoPreview = errors.New("not previewed")
 
-// resolvePreview turns a path as printed into the file it names, from the
-// pane's directory, and says whether that file may be served: under one
-// of the roots once every symlink is followed, no hidden component below
-// the root unless the owner allows them, never a secret by name, a
-// regular file of at most wire.MaxFile.
-func resolvePreview(roots []string, hidden bool, cwd, home, path string) (string, string, error) {
-	file, err := resolveUnder(roots, hidden, cwd, home, path, false)
+// How far the fallback looks: this many linked worktrees, this much of
+// each gitdir file.
+const (
+	maxWorktrees = 64
+	maxGitdir    = 4096
+)
+
+// base is a directory a relative path is tried from, and how it was
+// found: "" for the pane's own directory, "ancestor" for a directory
+// above it in the same repository, "worktree" for another worktree.
+type base struct {
+	dir   string
+	found string
+}
+
+// bases lists the directories a relative path printed in a pane is tried
+// from: the pane's directory first, then its ancestors up to the one
+// holding .git, then the repository's other worktrees, read from git's
+// own metadata without running git. No .git above: the pane's directory
+// and nothing else.
+func bases(cwd string) []base {
+	out := []base{{cwd, ""}}
+	if cwd == "" {
+		return out
+	}
+	top, dotGit := repoTop(cwd)
+	if top == "" {
+		return out
+	}
+	for d := cwd; d != top; {
+		d = filepath.Dir(d)
+		out = append(out, base{d, "ancestor"})
+	}
+	for _, w := range worktrees(top, dotGit) {
+		out = append(out, base{w, "worktree"})
+	}
+	return out
+}
+
+// repoTop finds the nearest directory at or above dir that holds .git,
+// and that .git itself.
+func repoTop(dir string) (string, string) {
+	for d := dir; ; {
+		g := filepath.Join(d, ".git")
+		if _, err := os.Lstat(g); err == nil {
+			return d, g
+		}
+		parent := filepath.Dir(d)
+		if parent == d {
+			return "", ""
+		}
+		d = parent
+	}
+}
+
+// worktrees names the other worktrees of a repository whose top holds
+// dotGit. A .git directory keeps its linked worktrees under
+// .git/worktrees/<name>/gitdir, each naming <worktree>/.git; a .git file
+// holds one line, "gitdir: <common>/worktrees/<name>", whose common
+// directory's parent is the main worktree. A gitdir that does not name a
+// directory is skipped.
+func worktrees(top, dotGit string) []string {
+	common := dotGit
+	var out []string
+	if info, err := os.Lstat(dotGit); err == nil && !info.IsDir() {
+		line, ok := gitdirLine(dotGit)
+		if !ok {
+			return nil
+		}
+		// <common>/worktrees/<name>
+		common = filepath.Dir(filepath.Dir(line))
+		if filepath.Base(filepath.Dir(line)) != "worktrees" || !isDir(common) {
+			return nil
+		}
+		if main := filepath.Dir(common); isDir(main) {
+			out = append(out, main)
+		}
+	}
+	entries, err := os.ReadDir(filepath.Join(common, "worktrees"))
+	if err != nil {
+		return out
+	}
+	for i, e := range entries {
+		if i >= maxWorktrees {
+			break
+		}
+		line, ok := gitdirLine(filepath.Join(common, "worktrees", e.Name(), "gitdir"))
+		if !ok || filepath.Base(line) != ".git" {
+			continue
+		}
+		w := filepath.Dir(line)
+		if w == top || !isDir(w) {
+			continue
+		}
+		out = append(out, w)
+	}
+	return out
+}
+
+// gitdirLine reads one of git's pointer files: the first line, with a
+// "gitdir: " prefix or without, an absolute path or nothing.
+func gitdirLine(file string) (string, bool) {
+	f, err := os.Open(file)
+	if err != nil {
+		return "", false
+	}
+	defer f.Close()
+	buf := make([]byte, maxGitdir+1)
+	n, _ := io.ReadFull(f, buf)
+	if n > maxGitdir {
+		return "", false
+	}
+	line, _, _ := strings.Cut(string(buf[:n]), "\n")
+	line = strings.TrimSpace(strings.TrimPrefix(line, "gitdir:"))
+	if !filepath.IsAbs(line) {
+		return "", false
+	}
+	return filepath.Clean(line), true
+}
+
+func isDir(dir string) bool {
+	info, err := os.Stat(dir)
+	return err == nil && info.IsDir()
+}
+
+// resolvePreview turns a path as printed into the file it names and says
+// whether that file may be served: under one of the roots once every
+// symlink is followed, no hidden component below the root unless the
+// owner allows them, never a secret by name, a regular file of at most
+// wire.MaxFile. An absolute path, or one from home, is taken as it is. A
+// relative one is tried from the pane's directory, then from each
+// ancestor up to the repository's top, first hit wins; then from the
+// repository's other worktrees, where the newest file wins. The last
+// answer says where it was found: "" from the pane's directory,
+// "ancestor" or "worktree" otherwise.
+func resolvePreview(roots []string, hidden bool, cwd, home, path string) (string, string, string, error) {
+	if !wire.ValidPath(path) || cwd == "" {
+		return "", "", "", errNoPreview
+	}
+	if filepath.IsAbs(path) || path == "~" || strings.HasPrefix(path, "~/") {
+		file, typ, err := serveable(roots, hidden, cwd, home, path)
+		return file, typ, "", err
+	}
+	var best, bestTyp, found string
+	var newest time.Time
+	for _, b := range bases(cwd) {
+		file, typ, err := serveable(roots, hidden, b.dir, home, path)
+		if err != nil {
+			continue
+		}
+		if b.found != "worktree" {
+			return file, typ, b.found, nil
+		}
+		info, err := os.Stat(file)
+		if err != nil {
+			continue
+		}
+		if best == "" || info.ModTime().After(newest) {
+			best, bestTyp, found, newest = file, typ, b.found, info.ModTime()
+		}
+	}
+	if best == "" {
+		return "", "", "", errNoPreview
+	}
+	return best, bestTyp, found, nil
+}
+
+// serveable resolves a path from one directory and applies every check a
+// served file must pass.
+func serveable(roots []string, hidden bool, dir, home, path string) (string, string, error) {
+	file, err := resolveUnder(roots, hidden, dir, home, path, false)
 	if err != nil || secretName(filepath.Base(file)) {
 		return "", "", errNoPreview
 	}
@@ -187,29 +353,30 @@ func underRoot(roots []string, file string, hidden bool) (string, bool) {
 	return "", false
 }
 
-// preview answers the resolved path, the type and the bytes of a file a
-// pane printed, or a code. Every refusal is the one code, so a client
-// learns nothing of what is there.
-func (a *Agent) preview(ctx context.Context, req wire.Request) (string, string, []byte, string) {
+// preview answers the resolved path, where it was found when not from
+// the pane's directory, the type and the bytes of a file a pane printed,
+// or a code. Every refusal is the one code, so a client learns nothing
+// of what is there.
+func (a *Agent) preview(ctx context.Context, req wire.Request) (string, string, string, []byte, string) {
 	if len(a.cfg.Preview) == 0 {
-		return "", "", nil, wire.ErrNotAllowed
+		return "", "", "", nil, wire.ErrNotAllowed
 	}
 	p, code := a.find(ctx, req.Pane)
 	if code != "" {
-		return "", "", nil, code
+		return "", "", "", nil, code
 	}
 	cwd, err := a.tmux.CurrentPath(ctx, p.PaneID)
 	if err != nil {
-		return "", "", nil, wire.ErrTmux
+		return "", "", "", nil, wire.ErrTmux
 	}
 	home, _ := os.UserHomeDir()
-	file, typ, err := resolvePreview(a.cfg.Preview, a.cfg.PreviewHidden, cwd, home, req.Path)
+	file, typ, found, err := resolvePreview(a.cfg.Preview, a.cfg.PreviewHidden, cwd, home, req.Path)
 	if err != nil {
-		return "", "", nil, wire.ErrNoFile
+		return "", "", "", nil, wire.ErrNoFile
 	}
 	data, err := os.ReadFile(file)
 	if err != nil || len(data) > wire.MaxFile {
-		return file, "", nil, wire.ErrNoFile
+		return file, found, "", nil, wire.ErrNoFile
 	}
-	return file, typ, data, ""
+	return file, found, typ, data, ""
 }

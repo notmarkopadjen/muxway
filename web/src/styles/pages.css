@@ -1650,6 +1650,11 @@ button.mx-window:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.mx-picture-found {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 2;
+}
 .mx-picture-bar .mx-spacer {
   flex: 1;
   min-width: 1ch;

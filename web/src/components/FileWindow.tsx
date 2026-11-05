@@ -37,19 +37,30 @@ function fileNameOf(s: Shown): string {
   return 'name' in s ? s.name : s.path.split('/').pop() || 'file';
 }
 
+// found: the file's path on the host when it was found elsewhere in the
+// pane's repository than the pane's directory; the bar names it.
 export type Got =
-  | { url: string; bytes: number; kind: 'image' | 'pdf' | 'binary'; blob?: Blob }
-  | { url: string; bytes: number; kind: 'text'; text: string; cut: boolean; blob?: Blob }
+  | { url: string; bytes: number; kind: 'image' | 'pdf' | 'binary'; blob?: Blob; found?: string }
+  | {
+      url: string;
+      bytes: number;
+      kind: 'text';
+      text: string;
+      cut: boolean;
+      blob?: Blob;
+      found?: string;
+    }
   | { error: string };
 
 // gotOf sorts a fetched blob into what the window draws.
-export async function gotOf(blob: Blob, url: string): Promise<Got> {
+export async function gotOf(blob: Blob, url: string, found = ''): Promise<Got> {
   const typ = blob.type.split(';')[0];
-  if (typ.startsWith('image/')) return { url, bytes: blob.size, kind: 'image', blob };
-  if (typ === 'application/pdf') return { url, bytes: blob.size, kind: 'pdf', blob };
-  if (!typ.startsWith('text/')) return { url, bytes: blob.size, kind: 'binary', blob };
+  const base = { url, bytes: blob.size, blob, found: found || undefined };
+  if (typ.startsWith('image/')) return { ...base, kind: 'image' };
+  if (typ === 'application/pdf') return { ...base, kind: 'pdf' };
+  if (!typ.startsWith('text/')) return { ...base, kind: 'binary' };
   const text = await blob.slice(0, TEXT_SHOWN).text();
-  return { url, bytes: blob.size, kind: 'text', text, cut: blob.size > TEXT_SHOWN, blob };
+  return { ...base, kind: 'text', text, cut: blob.size > TEXT_SHOWN };
 }
 
 // What an observer's window is told to show.
@@ -171,12 +182,14 @@ export function FileWindow({
     let gone = false;
     setFetched(null);
     const fetched =
-      'name' in shown ? readFile(shown.address, shown.name) : previewFile(shown.address, filePath);
+      'name' in shown
+        ? readFile(shown.address, shown.name).then((blob) => ({ blob, found: '' }))
+        : previewFile(shown.address, filePath);
     fetched
-      .then(async (blob) => {
+      .then(async ({ blob, found }) => {
         if (gone) return;
         url = URL.createObjectURL(blob);
-        const g = await gotOf(blob, url);
+        const g = await gotOf(blob, url, found);
         if (!gone) setFetched(g);
       })
       .catch((err) => {
@@ -265,6 +278,15 @@ export function FileWindow({
           <span className="mx-picture-name" data-testid="picture-name" title={label}>
             {label}
           </span>
+          {!observed && side !== 'diff' && got && 'found' in got && got.found && (
+            <span
+              className="mx-dim mx-picture-found"
+              data-testid="picture-found"
+              title="not under the pane's directory: found here in its repository"
+            >
+              found {got.found}
+            </span>
+          )}
           <span className="mx-spacer">─</span>
           {side !== 'diff' && got && 'bytes' in got && (
             <span className="mx-dim" data-testid="picture-size">

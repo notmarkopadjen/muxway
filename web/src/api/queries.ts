@@ -521,10 +521,19 @@ export function readFile(address: string, name: string): Promise<Blob> {
   return fetchBlob(`/v1/panes/${t.address}/files/${name}`, t.hub);
 }
 
-// A file a pane printed the path of, from under the host's preview roots.
-export function previewFile(address: string, path: string): Promise<Blob> {
+// A file a pane printed the path of, from under the host's preview roots;
+// found names the file when the host found it elsewhere in the pane's
+// repository (an ancestor directory, another worktree), else is empty.
+export async function previewFile(
+  address: string,
+  path: string,
+): Promise<{ blob: Blob; found: string }> {
   const t = target(address);
-  return fetchBlob(`/v1/panes/${t.address}/preview?path=${encodeURIComponent(path)}`, t.hub);
+  const res = await fetchRaw(
+    `/v1/panes/${t.address}/preview?path=${encodeURIComponent(path)}`,
+    t.hub,
+  );
+  return { blob: await res.blob(), found: res.headers.get('Muxway-File') ?? '' };
 }
 
 // The changes of the repository the pane works in: every five seconds
@@ -597,6 +606,10 @@ export function readDiff(address: string, path: string): Promise<Diff> {
 }
 
 async function fetchBlob(path: string, hub?: string): Promise<Blob> {
+  return (await fetchRaw(path, hub)).blob();
+}
+
+async function fetchRaw(path: string, hub?: string): Promise<Response> {
   const res = await fetch((hub ?? '') + path, {
     headers: { 'X-Muxway-Client': 'web' },
     credentials: hub ? 'include' : 'same-origin',
@@ -611,7 +624,7 @@ async function fetchBlob(path: string, hub?: string): Promise<Blob> {
     }
     throw new ApiError(res.status, code);
   }
-  return res.blob();
+  return res;
 }
 
 // The types the host's inbox takes, by the browser's type or the name's end.

@@ -28,8 +28,16 @@ images and PDF, and anything else under a root is a download,
 is underlined. A click opens the window: the bar has
 the path, the size, for a text its line count, `⤓` and `×`; `Escape`,
 `×` or a click outside closes it. A relative path is taken from the
-directory the pane's shell is in, `~` from the agent's home. What the
-host will not serve, a path outside the roots, a hidden file on an
+directory the pane's shell is in, `~` from the agent's home. A relative
+path with no such file there is looked for where the pane's repository
+has it: up the tree to the repository's top (a shell in `web/` printing
+`docs/a.md`), then in the repository's other worktrees (a coding agent
+working in a worktree prints paths relative to it while its pane's
+shell never left the main checkout; the owner met this daily). The
+newest copy wins among worktrees. A file found that way opens like any
+other, and the bar names it after the printed path, dim, `found
+/home/alice/src/feature/docs/a.md`, so the reader sees which tree
+answered. What the host will not serve, a path outside the roots, a hidden file on an
 agent without `--preview-hidden`, a secret, a missing file, says so in
 one sentence, naming those four reasons, since the host gives one code
 for all of them (the owner, who reads it most, adds a root or the flag;
@@ -79,9 +87,26 @@ sequenceDiagram
     H->>H: write grant? writable pane? path sane? two a second?
     H->>A: read-path {pane, path}
     A->>A: roots? pane's cwd + path, symlinks followed, under a root? no dot component? regular, ≤ 8 MiB, a shown type by extension or name?
-    A-->>H: {type, data} or no_file
-    H-->>C: 200 the file, nosniff, no-store, or 404
-    C->>P: window: preview, size, ⤓ download
+    A->>A: a relative path missed: the same from each directory up to the repository's top, then from its other worktrees (git's metadata, no git process), newest copy wins
+    A-->>H: {type, data, path when found elsewhere} or no_file
+    H-->>C: 200 the file, nosniff, no-store, Muxway-File when found elsewhere, or 404
+    C->>P: window: preview, size, ⤓ download, the file found when not the pane's own
+```
+
+```mermaid
+flowchart TD
+    P[path as printed] --> K{absolute or from home?}
+    K -- yes --> R[resolve as a typed path]
+    K -- no --> C[pane directory plus path]
+    C --> C1{served?}
+    C1 -- yes --> R
+    C1 -- no --> U[each ancestor up to the git top plus path]
+    U --> U1{first served?}
+    U1 -- yes --> F[answer, path set]
+    U1 -- no --> W[each other worktree of the repository plus path]
+    W --> W1{any served?}
+    W1 -- newest --> F
+    W1 -- none --> N[no_file]
 ```
 
 Protocol: [`GET /v1/panes/{address}/preview`](../protocol/v1.md) and the
@@ -121,6 +146,22 @@ from panes to files, by the owner's explicit decision (2026-10-26):
 - **One refusal** (`404 not_found`) for everything the host will not
   serve, so the endpoint cannot be used to map the host. Two a second
   per principal.
+- **The repository lookup reads nothing new.** Every candidate, an
+  ancestor's or a worktree's, goes through the same checks as a path
+  typed in full, and a writer of the pane can already read any of them
+  through the shell. What is new is where the agent looks: it reads
+  `.git`, `.git/worktrees/*/gitdir` and a worktree's one-line `.git`
+  file as metadata, never as served content; `.git` stays a denied
+  directory and asking for a `gitdir` by name stays `not_found`. The
+  metadata is read with the agent's rights, so a repository under a
+  root could point at a worktree anywhere on the host: that worktree is
+  a base only, and a file under it is served only when it lies under a
+  root itself, so a forged `gitdir` line reaches nothing the owner did
+  not name. Bounds: 64 worktrees, 4 KiB per `gitdir` file, the walk up
+  ends at the first `.git` or at the file system's root; no git
+  process. The header names a file only with its bytes, so it says
+  nothing the caller could not then read. The agent's audit line gains
+  `found=ancestor` or `found=worktree` when the lookup hit.
 - **Audit** on hub and agent: who, pane, the path as asked and as
   resolved, the size, the result. Never the content.
 - **Rendering** is the only surface in the browser: the Markdown
