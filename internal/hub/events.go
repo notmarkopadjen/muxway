@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 
@@ -35,6 +36,13 @@ type eventLog struct {
 }
 
 func newEventLog() *eventLog { return &eventLog{wake: make(chan struct{})} }
+
+// The desk changed: an event with no pane, its text the desk's updated time.
+const deskKind = "desk"
+
+func wireDeskEvent(updated int64) wire.Event {
+	return wire.Event{Kind: deskKind, Text: strconv.FormatInt(updated, 10)}
+}
 
 func (l *eventLog) add(host string, ev wire.Event) event {
 	l.mu.Lock()

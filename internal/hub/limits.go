@@ -17,6 +17,8 @@ const (
 	createRate   = 0.5 // panes or sessions made per second: one every two seconds
 	laterRate    = 5.0 // panes parked or woken per second
 	laterBurst   = 5.0
+	deskRateS    = deskRate // the desk written, per second per principal
+	deskBurstS   = deskBurst
 	createBurst  = 1
 	pairAttempts = 3
 )
@@ -128,6 +130,11 @@ func (l *limiter) allowClip(tokenID string) bool {
 // the slot as much as one that went through.
 func (l *limiter) allowCreate(tokenID string) bool {
 	return l.allowNamed("create:"+tokenID, createRate, createBurst)
+}
+
+// allowDesk takes one write of the desk.
+func (l *limiter) allowDesk(tokenID string) bool {
+	return l.allowNamed("desk:"+tokenID, deskRateS, deskBurstS)
 }
 
 // allowLater takes one parking or waking of a pane.

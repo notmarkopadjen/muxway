@@ -42,6 +42,8 @@ func (h *Hub) routes() http.Handler {
 	mux.HandleFunc("GET /v1/hosts/{host}/tree", h.withPrincipal(h.handleTree))
 	mux.HandleFunc("GET /v1/panes", h.withPrincipal(h.handlePanes))
 	mux.HandleFunc("GET /v1/events", h.withPrincipal(h.handleEvents))
+	mux.HandleFunc("GET /v1/desk", h.withPrincipal(h.handleDesk))
+	mux.HandleFunc("PUT /v1/desk", h.withPrincipal(h.handlePutDesk))
 	mux.HandleFunc("GET /v1/inbox", h.withPrincipal(h.handleInbox))
 	mux.HandleFunc("GET /v1/talk", h.withPrincipal(h.handleTalk))
 	mux.HandleFunc("GET /v1/transcribe", h.withPrincipal(h.handleTranscribeProbe))
@@ -404,7 +406,10 @@ func (h *Hub) handleEvents(w http.ResponseWriter, r *http.Request, t Principal) 
 		fail(w, http.StatusBadRequest, "bad_parameter")
 		return
 	}
-	visible := func(e event) bool { return t.canSeeHost(e.Host) && t.canRead(e.Host, e.Pane) }
+	// The desk's event is everyone's: it names no pane.
+	visible := func(e event) bool {
+		return e.Kind == deskKind || (t.canSeeHost(e.Host) && t.canRead(e.Host, e.Pane))
+	}
 	deadline := time.Now().Add(time.Duration(wait) * time.Second)
 	events, next := h.events.after(cursor, limit, visible)
 	for len(events) == 0 && time.Now().Before(deadline) && r.Context().Err() == nil {
@@ -415,6 +420,10 @@ func (h *Hub) handleEvents(w http.ResponseWriter, r *http.Request, t Principal) 
 	}
 	var out []EventView
 	for _, e := range events {
+		if e.Kind == deskKind {
+			out = append(out, EventView{Seq: e.Seq, At: e.At, Kind: e.Kind, Text: e.Text})
+			continue
+		}
 		v := EventView{Seq: e.Seq, At: e.At, Host: e.Host, Address: e.Host + "/" + e.Pane.Address(),
 			PaneID: e.Pane.PaneID, Alias: e.Pane.Alias, Kind: e.Kind, Text: e.Text}
 		if e.Pane.Attention != nil && e.Kind == wire.KindQuestion {
