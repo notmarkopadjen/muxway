@@ -187,6 +187,48 @@ type agentConn struct {
 	rename  bool // the agent names panes for writers
 	evts    bucket
 	warned  time.Time
+	// Reads of one pane in flight, shared by the clients asking for the
+	// same content at the same moment.
+	reading map[string]*sharedRead
+}
+
+type sharedRead struct {
+	done chan struct{}
+	resp wire.Response
+	err  error
+}
+
+// read asks the agent for a pane's content once for every client that
+// asks for the same pane, lines and form while the answer is on its way.
+// The content is the pane's alone; what is built around it is per
+// principal, by the caller.
+func (a *agentConn) read(ctx context.Context, req wire.Request) (wire.Response, error) {
+	key := fmt.Sprintf("%s|%d|%t|%t", req.Pane, req.Lines, req.ANSI, req.Wrapped)
+	a.mu.Lock()
+	if a.reading == nil {
+		a.reading = map[string]*sharedRead{}
+	}
+	if r := a.reading[key]; r != nil {
+		a.mu.Unlock()
+		select {
+		case <-r.done:
+			return r.resp, r.err
+		case <-ctx.Done():
+			return wire.Response{}, errOffline
+		}
+	}
+	r := &sharedRead{done: make(chan struct{})}
+	a.reading[key] = r
+	a.mu.Unlock()
+	// The first asker's own context would end the read for the others.
+	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	r.resp, r.err = a.request(rctx, req)
+	cancel()
+	a.mu.Lock()
+	delete(a.reading, key)
+	a.mu.Unlock()
+	close(r.done)
+	return r.resp, r.err
 }
 
 var errOffline = errors.New("host offline")
