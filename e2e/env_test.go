@@ -171,10 +171,15 @@ func (e *env) logFile(name string) *os.File {
 }
 
 func (e *env) start(logName string, args ...string) *exec.Cmd {
+	return e.startEnv(logName, nil, args...)
+}
+
+// startEnv starts a process with extra environment on top of the test's.
+func (e *env) startEnv(logName string, extra []string, args ...string) *exec.Cmd {
 	cmd := exec.Command(bin, args...)
 	cmd.Stdout = e.logFile(logName)
 	cmd.Stderr = cmd.Stdout
-	cmd.Env = append(os.Environ(), "MUXWAY_DIR=")
+	cmd.Env = append(append(os.Environ(), "MUXWAY_DIR="), extra...)
 	if err := cmd.Start(); err != nil {
 		e.t.Fatal(err)
 	}
@@ -311,10 +316,16 @@ type agentProc struct {
 	host string
 	dir  string
 	args []string // extra flags for agent run
+	env  []string // extra environment, a PATH with a tmux of the test's own
 	cmd  *exec.Cmd
 }
 
 func (e *env) pairAgent(host string, ts *tmuxServer, agentArgs ...string) *agentProc {
+	e.t.Helper()
+	return e.pairAgentEnv(host, ts, nil, agentArgs...)
+}
+
+func (e *env) pairAgentEnv(host string, ts *tmuxServer, env []string, agentArgs ...string) *agentProc {
 	e.t.Helper()
 	code := e.mustCLI("hub", "pair-code", "--dir", e.hubDir, "--host", host)
 	remember(code)
@@ -324,14 +335,14 @@ func (e *env) pairAgent(host string, ts *tmuxServer, agentArgs ...string) *agent
 	dir := filepath.Join(e.dir, "agent-"+host)
 	e.mustCLI("agent", "pair", "--dir", dir, "--ca", filepath.Join(e.dir, "ca.pem"), code)
 	rememberFile(filepath.Join(dir, "agent.key"))
-	a := &agentProc{host: host, dir: dir, args: agentArgs}
+	a := &agentProc{host: host, dir: dir, args: agentArgs, env: env}
 	e.runAgent(a, ts)
 	e.waitOnline(host, true)
 	return a
 }
 
 func (e *env) runAgent(a *agentProc, ts *tmuxServer) {
-	a.cmd = e.start("agent-"+a.host, append([]string{"agent", "run", "--dir", a.dir, "--tmux-name", ts.name}, a.args...)...)
+	a.cmd = e.startEnv("agent-"+a.host, a.env, append([]string{"agent", "run", "--dir", a.dir, "--tmux-name", ts.name}, a.args...)...)
 }
 
 func (e *env) waitOnline(host string, online bool) {
