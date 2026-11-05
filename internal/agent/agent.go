@@ -193,6 +193,17 @@ type Agent struct {
 	mail       map[string]*mailbox             // pane id -> mail held for its process
 	replies    map[uint64]chan string          // reply id -> the hub's word, for the process waiting
 	nextReply  uint64
+
+	// The lanes: reads hold a permit, writes to one pane queue, ops that
+	// move windows run alone; a listing in flight is shared, the last
+	// kept a moment for reads, and a pane's last capture is kept while
+	// it stands still.
+	reads    chan struct{}
+	writes   map[string]chan struct{}
+	shape    sync.Mutex
+	listNow  *listing
+	lastList *listing
+	captures map[captureKey]*capture
 }
 
 // ensureExtendedKeys turns tmux's extended-keys on once the server
@@ -232,7 +243,7 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
 		seen: map[string]process{}, attention: map[string]tmux.Attention{}, later: map[string]int64{}, background: map[string]bool{}, resized: map[string]bucket{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{},
 		made: map[string]time.Time{}, sessions: map[string]bool{}, standing: map[string]bool{}, asks: map[string]*pendingAsk{}, hooked: map[string]bool{}, watched: map[string]*watched{},
-		mail: map[string]*mailbox{}, replies: map[uint64]chan string{}}, nil
+		mail: map[string]*mailbox{}, replies: map[uint64]chan string{}, reads: make(chan struct{}, readPermits), writes: map[string]chan struct{}{}, captures: map[captureKey]*capture{}}, nil
 }
 
 // heldFor is how long a connection must have lasted to count as one
@@ -329,6 +340,12 @@ func (a *Agent) connect(ctx context.Context) error {
 		a.sess = nil
 		a.mu.Unlock()
 	}()
+	// Each request runs in its own goroutine, in its lane, under the
+	// hub's own deadline; answers go back as they come, the hub matches
+	// them by id. The connection's end ends them all.
+	cctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	inFlight := make(chan struct{}, maxInFlight)
 	for {
 		raw, err := sess.Read(ctx)
 		if err != nil {
@@ -343,15 +360,30 @@ func (a *Agent) connect(ctx context.Context) error {
 			a.replied(req)
 			continue
 		}
-		resp := wire.Response{ID: req.ID, Error: wire.ErrBadInput}
 		// Only a file may be larger than any other message.
-		if len(raw) <= wire.MaxMessage || req.Op == wire.OpFile {
-			resp = a.Handle(ctx, req)
+		if len(raw) > wire.MaxMessage && req.Op != wire.OpFile {
+			out, _ := json.Marshal(wire.Notice{Response: wire.Response{ID: req.ID, Error: wire.ErrBadInput}})
+			if err := sess.Write(ctx, out); err != nil {
+				return err
+			}
+			continue
 		}
-		out, _ := json.Marshal(wire.Notice{Response: resp})
-		if err := sess.Write(ctx, out); err != nil {
-			return err
+		select {
+		case inFlight <- struct{}{}:
+		case <-ctx.Done():
+			return ctx.Err()
 		}
+		t := a.claim(req)
+		go func() {
+			defer func() { <-inFlight }()
+			rctx, done := context.WithTimeout(cctx, requestLimit)
+			defer done()
+			resp := a.serve(rctx, req, t)
+			out, _ := json.Marshal(wire.Notice{Response: resp})
+			if err := sess.Write(cctx, out); err != nil {
+				cancel()
+			}
+		}()
 	}
 }
 
@@ -360,7 +392,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 	resp := wire.Response{ID: req.ID}
 	switch req.Op {
 	case wire.OpList:
-		panes, err := a.list(ctx)
+		panes, _, err := a.listShared(ctx, 0)
 		if err != nil {
 			resp.Error = wire.ErrTmux
 			return resp
@@ -383,20 +415,17 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		resp.Later = true
 		resp.Rename = true
 	case wire.OpRead:
-		p, code := a.find(ctx, req.Pane)
-		if code != "" {
-			resp.Error = code
-			a.audit(req, code)
-			return resp
-		}
 		lines := req.Lines
 		if lines <= 0 {
 			lines = 100
 		}
 		lines = min(lines, wire.MaxLines)
-		content, trimmed, err := a.tmux.Capture(ctx, p.PaneID, lines, req.ANSI, !req.Wrapped)
-		if err != nil {
-			resp.Error = wire.ErrTmux
+		content, trimmed, code := a.read(ctx, req.Pane, lines, req.ANSI, !req.Wrapped)
+		if code != "" {
+			resp.Error = code
+			if code == wire.ErrNotExposed {
+				a.audit(req, code)
+			}
 			return resp
 		}
 		resp.Content = content
@@ -923,6 +952,7 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 			delete(a.watched, id)
 		}
 	}
+	a.sweepCaptures(alive)
 	// Mail goes with its pane, or after a day; what is left shows as a count.
 	now := time.Now()
 	for id, b := range a.mail {
