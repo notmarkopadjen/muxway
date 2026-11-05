@@ -17,11 +17,13 @@ export async function otherPane(
   request: APIRequestContext,
 ): Promise<{ address: string; id: string }> {
   // One split every two seconds per token: a second try after a moment.
+  // A 404 is the hub's listing, a second old at most, still naming a
+  // pane the spec before just closed as the split's source: the same.
   let r = await request.post(`/v1/windows/${HOST}/work/0/panes`, {
     headers: auth,
     data: { direction: 'h' },
   });
-  if (r.status() === 429) {
+  if (r.status() === 429 || r.status() === 404) {
     await new Promise((f) => setTimeout(f, 2100));
     r = await request.post(`/v1/windows/${HOST}/work/0/panes`, {
       headers: auth,
