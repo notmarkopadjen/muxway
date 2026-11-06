@@ -522,3 +522,58 @@ func TestMailBetweenTwoHosts(t *testing.T) {
 		t.Fatalf("a reply to an offline host: %d %q", code, errs)
 	}
 }
+
+// Mail survives the agent: a mailbox is written to the agent's directory
+// and read back at start, read marks and all; a file for a pane that is
+// gone is removed at start.
+func TestMailSurvivesTheAgent(t *testing.T) {
+	e, ts, a := basic(t)
+	ts.split("work:0.0")
+	e.expose(ts, "work:0.1", "--write")
+	full := e.token("full", []string{host + "/*"}, []string{host + "/*"})
+	pane1 := host + "/work/0.1"
+	expect(t, e.mail(full, shell0, "first, unread", nil), http.StatusCreated, "mail one")
+	expect(t, e.mail(full, shell0, "second, unread", nil), http.StatusCreated, "mail two")
+	expect(t, e.mail(full, pane1, "for the pane that goes", nil), http.StatusCreated, "mail three")
+	waitFor(t, "two unread", func() bool { return strings.Contains(e.get(full, "/v1/panes/"+shell0).body, `"unread":2`) })
+	files, _ := filepath.Glob(filepath.Join(a.dir, "mail", "*.json"))
+	if len(files) != 2 {
+		t.Fatalf("mail files: %v", files)
+	}
+	for _, f := range files {
+		if st, err := os.Stat(f); err != nil || st.Mode().Perm() != 0o600 {
+			t.Fatalf("%s: %v %v", f, st.Mode(), err)
+		}
+	}
+	// The agent goes down; the second pane goes with it down.
+	a.cmd.Process.Kill()
+	e.waitOnline(host, false)
+	ts.must("kill-pane", "-t", "work:0.1")
+	e.runAgent(a, ts)
+	e.waitOnline(host, true)
+	waitFor(t, "still two unread after the restart", func() bool {
+		return strings.Contains(e.get(full, "/v1/panes/"+shell0).body, `"unread":2`)
+	})
+	box := e.mailbox(full, shell0)
+	if len(box) != 2 || box[0].Text != "first, unread" || box[1].Text != "second, unread" || box[0].ReadAt != 0 {
+		t.Fatalf("mailbox after the restart: %+v", box)
+	}
+	files, _ = filepath.Glob(filepath.Join(a.dir, "mail", "*.json"))
+	if len(files) != 1 {
+		t.Fatalf("the gone pane's file was kept: %v", files)
+	}
+	// Read marks survive too.
+	if out, errs, code := e.readMail(a, paneIDOf(ts, "work:0.0")); code != 0 || !strings.Contains(out, "first, unread") {
+		t.Fatalf("mail read: %d %q %q", code, out, errs)
+	}
+	a.cmd.Process.Kill()
+	e.waitOnline(host, false)
+	e.runAgent(a, ts)
+	e.waitOnline(host, true)
+	waitFor(t, "nothing unread after the read and the restart", func() bool {
+		return !strings.Contains(e.get(full, "/v1/panes/"+shell0).body, `"unread"`)
+	})
+	if box := e.mailbox(full, shell0); len(box) != 2 || box[0].ReadAt == 0 || box[1].ReadAt == 0 {
+		t.Fatalf("read marks after the restart: %+v", box)
+	}
+}

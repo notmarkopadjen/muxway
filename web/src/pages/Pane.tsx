@@ -86,6 +86,16 @@ import { ShareWindow, sharesOf, useShares } from '../components/ShareWindow';
 import { ChangesWindow } from '../components/Changes';
 import { Tools } from '../components/Tools';
 import { requestPalette } from '../term/intent';
+import {
+  deskPanes,
+  knownDesk,
+  noteDesk,
+  sameDesk,
+  useDesk,
+  writeDesk,
+  type Desk,
+} from '../api/desk';
+import { setLastPlace, setTabOrder as keepTabOrder } from '../settings';
 
 // Tiles as they were, kept across the navigation a change of count makes:
 // the tiles a zoom came from, to go back to, and what a closed tile left.
@@ -133,6 +143,21 @@ export function forgetFrames() {
 
 // Pane views open; the last one gone releases the panes kept fitted.
 let views = 0;
+
+// openingDesk lays the desk's view out for the tiles about to open: the
+// arrangement, the minimised row and the focus travel over the
+// navigation as a closed tile's do.
+export function openingDesk(d: Desk) {
+  const panes = deskPanes(d);
+  carried = {
+    panes,
+    layout: d.arrangement ?? defaultFor(window.innerWidth > window.innerHeight),
+    custom: d.tree ?? null,
+    weights: d.weights ?? {},
+  };
+  minimisedKept = { panes, minimised: d.minimised ?? [] };
+  focusNext = d.focused && panes.includes(d.focused) ? d.focused : null;
+}
 
 // The pane view, as the Android client has it: a strip of every pane the
 // token may read, painted with its state; one to four of them open as
@@ -1183,6 +1208,61 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // Which tiles are in a group, for their frame.
   const groups = useMemo(() => groupsOf(all.data ?? []), [all.data]);
 
+  // The desk: this view, written half a second after a change, and the
+  // other clients' changes to it followed. The focus is the desk's on
+  // opening only (focusNext, set by whoever opened the desk).
+  const desk = useDesk();
+  const tabOrder = useTabOrder();
+  useEffect(() => setLastPlace('view'), []);
+  const mine = useMemo<Desk>(
+    () => ({
+      view: 'panes',
+      panes: addresses,
+      focused,
+      arrangement: layout,
+      tree: layout === 'custom' && custom ? custom : undefined,
+      weights: Object.keys(weights).length ? weights : undefined,
+      minimised,
+      order: tabOrder.slice(0, 64),
+    }),
+    [addresses, focused, layout, custom, weights, minimised, tabOrder],
+  );
+  useEffect(() => {
+    writeDesk(mine);
+  }, [mine]);
+  useEffect(() => {
+    const d = desk.data;
+    if (!d || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
+    // A view opened by a link writes its own desk first; until the hub
+    // has answered that, what it holds is older than this view, and a
+    // desk older than the view's last write is never applied.
+    const last = knownDesk()?.rev;
+    if (!last || (d.rev ?? 0) < last) return;
+    noteDesk(d);
+    if (d.view === 'window' && d.window) {
+      const [host, session, win] = d.window.split('/');
+      void navigate({ to: `/w/${host}/${session}/${win}` });
+      return;
+    }
+    const panes = deskPanes(d);
+    if (!panes.length) return;
+    if (d.order) keepTabOrder(d.order);
+    if (panes.join() === addresses.join()) {
+      if (d.arrangement) setLayout(d.arrangement);
+      if (d.tree) setCustom(d.tree);
+      setWeights(d.weights ?? {});
+      setMinimised(d.minimised ?? []);
+      return;
+    }
+    carried = {
+      panes,
+      layout: d.arrangement ?? defaultFor(window.innerWidth > window.innerHeight),
+      custom: d.tree ?? null,
+      weights: d.weights ?? {},
+    };
+    minimisedKept = { panes, minimised: d.minimised ?? [] };
+    void go(panes, d.minimised ?? []);
+  }, [desk.data]);
   // A new count resets the arrangement to one that fits it, unless zooming
   // out or closing a tile brings back the tiles as they were.
   useEffect(() => {
@@ -1388,7 +1468,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
   );
   // The strip in the owner's order; an open address the listing lacks
   // goes last.
-  const tabOrder = useTabOrder();
   const stripPanes = useMemo(
     () => parkedLast(inOrder(shownPanes, tabOrder)),
     [shownPanes, tabOrder],

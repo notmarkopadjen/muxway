@@ -36,6 +36,10 @@ const KEYS: [string, string][] = [
     'later: park the focused tile, or the selected row; its tab goes last with ☾ and it stops calling. d again, a click on its tab, opening it, typing, an answer or a mail wakes it',
   ],
   [
+    'D',
+    'the desk: the view every client shares, kept by the hub (the open panes, their arrangement, the minimised row, the tab order, or the window view); the row at the top of the list opens it, the app opens it when started here, and every view writes it as you change it and follows the other clients',
+  ],
+  [
     'T / M',
     "messages: what panes said to panes, mail and typed, across hosts, oldest first; Enter lays the two side by side, a click on a mail row opens that pane's mail / the open pane's mail window: its mail in full, what it sent, a line that mails it or whoever wrote to it (nothing is typed); the ✉ n on a tab, a header or a row opens it too",
   ],

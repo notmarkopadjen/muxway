@@ -23,7 +23,9 @@ muxway hub serve --listen 127.0.0.1:7600 --public-url https://hub.example.com --
 ```
 
 - State lives in `--dir`, which must be mode 700: the hub's key, `hub.json`
-  with paired agents and token hashes, and `admin.sock`, through which the
+  with paired agents and token hashes, `talk.json` with the [talk](talk.md)
+  feed and the mail ids it issued (read back at start, so a restart keeps
+  the chains), and `admin.sock`, through which the
   `muxway hub ...` commands talk to the running hub. The default is
   `muxway/hub` under the user's configuration directory: `$XDG_CONFIG_HOME`
   or `~/.config` on Linux, `~/Library/Application Support` on macOS. The
@@ -113,6 +115,7 @@ The agent's state is its `--dir`
 | `agent.key` | the agent's Ed25519 key, the one the hub pinned at pairing |
 | `notify.sock` | the socket the AI CLI hooks post attention events to, and `muxway ask` holds a question open on (see [notifications](notifications.md)) |
 | `inbox/` | files clients hand a pane's program, with `--inbox default` (see [attachments](attachments.md)) |
+| `mail/` | a file per pane holding the [mail](mail.md) its process has not yet lost to the day, read back at start |
 
 Losing `agent.key` means pairing again: the hub knows the host by that key
 and refuses any other, so `muxway hub agents remove <alias>` on the hub,
@@ -339,7 +342,7 @@ address the proxy saw, never one the client wrote in a header of its own.
 ### Backup, upgrade, rotation
 
 - **Back up** the hub's directory: `hub.key` (losing it means re-pairing
-  every agent) and `hub.json` (paired agents, token hashes, users, the
+  every agent) and `hub.json` (paired agents, token hashes, users, the [desk](desk.md), the
   address lists). Browser sessions and the log ring live in memory and
   are gone with a restart: people sign in again. The agent's directory
   holds `agent.key` and `agent.json`; without them the host pairs again.

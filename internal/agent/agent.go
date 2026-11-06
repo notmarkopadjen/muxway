@@ -175,7 +175,6 @@ type Agent struct {
 	mu        sync.Mutex
 	seen      map[string]process // pane id -> its process when first seen exposed
 	attention map[string]tmux.Attention
-	later     map[string]int64       // pane id -> when the owner parked it
 	asks      map[string]*pendingAsk // pane id -> the question waiting for an answer
 	hooked    map[string]bool        // panes that notified over the socket: the watcher leaves them alone
 	watched   map[string]*watched    // pane id -> what the watcher last saw there
@@ -241,7 +240,7 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 		return nil, err
 	}
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
-		seen: map[string]process{}, attention: map[string]tmux.Attention{}, later: map[string]int64{}, background: map[string]bool{}, resized: map[string]bucket{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{},
+		seen: map[string]process{}, attention: map[string]tmux.Attention{}, background: map[string]bool{}, resized: map[string]bucket{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{},
 		made: map[string]time.Time{}, sessions: map[string]bool{}, standing: map[string]bool{}, asks: map[string]*pendingAsk{}, hooked: map[string]bool{}, watched: map[string]*watched{},
 		mail: map[string]*mailbox{}, replies: map[uint64]chan string{}, reads: make(chan struct{}, readPermits), writes: map[string]chan struct{}{}, captures: map[captureKey]*capture{}}, nil
 }
@@ -264,6 +263,7 @@ func (a *Agent) Run(ctx context.Context) error {
 		a.log.Info("preview roots, read as this user; git status and diff run for repositories under them", "roots", a.cfg.Preview, "hidden", a.cfg.PreviewHidden)
 	}
 	a.ensureExtendedKeys(ctx)
+	a.loadMail(ctx)
 	if a.cfg.Dir != "" {
 		ln, err := a.listenNotify()
 		if err != nil {
@@ -463,7 +463,7 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 		// focuses, scrolls or follows a link, so it leaves the attention,
 		// the question and the parking as they were.
 		if code == "" && req.Mouse == nil {
-			a.clearAttention(p.PaneID)
+			a.clearAttention(ctx, p.PaneID, p.Later)
 			a.endAsk(ctx, p.PaneID, AskTyped, false)
 		}
 		resp.Error = code
@@ -914,24 +914,18 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 	a.applyStanding(ctx, panes)
 	a.mu.Lock()
 	alive := map[string]bool{}
+	server := map[string]int{}
 	for i := range panes {
 		alive[panes[i].PaneID] = true
+		server[panes[i].PaneID] = panes[i].ServerPID
 		if att, ok := a.attention[panes[i].PaneID]; ok {
 			panes[i].Attention = &att
-		}
-		if at, ok := a.later[panes[i].PaneID]; ok {
-			panes[i].Later, panes[i].LaterAt = true, at
 		}
 	}
 	var gone []*pendingAsk
 	for id := range a.attention {
 		if !alive[id] {
 			delete(a.attention, id)
-		}
-	}
-	for id := range a.later {
-		if !alive[id] {
-			delete(a.later, id)
 		}
 	}
 	// A pane id comes back after the server restarts, with a new process.
@@ -956,8 +950,12 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 	// Mail goes with its pane, or after a day; what is left shows as a count.
 	now := time.Now()
 	for id, b := range a.mail {
+		had := len(b.items)
 		if !alive[id] || !b.sweep(now) {
 			delete(a.mail, id)
+			a.saveMail(id, 0)
+		} else if len(b.items) != had {
+			a.saveMail(id, server[id])
 		}
 	}
 	for i := range panes {
@@ -1023,12 +1021,21 @@ func (a *Agent) sameProcess(p tmux.Pane) bool {
 }
 
 // clearAttention is the owner coming back to the pane: what it waited
-// for, and its parking, both go.
-func (a *Agent) clearAttention(paneID string) {
+// for, and its parking, both go. The parking is the pane's own option.
+func (a *Agent) clearAttention(ctx context.Context, paneID string, parked bool) {
 	a.mu.Lock()
 	delete(a.attention, paneID)
-	delete(a.later, paneID)
 	a.mu.Unlock()
+	if parked {
+		a.wake(ctx, paneID)
+	}
+}
+
+// wake takes the later mark off a pane; a pane gone meanwhile is no error.
+func (a *Agent) wake(ctx context.Context, paneID string) {
+	if err := a.tmux.SetPaneLater(ctx, paneID, 0); err != nil {
+		a.log.Warn("wake failed", "pane", paneID, "err", err)
+	}
 }
 
 // setLater parks an exposed, writable pane for the hub, or wakes it.
@@ -1043,15 +1050,18 @@ func (a *Agent) setLater(ctx context.Context, req wire.Request) string {
 	if p.Mode != tmux.ModeWrite {
 		return wire.ErrReadOnly
 	}
-	a.mu.Lock()
-	if *req.Later {
-		if _, ok := a.later[p.PaneID]; !ok {
-			a.later[p.PaneID] = time.Now().Unix()
-		}
-	} else {
-		delete(a.later, p.PaneID)
+	// The mark is the pane's own, so it outlives the agent and dies with
+	// the pane; a pane parked twice keeps its first time.
+	var err error
+	switch {
+	case *req.Later && !p.Later:
+		err = a.tmux.SetPaneLater(ctx, p.PaneID, time.Now().Unix())
+	case !*req.Later && p.Later:
+		err = a.tmux.SetPaneLater(ctx, p.PaneID, 0)
 	}
-	a.mu.Unlock()
+	if err != nil {
+		return wire.ErrTmux
+	}
 	return ""
 }
 

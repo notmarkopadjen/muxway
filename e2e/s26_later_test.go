@@ -204,8 +204,8 @@ func TestFlow192_ComingBackWakesANotificationDoesNot(t *testing.T) {
 }
 
 // 193
-func TestFlow193_LaterSurvivesTheHubAndGoesWithThePane(t *testing.T) {
-	e, ts, _ := basic(t)
+func TestFlow193_LaterSurvivesTheHubAndTheAgentAndGoesWithThePane(t *testing.T) {
+	e, ts, a := basic(t)
 	ts.split("work:0.0")
 	e.expose(ts, "work:0.1", "--write")
 	full := e.token("full", []string{host + "/*"}, []string{host + "/*"})
@@ -216,6 +216,17 @@ func TestFlow193_LaterSurvivesTheHubAndGoesWithThePane(t *testing.T) {
 	e.startHub()
 	e.waitOnline(host, true)
 	waitFor(t, "still parked after the hub restart", func() bool { return e.parked(full, pane1) })
+	// The mark is the pane's own: the agent restarted reads it back, with
+	// its time.
+	at := e.get(full, "/v1/panes/"+pane1).body
+	a.cmd.Process.Kill()
+	e.waitOnline(host, false)
+	e.runAgent(a, ts)
+	e.waitOnline(host, true)
+	waitFor(t, "still parked after the agent restart", func() bool { return e.parked(full, pane1) })
+	if before, after := laterAt(at), laterAt(e.get(full, "/v1/panes/"+pane1).body); before == 0 || before != after {
+		t.Fatalf("the parking time went from %d to %d over the agent restart", before, after)
+	}
 	ts.must("kill-pane", "-t", "work:0.1")
 	waitFor(t, "the pane gone", func() bool {
 		return !strings.Contains(e.get(full, "/v1/panes").body, `"address":"`+pane1+`"`)
@@ -315,4 +326,15 @@ func TestSec195_TextHostsCarryTheFlagsOfVisibleHostsOnly(t *testing.T) {
 	if body := e.getText(other, "/v1/hosts").body; strings.Contains(body, host) {
 		t.Fatalf("a token without the grant read the host's row: %q", body)
 	}
+}
+
+// laterAt is the later_at of a pane's JSON, 0 without one.
+func laterAt(body string) int64 {
+	var v struct {
+		Pane struct {
+			LaterAt int64 `json:"later_at"`
+		} `json:"pane"`
+	}
+	json.Unmarshal([]byte(body), &v)
+	return v.Pane.LaterAt
 }

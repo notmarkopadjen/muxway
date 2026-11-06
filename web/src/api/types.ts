@@ -165,7 +165,7 @@ export interface Event {
   address: string;
   pane_id: string;
   alias?: string;
-  kind: Kind;
+  kind: Kind | 'desk'; // desk: the shared view changed; no pane
   text?: string;
   choices?: string[];
 }

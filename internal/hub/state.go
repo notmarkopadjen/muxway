@@ -54,6 +54,7 @@ type stateFile struct {
 	Users  []User                 `json:"users,omitempty"`
 	Shares []Share                `json:"shares,omitempty"`
 	Access Access                 `json:"access"`
+	Desk   *Desk                  `json:"desk,omitempty"`
 }
 
 // Store is the hub's state on disk: one JSON file, replaced atomically.
@@ -92,6 +93,29 @@ func (st *Store) save() error {
 		return err
 	}
 	return os.Rename(tmp, st.path)
+}
+
+// desk is the shared view, if any client wrote one.
+func (st *Store) desk() (Desk, bool) {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
+	if st.s.Desk == nil {
+		return Desk{}, false
+	}
+	return *st.s.Desk, true
+}
+
+// setDesk stores the desk as the next revision and answers it.
+func (st *Store) setDesk(d Desk) (Desk, error) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if st.s.Desk != nil {
+		d.Rev = st.s.Desk.Rev + 1
+	} else {
+		d.Rev = 1
+	}
+	st.s.Desk = &d
+	return d, st.save()
 }
 
 func (st *Store) agentKey(host string) (ed25519.PublicKey, bool) {

@@ -51,7 +51,9 @@ test('113 a tab dropped on a tile splits its place or takes it; on a divider, ac
     return b.x > a.x + a.width / 2 && Math.abs(a.y - b.y) < 4 && Math.abs(a.width - b.width) < 6;
   });
   await shot(page, info, '113-tab-right');
-  await expect.poll(() => posts.filter((u) => !u.includes('/resize'))).toEqual([]);
+  await expect
+    .poll(() => posts.filter((u) => !u.includes('/resize') && !u.includes('/desk')))
+    .toEqual([]);
   // The tab of an open tile on the other's middle swaps the two.
   await tab(page, LOGS).dragTo(tile(page, SHELL0));
   await expect(pane).toHaveAttribute('data-panes', `${LOGS} ${SHELL0}`);
@@ -119,7 +121,9 @@ test('113 a tab dropped on a tile splits its place or takes it; on a divider, ac
   await expect(tile(page, fifth)).toHaveAttribute('data-focused', '');
   await expect(tile(page, SHELL0)).toHaveCount(0);
   await shot(page, info, '113-four-open');
-  await expect.poll(() => posts.filter((u) => !u.includes('/resize'))).toEqual([]);
+  await expect
+    .poll(() => posts.filter((u) => !u.includes('/resize') && !u.includes('/desk')))
+    .toEqual([]);
   // Leave the window as the other specs expect it.
   await control(request, '/kill-pane', { target: id });
   await expect(page.getByTestId('tile')).toHaveCount(3, { timeout: 8000 });
