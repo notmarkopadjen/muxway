@@ -111,4 +111,4 @@ pieces).
 
 ## Test run
 
-Pending.
+Run 20261106-204349-eec57c7, recorded as [issue #309](https://github.com/notmarkopadjen/muxway/issues/309): 278 tests passed, none failed, at commit eec57c7, with the new tests of specs 92 and 104.
