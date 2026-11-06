@@ -22,6 +22,7 @@ import {
 import type { Key, Pane } from '../api/types';
 import { commandsFor, isShell, remember, useRecent, type Command } from '../term/commands';
 import { complete, completions } from '../term/complete';
+import { splitText } from '../term/direct';
 import { meter, Recorder, RecorderError } from '../term/recorder';
 import { CommandBar } from './CommandBar';
 import { Completions } from './Completions';
@@ -420,7 +421,9 @@ export function InputPanel({
   const line = async (t: string) => {
     if (t) {
       if (pane && isShell(pane.command) && !t.includes('\n')) remember(t);
-      await send({ text: t });
+      // A text longer than one request takes goes in pieces, in order; a
+      // refused piece ends the line, so no Enter follows a partial text.
+      for (const piece of splitText(t)) if ((await send({ text: piece })) === false) return;
     }
     await send({ key: 'Enter' });
   };

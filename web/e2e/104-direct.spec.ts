@@ -170,6 +170,40 @@ test('104 Ctrl+V and Shift+Insert paste: nothing goes to the pane as a key, the 
   expect(bodies.filter((b) => b.text === 'from the clipboard')).toHaveLength(1);
 });
 
+test('104 a long paste goes in pieces: each within the limit, in order, the whole text typed', async ({
+  page,
+  request,
+}) => {
+  test.skip(!KEYS, 'needs the key echo pane');
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await signIn(page);
+  await page.goto(`/p/${SHELL0}`);
+  await settled(page);
+  await page.getByTestId('screen').click();
+  await expect(page.locator('form.mx-input')).toHaveAttribute('data-direct', '');
+  const bodies = watchInput(page);
+  const refused: number[] = [];
+  page.on('response', (r) => {
+    if (r.url().includes('/input') && r.status() >= 400) refused.push(r.status());
+  });
+  // Ten KiB of lines, the last one a marker: three pieces, cut at newlines.
+  const text = `${Array.from({ length: 400 }, (_, i) => `line ${i + 1} ${'x'.repeat(16)}`).join('\n')}\nend-of-paste`;
+  await page.evaluate((t) => {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', t);
+    window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+  }, text);
+  await expectTyped(request, 'end-of-paste');
+  const texts = bodies.filter((b) => b.text !== undefined).map((b) => b.text!);
+  expect(texts).toHaveLength(3);
+  for (const t of texts) {
+    expect(new TextEncoder().encode(t).length).toBeLessThanOrEqual(4096);
+    expect(t.endsWith('\n') || t.endsWith('end-of-paste')).toBe(true);
+  }
+  expect(texts.join('')).toBe(text);
+  expect(refused).toEqual([]);
+});
+
 test('104 security: a read-only pane has no direct typing', async ({ page }) => {
   test.skip(KEYS, 'the main environment has the read-only pane');
   await signIn(page);

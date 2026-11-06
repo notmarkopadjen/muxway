@@ -75,7 +75,7 @@ import { cellsFor, inner } from '../term/measure';
 import { releaseKept, useFit } from '../term/useFit';
 import { screenWords } from '../term/complete';
 import { countOf, summary } from '../term/changes';
-import { Backlog, keyToBody, paneChord, pasteText, type Body } from '../term/direct';
+import { Backlog, keyToBody, paneChord, pasteText, splitText, type Body } from '../term/direct';
 import { setHeading } from '../shell/heading';
 import { openMailWindow } from '../shell/mailwin';
 import { InHeader } from '../shell/HeaderSlot';
@@ -1661,7 +1661,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
       const text = pasteText(ev.clipboardData?.getData('text') ?? '');
       if (!text) return;
       ev.preventDefault();
-      push({ text });
+      // A long paste goes in pieces, in order, behind the request in flight.
+      for (const piece of splitText(text)) push({ text: piece });
     };
     const onComposed = (ev: CompositionEvent) => {
       if (!elsewhere(ev.target) && ev.data) push({ text: ev.data });

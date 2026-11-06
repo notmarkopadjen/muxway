@@ -93,6 +93,38 @@ export function pasteText(s: string): string {
   return out.join('');
 }
 
+// A text in pieces of at most MAX_TEXT bytes, as the hub measures them,
+// sent one after another: the cut falls after the last newline that
+// fits, so lines stay whole where they can, else after the last
+// character that fits, never inside one. Joined, the pieces are the text.
+export function splitText(s: string): string[] {
+  const enc = new TextEncoder();
+  const pieces: string[] = [];
+  let left = enc.encode(s).length;
+  while (left > MAX_TEXT) {
+    // The characters that fit, and the last newline among them.
+    let n = 0;
+    let bytes = 0;
+    let nl = 0;
+    let nlBytes = 0;
+    for (const c of s) {
+      const b = enc.encode(c).length;
+      if (bytes + b > MAX_TEXT) break;
+      bytes += b;
+      n += c.length;
+      if (c === '\n') {
+        nl = n;
+        nlBytes = bytes;
+      }
+    }
+    pieces.push(s.slice(0, nl || n));
+    s = s.slice(nl || n);
+    left -= nl ? nlBytes : bytes;
+  }
+  if (s || !pieces.length) pieces.push(s);
+  return pieces;
+}
+
 // The backlog of one pane: bodies sent one at a time, in order; what
 // arrives while one is in flight waits, and a wait coalesces: text joins
 // the text before it, a key equal to the key before it counts, where the

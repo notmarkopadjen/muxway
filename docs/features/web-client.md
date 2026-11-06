@@ -50,7 +50,12 @@ nothing but the hub to talk to.
    rate. A text with several lines is
    pasted into the pane as one block (bracketed, when the program asked
    for it), so Claude Code takes it as one message and a shell as one
-   editable block; then `Enter` is sent. While the first word is typed a
+   editable block; then `Enter` is sent. A text longer than the 4096
+   bytes one request takes goes in pieces, one request after another,
+   each cut after the last newline that fits so lines stay whole where
+   they can; the program takes the pieces appended (Claude Code shows a
+   long paste as a few pasted blocks). The same holds for a paste while
+   typing direct. While the first word is typed a
    list opens above the line: Claude Code's slash commands, or a shell's
    starters and the lines sent before from this browser; `↑` `↓` pick,
    `Tab` or a click takes one, `Esc` closes it, and `Enter` sends the
