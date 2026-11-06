@@ -1498,14 +1498,17 @@ function Tiles({ addresses }: { addresses: string[] }) {
     else if (add && addresses.length < MAX_TILES) go([...addresses, address]);
     else go(replace(addresses, index, address));
   };
-  // Android's swipe: the focused tile shows the neighbouring pane of the strip.
+  // Android's swipe: the focused tile shows the neighbouring pane of the
+  // strip. A parked pane is passed over, as the swipe passes it: the owner
+  // said later, and only a tab, a row or the inbox brings it back.
   const neighbour = (step: number) => {
     const at = strip.indexOf(focused);
     if (at < 0) return;
+    const parked = new Set((all.data ?? []).filter((p) => p.later).map((p) => p.address));
     // Past either end it comes round to the other.
     for (let i = 1; i < strip.length; i++) {
       const k = (((at + step * i) % strip.length) + strip.length) % strip.length;
-      if (!addresses.includes(strip[k])) {
+      if (!addresses.includes(strip[k]) && !parked.has(strip[k])) {
         go(replace(addresses, index, strip[k]));
         return;
       }

@@ -275,7 +275,9 @@ parks the focused tile or the selected row and wakes it again, the `☾`
 pane button does the same, the inbox row has *later* and *wake*, and a
 click on a parked tab focuses it and wakes it; `muxway client later`
 and the MCP tool `later` do it from a script (see [driving
-muxway](driving.md)). The native clients follow in their repositories.
+muxway](driving.md)). Going round the panes with `]` and `[` in a single
+tile passes a parked pane over, as the phone's swipe does: the owner
+said later. The native clients follow in their repositories.
 
 ![a parked tab at the end of the strip](images/web-later-tab.png)
 

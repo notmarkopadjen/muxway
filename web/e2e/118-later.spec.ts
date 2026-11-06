@@ -138,6 +138,61 @@ test('118 o skips a parked pane; the inbox lists it last, with later and wake; E
   await expect(page.getByTestId('pane-attention')).toHaveCount(0, { timeout: 10_000 });
 });
 
+test('118 ] and [ with one tile open pass a parked pane over; woken, it is on the way again', async ({
+  page,
+  request,
+}) => {
+  const parked = await otherPane(request);
+  const awakeOther = await otherPane(request);
+  const parkedAddress = await addressOf(request, parked.id);
+  await signIn(page);
+  await openPane(page, SHELL0);
+  const tab = tabOf(page, parkedAddress);
+  await expect(tab).toBeVisible({ timeout: 10_000 });
+  await expect(tabOf(page, awakeOther.address)).toBeVisible();
+  // Park it from its own tile, then back to the first pane: its tab is last.
+  await tab.click();
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', parkedAddress);
+  await page.keyboard.press('d');
+  await expect(tab).toHaveAttribute('data-state', 'later', { timeout: 10_000 });
+  await tabOf(page, SHELL0).click();
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', SHELL0);
+  const order = (await tabOrder(page)).filter((a): a is string => !!a);
+  expect(order.at(-1)).toBe(parkedAddress);
+  const awake = order.filter((a) => a !== parkedAddress);
+  expect(awake.length).toBeGreaterThan(1);
+  // [ from the first pane would come round to the last tab: it lands on
+  // the awake pane before it instead, and the parked one stays parked.
+  const previous = awake[(awake.indexOf(SHELL0) - 1 + awake.length) % awake.length];
+  await page.keyboard.press('[');
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', previous, {
+    timeout: 10_000,
+  });
+  await expect(tab).toHaveAttribute('data-state', 'later');
+  // ] all the way round: every awake pane once, never the parked one.
+  let at = awake.indexOf(previous);
+  for (let i = 0; i < awake.length; i++) {
+    at = (at + 1) % awake.length;
+    await page.keyboard.press(']');
+    await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', awake[at], {
+      timeout: 10_000,
+    });
+  }
+  await expect(tab).toHaveAttribute('data-state', 'later');
+  // Its tab wakes it; awake, [ from the pane after it reaches it again.
+  await tab.click();
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', parkedAddress);
+  await expect(tab).not.toHaveAttribute('data-state', 'later', { timeout: 10_000 });
+  const woken = (await tabOrder(page)).filter((a): a is string => !!a);
+  const after = woken[(woken.indexOf(parkedAddress) + 1) % woken.length];
+  await page.keyboard.press(']');
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', after, { timeout: 10_000 });
+  await page.keyboard.press('[');
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', parkedAddress, {
+    timeout: 10_000,
+  });
+});
+
 test('118 the list: d parks the selected row in its place; opening it wakes it; a reader sees the mark and cannot move it', async ({
   page,
   browser,

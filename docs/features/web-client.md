@@ -537,7 +537,9 @@ sequenceDiagram
   at most, so switching panes does not flash a smaller screen.
 - `]` and `[` go to the next or previous pane: the next tile, or with
   one tile open the strip's neighbour shown in it (the phone's swipe),
-  coming round at either end;
+  coming round at either end and passing over a parked pane (`☾`, see
+  [later](notifications.md#later)), which only its tab, a row or the
+  inbox brings back;
   `1` to `4` focus a tile by number, `Enter` opens it alone.
 - The **command row** under the key bar is for the program in the
   focused pane, one row that scrolls sideways. When the pane is Claude
@@ -841,7 +843,7 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `S` | a new session on the selected row's host (or the first that allows it): a one-line form, `Enter` starts, `Esc` cancels |
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |
-| `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view: pane), coming round at either end |
+| `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view: pane), coming round at either end; a parked pane is passed over |
 | `}` / `{` | move the focused pane's tab one place right / left along the strip (or drag it); the order is kept in the browser |
 | `1`–`4`, `l`, `=`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, equal shares, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
 | `Enter` | tiles: with several open, the focused one alone (as `z`) |
