@@ -335,6 +335,9 @@ with `Cmd` reaches the pane. Spec 123 presses `Meta+]` and `Meta+[`
 once round and checks no bracket text or chord key was sent; the unit
 test covers `Meta`, `Ctrl+Meta` and `Meta+Shift`. Guideline §1.6, the
 direct typing, keyboard and web client pages and the help say so.
+Run [#312](https://github.com/notmarkopadjen/muxway/issues/312),
+`20261107-103918-37c37cb`, **passed**, 278 tests, 0 failed, at 37c37cb
+(the full suite).
 
 ## Test run
 
