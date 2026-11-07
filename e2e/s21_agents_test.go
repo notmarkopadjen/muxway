@@ -280,17 +280,17 @@ func TestInboxListsWhatWaitsOldestFirst(t *testing.T) {
 	if a2.Count != 2 || strings.Contains(e.get(alice, "/v1/inbox").body, "bob") {
 		t.Fatalf("alice's inbox: %+v", a2)
 	}
-	// Text mode: six columns, the choices then what waits under a parked pane (nothing here).
+	// Text mode: seven columns, the choices, what waits under a parked pane (nothing here), then the pane's id.
 	r := e.getText(full, "/v1/inbox")
 	expect(t, r, http.StatusOK, "inbox text")
 	lines := strings.Split(strings.TrimRight(r.body, "\n"), "\n")
-	if len(lines) != 3 || !strings.HasPrefix(lines[0], "bob-desktop/work/0.0\tdone\t") || !strings.HasSuffix(lines[2], "\tpermission\t"+fmt.Sprint(in.Inbox[2].Attention.At)+"\trun it?\t\t") {
+	if len(lines) != 3 || !strings.HasPrefix(lines[0], "bob-desktop/work/0.0\tdone\t") || !strings.HasSuffix(lines[2], "\tpermission\t"+fmt.Sprint(in.Inbox[2].Attention.At)+"\trun it?\t\t\t"+paneIDOf(ts, "work:0.0")) {
 		t.Fatalf("text mode:\n%s", r.body)
 	}
 	p := e.ask(a, paneIDOf(ts, "work:0.0"), "30s", "which?", "one", "two")
 	waitFor(t, "the question", func() bool { return e.attention(full, shell0) == "question" })
 	r = e.getText(full, "/v1/inbox")
-	if !strings.Contains(r.body, "\tquestion\t") || !strings.HasSuffix(strings.TrimRight(r.body, "\n"), "\twhich?\tone|two\t") {
+	if !strings.Contains(r.body, "\tquestion\t") || !strings.HasSuffix(strings.TrimRight(r.body, "\n"), "\twhich?\tone|two\t\t"+paneIDOf(ts, "work:0.0")) {
 		t.Fatalf("text mode with choices:\n%s", r.body)
 	}
 	expect(t, e.getText(full, "/v1/inbox?charset=ascii"), http.StatusOK, "ascii")
@@ -526,7 +526,8 @@ func TestClientDrivesAHubFromTheCommandLine(t *testing.T) {
 		t.Fatalf("wait --json: %q", out)
 	}
 	out, _, code = e.runClient(env, "inbox")
-	if code != 0 || !strings.HasPrefix(out, shell0+"\tquestion\t") || !strings.HasSuffix(strings.TrimSpace(out), "\tship it?\tyes|no") {
+	// The hub's text row, the pane's id last.
+	if code != 0 || !strings.HasPrefix(out, shell0+"\tquestion\t") || !strings.HasSuffix(strings.TrimSpace(out), "\tship it?\tyes|no\t\t"+paneIDOf(ts, "work:0.0")) {
 		t.Fatalf("inbox: %q", out)
 	}
 	if _, errs, code = e.runClient(env, "answer", shell0, "maybe"); code == 0 || !strings.Contains(errs, "bad_input") {

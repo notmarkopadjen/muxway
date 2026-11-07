@@ -30,10 +30,14 @@ Each entry is a pane as `GET /v1/panes` lists it. Text mode, for a
 feature phone or a script:
 
 ```
-bob-desktop/work/0.0	done	1767225600	finished		
-alice-laptop/work/1.0	question	1767225660	deploy to staging?	yes|no	
-alice-laptop/work/2.0	later	1767225700	Claude needs your permission to use Bash		permission
+bob-desktop/work/0.0	done	1767225600	finished			%5
+alice-laptop/work/1.0	question	1767225660	deploy to staging?	yes|no		%3
+alice-laptop/work/2.0	later	1767225700	Claude needs your permission to use Bash		permission	%8
 ```
+
+The last column is the pane's id, what a client knows the pane by, so a
+phone that opens a pane from the inbox follows it when the host
+renumbers (see [text mode](text-mode.md)).
 
 one row per pane: address, kind, when (Unix seconds), the text, the
 choices joined by `|` (a choice never contains one), and what waits

@@ -87,7 +87,7 @@ func (e *env) partners(tok, address string) []talkPartner {
 func from(host, id string) map[string]string { return map[string]string{"host": host, "pane_id": id} }
 
 // textRow is a pane's row of the text listing, split at its tabs:
-// address, mode, command, title, kind, mail, talk, alias, cwd, pending.
+// address, mode, command, title, kind, mail, talk, alias, cwd, pending, pane id.
 func (e *env) textRow(tok, address string) []string {
 	e.t.Helper()
 	r := e.getText(tok, "/v1/panes")
@@ -95,7 +95,7 @@ func (e *env) textRow(tok, address string) []string {
 	// The last row keeps its empty columns: no TrimSpace.
 	for _, line := range strings.Split(strings.TrimSuffix(r.body, "\n"), "\n") {
 		if strings.HasPrefix(line, address+"\t") {
-			if f := strings.Split(line, "\t"); len(f) == 10 {
+			if f := strings.Split(line, "\t"); len(f) == 11 {
 				return f
 			}
 			e.t.Fatalf("row of %s: %q", address, line)

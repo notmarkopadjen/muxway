@@ -355,7 +355,8 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 	if wantsText(r) {
 		// Command, title and cwd are what a program or the host chose; the rest is ASCII already,
 		// the partners' addresses too, so | separates them without escaping. A path may hold
-		// a tab or a line break: those become spaces so the row stays one row.
+		// a tab or a line break: those become spaces so the row stays one row. The pane id
+		// comes last, so a client keys a pane on it and follows it when the host renumbers.
 		w.Header().Set("Content-Type", text.ContentType(charset))
 		oneRow := strings.NewReplacer("\t", " ", "\n", " ", "\r", " ")
 		var b strings.Builder
@@ -369,7 +370,7 @@ func (h *Hub) handlePanes(w http.ResponseWriter, r *http.Request, t Principal) {
 			for _, p := range v.Talk {
 				partners = append(partners, p.Address)
 			}
-			fmt.Fprintf(&b, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", v.Address, v.Mode, text.Fold(v.Command, charset), text.Fold(v.Title, charset), kind, mail, strings.Join(partners, "|"), v.Alias, text.Fold(oneRow.Replace(v.Cwd), charset), textPending(v.Pane))
+			fmt.Fprintf(&b, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", v.Address, v.Mode, text.Fold(v.Command, charset), text.Fold(v.Title, charset), kind, mail, strings.Join(partners, "|"), v.Alias, text.Fold(oneRow.Replace(v.Cwd), charset), textPending(v.Pane), v.PaneID)
 		}
 		w.Write(text.Encode(b.String(), charset))
 		return
@@ -712,6 +713,12 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 	sum := sha256.Sum256(body)
 	etag := `"` + hex.EncodeToString(sum[:8]) + `"`
 	w.Header().Set("ETag", etag)
+	// Which pane answered: an address is a position, and the host renumbers panes when
+	// one closes, so a client that knows its pane by id checks each read is its own. Set
+	// before the ETag check, so a 304 says it too and a renumber shows on the next poll.
+	if paneID.MatchString(p.PaneID) {
+		w.Header().Set("Muxway-Pane", p.PaneID)
+	}
 	if r.Header.Get("If-None-Match") == etag {
 		w.WriteHeader(http.StatusNotModified)
 		return

@@ -279,15 +279,16 @@ func TestFlow194_TheInboxListsParkedPanesLast(t *testing.T) {
 	if len(rows) != 4 || !strings.HasPrefix(rows[2], p(2)+"\tlater\t") || !strings.HasPrefix(rows[3], p(3)+"\tlater\t") {
 		t.Fatalf("text inbox: %q", rows)
 	}
-	if f := strings.Split(rows[2], "\t"); len(f) != 6 || f[2] == "0" || f[3] != "" || f[5] != "" {
+	if f := strings.Split(rows[2], "\t"); len(f) != 7 || f[2] == "0" || f[3] != "" || f[5] != "" {
 		t.Fatalf("a parked pane without attention waits since its parking, with no text and nothing pending: %q", rows[2])
 	}
 	// The sixth column is what waits under a parked pane, so a keypad phone draws zz · !;
 	// an awake pane's kind column says it already and its pending column stays empty.
-	if f := strings.Split(rows[3], "\t"); len(f) != 6 || f[1] != "later" || f[5] != "permission" {
+	// The seventh is the pane's id.
+	if f := strings.Split(rows[3], "\t"); len(f) != 7 || f[1] != "later" || f[5] != "permission" {
 		t.Fatalf("a parked pane with a permission underneath: %q", rows[3])
 	}
-	if f := strings.Split(rows[0], "\t"); len(f) != 6 || f[1] != "question" || f[5] != "" {
+	if f := strings.Split(rows[0], "\t"); len(f) != 7 || f[1] != "question" || f[5] != "" {
 		t.Fatalf("an awake pane's row: %q", rows[0])
 	}
 	if f := e.textRow(full, p(3)); f[4] != "later" || f[9] != "permission" {

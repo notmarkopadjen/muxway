@@ -102,8 +102,8 @@ func (h *Hub) handleInbox(w http.ResponseWriter, r *http.Request, t Principal) {
 			if att == nil {
 				att = &tmux.Attention{}
 			}
-			fmt.Fprintf(&b, "%s\t%s\t%d\t%s\t%s\t%s\n", v.Address, textKind(v.Pane), inboxAt(v.Pane),
-				text.Fold(att.Text, charset), text.Fold(strings.Join(att.Choices, "|"), charset), textPending(v.Pane))
+			fmt.Fprintf(&b, "%s\t%s\t%d\t%s\t%s\t%s\t%s\n", v.Address, textKind(v.Pane), inboxAt(v.Pane),
+				text.Fold(att.Text, charset), text.Fold(strings.Join(att.Choices, "|"), charset), textPending(v.Pane), v.PaneID)
 		}
 		w.Write(text.Encode(b.String(), charset))
 		return
