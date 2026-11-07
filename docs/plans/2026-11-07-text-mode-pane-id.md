@@ -185,9 +185,13 @@ test-run issue.
   expected the row to end at the choices; it takes the id since.
 - [x] Security rules (AGENTS.md section 2) hold: nothing new is disclosed,
   no new input, no new grant, nothing new logged.
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
 - [x] Docs and diagrams updated
 
 ## Test run
 
-Not yet run.
+Run 20261107-164807-e65abc5, recorded as
+[issue #319](https://github.com/notmarkopadjen/muxway/issues/319): 282
+tests passed, none failed, at commit e65abc5. The run before it, at
+ed2f10f, failed in the command-line test alone, whose `inbox` assertion
+expected the row to end at the choices; it takes the id since.
