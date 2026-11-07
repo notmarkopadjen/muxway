@@ -33,7 +33,7 @@ func TestSec16_CORSForBearerTokensOnly(t *testing.T) {
 	}
 	r := e.do("GET", tok, "/v1/panes", "text/plain", "", "Origin", "null")
 	expect(t, r, http.StatusOK, "list from another origin")
-	if r.header.Get("Access-Control-Allow-Origin") != "*" || r.header.Get("Access-Control-Expose-Headers") != "ETag, Muxway-File" {
+	if r.header.Get("Access-Control-Allow-Origin") != "*" || r.header.Get("Access-Control-Expose-Headers") != "ETag, Muxway-File, Muxway-Pane" {
 		t.Fatalf("list: origin %q exposed %q", r.header.Get("Access-Control-Allow-Origin"), r.header.Get("Access-Control-Expose-Headers"))
 	}
 	if r.header.Get("Access-Control-Allow-Credentials") != "" {

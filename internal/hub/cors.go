@@ -29,7 +29,7 @@ func (h *Hub) cors(next http.Handler) http.Handler {
 			} else {
 				hd.Set("Access-Control-Allow-Origin", "*")
 			}
-			hd.Set("Access-Control-Expose-Headers", "ETag, Muxway-File")
+			hd.Set("Access-Control-Expose-Headers", "ETag, Muxway-File, Muxway-Pane")
 			if r.Method == http.MethodOptions {
 				hd.Set("Access-Control-Allow-Methods", "GET, POST, PUT")
 				allowed := "Authorization, X-Muxway-Token, Content-Type, Accept, If-None-Match"
