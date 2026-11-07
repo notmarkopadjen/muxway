@@ -62,7 +62,7 @@ const KEYS: [string, string][] = [
   ],
   [
     'Ctrl+] / Ctrl+[',
-    'the same from anywhere: on the line, while typing directly (direct typing stays on, the next pane is typed into at once) and in the window view; the chords never reach the pane, the keyboard window sends Esc and Ctrl+] themselves',
+    'the same from anywhere (Cmd for Ctrl on a Mac): on the line, while typing directly (direct typing stays on, the next pane is typed into at once) and in the window view; the chords never reach the pane, the keyboard window sends Esc and Ctrl+] themselves',
   ],
   [
     '} / {',

@@ -844,6 +844,7 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |
 | `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view: pane), coming round at either end; a parked pane is passed over |
+| `Ctrl+]` / `Ctrl+[`, `Cmd+]` / `Cmd+[` | the same from anywhere: the line, direct typing (which stays on) and the window view; never sent to the pane (see [direct typing](direct.md)) |
 | `}` / `{` | move the focused pane's tab one place right / left along the strip (or drag it); the order is kept in the browser |
 | `1`–`4`, `l`, `=`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, equal shares, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
 | `Enter` | tiles: with several open, the focused one alone (as `z`) |

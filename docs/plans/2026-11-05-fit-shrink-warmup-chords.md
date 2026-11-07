@@ -323,6 +323,19 @@ Deviations:
   timestamp before it was not; it is one small struct per window ever
   resized.
 
+## Addendum (2026-11-07): Cmd for Ctrl
+
+The owner asked for `Cmd+]` and `Cmd+[` as the same chords on a Mac,
+where `Cmd` is the hand's modifier. `paneChord` takes exactly one of
+`ctrlKey` and `metaKey` (both together is nothing), `Alt` and `Shift`
+still excluded; the browser's own `Cmd+[` / `Cmd+]` (back / forward)
+lose to the page's `preventDefault`, and `Cmd` with any other key is
+untouched: `keyToBody` already drops every `metaKey` press, so nothing
+with `Cmd` reaches the pane. Spec 123 presses `Meta+]` and `Meta+[`
+once round and checks no bracket text or chord key was sent; the unit
+test covers `Meta`, `Ctrl+Meta` and `Meta+Shift`. Guideline §1.6, the
+direct typing, keyboard and web client pages and the help say so.
+
 ## Test run
 
 [#302](https://github.com/notmarkopadjen/muxway/issues/302): run
