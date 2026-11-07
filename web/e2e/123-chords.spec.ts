@@ -73,6 +73,12 @@ test('123 the chords cycle the tiles from direct typing, the line and the page, 
   await expect(focusedPane(page)).toHaveAttribute('data-pane', SPLIT);
   await page.keyboard.press('Control+[');
   await expect(focusedPane(page)).toHaveAttribute('data-pane', LOGS);
+  // Cmd stands for Ctrl, for a Mac: round once more and back.
+  await page.keyboard.press('Meta+]');
+  await expect(focusedPane(page)).toHaveAttribute('data-pane', SPLIT);
+  await expect(form).toHaveAttribute('data-direct', '');
+  await page.keyboard.press('Meta+[');
+  await expect(focusedPane(page)).toHaveAttribute('data-pane', LOGS);
   // Esc alone still goes to the pane.
   await page.keyboard.press('Escape');
   await expect
@@ -80,6 +86,7 @@ test('123 the chords cycle the tiles from direct typing, the line and the page, 
     .toBe(1);
   // Nothing of the chords reached any pane.
   expect(inputs.filter((i) => i.body.key === 'C-]' || i.body.key === 'C-[')).toEqual([]);
+  expect(inputs.filter((i) => i.body.text === ']' || i.body.text === '[')).toEqual([]);
   expect(inputs.filter((i) => i.body.key === 'Escape').length).toBe(1);
   // Shift+Esc leaves; the chords work on the page too.
   await page.keyboard.press('Shift+Escape');

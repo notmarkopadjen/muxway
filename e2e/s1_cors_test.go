@@ -12,12 +12,16 @@ import (
 func TestSec16_CORSForBearerTokensOnly(t *testing.T) {
 	e, _, _ := basic(t)
 	tok := e.token("glasses", []string{host + "/*"}, []string{host + "/*"})
-	for _, path := range []string{"/v1/panes", "/v1/panes/" + shell0, "/v1/panes/" + shell0 + "/input", "/v1/inbox", "/v1/events", "/v1/hosts", "/v1/me"} {
+	for _, path := range []string{"/v1/panes", "/v1/panes/" + shell0, "/v1/panes/" + shell0 + "/input", "/v1/inbox", "/v1/events", "/v1/hosts", "/v1/me", "/v1/desk"} {
 		r := e.do("OPTIONS", "", path, "", "", "Origin", "null", "Access-Control-Request-Method", "POST",
 			"Access-Control-Request-Headers", "authorization, x-muxway-client")
 		expect(t, r, http.StatusNoContent, "preflight "+path)
 		if r.header.Get("Access-Control-Allow-Origin") != "*" {
 			t.Fatalf("preflight %s: no allow-origin", path)
+		}
+		// The desk is written with PUT, so a page on another origin may PUT.
+		if methods := r.header.Get("Access-Control-Allow-Methods"); !strings.Contains(methods, "PUT") {
+			t.Fatalf("preflight %s: methods %q", path, methods)
 		}
 		allowed := strings.ToLower(r.header.Get("Access-Control-Allow-Headers"))
 		if !strings.Contains(allowed, "authorization") || strings.Contains(allowed, "x-muxway-client") {

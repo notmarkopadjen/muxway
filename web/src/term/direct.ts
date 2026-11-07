@@ -44,10 +44,12 @@ export const MAX_TEXT = 4096;
 export const MAX_COUNT = 50;
 
 // The pane chords: Ctrl+] goes to the next pane, Ctrl+[ to the previous,
-// from anywhere, direct typing included; they are never sent. Matched on
-// the key, or on the code for a layout where the bracket is elsewhere.
+// from anywhere, direct typing included; they are never sent. Cmd stands
+// for Ctrl on a Mac, where the browser would take Cmd+[ and Cmd+] as back
+// and forward; one of the two, not both. Matched on the key, or on the
+// code for a layout where the bracket is elsewhere.
 export function paneChord(ev: KeyLike & { code?: string }): -1 | 0 | 1 {
-  if (!ev.ctrlKey || ev.altKey || ev.metaKey || ev.shiftKey) return 0;
+  if (ev.ctrlKey === ev.metaKey || ev.altKey || ev.shiftKey) return 0;
   if (ev.key === ']' || ev.code === 'BracketRight') return 1;
   if (ev.key === '[' || ev.code === 'BracketLeft') return -1;
   return 0;

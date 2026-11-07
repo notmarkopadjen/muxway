@@ -199,9 +199,14 @@ describe('paneChord', () => {
     shiftKey: false,
     ...o,
   });
-  it('is Ctrl with a bracket, by key or by code, and nothing else', () => {
+  it('is Ctrl or Cmd with a bracket, by key or by code, and nothing else', () => {
     expect(paneChord(ev({ key: ']', ctrlKey: true }))).toBe(1);
     expect(paneChord(ev({ key: '[', ctrlKey: true }))).toBe(-1);
+    expect(paneChord(ev({ key: ']', metaKey: true }))).toBe(1);
+    expect(paneChord(ev({ key: '[', metaKey: true }))).toBe(-1);
+    expect(paneChord(ev({ key: 'Dead', code: 'BracketLeft', metaKey: true }))).toBe(-1);
+    expect(paneChord(ev({ key: ']', ctrlKey: true, metaKey: true }))).toBe(0);
+    expect(paneChord(ev({ key: ']', metaKey: true, shiftKey: true }))).toBe(0);
     expect(paneChord(ev({ key: 'Dead', code: 'BracketRight', ctrlKey: true }))).toBe(1);
     expect(paneChord(ev({ key: 'Dead', code: 'BracketLeft', ctrlKey: true }))).toBe(-1);
     expect(paneChord(ev({ key: ']' }))).toBe(0);
