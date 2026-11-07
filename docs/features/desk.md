@@ -51,8 +51,7 @@ address, as everywhere.
   not undone, and a view opened by a link writes its own desk before it
   follows any.
 - **Android** reads and writes the desk the same way; the glasses and
-  the phone open the desk's focused pane from their lists (parity to
-  follow).
+  the phone open the desk's focused pane from their lists.
 
 ## Security considerations
 
