@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { Backlog, keyToBody, pasteText, type KeyLike, paneChord } from './direct';
+import {
+  Backlog,
+  bytesOf,
+  keyToBody,
+  MAX_TEXT,
+  paneChord,
+  pasteText,
+  splitText,
+  type KeyLike,
+} from './direct';
 
 const k = (key: string, mods: Partial<KeyLike> = {}): KeyLike => ({
   key,
@@ -63,6 +72,37 @@ describe('keyToBody', () => {
 describe('pasteText', () => {
   it('keeps newlines, widens tabs and drops the other control characters', () => {
     expect(pasteText('a\r\nb\rc\td\x07e\x1b[31m')).toBe('a\nb\nc  de[31m');
+  });
+});
+
+describe('splitText', () => {
+  const whole = (pieces: string[], s: string) => {
+    expect(pieces.join('')).toBe(s);
+    for (const p of pieces) expect(bytesOf(p)).toBeLessThanOrEqual(MAX_TEXT);
+  };
+  it('keeps a text within the limit as one piece, the empty one too', () => {
+    expect(splitText('')).toEqual(['']);
+    expect(splitText('a\nb')).toEqual(['a\nb']);
+    expect(splitText('x'.repeat(MAX_TEXT))).toEqual(['x'.repeat(MAX_TEXT)]);
+  });
+  it('cuts after the last newline that fits', () => {
+    const line = `${'w'.repeat(99)}\n`;
+    const s = line.repeat(100);
+    const pieces = splitText(s);
+    whole(pieces, s);
+    expect(pieces.map((p) => p.length)).toEqual([4000, 4000, 2000]);
+    for (const p of pieces) expect(p.endsWith('\n')).toBe(true);
+  });
+  it('cuts a line over the limit between characters, a wide one kept whole', () => {
+    const s = `${'é'.repeat(3000)}\nend`;
+    const pieces = splitText(s);
+    whole(pieces, s);
+    expect(pieces).toHaveLength(2);
+    expect(bytesOf(pieces[0])).toBe(MAX_TEXT);
+    expect(pieces[1]).toBe(`${'é'.repeat(952)}\nend`);
+    const emoji = '😀'.repeat(1025);
+    whole(splitText(emoji), emoji);
+    expect(splitText(emoji)[0]).toBe('😀'.repeat(1024));
   });
 });
 

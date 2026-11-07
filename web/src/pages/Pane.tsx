@@ -75,7 +75,7 @@ import { cellsFor, inner } from '../term/measure';
 import { releaseKept, useFit } from '../term/useFit';
 import { screenWords } from '../term/complete';
 import { countOf, summary } from '../term/changes';
-import { Backlog, keyToBody, paneChord, pasteText, type Body } from '../term/direct';
+import { Backlog, keyToBody, paneChord, pasteText, splitText, type Body } from '../term/direct';
 import { setHeading } from '../shell/heading';
 import { openMailWindow } from '../shell/mailwin';
 import { InHeader } from '../shell/HeaderSlot';
@@ -1498,14 +1498,17 @@ function Tiles({ addresses }: { addresses: string[] }) {
     else if (add && addresses.length < MAX_TILES) go([...addresses, address]);
     else go(replace(addresses, index, address));
   };
-  // Android's swipe: the focused tile shows the neighbouring pane of the strip.
+  // Android's swipe: the focused tile shows the neighbouring pane of the
+  // strip. A parked pane is passed over, as the swipe passes it: the owner
+  // said later, and only a tab, a row or the inbox brings it back.
   const neighbour = (step: number) => {
     const at = strip.indexOf(focused);
     if (at < 0) return;
+    const parked = new Set((all.data ?? []).filter((p) => p.later).map((p) => p.address));
     // Past either end it comes round to the other.
     for (let i = 1; i < strip.length; i++) {
       const k = (((at + step * i) % strip.length) + strip.length) % strip.length;
-      if (!addresses.includes(strip[k])) {
+      if (!addresses.includes(strip[k]) && !parked.has(strip[k])) {
         go(replace(addresses, index, strip[k]));
         return;
       }
@@ -1661,7 +1664,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
       const text = pasteText(ev.clipboardData?.getData('text') ?? '');
       if (!text) return;
       ev.preventDefault();
-      push({ text });
+      // A long paste goes in pieces, in order, behind the request in flight.
+      for (const piece of splitText(text)) push({ text: piece });
     };
     const onComposed = (ev: CompositionEvent) => {
       if (!elsewhere(ev.target) && ev.data) push({ text: ev.data });

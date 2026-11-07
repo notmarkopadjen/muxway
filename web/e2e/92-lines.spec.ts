@@ -72,6 +72,36 @@ test('92 lines: Shift+Enter adds a row, the field grows upward, Enter sends the 
   expect(await height(input)).toBe(oneRow);
 });
 
+test('92 lines: a text longer than one request takes goes in pieces, then Enter', async ({
+  page,
+  request,
+}) => {
+  await signIn(page);
+  await openPane(page, SHELL0);
+  const input = page.getByTestId('input');
+  const inputs = watchInput(page);
+  const refused: number[] = [];
+  page.on('response', (r) => {
+    if (r.url().includes('/input') && r.status() >= 400) refused.push(r.status());
+  });
+  // Ten KiB of shell comments and one echo at the end: harmless whether
+  // the shell takes the block bracketed or runs each line.
+  const text = `${Array.from({ length: 400 }, (_, i) => `# line ${i + 1} ${'x'.repeat(16)}`).join('\n')}\necho long-paste-done`;
+  await input.click();
+  await input.fill(text);
+  await page.keyboard.press('Enter');
+  await expect(input).toHaveValue('');
+  await expect.poll(() => inputs.length).toBe(4);
+  const bodies = inputs.map((b) => JSON.parse(b) as { text?: string; key?: string });
+  expect(bodies[3]).toEqual({ key: 'Enter' });
+  const texts = bodies.slice(0, 3).map((b) => b.text!);
+  for (const t of texts) expect(new TextEncoder().encode(t).length).toBeLessThanOrEqual(4096);
+  expect(texts.join('')).toBe(text);
+  expect(refused).toEqual([]);
+  const capture = () => control(request, '/capture', { target: 'work:0.0' });
+  await expect.poll(capture, { timeout: 10000 }).toMatch(/^long-paste-done$/m);
+});
+
 test('92 completion: Claude slash commands, a shell recent line; Enter sends the pick', async ({
   page,
   request,

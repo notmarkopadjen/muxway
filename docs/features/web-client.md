@@ -50,7 +50,12 @@ nothing but the hub to talk to.
    rate. A text with several lines is
    pasted into the pane as one block (bracketed, when the program asked
    for it), so Claude Code takes it as one message and a shell as one
-   editable block; then `Enter` is sent. While the first word is typed a
+   editable block; then `Enter` is sent. A text longer than the 4096
+   bytes one request takes goes in pieces, one request after another,
+   each cut after the last newline that fits so lines stay whole where
+   they can; the program takes the pieces appended (Claude Code shows a
+   long paste as a few pasted blocks). The same holds for a paste while
+   typing direct. While the first word is typed a
    list opens above the line: Claude Code's slash commands, or a shell's
    starters and the lines sent before from this browser; `↑` `↓` pick,
    `Tab` or a click takes one, `Esc` closes it, and `Enter` sends the
@@ -532,7 +537,9 @@ sequenceDiagram
   at most, so switching panes does not flash a smaller screen.
 - `]` and `[` go to the next or previous pane: the next tile, or with
   one tile open the strip's neighbour shown in it (the phone's swipe),
-  coming round at either end;
+  coming round at either end and passing over a parked pane (`☾`, see
+  [later](notifications.md#later)), which only its tab, a row or the
+  inbox brings back;
   `1` to `4` focus a tile by number, `Enter` opens it alone.
 - The **command row** under the key bar is for the program in the
   focused pane, one row that scrolls sideways. When the pane is Claude
@@ -836,7 +843,7 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `S` | a new session on the selected row's host (or the first that allows it): a one-line form, `Enter` starts, `Esc` cancels |
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |
-| `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view: pane), coming round at either end |
+| `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view: pane), coming round at either end; a parked pane is passed over |
 | `}` / `{` | move the focused pane's tab one place right / left along the strip (or drag it); the order is kept in the browser |
 | `1`–`4`, `l`, `=`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, equal shares, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
 | `Enter` | tiles: with several open, the focused one alone (as `z`) |
