@@ -3,8 +3,9 @@
 > Status: written 2026-11-09 from the owner's decision in the console,
 > after the Android client's `docs/plans/2026-11-09-held-scale-and-ghost-right.md`
 > showed three of the owner's own clients fitting one pane in turns.
-> Waiting for the owner's approval; no code before it. The Android half
-> is `docs/plans/2026-11-09-last-client-wins.md` in `muxway-android`.
+> Approved 2026-11-09 evening in the console and implemented on the
+> branch `size-holder`. The Android half is
+> `docs/plans/2026-11-09-last-client-wins.md` in `muxway-android`.
 
 ## 1. Goal
 
@@ -226,3 +227,41 @@ Security tests first (1 to 4). Every run recorded as a test-run issue.
 3. Web: the label, the header, the refit on interaction; specs 8 to 10.
 4. Docs; the guideline row; the run; the pull request. Deploy after the
    merge, before the Android client sends `client`.
+
+## Review (after implementation)
+
+- [x] Diff matches the plan. Deviations: an empty `client` is an absent
+  one (the body's `""` and no field are the same thing), so the label
+  falls back to the client's kind from its headers, `go-http-client` for
+  a bare Go client; the audit line carries the label last, after
+  `result`, so the lines the tests and the owner's eyes know keep their
+  shape; the web treats the same principal from another client (two
+  phones on one token) as *other*, by the label, which the plan said
+  for Android and the web does the same; the window view refits on a
+  touch but has no *held* word to extend. Nothing else.
+- [x] Security rules hold: the label is checked for length and
+  printability before anything leaves the hub, carried and shown as
+  text, compared with nothing; the token id never leaves the hub (Sec226
+  searches every answer for one); a refit on a touch stays under the
+  window's bucket (Sec229); a read-only token sees the holder and cannot
+  resize (Sec226); nothing new is logged but the label.
+- [x] Privacy check passed: the secret scan and the deny-list grep over
+  the branch's commits are clean, the diff read; the tests name
+  `alice-laptop`, tokens `phone`, `web`, `writer`, `viewer` and
+  `handset`, the labels `Pixel 9` and `Chrome`.
+- [x] Docs and diagrams updated: the protocol's resize body, pane object
+  and agent channel; the web client page's *held* passage; the
+  guideline's *fit* row; this plan's diagrams.
+
+## Test run
+
+The full suite, 287 tests, 0 failed, at `f49bf44`
+([#332](https://github.com/notmarkopadjen/muxway/issues/332),
+`20261109-182012-f49bf44`): the Go end-to-end tests with the five new
+ones (Sec226 to Sec229, Flow227), the web's unit tests with the
+holder's, and the browser specs with 126. The first run at `4a8b6c9`
+([#331](https://github.com/notmarkopadjen/muxway/issues/331), closed)
+failed three tests on the tests' side: two layout tests read the audit
+line with `rows=` next to `result=`, and the admin spec counts tokens
+named `phone`, which the control endpoint had made one of; both fixed
+in `f49bf44`.
