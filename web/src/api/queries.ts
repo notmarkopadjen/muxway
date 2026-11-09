@@ -239,27 +239,58 @@ export function knownPane(qc: QueryClient, address: string): Pane | undefined {
 // hub's burst of forty.
 const settled = new Settle(250);
 
+// The input asks for the screen with its answer, so a key's echo costs
+// one round trip: the frame goes into the pane query and into the window
+// query that holds the pane, and the burst's read is trailing only. A hub
+// that answers 204 (an older one, or a token that may not read the pane)
+// gets the leading read as well.
 export function useInput(address: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: { text: string } | { key: string; count?: number } | { mouse: Mouse }) => {
       noteOwn(address);
-      return inOrder(address, () => sendInput(address, body));
+      return inOrder(address, () => sendInput(address, body, true));
     },
-    onSuccess: () => {
+    onSuccess: (frame) => {
       noteOwn(address);
       // Text and keys clear the pane's attention: the lists say so at
       // once, and only then has a key changed anything in them.
       const lists = !!knownPane(qc, address)?.attention;
-      settled.run(address, () => {
+      if (frame) takeFrame(qc, address, frame);
+      const refresh = () => {
         qc.invalidateQueries({ queryKey: keys.pane(address) });
-        if (!lists) return;
         const { hub, address: bare } = splitAddress(address);
+        if (!hub) qc.invalidateQueries({ queryKey: ['window', ...bare.split('/').slice(0, 2)] });
+        if (!lists) return;
         qc.invalidateQueries({ queryKey: keys.panesOf(hub) });
         qc.invalidateQueries({ queryKey: keys.tree(bare.split('/')[0], hub) });
-      });
+      };
+      if (frame) settled.later(address, refresh);
+      else settled.run(address, refresh);
     },
   });
+}
+
+// A frame an input brought back: the pane query's data, and the pane's
+// entry in any window query of this hub that holds it (by id, since an
+// address is a position).
+export function takeFrame(qc: QueryClient, address: string, frame: PaneContent) {
+  qc.setQueryData<PaneContent>(keys.pane(address), { ...frame, pane: claim(address, frame.pane) });
+  const { hub, address: bare } = splitAddress(address);
+  if (hub) return;
+  const id = frame.pane.pane_id;
+  qc.setQueriesData<WindowContent>({ queryKey: ['window', ...bare.split('/').slice(0, 2)] }, (w) =>
+    w && w.panes.some((p) => p.pane.pane_id === id)
+      ? {
+          ...w,
+          panes: w.panes.map((p) =>
+            p.pane.pane_id === id
+              ? { ...p, pane: frame.pane, content: frame.content, trimmed: frame.trimmed }
+              : p,
+          ),
+        }
+      : w,
+  );
 }
 
 export function useWindow(host: string, session: string, window: string) {
@@ -410,16 +441,18 @@ export function useLater() {
   });
 }
 
+// With read, the answer is the pane's screen once the keys landed, in
+// the pane query's own shape, or nothing from a hub that answers 204.
 export function sendInput(
   address: string,
   body: { text: string } | { key: string; count?: number } | { mouse: Mouse },
-): Promise<void> {
+  read = false,
+): Promise<PaneContent | undefined> {
   const t = target(address);
-  return api<void>(`/v1/panes/${t.address}/input`, {
-    method: 'POST',
-    body: JSON.stringify(body),
-    hub: t.hub,
-  });
+  return api<PaneContent | undefined>(
+    `/v1/panes/${t.address}/input${read ? '?read=1&lines=400&ansi=1' : ''}`,
+    { method: 'POST', body: JSON.stringify(body), hub: t.hub },
+  ).then((r) => (r ? { ...r, pane: claim(address, r.pane) } : undefined));
 }
 
 // Every pane the principal may read on every hub, flat, this page's own

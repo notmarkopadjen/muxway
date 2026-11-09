@@ -8,15 +8,15 @@ A typed character shows on the web client long after the key: in the
 pane view about 200 ms, in the window view about 550 ms and up to a
 second, at any network round trip. Measured on 2026-11-09 in a headless
 browser against a hub and agent on loopback with the round trip
-emulated (`rtt`), 25 keys 80 ms apart, the time from the key to the
-character on the screen:
+emulated (Chromium's network conditions, `rtt` the latency set), 25
+keys 80 ms apart, the time from the key to the character on the screen:
 
 | view | rtt | echo median | p90 |
 |---|---|---|---|
-| pane | 20 ms | 175 ms | 263 ms |
-| pane | 100 ms | 182 ms | 299 ms |
-| window | 40 ms | 538 ms | 949 ms |
-| window | 100 ms | 609 ms | 1042 ms |
+| pane | 10 ms | 175 ms | 263 ms |
+| pane | 50 ms | 182 ms | 299 ms |
+| window | 20 ms | 538 ms | 949 ms |
+| window | 50 ms | 609 ms | 1042 ms |
 
 The hub and agent take 10 to 16 ms for an input and 10 to 13 ms for a
 read. The lag is the client's: a key's echo needs a second request,

@@ -178,16 +178,17 @@ func TestUI_Arrange(t *testing.T) {
 }
 
 // The keyboard and direct typing need a pane whose program shows each
-// byte it reads; specs 102 and 104 run here with MX_KEYS set, their
+// byte it reads; specs 102, 104 and 126 run here with MX_KEYS set, their
 // read-only cases in the main environment.
 func TestUI_Keyboard(t *testing.T) {
 	npx, webDir := uiTools(t)
-	grep := "10[24]-"
+	grep := "10[24]-|126-"
 	if g := os.Getenv("MX_GREP"); g != "" {
 		ok2, _ := regexp.MatchString(g, "102-")
 		ok4, _ := regexp.MatchString(g, "104-")
-		if !ok2 && !ok4 {
-			t.Skip("MX_GREP leaves specs 102 and 104 out")
+		ok6, _ := regexp.MatchString(g, "126-")
+		if !ok2 && !ok4 && !ok6 {
+			t.Skip("MX_GREP leaves specs 102, 104 and 126 out")
 		}
 		grep = g
 	}

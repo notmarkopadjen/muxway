@@ -466,6 +466,14 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 			a.clearAttention(ctx, p.PaneID, p.Later)
 			a.endAsk(ctx, p.PaneID, AskTyped, false)
 		}
+		// The screen once the program has echoed, so a client draws the
+		// key's echo from this answer rather than from a read of its own.
+		// A failed capture leaves the input's answer as it is.
+		if code == "" && req.Read {
+			if content, trimmed, ok := a.echo(ctx, req); ok {
+				resp.Content, resp.Trimmed, resp.Read = content, trimmed, true
+			}
+		}
 		resp.Error = code
 		a.audit(req, code)
 	case wire.OpAnswer:
@@ -1001,6 +1009,33 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 		}
 	}
 	return panes, nil
+}
+
+// echoWait is how long the agent gives the program to echo a key before
+// the capture that rides on the input's answer; what comes later is for
+// the client's next read.
+const echoWait = 30 * time.Millisecond
+
+// echo captures the pane for an input that asked for its screen: after
+// the pause, a fresh listing, since the one the input found the pane in
+// was taken before the keys and would show a kept capture as still, then
+// the read's own path, which keeps the capture for the reads to come.
+func (a *Agent) echo(ctx context.Context, req wire.Request) (string, int, bool) {
+	select {
+	case <-time.After(echoWait):
+	case <-ctx.Done():
+		return "", 0, false
+	}
+	if _, _, err := a.listShared(ctx, 0); err != nil {
+		return "", 0, false
+	}
+	lines := req.Lines
+	if lines <= 0 {
+		lines = 100
+	}
+	lines = min(lines, wire.MaxLines)
+	content, trimmed, code := a.read(ctx, req.Pane, lines, req.ANSI, !req.Wrapped)
+	return content, trimmed, code == ""
 }
 
 // process is what ran in a pane when it was first seen: its pid, and the

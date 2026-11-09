@@ -18,17 +18,25 @@ export class Settle {
       return;
     }
     s.pending = fn;
-    if (s.timer === undefined)
-      s.timer = setTimeout(
-        () => {
-          s.timer = undefined;
-          const go = s.pending;
-          s.pending = undefined;
-          if (!go) return;
-          s.last = Date.now();
-          go();
-        },
-        s.last + this.span - now,
-      );
+    if (s.timer === undefined) s.timer = setTimeout(() => this.fire(s), s.last + this.span - now);
+  }
+
+  // The trailing run alone, for a caller that already holds what the
+  // leading run would fetch: the first call of a burst sets the timer,
+  // the rest fold into it, and it runs a span after that first call.
+  later(key: string, fn: () => void) {
+    const s = this.slots.get(key) ?? { last: -Infinity };
+    this.slots.set(key, s);
+    s.pending = fn;
+    if (s.timer === undefined) s.timer = setTimeout(() => this.fire(s), this.span);
+  }
+
+  private fire(s: { last: number; pending?: () => void; timer?: ReturnType<typeof setTimeout> }) {
+    s.timer = undefined;
+    const go = s.pending;
+    s.pending = undefined;
+    if (!go) return;
+    s.last = Date.now();
+    go();
   }
 }
