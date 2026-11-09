@@ -36,7 +36,7 @@ import { MinimisedRow } from '../components/Minimised';
 import { PaneTitle, RenameField, paneTooltip, slowSecond } from '../components/PaneTitle';
 import { Tabs } from '../components/Tabs';
 import { useToast } from '../components/Toast';
-import { noteChange, noteOwn, useLens } from '../term/lens';
+import { noteChange, noteOwn, useLens, onTouch } from '../term/lens';
 import { drawn, nameFor, useMoving } from '../term/drawn';
 import { inOrder, move, parkedLast, step } from '../term/order';
 import { setTabOrder, useHelper, useTabOrder } from '../settings';
@@ -71,6 +71,8 @@ import {
   type Weights,
   type Zone,
 } from '../term/tiles';
+import { CLIENT_LABEL } from '../term/client';
+import { heldWords, holderOf, refitOnTouch } from '../term/holder';
 import { cellsFor, inner } from '../term/measure';
 import { releaseKept, useFit } from '../term/useFit';
 import { screenWords } from '../term/complete';
@@ -415,6 +417,47 @@ function Tile(props: TileProps) {
   useEffect(() => {
     if (refitTick) refit();
   }, [refitTick, refit]);
+  // Who holds the window's size, from the listing: another client's fit
+  // is named in the header, and the client touched last wins: typing
+  // here, a key, this tile focused or the page come back to sends this
+  // browser's fit again, two seconds apart at most; nobody's, or this
+  // browser's own, sends nothing.
+  const hToken = sp?.sized_by?.token;
+  const hClient = sp?.sized_by?.client;
+  const hMine = sp?.sized_by?.mine;
+  const holder = useMemo(
+    () =>
+      holderOf(
+        hToken === undefined
+          ? undefined
+          : { token: hToken, client: hClient ?? '', at: 0, mine: !!hMine },
+        CLIENT_LABEL,
+      ),
+    [hToken, hClient, hMine],
+  );
+  const heldBy = held ? heldWords(holder) : 'held';
+  const otherHolds = fitting && holder.kind === 'other';
+  const lastTouchFit = useRef(0);
+  const touch = useCallback(() => {
+    if (!otherHolds) return;
+    const now = Date.now();
+    if (!refitOnTouch(holder, lastTouchFit.current, now)) return;
+    lastTouchFit.current = now;
+    refit();
+  }, [otherHolds, holder, refit]);
+  useEffect(() => onTouch(address, touch), [address, touch]);
+  // Taking the focus is a touch; keeping it is not.
+  const wasFocused = useRef(false);
+  useEffect(() => {
+    if (focused && !wasFocused.current) touch();
+    wasFocused.current = focused;
+  }, [focused, touch]);
+  useEffect(() => {
+    if (!focused) return;
+    const back = () => touch();
+    window.addEventListener('focus', back);
+    return () => window.removeEventListener('focus', back);
+  }, [focused, touch]);
   // The warm-up: over the box while the tile has nothing of its own to
   // draw, and for a moment more once its first frame is in, so the frame
   // comes up through the bloom.
@@ -593,10 +636,14 @@ function Tile(props: TileProps) {
             {held && (
               <span
                 className="mx-warn"
-                title="the host could not give this tile's size: another tile's fit shares the axis"
+                title={
+                  holder.kind === 'other'
+                    ? "another client holds this window's size: typing here takes it back"
+                    : "the host could not give this tile's size: another tile's fit shares the axis, or the host's floor"
+                }
                 data-testid="held"
               >
-                held
+                {heldBy}
               </span>
             )}
             {syncing && (

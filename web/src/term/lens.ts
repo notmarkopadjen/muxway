@@ -97,6 +97,23 @@ export function noteOwn(address: string, at = Date.now()) {
   own.set(address, at);
 }
 
+// The person touched the pane here: typed, sent a key, focused its tile.
+// A tile another client holds listens, to send its fit again (the client
+// touched last wins); a resize is not a touch, or a refit would feed itself.
+const touches = new Map<string, Set<() => void>>();
+export function noteTouch(address: string) {
+  touches.get(address)?.forEach((f) => f());
+}
+export function onTouch(address: string, f: () => void): () => void {
+  let set = touches.get(address);
+  if (!set) touches.set(address, (set = new Set()));
+  set.add(f);
+  return () => {
+    set.delete(f);
+    if (set.size === 0) touches.delete(address);
+  };
+}
+
 export function changedAt(address: string): number | undefined {
   return changes.get(address);
 }
