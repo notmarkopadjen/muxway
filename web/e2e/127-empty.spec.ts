@@ -78,6 +78,12 @@ test('127 a gone window offers the pane list and a new session on its host', asy
   await page.goto(`/w/${HOST}/nosuch/0`);
   await page.getByTestId('gone-new-session').click();
   await expect(page.getByTestId('session-form')).toBeVisible();
+  await page.getByTestId('session-name').fill('reb');
+  // The form outlives the window's polls, which fail again every second;
+  // and a session is made once per two seconds per account.
+  await page.waitForTimeout(2200);
+  await expect(page.getByTestId('session-form')).toBeVisible();
+  await expect(page.getByTestId('session-name')).toHaveValue('reb');
   await page.getByTestId('session-name').fill('reborn');
   await page.keyboard.press('Enter');
   await paneLoaded(page);

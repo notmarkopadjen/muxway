@@ -125,6 +125,12 @@ exposing it again after.
   nothing, one agent with `--allow-sessions`), not by unexposing the
   main environment's host, whose sessions earlier specs add to; the
   window view's `+ session` reuses the list's `SessionForm`.
+- [x] Found by the first CI run and fixed: with no data, the window
+  query goes pending for every one-second poll, so the error branch and
+  the session form in it unmounted once a second; the page now keeps the
+  last error shown while a poll is in flight, and spec 127 waits across
+  a poll with the form open (and across the one-per-two-seconds creation
+  limit) before it sends the name.
 - [x] Security rules (AGENTS.md section 2) hold: nothing new reaches the
   hub, the session form posts as before, a read-only account and a host
   without the flag see no button (specs 127 security).

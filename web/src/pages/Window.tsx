@@ -490,6 +490,12 @@ export function WindowPage() {
   const hide = useCallback(() => setShowing(false), []);
   const hosts = useHosts();
   const me = useMe();
+  // An error stays shown while the poll after it is in flight: with no
+  // data the query goes pending for every fetch, and the way on drawn in
+  // the error (the session form) must not unmount once a second.
+  const lastError = useRef<unknown>(null);
+  if (data.isError) lastError.current = data.error;
+  else if (data.data) lastError.current = null;
   const previews = !!hosts.data?.find((h) => h.name === host && !h.hub)?.preview;
   const parks = !!hosts.data?.find((h) => h.name === host && !h.hub)?.later;
   const later = useLater();
@@ -787,8 +793,8 @@ export function WindowPage() {
     }
   };
 
-  if (data.isError) {
-    const err = data.error;
+  const err = data.isError ? data.error : data.isPending ? lastError.current : null;
+  if (err) {
     const gone = err instanceof ApiError && err.status === 404;
     const h = hosts.data?.find((x) => x.name === host && !x.hub);
     return (
