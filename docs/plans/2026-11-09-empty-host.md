@@ -128,9 +128,12 @@ exposing it again after.
 - [x] Security rules (AGENTS.md section 2) hold: nothing new reaches the
   hub, the session form posts as before, a read-only account and a host
   without the flag see no button (specs 127 security).
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Privacy check passed: gitleaks and the deny-list clean over the
+  branch, the diff read, commits under the repository's noreply identity
 - [x] Docs and diagrams updated
 
 ## Test run
 
-To be recorded.
+[Run 20261109-161841-781d141](https://github.com/notmarkopadjen/muxway/issues/326):
+passed, 288 tests, at `781d141`, with the logs, screenshots and traces of
+specs 126 and 127 under `test-runs/20261109-161841-781d141/`.

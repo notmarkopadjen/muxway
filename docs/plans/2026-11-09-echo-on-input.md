@@ -201,9 +201,12 @@ loopback; the spec against the test environment. Examples use
 - [x] Security rules (AGENTS.md section 2) hold: the screen goes to a
   token that may read the pane only, the parameters are checked before
   anything is typed, one request where there were two, audit unchanged.
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Privacy check passed: gitleaks and the deny-list clean over the
+  branch, the diff read, commits under the repository's noreply identity
 - [x] Docs and diagrams updated
 
 ## Test run
 
-To be recorded.
+[Run 20261109-161841-781d141](https://github.com/notmarkopadjen/muxway/issues/326):
+passed, 288 tests, at `781d141`, with the logs, screenshots and traces of
+specs 126 and 127 under `test-runs/20261109-161841-781d141/`.
