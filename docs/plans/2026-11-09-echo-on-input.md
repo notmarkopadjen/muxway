@@ -226,3 +226,5 @@ covers the text answer, its content type, the row width, `Muxway-Pane`
 and the refused parameters. Parity issues follow in the three client
 repositories.
 
+Test run of the addendum: [Run 20261109-193812-7239d54](https://github.com/notmarkopadjen/muxway/issues/334),
+passed, 288 tests, at `7239d54`.
