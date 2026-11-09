@@ -30,7 +30,7 @@ interface Input {
 function watchInput(page: Page): Input[] {
   const out: Input[] = [];
   page.on('request', (r) => {
-    const m = r.url().match(/\/v1\/panes\/(.+)\/input$/);
+    const m = r.url().match(/\/v1\/panes\/(.+)\/input(?:\?|$)/);
     if (m && r.method() === 'POST')
       out.push({ address: decodeURIComponent(m[1]), body: JSON.parse(r.postData() ?? '{}') });
   });
