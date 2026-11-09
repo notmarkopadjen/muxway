@@ -120,8 +120,10 @@ that frame the moment the answer is in, in the pane view and in the
 window view alike. So a typed character shows one round trip after the
 key, not two, and a burst costs no more requests than before: the
 client's read of the burst is trailing only, 250 ms after its last key,
-for what the program printed later than the capture. A hub or a host
-older than this answers `204`, and the client reads as it did.
+for what the program printed later than the capture. The answer comes
+in text mode too, wrapped and encoded as a text read is, for the clients
+that read that way. A hub or a host older than this answers `204`, and
+the client reads as it did.
 
 Protocol: `count` with `key` under [`POST /v1/panes/{address}/input`](../protocol/v1.md),
 and `"repeat": true` in the hosts listing for an agent that takes it.

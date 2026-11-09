@@ -210,3 +210,19 @@ loopback; the spec against the test environment. Examples use
 [Run 20261109-161841-781d141](https://github.com/notmarkopadjen/muxway/issues/326):
 passed, 288 tests, at `781d141`, with the logs, screenshots and traces of
 specs 126 and 127 under `test-runs/20261109-161841-781d141/`.
+
+---
+
+## Addendum (2026-11-09): text mode
+
+The plan answered `204` to text mode, for the keypad phone's own clock.
+The glasses read panes in text mode too (`lines`, `width`, `charset`),
+and the phone's one read after a send is ten seconds away by default,
+so both gain the most from the echo. The input now answers text mode as
+a text read does: `width` and `charset` are checked with `read=1` before
+anything is typed, the agent is asked without `ansi` and without
+`wrapped`, and `writeScreen` wraps and encodes. JSON unchanged. e2e 227
+covers the text answer, its content type, the row width, `Muxway-Pane`
+and the refused parameters. Parity issues follow in the three client
+repositories.
+

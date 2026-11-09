@@ -118,7 +118,7 @@ func TestFlow226_AnInputWithReadAnswersTheScreenWithTheEcho(t *testing.T) {
 }
 
 // 227
-func TestFlow227_WithoutReadOrInTextModeTheInputAnswers204(t *testing.T) {
+func TestFlow227_WithoutReadTheInputAnswers204AndInTextModeTheScreenIsText(t *testing.T) {
 	e, _, _ := basic(t)
 	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
 	r := e.post(tok, "/v1/panes/"+shell0+"/input", `{"text":"plain"}`)
@@ -126,10 +126,27 @@ func TestFlow227_WithoutReadOrInTextModeTheInputAnswers204(t *testing.T) {
 	if r.body != "" {
 		t.Fatalf("a body without read: %q", r.body)
 	}
-	r = e.do("POST", tok, "/v1/panes/"+shell0+"/input?read=1&lines=50", "text/plain", `{"text":"text"}`)
-	expect(t, r, http.StatusNoContent, "input with read=1 in text mode")
-	if r.body != "" {
-		t.Fatalf("a body in text mode: %q", r.body)
+	// Text mode, for the glasses and the keypad phone: the screen as a text
+	// read gives it, wrapped at width, in the charset asked for.
+	r = e.do("POST", tok, "/v1/panes/"+shell0+"/input?read=1&lines=20&width=40&charset=ascii", "text/plain", `{"text":"text-echo"}`)
+	expect(t, r, http.StatusOK, "input with read=1 in text mode")
+	if ct := r.header.Get("Content-Type"); ct != "text/plain; charset=us-ascii" {
+		t.Fatalf("content type %q", ct)
 	}
-	// Audit as before: the input's line, no read's.
+	if !strings.Contains(r.body, "text-echo") || strings.Contains(r.body, "{") {
+		t.Fatalf("the text answer: %q", r.body)
+	}
+	if !paneIDShape.MatchString(r.header.Get("Muxway-Pane")) {
+		t.Fatalf("Muxway-Pane %q", r.header.Get("Muxway-Pane"))
+	}
+	for _, line := range strings.Split(strings.TrimRight(r.body, "\n"), "\n") {
+		if len(line) > 40 {
+			t.Fatalf("a row wider than asked: %q", line)
+		}
+	}
+	// Text mode checks width and charset as a read does, before typing.
+	for _, q := range []string{"read=1&width=7", "read=1&width=401", "read=1&charset=ebcdic"} {
+		r = e.do("POST", tok, "/v1/panes/"+shell0+"/input?"+q, "text/plain", `{"text":"no"}`)
+		expect(t, r, http.StatusBadRequest, q)
+	}
 }

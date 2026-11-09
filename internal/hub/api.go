@@ -707,7 +707,7 @@ func (h *Hub) writeScreen(w http.ResponseWriter, r *http.Request, t Principal, h
 	var body []byte
 	contentType := "application/json"
 	if wantsText(r) {
-		// Checked by the read handler, the only one that answers text.
+		// Checked by the caller before it asked the agent.
 		lines, _ := intParam(r, "lines", 100, 1, wire.MaxLines)
 		width, _ := intParam(r, "width", 80, 8, 400)
 		charset, _ := charsetParam(r)
@@ -799,12 +799,17 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 	// With read=1 the answer carries the screen, as a read of the pane
 	// with these parameters would give it; a bad one is refused before
 	// anything is typed.
-	read := r.URL.Query().Get("read") == "1" && !wantsText(r)
+	read := r.URL.Query().Get("read") == "1"
 	lines, ok := intParam(r, "lines", 100, 1, wire.MaxLines)
 	ansi := r.URL.Query().Get("ansi") == "1"
-	if read && !ok {
-		fail(w, http.StatusBadRequest, "bad_parameter")
-		return
+	if read {
+		// Text mode takes width and charset too, as a read does.
+		_, ok2 := intParam(r, "width", 80, 8, 400)
+		_, ok3 := charsetParam(r)
+		if !ok || (wantsText(r) && (!ok2 || !ok3)) {
+			fail(w, http.StatusBadRequest, "bad_parameter")
+			return
+		}
 	}
 	host := r.PathValue("host")
 	a, p, status := h.locate(r.Context(), t, host, path)
@@ -841,7 +846,7 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 	// The screen goes back only to a token that may read the pane: a
 	// write grant alone gets 204, as without read.
 	if read && t.canRead(host, p) {
-		req.Read, req.Lines, req.ANSI, req.Wrapped = true, lines, ansi, true
+		req.Read, req.Lines, req.ANSI, req.Wrapped = true, lines, ansi && !wantsText(r), !wantsText(r)
 	}
 	if in.From != nil {
 		req.From = in.From.Host + "/" + from.PaneID
