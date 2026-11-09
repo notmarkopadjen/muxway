@@ -273,7 +273,18 @@ tiles, each fits its own pane and the host sorts the neighbours out,
 as above. A size the host would not give, because another tile's fit
 shares the axis (two tiles whose panes are stacked ask for different
 widths: the later one sets both), leaves that tile saying *held* in its
-header, drawn scaled to its box, until its box changes. While a tile
+header, drawn scaled to its box, until its box changes. When the size
+the host kept is **another client's** fit (the listing's `sized_by`
+names it: the token's name and the label the client gave itself), the
+header says *held by phone · Pixel 9* instead, and **the client touched
+last wins**: typing into the pane, sending it a key, clicking its tile
+into focus or coming back to the page sends this browser's fit once
+more (at most once every two seconds), so the pane the owner is using
+here takes its size back, while a tab left open elsewhere, which nobody
+touches, keeps still and says who has it. A tile whose size nobody
+holds (the host's floor, a terminal at the host) says *held* alone and
+sends nothing. This browser's own label is its family (*Chrome*,
+*Firefox*, *Safari*, else *browser*). While a tile
 waits for the host to give the size it asked (after a zoom, say) it
 keeps its last picture and says *sync* in its header, the picture a
 little dim with a soft band rolling down it; the live picture snaps
