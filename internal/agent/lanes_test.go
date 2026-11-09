@@ -259,6 +259,30 @@ func TestReadsShareTheListingAndHoldPermits(t *testing.T) {
 	if n := len(calls(t, log, "send-keys")); n != 1 {
 		t.Errorf("%d send-keys", n)
 	}
+	// Without Read the input's answer carries no screen.
+	if r.Read || r.Content != "" {
+		t.Errorf("an input without read answered a screen: %+v", r)
+	}
+	// With Read it carries the pane's screen, a capture of its own,
+	// after a listing taken once the keys landed.
+	captures = len(calls(t, log, "capture start"))
+	lists = len(calls(t, log, "list-panes"))
+	r = a.serve(ctx, wire.Request{ID: 26, Op: wire.OpInput, Pane: "%1", Text: &text, Read: true, Lines: 50, ANSI: true}, a.claim(wire.Request{Op: wire.OpInput, Pane: "%1"}))
+	if r.Error != "" {
+		t.Fatal(r.Error)
+	}
+	if !r.Read || r.Content != "a line of %1" {
+		t.Errorf("the input's answer: read=%v content=%q", r.Read, r.Content)
+	}
+	if n := len(calls(t, log, "capture start")); n != captures+1 {
+		t.Errorf("%d captures after the input with read, want %d", n, captures+1)
+	}
+	if n := len(calls(t, log, "list-panes")); n < lists+2 {
+		t.Errorf("%d listings: the echo did not list afresh after the keys", n)
+	}
+	if n := len(calls(t, log, "send-keys")); n != 2 {
+		t.Errorf("%d send-keys", n)
+	}
 	// An unknown pane, or a read-only one, is not read.
 	if r := a.serve(ctx, wire.Request{ID: 25, Op: wire.OpRead, Pane: "%7"}, nil); r.Error != wire.ErrNotExposed {
 		t.Errorf("unknown pane: %q", r.Error)

@@ -99,15 +99,29 @@ sequenceDiagram
     C->>C: direct on, the tile has the focus, the cursor a block
     P->>C: keydown e, c, h, o, Space, Enter, then Down held
     C->>C: text joined behind the request in flight, Down counted
-    C->>H: POST input {text echo }
-    H->>A: input, the grant and the shape checked
-    C->>H: POST input {key Enter}
-    C->>H: POST input {key Down, count 7}
+    C->>H: POST input?read=1 {text echo }
+    H->>A: input, the grant and the shape checked, read
+    A->>A: send-keys, 30 ms for the echo, capture-pane
+    A-->>H: ok, the screen
+    H-->>C: 200, the screen: the tile draws it at once
+    C->>H: POST input?read=1 {key Enter}
+    C->>H: POST input?read=1 {key Down, count 7}
     H->>A: input, count within 1 to 50
     A->>A: send-keys -N 7 Down
-    A-->>H: ok
-    H-->>C: 204, the audit line names the key and the count
+    A-->>H: ok, the screen
+    H-->>C: 200, the audit line names the key and the count
+    C->>H: GET pane, 250 ms after the burst's last key
 ```
+
+**A key's echo.** The input asks for the screen with its answer
+(`?read=1`, see the protocol): once the keys have landed the agent gives
+the program 30 ms to echo and captures the pane, and the client draws
+that frame the moment the answer is in, in the pane view and in the
+window view alike. So a typed character shows one round trip after the
+key, not two, and a burst costs no more requests than before: the
+client's read of the burst is trailing only, 250 ms after its last key,
+for what the program printed later than the capture. A hub or a host
+older than this answers `204`, and the client reads as it did.
 
 Protocol: `count` with `key` under [`POST /v1/panes/{address}/input`](../protocol/v1.md),
 and `"repeat": true` in the hosts listing for an agent that takes it.
@@ -120,7 +134,8 @@ came before it to that pane, in their order of arrival, which the audit
 log keeps; and a pane that has not moved since its last capture is
 answered from that capture without a process (see [hub and
 agent](hub-and-agent.md#what-a-request-costs-the-host)). A key's round
-trip is then the network, one listing and one `send-keys`.
+trip is then the network, one listing, one `send-keys`, and with the
+screen asked for, the echo's pause, one more listing and one capture.
 
 ```mermaid
 sequenceDiagram
@@ -162,6 +177,7 @@ sequenceDiagram
   `Ctrl+V` and `Shift+Insert` send no key: a program in the pane never
   hears a paste chord, it gets the text.
 - **Limits.** The per-principal rate stands as the backstop; the
-  client's queue keeps a held key under it, and what it reads back
-  settles once per burst rather than once per key. Audit lines as before, with
-  `count` on a key; never the text.
+  client's queue keeps a held key under it, and the screen comes with
+  the input's answer, so a burst is its inputs and one trailing read.
+  The screen goes back only to a token that may read the pane, as a read
+  would. Audit lines as before, with `count` on a key; never the text.

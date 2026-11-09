@@ -671,9 +671,9 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 		return
 	}
 	lines, ok1 := intParam(r, "lines", 100, 1, wire.MaxLines)
-	width, ok2 := intParam(r, "width", 80, 8, 400)
+	_, ok2 := intParam(r, "width", 80, 8, 400)
 	ansi := r.URL.Query().Get("ansi") == "1"
-	charset, ok3 := charsetParam(r)
+	_, ok3 := charsetParam(r)
 	if !ok1 || !ok2 || !ok3 {
 		fail(w, http.StatusBadRequest, "bad_parameter")
 		return
@@ -698,14 +698,24 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 		fail(w, status, code)
 		return
 	}
+	h.writeScreen(w, r, t, r.PathValue("host"), p, resp)
+}
+
+// writeScreen answers a pane's screen as a read does: the body in the
+// mode asked, the ETag, and the pane that answered.
+func (h *Hub) writeScreen(w http.ResponseWriter, r *http.Request, t Principal, host string, p tmux.Pane, resp wire.Response) {
 	var body []byte
 	contentType := "application/json"
 	if wantsText(r) {
+		// Checked by the read handler, the only one that answers text.
+		lines, _ := intParam(r, "lines", 100, 1, wire.MaxLines)
+		width, _ := intParam(r, "width", 80, 8, 400)
+		charset, _ := charsetParam(r)
 		contentType = text.ContentType(charset)
 		rows := text.Wrap(text.Fold(resp.Content, charset), width, lines)
 		body = text.Encode(strings.Join(rows, "\n")+"\n", charset)
 	} else {
-		vs := []PaneView{view(r.PathValue("host"), t, p)}
+		vs := []PaneView{view(host, t, p)}
 		h.withTalk(r.Context(), t, vs)
 		h.withShared(t, vs)
 		body, _ = json.Marshal(map[string]any{"pane": vs[0], "content": resp.Content, "trimmed": resp.Trimmed})
@@ -719,7 +729,8 @@ func (h *Hub) handleRead(w http.ResponseWriter, r *http.Request, t Principal) {
 	if paneID.MatchString(p.PaneID) {
 		w.Header().Set("Muxway-Pane", p.PaneID)
 	}
-	if r.Header.Get("If-None-Match") == etag {
+	// An input's answer is never "not modified": the keys just landed.
+	if r.Method == http.MethodGet && r.Header.Get("If-None-Match") == etag {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
@@ -785,6 +796,16 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		fail(w, http.StatusBadRequest, "bad_input")
 		return
 	}
+	// With read=1 the answer carries the screen, as a read of the pane
+	// with these parameters would give it; a bad one is refused before
+	// anything is typed.
+	read := r.URL.Query().Get("read") == "1" && !wantsText(r)
+	lines, ok := intParam(r, "lines", 100, 1, wire.MaxLines)
+	ansi := r.URL.Query().Get("ansi") == "1"
+	if read && !ok {
+		fail(w, http.StatusBadRequest, "bad_parameter")
+		return
+	}
 	host := r.PathValue("host")
 	a, p, status := h.locate(r.Context(), t, host, path)
 	if status == http.StatusServiceUnavailable {
@@ -817,6 +838,11 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		}
 	}
 	req := wire.Request{Op: wire.OpInput, Actor: t.ID, Pane: p.PaneID, Text: in.Text, Key: in.Key, Count: count, Mouse: in.Mouse}
+	// The screen goes back only to a token that may read the pane: a
+	// write grant alone gets 204, as without read.
+	if read && t.canRead(host, p) {
+		req.Read, req.Lines, req.ANSI, req.Wrapped = true, lines, ansi, true
+	}
 	if in.From != nil {
 		req.From = in.From.Host + "/" + from.PaneID
 	}
@@ -859,6 +885,10 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 			}
 			h.said(t, in.From, from, host, p, "key", key, 0)
 		}
+	}
+	if resp.Read {
+		h.writeScreen(w, r, t, host, p, resp)
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

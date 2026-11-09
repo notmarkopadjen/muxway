@@ -33,10 +33,16 @@ nothing but the hub to talk to.
    one) and opens the new pane; at the right of a host's line,
    `+ session` asks for a name and opens the new session's pane, on hosts
    whose agent allows it (see [new panes and sessions](new-panes.md)).
+   An online host that lists nothing says so and how to change it: the
+   `muxway expose` command for the host, the standing mark that keeps a
+   session marked across tmux restarts (`--expose <session>=write`), and
+   `+ session` once more, as the way to a pane from here; a host whose
+   agent does not start sessions says that instead.
    Type `/` to filter.
 3. **Tiles**: one to four panes on one screen, with a strip of every pane
    above them; see [tiles](#tiles-the-android-view). Each pane's content
-   comes with its colours, refreshed every second, and one input line
+   comes with its colours, refreshed every second, drawn the moment a
+   key you typed is answered (the answer carries the screen), and one input line
    serves the focused tile. The screen opens at its bottom and follows
    new output; scroll up to read back, and it stays put until you scroll
    down again. The input line is a small editor: text wraps, `Enter`
@@ -645,7 +651,8 @@ its key:
 | `≡` | go to a pane or window | `p` |
 
 One pane is focused (its tab, a click on its header, or `]` and `[`);
-the input line and key bar go to it. **Zoom is the pane view**: `⊡`,
+the input line and key bar go to it, and a key's echo is drawn in its
+cell the moment the input is answered, as in the pane view. **Zoom is the pane view**: `⊡`,
 `z`, `Enter` or a double-click on a cell, its header included, open the
 focused pane alone there, with the strip, the input line, the
 completions and the command row; from the pane view `⊡`, `z` or a
@@ -667,7 +674,10 @@ The arrangement is remembered per window in your browser, and dropped
 whenever tmux's own layout changes, so the view never shows a stale
 picture; with fit on, a change of sizes alone is the browser's own
 doing and keeps the arrangement. A pane you may not read shows as a
-gap.
+gap. A window that is gone, or not yours to see (its session ended, and
+with it every mark on it), says so and offers `‹ pane list` and, where
+the host's agent starts sessions and you may write there, `+ session on
+<host>`: the same form as the list's, and the new session's pane opens.
 
 ![window](images/web-window.png)
 ![window, rearranged](images/web-window-local.png)

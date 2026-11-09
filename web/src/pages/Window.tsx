@@ -10,6 +10,7 @@ import {
   useHosts,
   useInput,
   useLater,
+  useMe,
   useWindow,
 } from '../api/queries';
 import type { Change, Mouse, PaneContent } from '../api/types';
@@ -59,6 +60,8 @@ import {
   type Desk,
 } from '../api/desk';
 import { routeFor } from '../term/tiles';
+import { mayWriteOn } from '../term/grants';
+import { SessionForm } from './Panes';
 import { setLastPlace } from '../settings';
 import { requestPalette } from '../term/intent';
 import { setHeading } from '../shell/heading';
@@ -298,6 +301,50 @@ function Tree(props: TreeProps) {
   );
 }
 
+// The way on from a window that is gone or not yours to see: the pane
+// list, and a new session on the host where its agent starts them and
+// the account may write there.
+function GoneWindow({
+  host,
+  canStart,
+  onList,
+  onOpen,
+}: {
+  host: string;
+  canStart: boolean;
+  onList: () => void;
+  onOpen: (address: string) => void;
+}) {
+  const [naming, setNaming] = useState(false);
+  return (
+    <div className="mx-gone-window" data-testid="gone-window">
+      <button type="button" className="mx-host-new" data-testid="gone-list" onClick={onList}>
+        ‹ pane list
+      </button>
+      {canStart && !naming && (
+        <button
+          type="button"
+          className="mx-host-new"
+          data-testid="gone-new-session"
+          title="start a session on this host"
+          onClick={() => setNaming(true)}
+        >
+          + session on {host}
+        </button>
+      )}
+      {naming && (
+        <SessionForm
+          host={host}
+          onDone={(address) => {
+            setNaming(false);
+            if (address) onOpen(address);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 export function WindowPage() {
   const {
     host = '',
@@ -442,6 +489,13 @@ export function WindowPage() {
   }, []);
   const hide = useCallback(() => setShowing(false), []);
   const hosts = useHosts();
+  const me = useMe();
+  // An error stays shown while the poll after it is in flight: with no
+  // data the query goes pending for every fetch, and the way on drawn in
+  // the error (the session form) must not unmount once a second.
+  const lastError = useRef<unknown>(null);
+  if (data.isError) lastError.current = data.error;
+  else if (data.data) lastError.current = null;
   const previews = !!hosts.data?.find((h) => h.name === host && !h.hub)?.preview;
   const parks = !!hosts.data?.find((h) => h.name === host && !h.hub)?.later;
   const later = useLater();
@@ -739,13 +793,23 @@ export function WindowPage() {
     }
   };
 
-  if (data.isError) {
-    const err = data.error;
+  const err = data.isError ? data.error : data.isPending ? lastError.current : null;
+  if (err) {
+    const gone = err instanceof ApiError && err.status === 404;
+    const h = hosts.data?.find((x) => x.name === host && !x.hub);
     return (
       <div className="mx-empty mx-bad" data-testid="window-error">
-        {err instanceof ApiError && err.status === 404
-          ? 'no such window, or not yours to see'
-          : 'the hub could not be reached'}
+        {gone ? 'no such window, or not yours to see' : 'the hub could not be reached'}
+        {gone && (
+          <GoneWindow
+            host={host}
+            canStart={!!h?.online && !!h.sessions && mayWriteOn(me.data?.write ?? [], host)}
+            onList={() => void navigate({ to: '/' })}
+            onOpen={(address) =>
+              void navigate({ to: '/p/$', params: { _splat: routeFor([address]) } })
+            }
+          />
+        )}
       </div>
     );
   }
