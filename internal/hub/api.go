@@ -240,6 +240,14 @@ func view(host string, t Principal, p tmux.Pane) PaneView {
 	if p.Mode != tmux.ModeWrite {
 		p.Cwd = ""
 	}
+	// The holder of the window's size: its id stays here, as whether it is
+	// this principal's; the name and the label go out.
+	if p.SizedBy != nil {
+		s := *p.SizedBy
+		s.Mine = s.Actor == t.ID
+		s.Actor = ""
+		p.SizedBy = &s
+	}
 	return PaneView{Host: host, Address: host + "/" + p.Address(), Pane: p}
 }
 

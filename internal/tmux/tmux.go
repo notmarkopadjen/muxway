@@ -116,7 +116,10 @@ type Pane struct {
 	Attention    *Attention `json:"attention,omitempty"`
 	Mail         *MailState `json:"mail,omitempty"`   // mail waiting for the pane's process
 	Zoomed       bool       `json:"zoomed,omitempty"` // shown alone in its window
-	Mouse        bool       `json:"mouse,omitempty"`  // the program asked for the mouse
+	// SizedBy names the last muxway fit that sized the pane's window,
+	// while one holds it; nil when nobody does.
+	SizedBy *SizedBy `json:"sized_by,omitempty"`
+	Mouse   bool     `json:"mouse,omitempty"` // the program asked for the mouse
 	// The cursor's cell, 1-based, where the program waits for input.
 	CursorX int `json:"cursor_x,omitempty"`
 	CursorY int `json:"cursor_y,omitempty"`
@@ -132,6 +135,17 @@ type Pane struct {
 	PID            int    `json:"-"`
 	ServerPID      int    `json:"-"`
 	SessionCreated int64  `json:"-"`
+}
+
+// SizedBy is the holder of a window's size: the fitting principal's id
+// (for the hub alone, which turns it into Mine and drops it), its name,
+// the client's own label and when the fit landed.
+type SizedBy struct {
+	Actor  string `json:"actor,omitempty"`
+	Token  string `json:"token"`
+	Client string `json:"client"`
+	At     int64  `json:"at"`
+	Mine   bool   `json:"mine"`
 }
 
 // Attention is what a pane is waiting for: set by a notification from a
