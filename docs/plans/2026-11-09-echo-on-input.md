@@ -178,10 +178,23 @@ loopback; the spec against the test environment. Examples use
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
+- [x] Diff matches the plan, deviations explained here. Test 1: the hub
+  addresses only a pane the token may read (`locate` answers `404` to
+  the rest), so a token that writes but may not read the pane gets `404`
+  with `read=1` as without, and the hub's own read-grant check before
+  asking the agent is a second guard, not the first (e2e 223). Test 2:
+  `ansi` is not validated beyond `1`, as on a read, so `ansi=2` is not
+  an error; `lines` is (e2e 224). The e2e tests are 223 to 227, the
+  browser specs 126 (in the keyboard suite, for its byte-echo pane); the
+  benchmark is spec 126's third test, which writes its numbers as
+  annotations. The agent's echo lists afresh before the capture, since
+  the listing the input found its pane in was taken before the keys and
+  would have shown a kept capture as still.
+- [x] Security rules (AGENTS.md section 2) hold: the screen goes to a
+  token that may read the pane only, the parameters are checked before
+  anything is typed, one request where there were two, audit unchanged.
 - [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Docs and diagrams updated
 
 ## Test run
 

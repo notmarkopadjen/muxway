@@ -33,6 +33,11 @@ nothing but the hub to talk to.
    one) and opens the new pane; at the right of a host's line,
    `+ session` asks for a name and opens the new session's pane, on hosts
    whose agent allows it (see [new panes and sessions](new-panes.md)).
+   An online host that lists nothing says so and how to change it: the
+   `muxway expose` command for the host, the standing mark that keeps a
+   session marked across tmux restarts (`--expose <session>=write`), and
+   `+ session` once more, as the way to a pane from here; a host whose
+   agent does not start sessions says that instead.
    Type `/` to filter.
 3. **Tiles**: one to four panes on one screen, with a strip of every pane
    above them; see [tiles](#tiles-the-android-view). Each pane's content
@@ -669,7 +674,10 @@ The arrangement is remembered per window in your browser, and dropped
 whenever tmux's own layout changes, so the view never shows a stale
 picture; with fit on, a change of sizes alone is the browser's own
 doing and keeps the arrangement. A pane you may not read shows as a
-gap.
+gap. A window that is gone, or not yours to see (its session ended, and
+with it every mark on it), says so and offers `‹ pane list` and, where
+the host's agent starts sessions and you may write there, `+ session on
+<host>`: the same form as the list's, and the new session's pane opens.
 
 ![window](images/web-window.png)
 ![window, rearranged](images/web-window-local.png)

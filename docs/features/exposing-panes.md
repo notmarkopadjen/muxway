@@ -48,6 +48,11 @@ flowchart TD
     D -->|write| X[listed, readable and writable]
 ```
 
+A client that lists a host with nothing exposed says *nothing exposed*;
+the web client also shows the `expose` command and the standing mark
+below, and offers `+ session` where the agent starts sessions, since
+that is the one way to a pane from a client.
+
 ## Names
 
 `--name` gives one pane an alias, `[a-z0-9-]{1,32}`: a second address

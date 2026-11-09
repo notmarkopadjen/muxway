@@ -151,6 +151,49 @@ export function SessionForm({
   );
 }
 
+// An online host that lists nothing: how to expose something from it, and
+// the way to a pane from here, `+ session`, where the agent allows it.
+function EmptyHost({
+  host,
+  canStart,
+  naming,
+  onNaming,
+}: {
+  host: Host;
+  canStart: boolean;
+  naming: boolean;
+  onNaming: () => void;
+}) {
+  return (
+    <div className="mx-empty mx-empty-host" data-testid="empty-host">
+      <div>no panes exposed</div>
+      <div>
+        on the host: <code>muxway expose -t &lt;session&gt; --write</code>
+      </div>
+      <div>
+        to keep a session marked across tmux restarts:{' '}
+        <code>muxway agent run --expose &lt;session&gt;=write</code>
+      </div>
+      {canStart && !naming && (
+        <button
+          type="button"
+          className="mx-host-new"
+          data-testid="empty-new-session"
+          title="start a session on this host (S)"
+          onClick={onNaming}
+        >
+          + session starts one here
+        </button>
+      )}
+      {!host.sessions && (
+        <div>
+          this host&apos;s agent does not start sessions (<code>--allow-sessions</code>)
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HostTree({
   hub,
   host,
@@ -247,8 +290,16 @@ function HostTree({
       {host.online && tree.isError && (
         <div className="mx-empty mx-bad">could not list this host</div>
       )}
-      {host.online && tree.data && panes.length === 0 && (
-        <div className="mx-empty">no panes{filter ? ' match' : ' exposed'}</div>
+      {host.online && tree.data && panes.length === 0 && filter && (
+        <div className="mx-empty">no panes match</div>
+      )}
+      {host.online && tree.data && panes.length === 0 && !filter && (
+        <EmptyHost
+          host={host}
+          canStart={canStart}
+          naming={naming}
+          onNaming={() => onNaming(host.name)}
+        />
       )}
       <ul className="mx-tree">
         {sessions.map((s) => {

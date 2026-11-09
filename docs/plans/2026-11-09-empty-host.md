@@ -120,10 +120,16 @@ exposing it again after.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
+- [x] Diff matches the plan, deviations explained here: the specs run in
+  an environment of their own (`TestUI_Empty`, two hosts that expose
+  nothing, one agent with `--allow-sessions`), not by unexposing the
+  main environment's host, whose sessions earlier specs add to; the
+  window view's `+ session` reuses the list's `SessionForm`.
+- [x] Security rules (AGENTS.md section 2) hold: nothing new reaches the
+  hub, the session form posts as before, a read-only account and a host
+  without the flag see no button (specs 127 security).
 - [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Docs and diagrams updated
 
 ## Test run
 
