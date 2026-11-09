@@ -1134,15 +1134,16 @@ func (a *Agent) audit(req wire.Request, code string, extra ...any) {
 			if req.Zoom {
 				attrs = append(attrs, "zoom", true)
 			}
-			if req.Client != "" {
-				attrs = append(attrs, "client", req.Client)
-			}
 		}
 	}
 	if code == "" {
 		attrs = append(attrs, "result", "ok")
 	} else {
 		attrs = append(attrs, "result", code)
+	}
+	// The fitter's label, last, so the line reads as it did before it.
+	if req.Op == wire.OpResize && req.Client != "" {
+		attrs = append(attrs, "client", req.Client)
 	}
 	a.log.Info("audit", attrs...)
 }

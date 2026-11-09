@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { control, HOST, openPane, settled, shot, signIn } from './fixtures';
 
 // Who holds a window's size, and the client touched last wins: a pane
-// another client fitted says "held by phone · Pixel 9" in its header and
+// another client fitted says "held by handset · Pixel 9" in its header and
 // sends nothing while nobody touches it here; typing into it sends this
 // browser's fit once more, with its own label, and the header clears;
 // a tile whose size this browser holds never refits on typing.
@@ -46,13 +46,15 @@ test('126 another client holds the pane: the header names it, idle sends nothing
     client: 'Pixel 9',
   });
   expect(held).toBe('200');
-  await expect(page.getByTestId('held')).toHaveText('held by phone · Pixel 9', { timeout: 15_000 });
+  await expect(page.getByTestId('held')).toHaveText('held by handset · Pixel 9', {
+    timeout: 15_000,
+  });
   await shot(page, info, 'held-by');
   // Idle: three seconds with nobody touching the pane here sends no fit.
   const before = fitsOf(resizes, LOGS).length;
   await page.waitForTimeout(3000);
   expect(fitsOf(resizes, LOGS).length).toBe(before);
-  await expect(page.getByTestId('held')).toHaveText('held by phone · Pixel 9');
+  await expect(page.getByTestId('held')).toHaveText('held by handset · Pixel 9');
   // Typing into the pane here is the touch: one fit more, this browser's, and the header clears.
   const input = page.getByTestId('input');
   await input.fill('echo touched');

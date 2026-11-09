@@ -366,12 +366,13 @@ func (e *env) startControl(t *testing.T, ts *tmuxServer, a *agentProc) string {
 		out, _ := ts.run("display-message", "-p", "-t", r.URL.Query().Get("target"), "#{window_width}x#{window_height}")
 		text(w, out)
 	})
-	// Another client, the phone, fits a pane's window: the specs for the
-	// holder and the touched-last rule need a second fitter.
+	// Another client, a handset, fits a pane's window: the specs for the
+	// holder and the touched-last rule need a second fitter. Its token is
+	// named apart from the ones the admin spec makes and counts.
 	var phoneTok string
 	mux.HandleFunc("/hold", func(w http.ResponseWriter, r *http.Request) {
 		if phoneTok == "" {
-			phoneTok = e.token("phone", []string{"*"}, []string{"*"})
+			phoneTok = e.token("handset", []string{"*"}, []string{"*"})
 		}
 		q := r.URL.Query()
 		body := fmt.Sprintf(`{"cols":%s,"rows":%s,"scope":"window","client":%q}`, q.Get("cols"), q.Get("rows"), q.Get("client"))
