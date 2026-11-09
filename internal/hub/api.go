@@ -729,7 +729,8 @@ func (h *Hub) writeScreen(w http.ResponseWriter, r *http.Request, t Principal, h
 	if paneID.MatchString(p.PaneID) {
 		w.Header().Set("Muxway-Pane", p.PaneID)
 	}
-	if r.Header.Get("If-None-Match") == etag {
+	// An input's answer is never "not modified": the keys just landed.
+	if r.Method == http.MethodGet && r.Header.Get("If-None-Match") == etag {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
@@ -801,7 +802,7 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 	read := r.URL.Query().Get("read") == "1" && !wantsText(r)
 	lines, ok := intParam(r, "lines", 100, 1, wire.MaxLines)
 	ansi := r.URL.Query().Get("ansi") == "1"
-	if !ok {
+	if read && !ok {
 		fail(w, http.StatusBadRequest, "bad_parameter")
 		return
 	}

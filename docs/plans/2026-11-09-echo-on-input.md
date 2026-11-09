@@ -190,6 +190,14 @@ loopback; the spec against the test environment. Examples use
   annotations. The agent's echo lists afresh before the capture, since
   the listing the input found its pane in was taken before the keys and
   would have shown a kept capture as still.
+- [x] Reviewed (an independent read of the diff) and fixed: a screen
+  poll in flight when the frame landed could answer after it and put the
+  old screen back until the trailing read, so `takeFrame` cancels the
+  pane's and the window's polls first (web unit test); an input's answer
+  is never `304`, whatever `If-None-Match` the client sends; `lines` is
+  checked with `read=1` only, so an input without it keeps its old
+  contract; the echo's capture holds a read permit, so the bound on
+  captures at once holds for this path too.
 - [x] Security rules (AGENTS.md section 2) hold: the screen goes to a
   token that may read the pane only, the parameters are checked before
   anything is typed, one request where there were two, audit unchanged.

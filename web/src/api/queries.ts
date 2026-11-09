@@ -253,8 +253,8 @@ export function useInput(address: string) {
     },
     onSuccess: (frame) => {
       noteOwn(address);
-      // Text and keys clear the pane's attention: the lists say so at
-      // once, and only then has a key changed anything in them.
+      // Text and keys clear the pane's attention: the lists are asked
+      // again only when the key changed something in them.
       const lists = !!knownPane(qc, address)?.attention;
       if (frame) takeFrame(qc, address, frame);
       const refresh = () => {
@@ -275,11 +275,16 @@ export function useInput(address: string) {
 // entry in any window query of this hub that holds it (by id, since an
 // address is a position).
 export function takeFrame(qc: QueryClient, address: string, frame: PaneContent) {
+  // A poll in flight was asked before the keys: answered after the frame
+  // is in, it would put the old screen back until the trailing read.
+  void qc.cancelQueries({ queryKey: keys.pane(address) });
   qc.setQueryData<PaneContent>(keys.pane(address), { ...frame, pane: claim(address, frame.pane) });
   const { hub, address: bare } = splitAddress(address);
   if (hub) return;
   const id = frame.pane.pane_id;
-  qc.setQueriesData<WindowContent>({ queryKey: ['window', ...bare.split('/').slice(0, 2)] }, (w) =>
+  const windows = ['window', ...bare.split('/').slice(0, 2)];
+  void qc.cancelQueries({ queryKey: windows });
+  qc.setQueriesData<WindowContent>({ queryKey: windows }, (w) =>
     w && w.panes.some((p) => p.pane.pane_id === id)
       ? {
           ...w,

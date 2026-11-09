@@ -1029,6 +1029,13 @@ func (a *Agent) echo(ctx context.Context, req wire.Request) (string, int, bool) 
 	if _, _, err := a.listShared(ctx, 0); err != nil {
 		return "", 0, false
 	}
+	// A permit, as any read takes: the bound on captures at once holds.
+	select {
+	case a.reads <- struct{}{}:
+		defer func() { <-a.reads }()
+	case <-ctx.Done():
+		return "", 0, false
+	}
 	lines := req.Lines
 	if lines <= 0 {
 		lines = 100

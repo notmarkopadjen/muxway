@@ -66,6 +66,40 @@ describe('takeFrame', () => {
     ).toBe('other');
   });
 
+  it('a poll in flight does not put the old screen back over the frame', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const a = 'alice-laptop/work/0.0';
+    const w = keys.window('alice-laptop', 'work', '0');
+    const old = (content: string) => new Promise((r) => setTimeout(() => r(content), 30));
+    const polls = [
+      qc.fetchQuery({
+        queryKey: keys.pane(a),
+        queryFn: () => old('before').then((c) => frame(a, '%1', c as string)),
+      }),
+      qc.fetchQuery({
+        queryKey: w,
+        queryFn: () =>
+          old('before').then((c) => ({
+            host: 'alice-laptop',
+            session: 'work',
+            window: { index: 0, name: 'w', layout: '', active: true },
+            panes: [frame(a, '%1', c as string)],
+          })),
+      }),
+    ];
+    qc.setQueryData<WindowContent>(w, {
+      host: 'alice-laptop',
+      session: 'work',
+      window: { index: 0, name: 'w', layout: '', active: true },
+      panes: [frame(a, '%1', 'first')],
+    });
+    takeFrame(qc, a, frame(a, '%1', 'after'));
+    await Promise.allSettled(polls);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(qc.getQueryData<PaneContent>(keys.pane(a))?.content).toBe('after');
+    expect(qc.getQueryData<WindowContent>(w)?.panes[0].content).toBe('after');
+  });
+
   it("names another hub's pane as this page does and leaves the window queries alone", () => {
     const qc = new QueryClient();
     const a = 'work~alice-laptop/work/0.0';

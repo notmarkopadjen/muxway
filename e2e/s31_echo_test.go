@@ -41,7 +41,7 @@ func TestSec224_ABadReadParameterIsRefusedBeforeAnythingIsTyped(t *testing.T) {
 	e, ts, _ := basic(t)
 	out := keyEcho(t, ts)
 	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
-	for _, q := range []string{"read=1&lines=0", "read=1&lines=2001", "read=1&lines=x", "lines=-1"} {
+	for _, q := range []string{"read=1&lines=0", "read=1&lines=2001", "read=1&lines=x", "read=1&lines=-1"} {
 		r := e.post(tok, "/v1/panes/"+shell0+"/input?"+q, `{"text":"n"}`)
 		if r.status != http.StatusBadRequest || !strings.Contains(r.body, "bad_parameter") {
 			t.Fatalf("%s: %d %s", q, r.status, r.body)
@@ -50,6 +50,14 @@ func TestSec224_ABadReadParameterIsRefusedBeforeAnythingIsTyped(t *testing.T) {
 	if got := readKeys(out); got != "" {
 		t.Fatalf("a refused input reached the pane: %q", got)
 	}
+	// Without read the parameter is not looked at, as before this.
+	expect(t, e.post(tok, "/v1/panes/"+shell0+"/input?lines=0", `{"text":"n"}`), http.StatusNoContent, "lines without read")
+	waitFor(t, "the key typed", func() bool { return readKeys(out) == "n" })
+	// An input's answer is never 304, whatever ETag the client sends.
+	r := e.do("POST", tok, "/v1/panes/"+shell0+"/input?read=1&lines=50", "", `{"text":"m"}`, "If-None-Match", `"anything"`)
+	expect(t, r, http.StatusOK, "input with an If-None-Match")
+	r = e.do("POST", tok, "/v1/panes/"+shell0+"/input?read=1&lines=50", "", `{"text":"m"}`, "If-None-Match", r.header.Get("ETag"))
+	expect(t, r, http.StatusOK, "input with the last answer's ETag")
 }
 
 // 225
