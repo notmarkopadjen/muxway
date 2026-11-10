@@ -49,6 +49,9 @@ type Request struct {
 	Wrapped bool    `json:"wrapped,omitempty"`
 	Text    *string `json:"text,omitempty"`
 	Key     string  `json:"key,omitempty"`
+	// Read, with input, asks for the pane's screen once the keys landed,
+	// as a read with the same Lines, ANSI and Wrapped would give it.
+	Read bool `json:"read,omitempty"`
 	// Count, with Key, sends it that many times: 1 to MaxKeyCount.
 	Count int    `json:"count,omitempty"`
 	Mouse *Mouse `json:"mouse,omitempty"`
@@ -163,6 +166,9 @@ type Response struct {
 	// Trimmed is how many blank rows at the bottom of the screen Content
 	// leaves out.
 	Trimmed int `json:"trimmed,omitempty"`
+	// Read, with an input's answer, says Content is the screen the
+	// request asked for; an agent without it answers none.
+	Read bool `json:"read,omitempty"`
 	// Pane is what a split or a new session made.
 	Pane *tmux.Pane `json:"pane,omitempty"`
 	// Sessions, with a list, says the agent starts sessions for clients.

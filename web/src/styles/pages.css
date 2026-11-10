@@ -166,6 +166,16 @@
   color: var(--mx-ink-dim);
   padding: var(--mx-gap-2);
 }
+.mx-empty-host,
+.mx-gone-window {
+  display: grid;
+  gap: var(--mx-gap);
+  justify-items: start;
+}
+.mx-gone-window {
+  margin-top: var(--mx-gap-2);
+  color: var(--mx-ink-dim);
+}
 
 /* pane */
 .mx-pane {

@@ -103,6 +103,27 @@ func TestUI_WebClient(t *testing.T) {
 		"MX_HUB2="+e2.url(), "MX_HUB2_TOKEN="+hub2, "MX_CONTROL2="+control2, "MX_PREVIEW="+preview, "MX_WORKTREE="+side)
 }
 
+// Hosts with nothing exposed: one whose agent starts sessions and one
+// whose agent does not; spec 127 runs here with MX_EMPTY set.
+func TestUI_Empty(t *testing.T) {
+	npx, webDir := uiTools(t)
+	grep := "127-"
+	if g := os.Getenv("MX_GREP"); g != "" {
+		if ok, _ := regexp.MatchString(g, "127-"); !ok {
+			t.Skip("MX_GREP leaves spec 127 out")
+		}
+		grep = g
+	}
+	e := newEnv(t)
+	ts := newTmux(t)
+	e.pairAgent(host, ts, "--allow-sessions")
+	ts2 := newTmux(t)
+	e.pairAgent("bob-desktop", ts2)
+	full := e.token("browser", []string{"*"}, []string{"*"})
+	readOnly := e.token("viewer", []string{host + "/*", "bob-desktop/*"}, nil)
+	runPlaywright(t, e, npx, webDir, grep, "MX_TOKEN="+full, "MX_RO_TOKEN="+readOnly, "MX_EMPTY=1")
+}
+
 // The microphone needs a hub with a transcriber: the stand-in from the
 // transcription tests, with a control hook to break it and count its calls.
 // Spec 93 runs here with MX_STT set; its no-transcriber case runs above.
@@ -178,16 +199,17 @@ func TestUI_Arrange(t *testing.T) {
 }
 
 // The keyboard and direct typing need a pane whose program shows each
-// byte it reads; specs 102 and 104 run here with MX_KEYS set, their
+// byte it reads; specs 102, 104 and 126 run here with MX_KEYS set, their
 // read-only cases in the main environment.
 func TestUI_Keyboard(t *testing.T) {
 	npx, webDir := uiTools(t)
-	grep := "10[24]-"
+	grep := "10[24]-|126-"
 	if g := os.Getenv("MX_GREP"); g != "" {
 		ok2, _ := regexp.MatchString(g, "102-")
 		ok4, _ := regexp.MatchString(g, "104-")
-		if !ok2 && !ok4 {
-			t.Skip("MX_GREP leaves specs 102 and 104 out")
+		ok6, _ := regexp.MatchString(g, "126-")
+		if !ok2 && !ok4 && !ok6 {
+			t.Skip("MX_GREP leaves specs 102, 104 and 126 out")
 		}
 		grep = g
 	}

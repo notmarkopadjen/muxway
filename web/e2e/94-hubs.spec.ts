@@ -291,7 +291,7 @@ test("94 every hub: a hub not signed in on says so with a link to its page; sign
   await page.getByTestId('input').press('Enter');
   await expect.poll(() => capture2(request, 'work:0.0'), { timeout: 5000 }).toContain('peer-94');
   await expect(page.getByTestId('screen')).toContainText('peer-94', { timeout: 5000 });
-  expect(asked).toContain(`/v1/panes/carol-desk/work/0.0/input`);
+  expect(asked.some((u) => u.startsWith('/v1/panes/carol-desk/work/0.0/input'))).toBe(true);
   await shot(page, info, '94-side-by-side');
   // The strip names the far pane too, and the add menu groups by hub.
   await expect(page.locator(`[data-testid="tab"][data-address="${FAR}"]`)).toHaveAttribute(
