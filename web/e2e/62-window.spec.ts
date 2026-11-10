@@ -12,7 +12,17 @@ test('62 the window view mirrors the host layout', async ({ page, request }, inf
   await page.keyboard.press('f');
   await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '0');
   await expect.poll(() => control(request, '/window-size', { target: 'work:0' })).toBe('100x30');
-  const layout = await control(request, '/layout', { target: 'work:0' });
+  // The host settles its own layout a moment after the size is given back:
+  // the layout compared is one read twice the same.
+  let layout = await control(request, '/layout', { target: 'work:0' });
+  await expect
+    .poll(async () => {
+      const again = await control(request, '/layout', { target: 'work:0' });
+      const same = again === layout;
+      layout = again;
+      return same;
+    })
+    .toBe(true);
   await expect(page.getByTestId('window')).toHaveAttribute('data-layout', layout);
   // Expected fractions from the host's own sizes, along the split's axis.
   const m = /([{[])(\d+)x(\d+),\d+,\d+,\d+,(\d+)x(\d+)/.exec(layout)!;

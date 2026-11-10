@@ -29,6 +29,8 @@ func (h *Hub) handleResize(w http.ResponseWriter, r *http.Request, t Principal) 
 		Scope  string `json:"scope"`
 		Layout string `json:"layout"`
 		Zoom   bool   `json:"zoom"`
+		// Client is the fitter's own label for the other clients' headers.
+		Client string `json:"client"`
 	}
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
 	dec.DisallowUnknownFields()
@@ -58,6 +60,22 @@ func (h *Hub) handleResize(w http.ResponseWriter, r *http.Request, t Principal) 
 	if in.Zoom && (in.Scope != "window" || arrangeOnly) {
 		fail(w, http.StatusBadRequest, "bad_parameter")
 		return
+	}
+	if in.Client != "" && !wire.ValidClient(in.Client) {
+		fail(w, http.StatusBadRequest, "bad_parameter")
+		return
+	}
+	// The label names the fitter to the other clients: the body's, else
+	// the client's kind from its header; nothing on a release or an
+	// arrangement, which hold nothing.
+	client := in.Client
+	if client == "" {
+		if c := clientType(r); c != "unknown" {
+			client = c
+		}
+	}
+	if release || arrangeOnly {
+		client = ""
 	}
 	if in.Layout != "" {
 		if in.Scope != "window" || len(in.Layout) > wire.MaxLayoutBytes {
@@ -114,13 +132,13 @@ func (h *Hub) handleResize(w http.ResponseWriter, r *http.Request, t Principal) 
 			arrange = true
 		}
 	}
-	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpResize, Actor: t.ID, Pane: p.PaneID, Cols: in.Cols, Rows: in.Rows, Fit: in.Fit, Scope: in.Scope, Layout: in.Layout, Arrange: arrange, Zoom: in.Zoom})
+	resp, err := a.request(r.Context(), wire.Request{Op: wire.OpResize, Actor: t.ID, ActorName: t.Name, Client: client, Pane: p.PaneID, Cols: in.Cols, Rows: in.Rows, Fit: in.Fit, Scope: in.Scope, Layout: in.Layout, Arrange: arrange, Zoom: in.Zoom})
 	if err != nil {
 		fail(w, http.StatusServiceUnavailable, "host_offline")
 		return
 	}
 	a.forget()
-	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID, "cols", in.Cols, "rows", in.Rows, "fit", in.Fit, "scope", in.Scope, "layout", in.Layout != "", "arrange", arrange, "zoom", in.Zoom}
+	attrs := []any{"token", t.ID, "method", t.Method, "host", host, "pane", p.PaneID, "cols", in.Cols, "rows", in.Rows, "fit", in.Fit, "scope", in.Scope, "layout", in.Layout != "", "arrange", arrange, "zoom", in.Zoom, "client", client}
 	if resp.Error != "" {
 		h.log.Info("audit resize", append(attrs, "result", resp.Error)...)
 		status, code := statusFor(resp.Error)

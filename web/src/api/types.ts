@@ -30,6 +30,7 @@ export interface Pane {
   alias?: string;
   attention?: Attention;
   zoomed?: boolean;
+  sized_by?: SizedBy; // the last muxway fit that sized the window, while one holds it
   mouse?: boolean;
   cursor_x?: number; // the cursor's cell, 1-based, where the program waits
   cursor_y?: number;
@@ -153,8 +154,24 @@ export interface WindowContent {
   panes: PaneContent[];
 }
 
+// Who holds a window's size: the fitting principal's name, the label its
+// client gave itself, when, and whether this principal sent it.
+export interface SizedBy {
+  token: string;
+  client: string;
+  at: number;
+  mine: boolean;
+}
+
 export type Resize =
-  | { cols: number; rows: number; scope?: 'pane' | 'window'; layout?: string; zoom?: boolean }
+  | {
+      cols: number;
+      rows: number;
+      scope?: 'pane' | 'window';
+      layout?: string;
+      zoom?: boolean;
+      client?: string;
+    }
   | { scope: 'window'; layout: string }
   | { fit: 'auto' };
 

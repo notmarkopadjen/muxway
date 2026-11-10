@@ -184,6 +184,7 @@ type Agent struct {
 	layouts    map[string]string               // window id -> layout before its first resize, put back on release
 	fits       map[string]map[string]tmux.Size // window id -> pane id -> size given at pane scope, kept by later fits
 	fitters    map[string]map[string]bool      // window id -> the panes that fitted it; all gone, the window is given back
+	holders    map[string]tmux.SizedBy         // window id -> the last fit that sized it, until a release
 	made       map[string]time.Time            // pane id -> when a split made it, while the hub may still undo it
 	sessions   map[string]bool                 // session ids started for clients
 	standing   map[string]bool                 // sessions given their standing mark, by server, id and creation time
@@ -240,7 +241,7 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 		return nil, err
 	}
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
-		seen: map[string]process{}, attention: map[string]tmux.Attention{}, background: map[string]bool{}, resized: map[string]bucket{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{},
+		seen: map[string]process{}, attention: map[string]tmux.Attention{}, background: map[string]bool{}, resized: map[string]bucket{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{}, holders: map[string]tmux.SizedBy{},
 		made: map[string]time.Time{}, sessions: map[string]bool{}, standing: map[string]bool{}, asks: map[string]*pendingAsk{}, hooked: map[string]bool{}, watched: map[string]*watched{},
 		mail: map[string]*mailbox{}, replies: map[uint64]chan string{}, reads: make(chan struct{}, readPermits), writes: map[string]chan struct{}{}, captures: map[captureKey]*capture{}}, nil
 }
@@ -648,6 +649,7 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	others := map[string]tmux.Size{}
 	if release {
 		delete(a.fitters, p.WindowID)
+		delete(a.holders, p.WindowID)
 	} else if !arrangeOnly {
 		if a.fitters[p.WindowID] == nil {
 			a.fitters[p.WindowID] = map[string]bool{}
@@ -704,6 +706,11 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	if err != nil {
 		return wire.ErrTmux
 	}
+	// The fit that sized the window holds it, for the other clients'
+	// headers, until a release or the next fit.
+	a.mu.Lock()
+	a.holders[p.WindowID] = tmux.SizedBy{Actor: req.Actor, Token: req.ActorName, Client: req.Client, At: time.Now().Unix()}
+	a.mu.Unlock()
 	return ""
 }
 
@@ -973,6 +980,21 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 			}
 		}
 	}
+	// The holder of a window's size is told on every pane of the window;
+	// a window gone takes its holder with it.
+	windows := map[string]bool{}
+	for i := range panes {
+		windows[panes[i].WindowID] = true
+		if h, ok := a.holders[panes[i].WindowID]; ok {
+			hh := h
+			panes[i].SizedBy = &hh
+		}
+	}
+	for w := range a.holders {
+		if !windows[w] {
+			delete(a.holders, w)
+		}
+	}
 	// A window whose fitting panes are all gone (the shell exited) has no
 	// pane left to release it through: it is given back here.
 	type orphan struct{ pane, layout string }
@@ -990,6 +1012,7 @@ func (a *Agent) list(ctx context.Context) ([]tmux.Pane, error) {
 		}
 		delete(a.fitters, w)
 		delete(a.fits, w)
+		delete(a.holders, w)
 		saved := a.layouts[w]
 		delete(a.layouts, w)
 		for i := range panes {
@@ -1159,6 +1182,10 @@ func (a *Agent) audit(req wire.Request, code string, extra ...any) {
 		attrs = append(attrs, "result", "ok")
 	} else {
 		attrs = append(attrs, "result", code)
+	}
+	// The fitter's label, last, so the line reads as it did before it.
+	if req.Op == wire.OpResize && req.Client != "" {
+		attrs = append(attrs, "client", req.Client)
 	}
 	a.log.Info("audit", attrs...)
 }

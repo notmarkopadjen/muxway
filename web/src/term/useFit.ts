@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, target } from '../api/client';
 import { resizePane } from '../api/queries';
 import type { Pane } from '../api/types';
+import { CLIENT_LABEL } from './client';
 import { cellsFor, inner } from './measure';
 
 // Fit: the host follows the box. Measures the box, debounces, sends a
@@ -124,7 +125,14 @@ export function useFit(
         setSize({ cols, rows });
         return;
       }
-      resizePane(address, { cols, rows, scope, layout: lay, zoom: zoom || undefined })
+      resizePane(address, {
+        cols,
+        rows,
+        scope,
+        layout: lay,
+        zoom: zoom || undefined,
+        client: CLIENT_LABEL,
+      })
         .then((r) => {
           setSize({ cols: r.pane.width, rows: r.pane.height });
           if (live) done.current?.(r);

@@ -6,6 +6,7 @@ package wire
 import (
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/notmarkopadjen/muxway/internal/tmux"
 )
@@ -56,8 +57,12 @@ type Request struct {
 	Mouse *Mouse `json:"mouse,omitempty"`
 	Cols  int    `json:"cols,omitempty"`
 	Rows  int    `json:"rows,omitempty"`
-	Fit   string `json:"fit,omitempty"`   // "auto" gives the window back to tmux
-	Scope string `json:"scope,omitempty"` // "" or "pane": size the pane; "window": size its window
+	Fit   string `json:"fit,omitempty"` // "auto" gives the window back to tmux
+	// ActorName and Client, with a resize that sizes, name the fitter for
+	// the window's holder: the principal's name and the client's own label.
+	ActorName string `json:"actor_name,omitempty"`
+	Client    string `json:"client,omitempty"`
+	Scope     string `json:"scope,omitempty"` // "" or "pane": size the pane; "window": size its window
 	// Layout, with scope "window", is a tmux layout string whose
 	// proportions the window takes at the new size.
 	Layout string `json:"layout,omitempty"`
@@ -304,7 +309,9 @@ const (
 	MinCols, MaxCols = 20, 500
 	MinRows, MaxRows = 5, 300
 	MaxLayoutBytes   = 2048
-	MaxPathBytes     = 1024
+	// MaxClientRunes bounds a fitter's client label.
+	MaxClientRunes = 32
+	MaxPathBytes   = 1024
 	// Panes a window may be split into, and sessions an agent starts for
 	// clients, over its lifetime's live ones.
 	MaxPanesPerWindow = 8
@@ -348,6 +355,19 @@ func ValidSessionName(s string) bool { return sessionName.MatchString(s) }
 func ValidDirection(s string) bool { return s == "h" || s == "v" }
 
 // ValidSize reports whether a window may be resized to cols by rows.
+// ValidClient is a fitter's label as the clients may show it: one to
+// MaxClientRunes printable characters, no blank at either end.
+func ValidClient(s string) bool {
+	n := 0
+	for _, r := range s {
+		n++
+		if n > MaxClientRunes || !unicode.IsPrint(r) {
+			return false
+		}
+	}
+	return n > 0 && s == strings.TrimSpace(s)
+}
+
 func ValidSize(cols, rows int) bool {
 	return cols >= MinCols && cols <= MaxCols && rows >= MinRows && rows <= MaxRows
 }

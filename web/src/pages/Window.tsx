@@ -30,7 +30,9 @@ import {
   type Arrangement,
   type Node,
 } from '../term/layout';
-import { noteOwn, useLens } from '../term/lens';
+import { noteOwn, onTouch, useLens } from '../term/lens';
+import { CLIENT_LABEL } from '../term/client';
+import { holderOf, refitOnTouch } from '../term/holder';
 import { Screen } from '../term/Screen';
 import { AddMenu } from '../components/AddMenu';
 import { ChangesWindow } from '../components/Changes';
@@ -540,6 +542,36 @@ export function WindowPage() {
   const { refit } = useFit(fitVia, fitting, area, 'window', sent, false, {
     slack,
   });
+  // The client touched last wins here too: typing into any pane of the
+  // window while another client holds its size sends this fit again.
+  const viaPane = [...panes.values()].find((p) => p.pane.address === fitVia)?.pane;
+  const hToken = viaPane?.sized_by?.token;
+  const hClient = viaPane?.sized_by?.client;
+  const hMine = viaPane?.sized_by?.mine;
+  const holder = useMemo(
+    () =>
+      holderOf(
+        hToken === undefined
+          ? undefined
+          : { token: hToken, client: hClient ?? '', at: 0, mine: !!hMine },
+        CLIENT_LABEL,
+      ),
+    [hToken, hClient, hMine],
+  );
+  const otherHolds = fitting && holder.kind === 'other';
+  const lastTouchFit = useRef(0);
+  useEffect(() => {
+    if (!otherHolds) return;
+    const offs = [...panes.values()].map((p) =>
+      onTouch(p.pane.address, () => {
+        const now = Date.now();
+        if (!refitOnTouch(holder, lastTouchFit.current, now)) return;
+        lastTouchFit.current = now;
+        refit();
+      }),
+    );
+    return () => offs.forEach((off) => off());
+  }, [otherHolds, holder, panes, refit]);
   // The next preset for the window's panes, as the pane view cycles its
   // tiles, sent to the host as the window's layout: the shown panes laid
   // out the preset way, the hidden ones kept in a thin stack at the

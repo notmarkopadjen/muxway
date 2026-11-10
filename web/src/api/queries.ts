@@ -9,7 +9,7 @@ import { inboxOrder } from '../term/order';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError, target } from './client';
 import { joinAddress, originOfHub, splitAddress, useHubs, type Hub } from '../hubs';
-import { noteOwn } from '../term/lens';
+import { noteOwn, noteTouch } from '../term/lens';
 import { Settle } from './settle';
 import { extOf, isTextName } from '../term/types';
 import type {
@@ -249,6 +249,7 @@ export function useInput(address: string) {
   return useMutation({
     mutationFn: (body: { text: string } | { key: string; count?: number } | { mouse: Mouse }) => {
       noteOwn(address);
+      noteTouch(address);
       return inOrder(address, () => sendInput(address, body, true));
     },
     onSuccess: (frame) => {
@@ -630,6 +631,7 @@ export function useListing(
 // when asked, in the pane's order behind whatever is in flight.
 export function typeLine(address: string, text: string, enter: boolean): Promise<void> {
   noteOwn(address);
+  noteTouch(address);
   return inOrder(address, async () => {
     await sendInput(address, { text });
     if (enter) await sendInput(address, { key: 'Enter' });
