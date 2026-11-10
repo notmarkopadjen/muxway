@@ -259,7 +259,7 @@ The full suite, 287 tests, 0 failed, at `f49bf44`
 ([#332](https://github.com/notmarkopadjen/muxway/issues/332),
 `20261109-182012-f49bf44`): the Go end-to-end tests with the five new
 ones (Sec226 to Sec229, Flow227), the web's unit tests with the
-holder's, and the browser specs with 126. The first run at `4a8b6c9`
+holder's, and the browser specs with 128 (126 was taken by the echo spec on main by the time this merged). The first run at `4a8b6c9`
 ([#331](https://github.com/notmarkopadjen/muxway/issues/331), closed)
 failed three tests on the tests' side: two layout tests read the audit
 line with `rows=` next to `result=`, and the admin spec counts tokens

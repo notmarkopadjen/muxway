@@ -26,7 +26,7 @@ function watchResizes(page: Page): Resize[] {
 const fitsOf = (rs: Resize[], address: string) =>
   rs.filter((r) => r.address === address && r.body.fit !== 'auto');
 
-test('126 another client holds the pane: the header names it, idle sends nothing, typing takes the size back', async ({
+test('128 another client holds the pane: the header names it, idle sends nothing, typing takes the size back', async ({
   page,
   request,
 }, info) => {
