@@ -265,3 +265,12 @@ failed three tests on the tests' side: two layout tests read the audit
 line with `rows=` next to `result=`, and the admin spec counts tokens
 named `phone`, which the control endpoint had made one of; both fixed
 in `f49bf44`.
+
+After the merge of main (the echo on the input's answer, #327 and #329)
+into this branch: the conflict was the input mutation's one line (the
+touch note and `read=1` both kept), the held-by spec became 128, and
+spec 62 compares a host layout read twice the same, since the host
+settles its own layout a moment after the size is given back.
+[Run 20261110-081450-0a699aa](https://github.com/notmarkopadjen/muxway/issues/336):
+passed, 293 tests, at `0a699aa`; CI green on the same commit.
+
