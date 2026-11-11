@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseOrder } from '../settings';
-import { inboxOrder, inOrder, move, ORDER_MAX, parkedLast, step, waitingSince } from './order';
+import { inboxOrder, inOrder, move, ORDER_MAX, rowOrder, step, waitingSince } from './order';
 
 const p = (address: string) => ({ address });
 const A = 'alice-laptop/work/0.0';
@@ -28,16 +28,16 @@ describe('parseOrder', () => {
   });
 });
 
-describe('parkedLast', () => {
-  it('puts the parked panes after the others, each side in its order', () => {
+describe('rowOrder', () => {
+  it('puts the row oldest parking first, then by address', () => {
     const panes = [
-      { address: A, later: true },
-      { address: B },
-      { address: C, later: true },
-      { address: D },
+      { address: C, later_at: 30 },
+      { address: B, later_at: 20 },
+      { address: D, later_at: 20 },
+      { address: A },
     ];
-    expect(parkedLast(panes).map((x) => x.address)).toEqual([B, D, A, C]);
-    expect(parkedLast([{ address: B }, { address: A }]).map((x) => x.address)).toEqual([B, A]);
+    expect(rowOrder(panes).map((x) => x.address)).toEqual([A, B, D, C]);
+    expect(panes[0].address).toBe(C);
   });
 });
 

@@ -4,7 +4,8 @@ import { control, HOST, RO_TOKEN, SHELL0, settled, shot, signIn } from './fixtur
 // The add menu after the tabs: + pane and + session, then the minimised
 // panes, then every other readable pane by host and session; a pick is
 // one more tile and asks the hub nothing. `_` on a header minimises a
-// tile to the row above the keys, where its tab is still read.
+// tile: its pane is parked for later and its tab goes to the row above
+// the keys, painted from the listing.
 
 const RO = `${HOST}/work/0.1`;
 const LOGS = `${HOST}/work/1.0`;
@@ -13,6 +14,14 @@ const BOB = 'bob-desktop/work/0.0';
 const tile = (page: Page, address: string) => page.locator(`[data-pane="${address}"]`);
 const entry = (page: Page, address: string) =>
   page.locator(`[data-testid="add-pane"][data-address="${address}"]`);
+
+// The panes parked for later, as the listing says.
+async function parked(page: Page): Promise<string[]> {
+  const r = await page.request.get('/v1/panes', { headers: { 'X-Muxway-Client': 'e2e' } });
+  return ((await r.json()) as { panes: { address: string; later?: boolean }[] }).panes
+    .filter((p) => p.later)
+    .map((p) => p.address);
+}
 
 // Every request that would make something on a host.
 function countMaking(page: Page) {
@@ -98,7 +107,7 @@ test('105 the add menu: + pane, + session, then the other panes by host and sess
     .toBe('100x30');
 });
 
-test('105 minimise: _ takes the tile to the row above the keys, still read and painted; a click or the menu brings it back', async ({
+test('105 minimise: _ parks the pane and takes the tile to the row above the keys, painted from the listing; a click or the menu wakes it and brings it back', async ({
   page,
   request,
 }, info) => {
@@ -115,12 +124,15 @@ test('105 minimise: _ takes the tile to the row above the keys, still read and p
   const minimised = page.locator(`[data-testid="minimised-tab"][data-address="${LOGS}"]`);
   await expect(minimised).toHaveCount(1);
   await expect(page.locator(`[data-testid="tab"][data-address="${LOGS}"]`)).toHaveCount(0);
-  // The last tile's button is on too: spec 129 has what it does.
+  // The last tile's button is on too: spec 131 has what it does.
   await expect(tile(page, SHELL0).getByTestId('minimise')).toBeEnabled();
-  // The pane is still read, and painted with its state when it changes.
-  await page.waitForRequest((r) => r.url().includes(`/v1/panes/${LOGS}?`), { timeout: 5000 });
+  // The pane is parked on the host; the row's tab has the moon, and what
+  // waits underneath when a notification comes, which does not call.
+  await expect(minimised).toHaveAttribute('data-state', 'later');
+  await expect.poll(() => parked(page), { timeout: 5000 }).toContain(LOGS);
   await control(request, '/notify', { pane: logsId, kind: 'question', text: 'ship it?' });
-  await expect(minimised).toHaveAttribute('data-state', 'waiting', { timeout: 10_000 });
+  await expect(minimised.getByTestId('under-later')).toContainText('?', { timeout: 10_000 });
+  await expect(page.getByTestId('toast')).toHaveCount(0);
   await shot(page, info, '105-minimised');
   // The add menu lists it under minimised.
   await page.keyboard.press('+');
@@ -128,7 +140,8 @@ test('105 minimise: _ takes the tile to the row above the keys, still read and p
   await expect(page.getByTestId('add-minimised')).toHaveAttribute('data-address', LOGS);
   await expect(page.getByTestId('add-pane')).toHaveCount(2);
   await page.keyboard.press('Escape');
-  // A click on its tab brings the tile back, focused; the strip has it again.
+  // A click on its tab wakes the pane and brings the tile back, focused;
+  // the strip has it again, awake.
   await minimised.click();
   await expect(page.getByTestId('tile')).toHaveCount(2);
   await expect(tile(page, LOGS)).toHaveAttribute('data-focused', '');
@@ -137,6 +150,7 @@ test('105 minimise: _ takes the tile to the row above the keys, still read and p
     'data-open',
     '',
   );
+  await expect.poll(() => parked(page), { timeout: 5000 }).not.toContain(LOGS);
   // The - key minimises the focused tile; the menu's entry brings it back.
   await page.keyboard.press('-');
   await expect(page.getByTestId('tile')).toHaveCount(1);
@@ -152,18 +166,9 @@ test('105 minimise: _ takes the tile to the row above the keys, still read and p
   await expect(tile(page, LOGS).locator('.mx-tile-head')).not.toHaveAttribute('data-state', /./, {
     timeout: 10_000,
   });
-  // The desk has the row back before the page is left, so the next spec
-  // (and a read-only account's view, which takes the desk's row) finds
+  // Nothing is parked before the page is left, so the next spec finds
   // nothing minimised.
-  await expect
-    .poll(
-      async () => {
-        const r = await page.request.get('/v1/desk', { headers: { 'X-Muxway-Client': 'e2e' } });
-        return ((await r.json()) as { desk: { minimised?: string[] } }).desk.minimised ?? [];
-      },
-      { timeout: 5000 },
-    )
-    .toEqual([]);
+  await expect.poll(() => parked(page), { timeout: 5000 }).toEqual([]);
   await page.goto('/');
   await expect(page.getByTestId('panes')).toBeVisible();
   for (const target of ['work:0', 'work:1'])

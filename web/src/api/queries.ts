@@ -223,9 +223,12 @@ function inOrder<T>(address: string, go: () => Promise<T>): Promise<T> {
 // fetches nothing.
 export function knownPane(qc: QueryClient, address: string): Pane | undefined {
   const open = qc.getQueryData<PaneContent>(keys.pane(address))?.pane;
-  if (open) return open;
   const { hub, address: bare } = splitAddress(address);
   const all = qc.getQueryData<Pane[]>(keys.panesOf(hub))?.find((p) => p.address === address);
+  // A pane's own read stops with its tile, while the listing is read
+  // wherever the client is: the later mark is the listing's, so a pane
+  // minimised a moment ago is known to be parked.
+  if (open) return all ? { ...open, later: all.later, later_at: all.later_at } : open;
   if (all) return all;
   const host = bare.split('/')[0];
   for (const s of qc.getQueryData<Tree>(keys.tree(host, hub))?.sessions ?? [])

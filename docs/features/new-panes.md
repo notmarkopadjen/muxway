@@ -24,8 +24,9 @@ opens the add menu: `+ pane`, a new pane beside the focused one, and
 `+ session` on its host, where each is allowed (elsewhere dimmed with
 the reason, *read only* or *no sessions here*); the new pane opens
 beside the others. Under them the menu lists the panes minimised below
-and every other pane you may read, to open as one more tile without
-asking the hub; see [the web client](web-client.md#the-add-menu).
+(parked for [later](notifications.md#later); a pick wakes one) and every
+other pane you may read, to open as one more tile without asking the
+hub; see [the web client](web-client.md#the-add-menu).
 
 On the host:
 

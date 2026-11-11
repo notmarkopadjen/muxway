@@ -242,10 +242,40 @@ assert the old row or the parked-last strip.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Diff matches the plan, deviations explained here
+- [x] Security rules (AGENTS.md section 2) hold: minimise is the later
+      write, under the write grant and the writable mark, checked on the
+      hub and the agent as before; a reader's `_` is disabled with the
+      reason and their forged request answers `403` (spec 131); the
+      desk's `minimised` is validated as before and then dropped, so an
+      older client's write is neither refused nor kept (tests 196, 197,
+      the desk unit test)
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Docs and diagrams updated
+
+Deviations:
+
+- The shell's toast and title flash looked a pane up in its own read's
+  cache first, which stops being refreshed the moment the pane leaves
+  the tiles, so a pane minimised a moment before still called when a
+  notification came. `knownPane` now takes the later mark from the
+  listing, which is read wherever the client is.
+- Spec 129 (the row as the desk's) is gone: its subject no longer
+  exists. Spec 131 takes its place, in two tests: the main environment's
+  (the row, another client's park, the reader, the list) and the arrange
+  environment's (the last tile to the next pane and to the list, a
+  parked pane opened by a link), since a view reaches the list only when
+  every other pane is parked, which needs every pane writable. The
+  arrange environment runs its own two specs under `MX_GREP`, not the
+  whole pattern, so `MX_GREP` can name them with the main environment's.
+- `×` on a lone tile needs a host that closes panes; spec 131 goes back
+  to the list by the brand instead and checks the pane stays parked.
+- The window view keeps `d` as a toggle: a parked pane's cell stays
+  there (the mirror is the host's), so `d` on it wakes it, as the
+  guideline's §1.6 says for the window view.
+- The row's tab is painted from the listing and has `data-state="later"`
+  always; spec 105 checks the listing's mark and the glyph underneath
+  instead of a read of the pane.
 
 ## Test run
 

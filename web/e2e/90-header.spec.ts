@@ -167,7 +167,6 @@ test('90 the pane buttons are the same ten in every view, disabled where they do
     'fit',
     'direct',
     'changes',
-    'later',
     'share',
     'zoom',
     'go to',
@@ -177,7 +176,7 @@ test('90 the pane buttons are the same ten in every view, disabled where they do
   await settled(page);
   expect(await labels()).toEqual(ALL);
   for (const id of ['arrange', 'equal', 'reset']) await expect(page.getByTestId(id)).toBeDisabled();
-  for (const id of ['fit', 'direct', 'later', 'share', 'zoom', 'open-palette'])
+  for (const id of ['fit', 'direct', 'share', 'zoom', 'open-palette'])
     await expect(page.getByTestId(id)).toBeEnabled();
   // Two tiles of different windows: the arrangement is the browser's own.
   await page.goto(`/p/${SHELL0},${LOGS}`);

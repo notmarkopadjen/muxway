@@ -3,10 +3,11 @@ import { control, HOST, openPane, RO_TOKEN, SHELL0, shot, signIn, TOKEN } from '
 import { addressOf, closeMade, otherPane } from './talk';
 
 // The agents environment (see 109): the first pane writable. Later: the
-// owner parks a pane, its tab goes last with the moon, it stops calling,
-// and coming back to it wakes it. The earlier specs leave the window's
-// other panes in their own state, so each test splits fresh writable
-// panes beside the first and parks those.
+// owner parks a pane (minimise, from a tile; d on the list; the inbox
+// row), its tab leaves the strip for the minimised row with the moon, it
+// stops calling, and coming back to it wakes it. The earlier specs leave
+// the window's other panes in their own state, so each test splits fresh
+// writable panes beside the first and parks those.
 test.skip(!process.env.MX_AGENTS, 'needs the agents environment');
 
 test.afterEach(async ({ request }) => closeMade(request));
@@ -23,8 +24,10 @@ const tabOf = (page: Page, address: string) =>
   page.locator(`[data-testid="tab"][data-address="${address}"]`);
 const rowOf = (page: Page, address: string) =>
   page.locator(`[data-testid="inbox-row"][data-address="${address}"]`);
+const minimisedOf = (page: Page, address: string) =>
+  page.locator(`[data-testid="minimised-tab"][data-address="${address}"]`);
 
-test('118 d parks the focused pane: its tab goes last with ☾, it stops calling, d or its tab wakes it', async ({
+test('118 d parks the focused pane: its tile leaves for the row with ☾, it stops calling, the row’s tab wakes it and brings it back', async ({
   page,
   request,
 }, info) => {
@@ -35,49 +38,44 @@ test('118 d parks the focused pane: its tab goes last with ☾, it stops calling
   const tab = tabOf(page, other.address);
   await expect(tab).toHaveAttribute('data-state', 'waiting', { timeout: 10_000 });
   const before = await tabOrder(page);
-  const parked = [...before.filter((a) => a !== other.address), other.address];
   await tab.click();
   await expect(page.getByTestId('pane-attention')).toContainText('done');
-  // d parks it: the tab goes last, plain, with the moon; the header says
-  // later and the kind underneath; the button is on.
+  // d parks it: the next awake pane takes the tile, the tab leaves the
+  // strip, and the row above the keys has it with the moon and the kind
+  // underneath, dimmed.
   await page.keyboard.press('d');
-  await expect(tab).toHaveAttribute('data-state', 'later', { timeout: 10_000 });
-  await expect.poll(() => tabOrder(page), { timeout: 10_000 }).toEqual(parked);
-  await expect(tab.getByTestId('badge')).toHaveAttribute('data-kind', 'later');
-  await expect(tab.getByTestId('badge')).toHaveText('☾');
-  await shot(page, info, '118-later-tab');
-  const header = page.getByTestId('pane-later');
-  await expect(header).toContainText('later');
-  await expect(header.getByTestId('under-later')).toContainText('✓ done');
-  await expect(page.getByTestId('later')).toHaveAttribute('data-on', '1');
-  // The name leans while the pane is parked; nothing else of the paint changes.
-  const name = page.locator('.mx-tile[data-focused] .mx-tile-head .mx-title-name');
-  await expect(name).toHaveCSS('font-style', 'italic');
-  await shot(page, info, '118-later-header');
-  // A parked pane does not call: no toast, no title flash on a new notification.
+  const row = minimisedOf(page, other.address);
+  await expect(row).toBeVisible({ timeout: 10_000 });
+  await expect(row).toHaveAttribute('data-state', 'later');
+  await expect(row.getByTestId('badge')).toHaveAttribute('data-kind', 'later');
+  await expect(row.getByTestId('badge')).toHaveText('☾');
+  await expect(row.getByTestId('under-later')).toContainText('✓');
+  await expect(tab).toHaveCount(0);
+  await expect(page.getByTestId('tile')).toHaveCount(1);
+  await expect(page.getByTestId('pane')).not.toHaveAttribute('data-panes', other.address);
+  await expect(page.getByTestId('pane-attention')).toHaveCount(0);
+  await shot(page, info, '118-later-row');
+  // A parked pane does not call: no toast, no title flash on a new
+  // notification; the row's tab shows what waits.
   await control(request, '/notify', { pane: other.id, kind: 'permission', text: 'run make?' });
-  await expect(header.getByTestId('under-later')).toContainText('! permission', {
-    timeout: 10_000,
-  });
+  await expect(row.getByTestId('under-later')).toContainText('!', { timeout: 10_000 });
   await page.waitForTimeout(1500);
   await expect(page.getByTestId('toast')).toHaveCount(0);
   expect(await page.title()).not.toContain('[!]');
-  await expect(tab).toHaveAttribute('data-state', 'later');
-  // d again wakes it: the tab takes its place back, painted with its state.
-  await page.keyboard.press('d');
+  await expect(row).toHaveAttribute('data-state', 'later');
+  // The row's tab wakes it and brings it back as one more tile, focused;
+  // its tab takes its place in the strip, painted with its state.
+  await row.click();
+  await expect(page.getByTestId('tile')).toHaveCount(2);
+  await expect(page.locator('[data-testid="tile"][data-focused]')).toHaveAttribute(
+    'data-pane',
+    other.address,
+  );
+  await expect(row).toHaveCount(0);
   await expect(tab).toHaveAttribute('data-state', 'waiting', { timeout: 10_000 });
   await expect.poll(() => tabOrder(page), { timeout: 10_000 }).toEqual(before);
   await expect(page.getByTestId('pane-attention')).toContainText('permission: run make?');
-  await expect(name).toHaveCSS('font-style', 'normal');
-  // A click on a parked tab focuses it and wakes it.
-  await page.keyboard.press('d');
-  await expect(tab).toHaveAttribute('data-state', 'later', { timeout: 10_000 });
-  await tabOf(page, SHELL0).click();
-  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', SHELL0);
-  await tab.click();
-  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', other.address);
-  await expect(tab).toHaveAttribute('data-state', 'waiting', { timeout: 10_000 });
-  await expect.poll(() => tabOrder(page), { timeout: 10_000 }).toEqual(before);
+  await shot(page, info, '118-later-woken');
   await control(request, '/notify', { pane: other.id, kind: 'working', text: '' });
   await expect(page.getByTestId('pane-attention')).toHaveCount(0, { timeout: 10_000 });
 });
@@ -138,7 +136,7 @@ test('118 o skips a parked pane; the inbox lists it last, with later and wake; E
   await expect(page.getByTestId('pane-attention')).toHaveCount(0, { timeout: 10_000 });
 });
 
-test('118 ] and [ with one tile open pass a parked pane over; woken, it is on the way again', async ({
+test('118 ] and [ with one tile open never reach a parked pane, which is the row’s; woken, it is on the way again', async ({
   page,
   request,
 }) => {
@@ -150,27 +148,22 @@ test('118 ] and [ with one tile open pass a parked pane over; woken, it is on th
   const tab = tabOf(page, parkedAddress);
   await expect(tab).toBeVisible({ timeout: 10_000 });
   await expect(tabOf(page, awakeOther.address)).toBeVisible();
-  // Park it from its own tile, then back to the first pane: its tab is last.
+  // Park it from its own tile: the next awake pane takes the tile, its
+  // tab leaves the strip for the row.
   await tab.click();
   await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', parkedAddress);
   await page.keyboard.press('d');
-  await expect(tab).toHaveAttribute('data-state', 'later', { timeout: 10_000 });
-  await tabOf(page, SHELL0).click();
-  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', SHELL0);
-  const order = (await tabOrder(page)).filter((a): a is string => !!a);
-  expect(order.at(-1)).toBe(parkedAddress);
-  const awake = order.filter((a) => a !== parkedAddress);
+  const row = minimisedOf(page, parkedAddress);
+  await expect(row).toBeVisible({ timeout: 10_000 });
+  await expect(tab).toHaveCount(0);
+  await expect(page.getByTestId('pane')).not.toHaveAttribute('data-panes', parkedAddress);
+  const awake = (await tabOrder(page)).filter((a): a is string => !!a);
+  expect(awake).not.toContain(parkedAddress);
   expect(awake.length).toBeGreaterThan(1);
-  // [ from the first pane would come round to the last tab: it lands on
-  // the awake pane before it instead, and the parked one stays parked.
-  const previous = awake[(awake.indexOf(SHELL0) - 1 + awake.length) % awake.length];
-  await page.keyboard.press('[');
-  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', previous, {
-    timeout: 10_000,
-  });
-  await expect(tab).toHaveAttribute('data-state', 'later');
   // ] all the way round: every awake pane once, never the parked one.
-  let at = awake.indexOf(previous);
+  const shown = await page.getByTestId('pane').getAttribute('data-panes');
+  let at = awake.indexOf(shown!);
+  expect(at).toBeGreaterThanOrEqual(0);
   for (let i = 0; i < awake.length; i++) {
     at = (at + 1) % awake.length;
     await page.keyboard.press(']');
@@ -178,11 +171,15 @@ test('118 ] and [ with one tile open pass a parked pane over; woken, it is on th
       timeout: 10_000,
     });
   }
-  await expect(tab).toHaveAttribute('data-state', 'later');
-  // Its tab wakes it; awake, [ from the pane after it reaches it again.
-  await tab.click();
-  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', parkedAddress);
+  await expect(row).toBeVisible();
+  // Its row tab wakes it and opens it beside; alone again, [ and ] reach
+  // it as they reach any other.
+  await row.click();
+  await expect(page.getByTestId('tile')).toHaveCount(2);
+  await expect(tab).toBeVisible({ timeout: 10_000 });
   await expect(tab).not.toHaveAttribute('data-state', 'later', { timeout: 10_000 });
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', parkedAddress);
   const woken = (await tabOrder(page)).filter((a): a is string => !!a);
   const after = woken[(woken.indexOf(parkedAddress) + 1) % woken.length];
   await page.keyboard.press(']');
@@ -221,7 +218,8 @@ test('118 the list: d parks the selected row in its place; opening it wakes it; 
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-address')));
   expect(addressesAfter).toEqual(addressesBefore);
   await shot(page, info, '118-later-list');
-  // A reader sees the mark; the button, d and the inbox's later are off for them.
+  // A reader sees the mark; minimise, d and the inbox's later are off for
+  // them, and a parked pane they open stays a tile, with the mark.
   const reader = await browser.newContext({ ignoreHTTPSErrors: true });
   const page2 = await reader.newPage();
   await signIn(page2, RO_TOKEN);
@@ -232,16 +230,19 @@ test('118 the list: d parks the selected row in its place; opening it wakes it; 
   await page2.keyboard.press('Escape');
   await row2.click();
   await expect(page2.getByTestId('pane-later')).toContainText('later');
-  await expect(page2.getByTestId('later')).toBeDisabled();
+  await expect(page2.getByTestId('minimise')).toBeDisabled();
+  await expect(page2.getByTestId('later')).toHaveCount(0);
   await page2.keyboard.press('d');
   await page2.waitForTimeout(1500);
   await expect(page2.getByTestId('pane-later')).toContainText('later');
+  await expect(page2.getByTestId('minimised-tab')).toHaveCount(0);
+  await shot(page2, info, '118-later-reader');
   await reader.close();
-  // Opening the row wakes it.
+  // Opening the row wakes it: a tile, awake, not in the row.
   await row.click();
   await expect(page).toHaveURL(new RegExp(`/p/${other.address.replace(/\//g, '\\/')}`));
   await expect(page.getByTestId('pane-later')).toHaveCount(0, { timeout: 10_000 });
-  await expect(page.getByTestId('later')).toHaveAttribute('data-on', '0');
+  await expect(minimisedOf(page, other.address)).toHaveCount(0);
 });
 
 test("118 the window view leans a parked pane's name in its cell header, upright again when woken", async ({

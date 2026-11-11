@@ -45,13 +45,11 @@ let startedHere =
 export function deskWords(d: Desk | undefined): string {
   if (!d) return 'desk';
   if (d.view === 'window' && d.window) return `desk · the window ${d.window}`;
-  if (d.view === 'list')
-    return `desk · the list${d.minimised?.length ? ` · ${d.minimised.length} minimised` : ''}`;
+  if (d.view === 'list') return 'desk · the list';
   const n = deskPanes(d).length;
   if (!n) return 'desk · empty';
   const parts = [`${n} pane${n === 1 ? '' : 's'}`];
   if (d.arrangement && n > 1) parts.push(d.arrangement);
-  if (d.minimised?.length) parts.push(`${d.minimised.length} minimised`);
   if (d.by) parts.push(`by ${d.by}`);
   return `desk · ${parts.join(' · ')}`;
 }

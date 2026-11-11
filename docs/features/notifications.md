@@ -236,13 +236,15 @@ with the pane and with the agent process; it survives a hub restart.
 
 Several agents call at once, and some of them can wait: the owner has
 looked, decided not now, and wants the pane out of the way without
-losing it. **Later** is that decision, made on a pane from any client:
-its tab goes to the end of the strip with a sleeping mark (`☾`, or `zz`
-where a font has no moon), its name leans in the pane's header (italics,
-where the font has them), it stops calling (no toast, no pulse, no
-flash), and it counts among the done panes rather than the pressing
-ones, in the inbox last, until the owner opens it again or wakes it on
-purpose. In text mode the listing's `kind` column reads `later` and its
+losing it. **Later** is that decision, made on a pane from any client,
+and **minimise** is its name on a tile: the pane leaves the tiles and
+the strip for the minimised row above the keys with a sleeping mark
+(`☾`, or `zz` where a font has no moon), it stops calling (no toast, no
+pulse, no flash), and it counts among the done panes rather than the
+pressing ones, in the inbox last, until the owner opens it again or
+wakes it on purpose. Where a parked pane is still shown as a tile or a
+cell (a reader's, the window view's), its name leans in the header
+(italics, where the font has them). In text mode the listing's `kind` column reads `later` and its
 last column, `pending`, names what waits underneath, so a keypad phone
 draws `zz · !` as the web draws `☾ later · ! permission`.
 
@@ -269,17 +271,22 @@ A notification that arrives while the pane is parked does not wake it:
 the owner said later, and the listing still carries the kind underneath
 for anyone who looks. Typing into it, answering its question or mailing
 its process is the owner coming back, so that wakes it, as it clears
-attention today; a mouse click is not, and leaves it parked. Opening the pane is the owner coming back too: the
-client that opens a parked pane sends the wake itself. On the web `d`
-parks the focused tile or the selected row and wakes it again, the `☾`
-pane button does the same, the inbox row has *later* and *wake*, and a
-click on a parked tab focuses it and wakes it; `muxway client later`
-and the MCP tool `later` do it from a script (see [driving
-muxway](driving.md)). Going round the panes with `]` and `[` in a single
-tile passes a parked pane over, as the phone's swipe does: the owner
-said later. The native clients follow in their repositories.
+attention today; a mouse click is not, and leaves it parked. Opening
+the pane is the owner coming back too: the client that opens a parked
+pane sends the wake itself. On the web `_` on a tile's header, or `-` or
+`d` on the focused tile, minimises it: the pane is parked and its tab
+goes to the row above the keys; `d` parks the list's selected row and
+the window view's focused cell; the inbox row has *later* and *wake*; a
+click on the row's tab, the add menu, the list or the inbox wakes the
+pane and opens it. A pane parked from anywhere, `muxway client later` or
+the MCP tool `later` from a script included (see [driving
+muxway](driving.md)), leaves the tiles of every client for their rows.
+Going round the panes with `]` and `[` in a single tile never reaches a
+parked pane, as the phone's swipe does not: the owner said later. The
+native clients follow in their repositories: Android with its row, the
+glasses and the phone with *later* and *wake* on the pane's menu.
 
-![a parked tab at the end of the strip](images/web-later-tab.png)
+![a parked pane in the minimised row](images/web-minimised.png)
 
 ```mermaid
 stateDiagram-v2

@@ -1,8 +1,9 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 import { control, HOST, settled, shot, signIn } from './fixtures';
 
-// The desk: the view every client shares. Two tiles opened and one
-// minimised come back at the app's start; a second client's change is
+// The desk: the view every client shares. Two tiles opened come back at
+// the app's start, with the minimised row (the panes parked for later,
+// which the listing carries); a second client's change is
 // followed within a moment, its typing never moves this one's focus; a
 // link to a view goes where it points and then writes the desk.
 
@@ -58,10 +59,17 @@ test('125 the desk comes back at the start: the tiles, the arrangement, the mini
     )
     .toMatchObject({
       panes: [LOGS, SPLIT],
-      minimised: [SPLIT2],
       focused: SPLIT,
       arrangement: layout,
     });
+  // The row is not the desk's: the pane minimised is parked on the host.
+  const r = await page.request.get('/v1/desk', { headers: { 'X-Muxway-Client': 'e2e' } });
+  expect(((await r.json()) as { desk: { minimised?: string[] } }).desk.minimised).toBeUndefined();
+  const listed = await page.request.get('/v1/panes', { headers: { 'X-Muxway-Client': 'e2e' } });
+  const parked = ((await listed.json()) as { panes: { address: string; later?: boolean }[] }).panes
+    .filter((p) => p.later)
+    .map((p) => p.address);
+  expect(parked).toEqual([SPLIT2]);
   // The client, still in its view, opened again in a new tab (the same
   // browser): the desk opens.
   const again = await page.context().newPage();

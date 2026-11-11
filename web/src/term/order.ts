@@ -5,10 +5,12 @@
 
 export const ORDER_MAX = 256;
 
-// The panes the owner parked for later go after every other, in the
-// order they would otherwise have; a woken pane takes its place back.
-export function parkedLast<T extends { address: string; later?: boolean }>(panes: T[]): T[] {
-  return [...panes.filter((p) => !p.later), ...panes.filter((p) => p.later)];
+// The minimised row's order: the panes parked for later, oldest parking
+// first, then by address.
+export function rowOrder<T extends { address: string; later_at?: number }>(panes: T[]): T[] {
+  return [...panes].sort(
+    (a, b) => (a.later_at ?? 0) - (b.later_at ?? 0) || a.address.localeCompare(b.address),
+  );
 }
 
 // When an inbox entry began waiting: its attention, or its parking.
