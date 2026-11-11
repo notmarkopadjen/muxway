@@ -130,12 +130,14 @@ describe('addRows', () => {
     expect(reader.groups.flatMap((g) => g.panes)).toHaveLength(4);
   });
 
-  it('says four open, and drops a minimised address the listing no longer has', () => {
+  it('says eight open, and drops a minimised address the listing no longer has', () => {
+    // Four of the listing's panes and four more tiles: eight open is full.
+    const more = Array.from({ length: 4 }, (_, i) => `bob-desktop/work/${i + 1}.0`);
     const rows = addRows({
       panes: PANES,
       hosts: HOSTS,
       me: ME,
-      open: [BUILD.address, DEPLOY.address, LOGS.address, HTOP.address],
+      open: [BUILD.address, DEPLOY.address, LOGS.address, HTOP.address, ...more],
       minimised: ['alice-laptop/work/9.9'],
       focused: BUILD,
     });

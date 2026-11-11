@@ -3,8 +3,8 @@ import { control, HOST, settled, shot, signIn } from './fixtures';
 
 // A fit gives the window back: three of a window's four panes as tiles,
 // zoomed in on one and out again, end at their asks, none held, the
-// window no wider than the fits need; and the four fits of a grid land
-// together, none rate limited.
+// window no wider than the fits need; and the seven fits of seven tiles of
+// one window land together, none rate limited.
 
 const LOGS = `${HOST}/work/1.0`;
 const SPLIT = `${HOST}/work/1.1`;
@@ -15,9 +15,15 @@ const SPLIT3 = `${HOST}/work/1.3`;
 // after it in the run match rows by text, and a window of ten and more
 // panes makes `work/1.1` match `work/1.10` too.
 const made: string[] = [];
+// Each split evens the row out, so the next one has room in it and the
+// panes stay side by side, as the tests below expect.
 async function split(request: APIRequestContext, target: string) {
   const id = await control(request, '/split', { target, dir: 'h' });
   made.push(id);
+  await control(request, '/select-layout', {
+    target: target.split('.')[0],
+    layout: 'even-horizontal',
+  });
   return id;
 }
 test.afterEach(async ({ request }) => {
@@ -112,24 +118,26 @@ test('122 three of four panes as tiles: a zoom in and out leaves every tile at i
   await shot(page, info, '122-back');
 });
 
-test('122 a grid of four of a five-pane window: the fits land together, none rate limited, none held', async ({
+test('122 seven of an eight-pane window as tiles: the fits land together, none rate limited, none held', async ({
   page,
   request,
 }, info) => {
-  for (let i = 0; i < 4; i++) await split(request, 'work:1.0');
+  await page.setViewportSize({ width: 1400, height: 900 });
+  for (let i = 0; i < 7; i++) await split(request, 'work:1.0');
   const resizes = watchResizes(page);
   await signIn(page);
-  await expect(page.getByTestId('pane-row').filter({ hasText: `${HOST}/work/1.4` })).toBeVisible({
+  await expect(page.getByTestId('pane-row').filter({ hasText: `${HOST}/work/1.7` })).toBeVisible({
     timeout: 10_000,
   });
-  await page.goto(`/p/${LOGS},${SPLIT},${SPLIT2},${SPLIT3}`);
+  const seven = [LOGS, ...Array.from({ length: 6 }, (_, i) => `${HOST}/work/1.${i + 1}`)];
+  await page.goto(`/p/${seven.join(',')}`);
   const tiles = page.getByTestId('tile');
-  await expect(tiles).toHaveCount(4);
+  await expect(tiles).toHaveCount(7);
   await settled(page);
   await expect
     .poll(
       async () => {
-        for (const a of [LOGS, SPLIT, SPLIT2, SPLIT3]) {
+        for (const a of seven) {
           const fit = lastFit(resizes.sent, a);
           if (!fit) return 'no fit';
           const size = await sizeOf(page, a);
@@ -142,5 +150,5 @@ test('122 a grid of four of a five-pane window: the fits land together, none rat
     )
     .toBe('ok');
   expect(resizes.limited).toBe(0);
-  await shot(page, info, '122-grid');
+  await shot(page, info, '122-seven');
 });

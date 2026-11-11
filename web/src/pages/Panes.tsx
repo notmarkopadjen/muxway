@@ -56,7 +56,7 @@ export function deskWords(d: Desk | undefined): string {
 
 // The pane list: every hub of the hubs box, its hosts, their sessions,
 // windows and panes. A click opens a pane; the pick box, space, or a
-// click while something is picked gathers up to four to open side by
+// click while something is picked gathers up to eight to open side by
 // side. A window row opens the window view, the host's own layout. Under
 // a window where you may type, `+ pane` splits it; on a host that starts
 // sessions, `+ session`. With one hub the hub level is not drawn; with

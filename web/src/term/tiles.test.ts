@@ -76,7 +76,12 @@ describe('tiles', () => {
     expect(parseRoute(routeFor([A, B]))).toEqual({ addresses: [A, B] });
     expect(parseRoute('')).toHaveProperty('error');
     expect(parseRoute([A, B, C, A].join(','))).toHaveProperty('error');
-    expect(parseRoute([A, B, C, 'c/d/1.0', 'e/f/1.0'].join(','))).toHaveProperty('error');
+    expect(
+      parseRoute(
+        [A, B, C, 'c/d/1.0', 'e/f/1.0', 'g/h/1.0', 'i/j/1.0', 'k/l/1.0', 'm/n/1.0'].join(','),
+      ),
+    ).toHaveProperty('error');
+    expect(parseRoute([A, B, C, 'c/d/1.0', 'e/f/1.0'].join(','))).not.toHaveProperty('error');
     expect(parseRoute(`work~${A},${B}`)).toEqual({ addresses: [`work~${A}`, B] });
     expect(parseRoute(`Work~${A}`)).toHaveProperty('error');
     expect(parseRoute(`work~~${A}`)).toHaveProperty('error');

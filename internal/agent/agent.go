@@ -548,10 +548,10 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 	return resp
 }
 
-// A window takes a few resizes at once, the fits a grid of tiles sends
-// together, then one more a second.
+// A window takes a few resizes at once, the fits a grid of up to eight
+// tiles sends together, then one more a second.
 const (
-	resizeBurst  = 4
+	resizeBurst  = 8
 	resizeRefill = time.Second
 )
 

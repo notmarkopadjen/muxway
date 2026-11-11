@@ -68,7 +68,7 @@ func TestSec123_MovingPanesNeedsWriteOnEveryPane(t *testing.T) {
 	// A zoom does not go with a layout alone.
 	expect(t, e.resize(full, shell0, `{"scope":"window","zoom":true,"layout":"`+before+`"}`), http.StatusBadRequest, "zoom without a size")
 	// Every pane writable: a pane not of the window is still refused, and
-	// the window's burst of four spent, the next arrangement inside the
+	// the window's burst of eight spent, the next arrangement inside the
 	// second is not taken.
 	e.expose(ts, "work:0.2", "--write")
 	waitFor(t, "the third pane writable", func() bool {
@@ -78,7 +78,7 @@ func TestSec123_MovingPanesNeedsWriteOnEveryPane(t *testing.T) {
 	expect(t, e.resize(full, shell0, foreign), http.StatusBadRequest, "a pane not of the window")
 	time.Sleep(1100 * time.Millisecond)
 	expect(t, e.resize(full, shell0, body), http.StatusOK, "every pane writable")
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 7; i++ {
 		expect(t, e.resize(full, shell0, `{"scope":"window","layout":"`+movedLayout(b, c, a)+`"}`), http.StatusOK, "within the burst")
 	}
 	expect(t, e.resize(full, shell0, body), http.StatusTooManyRequests, "within the second, past the burst")

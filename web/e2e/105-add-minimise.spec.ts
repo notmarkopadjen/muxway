@@ -23,6 +23,13 @@ async function parked(page: Page): Promise<string[]> {
     .map((p) => p.address);
 }
 
+// The panes split off by the control server, killed after each test.
+const made105: string[] = [];
+test.afterEach(async ({ request }) => {
+  for (const id of made105.splice(0).reverse())
+    await control(request, '/kill-pane', { target: id });
+});
+
 // Every request that would make something on a host.
 function countMaking(page: Page) {
   const made = { n: 0 };
@@ -32,7 +39,7 @@ function countMaking(page: Page) {
   return made;
 }
 
-test('105 the add menu: + pane, + session, then the other panes by host and session; a pick is one more tile; four open, a pick replaces', async ({
+test('105 the add menu: + pane, + session, then the other panes by host and session; a pick is one more tile; eight open, a pick replaces', async ({
   page,
   request,
 }, info) => {
@@ -85,22 +92,33 @@ test('105 the add menu: + pane, + session, then the other panes by host and sess
     new RegExp(`/p/${LOGS},${SHELL0},${split.address},${RO}$`.replace(/\//g, '\\/')),
   );
   expect(made.n).toBe(1);
-  // Four open: the menu says so, and a pick takes the focused tile's place.
+  // Eight open: the menu says so, and a pick takes the focused tile's place.
+  for (let i = 0; i < 4; i++) {
+    made105.push(await control(request, '/split', { target: 'work:1.0', dir: 'h' }));
+    await control(request, '/select-layout', { target: 'work:1', layout: 'tiled' });
+  }
+  const more = Array.from({ length: 4 }, (_, i) => `${HOST}/work/1.${i + 2}`);
+  await expect(page.locator(`[data-testid="tab"][data-address="${more[3]}"]`)).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.goto(`/p/${LOGS},${SHELL0},${split.address},${RO},${more.join(',')}`);
+  await expect(page.getByTestId('tile')).toHaveCount(8);
+  await settled(page);
+  const focused = (await page
+    .locator('[data-testid="tile"][data-focused]')
+    .getAttribute('data-pane'))!;
   await page.getByTestId('add').click();
-  await expect(page.getByTestId('add-full')).toContainText('four open: a pick replaces bash');
+  await expect(page.getByTestId('add-full')).toContainText('eight open: a pick replaces');
   await expect(page.getByTestId('add-pane')).toHaveCount(1);
   await shot(page, info, '105-add-menu-full');
   await entry(page, BOB).click();
-  await expect(page.getByTestId('tile')).toHaveCount(4);
-  await expect(page.getByTestId('pane')).toHaveAttribute(
-    'data-panes',
-    `${LOGS} ${SHELL0} ${split.address} ${BOB}`,
-  );
+  await expect(page.getByTestId('tile')).toHaveCount(8);
   await expect(tile(page, BOB)).toHaveAttribute('data-focused', '');
+  await expect(tile(page, focused)).toHaveCount(0);
   expect(made.n).toBe(1);
   // Leave the window as the other specs expect it.
   await control(request, '/kill-pane', { target: split.pane_id });
-  await expect(page.getByTestId('tile')).toHaveCount(3, { timeout: 8000 });
+  await expect(page.getByTestId('tile')).toHaveCount(7, { timeout: 8000 });
   await page.goto('/');
   await expect
     .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })

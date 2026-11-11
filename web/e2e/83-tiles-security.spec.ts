@@ -36,9 +36,9 @@ test('83 tiles: a read-only token types nowhere; a bad route asks the hub for no
     const u = r.url();
     if (/\/v1\/panes\/.+/.test(u) && !u.includes(SHELL0) && !u.includes('work/0.1')) reads.push(u);
   });
-  const five = Array.from({ length: 5 }, (_, i) => `${HOST}/work/${i}.0`).join(',');
-  await page.goto(`/p/${five}`);
-  await expect(page.getByTestId('pane-error')).toContainText('up to 4');
+  const nine = Array.from({ length: 9 }, (_, i) => `${HOST}/work/${i}.0`).join(',');
+  await page.goto(`/p/${nine}`);
+  await expect(page.getByTestId('pane-error')).toContainText('up to 8');
   await page.goto('/p/..%2F..%2Fetc%2Fpasswd');
   await expect(page.getByTestId('pane-error')).toBeVisible();
   await page.goto(`/p/${encodeURIComponent('<img src=x onerror=alert(1)>')}/a/1.0`);

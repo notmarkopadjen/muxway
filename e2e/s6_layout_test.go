@@ -87,21 +87,21 @@ func TestSec53_ResizeBoundsAndBurst(t *testing.T) {
 			limited++
 		}
 	}
-	// A window takes four at once, then one a second.
-	for i := 1; i < 4; i++ {
+	// A window takes eight at once, then one a second.
+	for i := 1; i < 8; i++ {
 		if statuses[i] != http.StatusOK {
 			t.Fatalf("resize %d of the burst: %d", i, statuses[i])
 		}
 	}
-	if limited < 24 {
+	if limited < 20 {
 		t.Fatalf("burst not limited: %v", statuses)
 	}
 	size := ts.windowSize("work:0")
-	if size == before || !strings.HasPrefix(size, "113x") && !strings.HasPrefix(size, "114x") {
+	if size == before || !strings.HasPrefix(size, "117x") && !strings.HasPrefix(size, "118x") {
 		t.Fatalf("window size after the burst: %s (before %s)", size, before)
 	}
 	logs, _ := os.ReadFile(filepath.Join(e.logs, "agent-"+host+".log"))
-	if !strings.Contains(string(logs), "op=resize") || !strings.Contains(string(logs), "cols=113 rows=31 result=ok") ||
+	if !strings.Contains(string(logs), "op=resize") || !strings.Contains(string(logs), "cols=117 rows=31 result=ok") ||
 		!strings.Contains(string(logs), "result=rate_limited") {
 		t.Fatalf("agent audit:\n%s", logs)
 	}

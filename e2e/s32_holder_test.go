@@ -154,7 +154,7 @@ func TestSec229_RefitsStayUnderTheWindowsBucket(t *testing.T) {
 	e, _, _ := basic(t)
 	tok := e.token("writer", []string{host + "/*"}, []string{host + "/*"})
 	ok, limited := 0, 0
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 12; i++ {
 		r := e.resize(tok, shell0, `{"cols":`+itoa(100+i)+`,"rows":30,"scope":"window","client":"Chrome"}`)
 		switch r.status {
 		case http.StatusOK:
@@ -165,8 +165,8 @@ func TestSec229_RefitsStayUnderTheWindowsBucket(t *testing.T) {
 			t.Fatalf("resize %d: %d %s", i, r.status, r.body)
 		}
 	}
-	if ok > 5 || limited == 0 {
-		t.Fatalf("eight resizes with labels: %d taken, %d limited", ok, limited)
+	if ok > 9 || limited == 0 {
+		t.Fatalf("twelve resizes with labels: %d taken, %d limited", ok, limited)
 	}
 }
 
