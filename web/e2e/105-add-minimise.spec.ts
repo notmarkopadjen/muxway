@@ -98,7 +98,7 @@ test('105 the add menu: + pane, + session, then the other panes by host and sess
     .toBe('100x30');
 });
 
-test('105 minimise: _ takes the tile to the row above the keys, still read and painted; a click or the menu brings it back; the last tile stays', async ({
+test('105 minimise: _ takes the tile to the row above the keys, still read and painted; a click or the menu brings it back', async ({
   page,
   request,
 }, info) => {
@@ -115,10 +115,8 @@ test('105 minimise: _ takes the tile to the row above the keys, still read and p
   const minimised = page.locator(`[data-testid="minimised-tab"][data-address="${LOGS}"]`);
   await expect(minimised).toHaveCount(1);
   await expect(page.locator(`[data-testid="tab"][data-address="${LOGS}"]`)).toHaveCount(0);
-  // The last tile cannot be minimised: its button is off and - does nothing.
-  await expect(tile(page, SHELL0).getByTestId('minimise')).toBeDisabled();
-  await page.keyboard.press('-');
-  await expect(page.getByTestId('tile')).toHaveCount(1);
+  // The last tile's button is on too: spec 129 has what it does.
+  await expect(tile(page, SHELL0).getByTestId('minimise')).toBeEnabled();
   // The pane is still read, and painted with its state when it changes.
   await page.waitForRequest((r) => r.url().includes(`/v1/panes/${LOGS}?`), { timeout: 5000 });
   await control(request, '/notify', { pane: logsId, kind: 'question', text: 'ship it?' });
@@ -154,6 +152,18 @@ test('105 minimise: _ takes the tile to the row above the keys, still read and p
   await expect(tile(page, LOGS).locator('.mx-tile-head')).not.toHaveAttribute('data-state', /./, {
     timeout: 10_000,
   });
+  // The desk has the row back before the page is left, so the next spec
+  // (and a read-only account's view, which takes the desk's row) finds
+  // nothing minimised.
+  await expect
+    .poll(
+      async () => {
+        const r = await page.request.get('/v1/desk', { headers: { 'X-Muxway-Client': 'e2e' } });
+        return ((await r.json()) as { desk: { minimised?: string[] } }).desk.minimised ?? [];
+      },
+      { timeout: 5000 },
+    )
+    .toEqual([]);
   await page.goto('/');
   await expect(page.getByTestId('panes')).toBeVisible();
   for (const target of ['work:0', 'work:1'])

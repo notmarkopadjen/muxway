@@ -133,10 +133,13 @@ present, and the Android pages in its own plan.
 
 ## Review (after implementation)
 
-- [ ] Diff matches the plan, deviations explained here
-- [ ] Security rules (AGENTS.md section 2) hold
+- [x] Diff matches the plan, deviations explained here. One addition
+  found by spec 105: a page left within the half second of quiet lost
+  its pending desk write (the hub then kept a stale row for the next
+  view, which now takes it); `pagehide` sends it with `keepalive`.
+- [x] Security rules (AGENTS.md section 2) hold
 - [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
-- [ ] Docs and diagrams updated
+- [x] Docs and diagrams updated
 
 ## Test run
 

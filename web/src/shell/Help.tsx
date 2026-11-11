@@ -74,7 +74,7 @@ const KEYS: [string, string][] = [
   ],
   [
     '+ / -',
-    'tiles: the add menu (one more pane beside the focused one, a new session, a minimised pane back, any other pane as one more tile) / minimise the focused tile to the row above the keys; a click on its tab there brings it back',
+    'tiles: the add menu (one more pane beside the focused one, a new session, a minimised pane back, any other pane as one more tile) / minimise the focused tile to the row above the keys (the last tile: the next pane takes it, or the list); a click on its tab there brings it back',
   ],
   [
     'e / E',

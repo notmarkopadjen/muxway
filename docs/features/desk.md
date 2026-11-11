@@ -25,11 +25,13 @@ sequenceDiagram
 ## What it holds
 
 One document per hub, in `hub.json` beside the tokens (see
-[`GET /v1/desk`](../protocol/v1.md#get-v1desk)): `view` (`panes` or
-`window`), up to four `panes`, the `focused` one, the `arrangement` and,
+[`GET /v1/desk`](../protocol/v1.md#get-v1desk)): `view` (`panes`,
+`window` or `list`), up to four `panes`, the `focused` one, the `arrangement` and,
 for a custom one, the `tree` and `weights` the tiles are laid out by,
 the `minimised` panes, the tab `order`, or the `window` the window view
-shows; `updated`, `by`, the principal that wrote it last, and `rev`, the
+shows; a `list` desk has nothing open and keeps the `minimised` row
+and the `order`, written when the last tile is minimised while no other
+pane is awake, and opens nothing; `updated`, `by`, the principal that wrote it last, and `rev`, the
 hub's count of writes, by which clients order desks. Panes are named by
 address, as everywhere.
 
@@ -48,8 +50,15 @@ address, as everywhere.
   minimised row; the focus is restored on opening only, so typing on
   the phone does not move the web's focus. A desk of a lower revision
   than the client's own last write is ignored, so a write in flight is
-  not undone, and a view opened by a link writes its own desk before it
-  follows any.
+  not undone. **The minimised row is the desk's**: a view opened from
+  the list or a link, which has no row of its own, takes the desk's
+  row, less the tiles it opens, once the desk is read, and writes its
+  own desk only then (before it follows any), so a view that opens never
+  empties every client's row. A view opened from the desk's row, or
+  within the view, carries its row as before. A page left within the
+  half second of quiet (a reload, the tab closed) sends its last desk
+  on `pagehide`, with `keepalive`, so a row minimised a moment before
+  is not lost.
 - **Android** reads and writes the desk the same way; the glasses and
   the phone open the desk's focused pane from their lists.
 
