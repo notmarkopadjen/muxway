@@ -321,8 +321,10 @@ were moved since: an arrangement stays. Moving between
 panes inside the pane view (`]` `[`, a tab, a swap) is not leaving: a
 pane shown in a tile stays at the size it was given, and when it comes
 back at that size nothing is sent, so switching back and forth does not
-resize the host; the tile shows the last frame it had of the pane until
-the host's next one. With fit off, the pane keeps the host's size and is
+resize the host (a pane zoomed here is the exception: the fit that
+brings its tiles back is always sent, since the listing may not have
+seen the zoom yet); the tile shows the last frame it had of the pane
+until the host's next one. With fit off, the pane keeps the host's size and is
 scaled to the box instead.
 
 Several clients can fit the same window, and the last one to send a size

@@ -3,6 +3,7 @@ import { ApiError, target } from '../api/client';
 import { resizePane } from '../api/queries';
 import type { Pane } from '../api/types';
 import { CLIENT_LABEL } from './client';
+import { spared } from './spare';
 import { cellsFor, inner } from './measure';
 
 // Fit: the host follows the box. Measures the box, debounces, sends a
@@ -15,8 +16,9 @@ import { cellsFor, inner } from './measure';
 // away leaves its pane fitted: the pane view keeps panes at size while
 // another is shown in their place and releases them all when it is left
 // (releaseKept); a kept pane found at the size asked for is not sent
-// again. `asked` is the last size sent, with when, so a tile can tell a
-// size the host would not give. `slack` is height the box has lost to something that is not a resize,
+// again, unless the fit takes it back from a zoom made here (spare.ts).
+// `asked` is the last size sent, with when, so a tile can tell a size
+// the host would not give. `slack` is height the box has lost to something that is not a resize,
 // the input line grown while a message is written: the fit measures as
 // if it were not there, so the host is not resized a row at a time.
 // The release must survive the page going away, hence keepalive. It can
@@ -65,6 +67,9 @@ export interface FitOptions {
 
 // Panes fitted and not yet released, across tiles that came and went.
 const kept = new Set<string>();
+// Panes this page last asked zoomed: the fit that brings their tiles
+// back is sent whatever the listing says (spare.ts).
+const zoomedHere = new Set<string>();
 export function releaseKept(leaving = false) {
   const worker =
     leaving && typeof navigator !== 'undefined' ? navigator.serviceWorker?.controller : null;
@@ -74,6 +79,7 @@ export function releaseKept(leaving = false) {
     for (const a of kept) release(a);
   }
   kept.clear();
+  zoomedHere.clear();
 }
 if (typeof window !== 'undefined') window.addEventListener('pagehide', () => releaseKept(true));
 
@@ -120,8 +126,10 @@ export function useFit(
       fitted.current = true;
       setAsked({ cols, rows, at: Date.now() });
       const have = kept.has(address) ? known.current?.() : undefined;
+      const fromZoom = zoomedHere.has(address);
       kept.add(address);
-      if (have && have.cols === cols && have.rows === rows && (!zoom || have.zoomed)) {
+      if (zoom) zoomedHere.add(address);
+      if (spared(have, { cols, rows }, zoom, fromZoom)) {
         setSize({ cols, rows });
         return;
       }
@@ -134,6 +142,7 @@ export function useFit(
         client: CLIENT_LABEL,
       })
         .then((r) => {
+          if (!zoom) zoomedHere.delete(address);
           setSize({ cols: r.pane.width, rows: r.pane.height });
           if (live) done.current?.(r);
         })
@@ -185,6 +194,7 @@ export function useFit(
       if (fitted.current && !keep) {
         fitted.current = false;
         kept.delete(address);
+        zoomedHere.delete(address);
         release(address);
       }
     };
@@ -195,6 +205,7 @@ export function useFit(
     if (!enabled && fitted.current) {
       fitted.current = false;
       kept.delete(address);
+      zoomedHere.delete(address);
       release(address);
       setSize(null);
     }
