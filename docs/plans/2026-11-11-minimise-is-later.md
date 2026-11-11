@@ -279,4 +279,10 @@ Deviations:
 
 ## Test run
 
-Link to the recorded run: result, commit, logs, screenshots.
+- Full suite on `ca972fb`: [#341](https://github.com/notmarkopadjen/muxway/issues/341),
+  295 tests, one failed: spec 101 (a header dropped on a divider), which
+  this change does not touch, hit its 45 s timeout while the page
+  settled under the suite's load; every minimise and later test passed.
+- The same tree with spec 101 alone in the browser, the Go suite in
+  full: [#342](https://github.com/notmarkopadjen/muxway/issues/342),
+  passed (the issue names the commit before this section was written).
