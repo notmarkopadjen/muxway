@@ -566,13 +566,13 @@ function Tile(props: TileProps) {
         setOver(null);
         props.onDrop(zone);
       }}
-      onDoubleClick={() => p && props.onZoom(p)}
     >
       <div
         className="mx-tile-head mx-painted"
         data-state={st === 'quiet' ? undefined : st}
         data-mode={p?.mode}
         onClick={props.onFocus}
+        onDoubleClick={() => p && props.onZoom(p)}
         draggable={several}
         onDragStart={(e) => {
           e.dataTransfer.setData('text/plain', '');
@@ -2107,10 +2107,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
               disabled: !focusedPane,
               on: !several,
               title: several
-                ? 'this pane alone (z, Enter, or double-click)'
+                ? 'this pane alone (z, Enter, or double-click its header)'
                 : focusedPane?.hub
-                  ? "the window's panes side by side (z, or double-click)"
-                  : "the window's panes side by side (z, or double-click); w: the mirror layout",
+                  ? "the window's panes side by side (z, or double-click the header)"
+                  : "the window's panes side by side (z, or double-click the header); w: the mirror layout",
             },
             {
               id: 'open-palette',

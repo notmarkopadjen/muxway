@@ -70,7 +70,7 @@ const KEYS: [string, string][] = [
   ],
   [
     '1 – 4 / l / = / x / F / z / w',
-    "tiles: focus one, next arrangement, equal shares, close the pane on its host (asks y / n; elsewhere the tile), fit all, zoom (one pane alone and back; or double-click a tile, its header or tab), the mirror layout; Shift+click a tab to open it beside; drag a header onto a tile's middle to swap, onto its edge to split",
+    "tiles: focus one, next arrangement, equal shares, close the pane on its host (asks y / n; elsewhere the tile), fit all, zoom (one pane alone and back; or double-click a tile's header or its tab), the mirror layout; Shift+click a tab to open it beside; drag a header onto a tile's middle to swap, onto its edge to split",
   ],
   [
     '+ / -',
@@ -86,7 +86,7 @@ const KEYS: [string, string][] = [
   ],
   [
     'x / z / 0 / = / + / -',
-    "window view: hide, this pane alone (or Enter, double-click), host layout, equal shares, bigger, smaller; l (▦): the next arrangement of the window's panes, on the host",
+    "window view: hide, this pane alone (or Enter, double-click its header), host layout, equal shares, bigger, smaller; l (▦): the next arrangement of the window's panes, on the host",
   ],
   [
     'i',
