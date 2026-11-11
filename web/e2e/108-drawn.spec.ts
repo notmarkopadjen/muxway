@@ -161,7 +161,8 @@ test('108 every move of the tiles is drawn, with the tiles named', async ({ page
   await expect(page.getByTestId('pane')).toHaveAttribute('data-panes', `${RO} ${SHELL0} ${LOGS}`);
   await none(page);
   expect((await moves(page)).names).toHaveLength(6);
-  // Minimised and back.
+  // Minimised (the writable logs pane: minimise parks it) and back.
+  await tile(LOGS).locator('.mx-tile-head').click();
   await page.keyboard.press('-');
   await expect(tiles).toHaveCount(2);
   await none(page);

@@ -20,10 +20,10 @@ nothing but the hub to talk to.
    shows `⟳ working` (see [the lens](#the-lens)). A click opens the pane.
    `I` opens the [inbox](inbox.md), every waiting pane oldest first, and
    `o` the oldest of them; `⚑ n` beside the brand counts them. `d` on
-   the selected row parks its pane for [later](notifications.md#later):
-   the row keeps its place with `☾ later`, the pane's tab goes last
-   wherever a strip shows it, and it stops calling; `d` again or opening
-   the pane wakes it.
+   the selected row minimises its pane, parked for
+   [later](notifications.md#later): the row keeps its place with
+   `☾ later`, the pane's tab leaves every strip for the minimised row,
+   and it stops calling; `d` again or opening the pane wakes it.
    The pick box, `space` on the highlighted row, or a click while
    something is picked gathers up to four panes; a bar under the list
    then offers **open N side by side**. Each window has a button, `▦ 0:
@@ -346,7 +346,7 @@ view, each live and typable. The page is the Android client's pane view:
 │ $ make test                                                                   │
 │ ok                                                                            │
 └───────────────────────────────────────────────────────────────────────────────┘
-[? deploy][hub.log]                                          ← the minimised row
+[☾ deploy][☾ · ! hub.log]                                    ← the minimised row: the parked panes
 > ________________________________________________________________________ [send]
 [Enter][Tab][BSpace][Escape]…
 ✳ [/clear][/exit][/compact][/rename][/model][/resume][/usage][/context][/help]…
@@ -358,8 +358,7 @@ view, each live and typable. The page is the Android client's pane view:
   the right the pane buttons, 32 px squares with a label under
   the pointer: `▦` arrangement, `⊞` equal shares, `↺` the host's
   layout (the window view's; off here), `⤢` fit, `▮` direct typing,
-  `⎇` changes, `☾` later (selected while the pane is parked), `⇗` share,
-  `⊡` zoom, `≡` go to a pane. The row is the same in
+  `⎇` changes, `⇗` share, `⊡` zoom, `≡` go to a pane. The row is the same in
   every view, the window view included: a button whose action does not
   apply is disabled, never left out, so nothing moves under the
   pointer; on a narrow screen (640 px and under) they fold into one
@@ -478,8 +477,11 @@ sequenceDiagram
   a writable tile on a host with preview roots counts the repository's
   changes (`⎇ +3 ~5 −1`, `⎇ ✓` when clean, nothing outside a
   repository); a click on the count opens the changes window (see
-  [changes](changes.md)). `_` minimises the tile (below); on the last
-  tile the next awake pane takes its place. The controls sit in the top row,
+  [changes](changes.md)). `_` minimises the tile: its pane is parked for
+  [later](notifications.md#later) and its tab goes to the row above the
+  keys (below); on the last tile the next awake pane takes its place.
+  It is disabled, with the reason, on a read-only pane and on a host
+  whose agent is older than the mark. The controls sit in the top row,
   at the right, as icons: `▦` the next arrangement and `⊞` equal
   shares (with several tiles), `⤢` fit for the focused tile (selected
   when on), `▮` direct typing (see [direct](direct.md)), `⎇` the
@@ -528,23 +530,31 @@ sequenceDiagram
   long name or place in the go-to dialog.
 
   ![the add menu](images/web-add-menu.png)
-- The **minimised row**. `_` on a tile's header, or `-` on the focused
-  tile, takes the tile out of the arrangement and puts its tab in a row
-  right above the key row, painted like a tab with its glyph and the
-  state's colours, and still read every two seconds, so the glyph keeps
-  moving; its tab leaves the strip while it is below. A click on the
-  tab brings the tile back, focused, as does its entry in the add menu;
-  with four tiles open it takes the focused tile's place. The last tile
-  minimises too: the next awake pane of the strip takes the tile, the
-  one `]` would show, or, with none awake, the pane joins the row and
-  the view goes back to the list, the desk saying so (`view: "list"`,
-  see [the desk](desk.md)). Closing the last tile brings a minimised
-  pane back instead of leaving the view. The row is not drawn while it
-  is empty. The row is the desk's: a view opened from the list or a
-  link takes the desk's row, less the tiles it opens, and writes
-  nothing before it has read the desk once, so every client shows one
-  row and a reload keeps it; the fit of a minimised pane is kept and
-  released like a closed tile's, when the view is left.
+- The **minimised row** is the panes parked for
+  [later](notifications.md#later), less the tiles: every parked pane the
+  page lists, oldest parking first, as a tab right above the key row
+  with `☾`, its name and, dimmed, the glyph of what waits underneath
+  (`☾ · !`), painted from the listing as the strip is. `_` on a tile's
+  header, or `-` or `d` on the focused tile, parks the pane on its host
+  and takes the tile out of the arrangement; its tab leaves the strip for
+  the row. So does a pane parked from anywhere else, the list's `d`, the
+  inbox row, the phone, `muxway client later` or the MCP tool: a tile
+  whose pane another client parked leaves for the row within a listing's
+  read, on every client. A click on the row's tab wakes the pane and
+  brings the tile back, focused, as does its entry in the add menu; with
+  four tiles open it takes the focused tile's place. A parked pane
+  opened from the list, the inbox or a link is woken as it opens. The
+  last tile minimises too: the next awake pane of the strip takes the
+  tile, the one `]` would show, or, with none awake, the view goes back
+  to the list, the desk saying so (`view: "list"`, see [the
+  desk](desk.md)). The row is not drawn while it is empty. Because the
+  row is the host's mark, every client shows the same one and a reload,
+  a hub restart or an agent restart keeps it, with nothing in the desk;
+  the fit of a parked pane is kept and released like a closed tile's,
+  when the view is left. Minimising is a write under the write grant: a
+  reader sees the row and the marks, `_` is off for them with the
+  reason, and a parked pane they open stays a tile, its name leaning
+  under `☾ later`.
 
   ![a minimised pane](images/web-minimised.png)
 - **Zoom** is one view at two distances, not two views: `⊡`, `z` or a
@@ -560,16 +570,16 @@ sequenceDiagram
   opens there (see *Look and motion*).
 - A pane that exits (`exit` in its shell, say) leaves the view by
   itself within a second, with a toast saying which: among tiles the
-  others close up, alone it takes you back to the list, or to the first
-  minimised pane.
+  others close up, alone it takes you back to the list.
 - While a fit is on its way to the host, a tile keeps the last frame it
   had instead of the host's answers at the old size, for three seconds
   at most, so switching panes does not flash a smaller screen.
 - `]` and `[` go to the next or previous pane: the next tile, or with
   one tile open the strip's neighbour shown in it (the phone's swipe),
-  coming round at either end and passing over a parked pane (`☾`, see
-  [later](notifications.md#later)), which only its tab, a row or the
-  inbox brings back;
+  coming round at either end; a parked pane (`☾`, see
+  [later](notifications.md#later)) is not on the way, being the
+  minimised row's, and only its tab there, the add menu, the list or the
+  inbox brings it back;
   `1` to `4` focus a tile by number, `Enter` opens it alone.
 - The **command row** under the key bar is for the program in the
   focused pane, one row that scrolls sideways. When the pane is Claude
@@ -871,9 +881,9 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `v` | speak: record a clip for the hub's transcriber, onto the input line; held, it records until released; tapped, `v` again stops; `Esc` drops it |
 | `p` | selector: go to a pane or window, or start a session on a host |
 | `I` / `o` | the [inbox](inbox.md): every pane that waits for you, oldest first, the parked ones last; `Enter` opens the selected one (and wakes it) / open the oldest waiting pane that is not parked |
-| `d` | later: park the focused tile's pane, or the selected row's (see [notifications](notifications.md#later)); its tab goes last with `☾`, painted plain, the header says `☾ later` with the kind underneath, and no toast, flash or notification calls for it; `d` again, a click on its tab, opening it, typing, an answer or a mail wakes it; the `☾` pane button does the same, selected while parked; off on a read-only pane and on a host older than this |
+| `d` | minimise: park the focused tile's pane, or the selected row's, for [later](notifications.md#later); the tile leaves for the row above the keys and its tab for the row's, with `☾`, and no toast, flash or notification calls for it; a click on it there, opening it, typing, an answer or a mail wakes it; off on a read-only pane and on a host older than the mark. The window view: park or wake the focused cell's pane, whose cell stays |
 | `+` | the list: one more pane in the selected row's window; it opens. Tiles: the add menu |
-| `-` | tiles: minimise the focused tile to the row above the keys; a click on its tab there, or its entry in the add menu, brings it back; on the last tile the next awake pane takes the tile, or, with none, the view goes back to the list |
+| `-` | tiles: minimise the focused tile, as `d` does; a click on its tab in the row, or its entry in the add menu, wakes it and brings it back; on the last tile the next awake pane takes the tile, or, with none, the view goes back to the list |
 | `S` | a new session on the selected row's host (or the first that allows it): a one-line form, `Enter` starts, `Esc` cancels |
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |

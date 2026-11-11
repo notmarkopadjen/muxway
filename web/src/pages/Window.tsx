@@ -855,7 +855,6 @@ export function WindowPage() {
             focused={focusedPane?.address ?? null}
             hidden={hiddenAddresses}
             onTab={onTab}
-            onWake={(a) => setLater(a, false)}
           />
           <AddMenu
             pane={focusedPane}
@@ -941,21 +940,6 @@ export function WindowPage() {
                 : !previews
                   ? "the repository's changes; the host has no preview roots"
                   : "git's changes of the pane's repository, over the cell (g)",
-            },
-            {
-              id: 'later',
-              glyph: '☾',
-              label: 'later',
-              onClick: () => focusedPane && setLater(focusedPane.address, !focusedPane.later),
-              disabled: !writable || !parks,
-              on: !!focusedPane?.later,
-              title: !writable
-                ? 'later: park the pane, its tab goes last; needs a writable pane'
-                : !parks
-                  ? 'later: park the pane; the host is older than this'
-                  : focusedPane?.later
-                    ? 'later: parked; wake it (d)'
-                    : 'later: park the pane, its tab goes last and it stops calling (d)',
             },
             {
               id: 'share',

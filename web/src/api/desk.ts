@@ -13,14 +13,13 @@ import type { Layout, TileNode, Weights } from '../term/tiles';
 // has and applies nothing it already shows: two clients then settle
 // instead of handing the same desk back and forth.
 export interface Desk {
-  // list: nothing open, the minimised row kept.
+  // list: nothing open (the last tile minimised with no other pane awake).
   view: 'panes' | 'window' | 'list';
   panes?: string[];
   focused?: string;
   arrangement?: Layout;
   tree?: TileNode;
   weights?: Weights;
-  minimised?: string[];
   order?: string[];
   window?: string;
   updated?: number;
@@ -50,7 +49,6 @@ export function deskBody(d: Desk): string {
     arrangement: d.arrangement ?? '',
     tree: d.tree ?? null,
     weights: d.weights ?? {},
-    minimised: d.minimised ?? [],
     order: d.order ?? [],
     window: d.window ?? '',
   });
@@ -110,8 +108,8 @@ export function writeDesk(d: Desk, now = false) {
 }
 
 // A page left within the moment of quiet (a reload, a link away, the
-// tab closed) sends what it was about to: the row minimised a moment
-// before the tab closed is not lost.
+// tab closed) sends what it was about to: a tile opened a moment before
+// the tab closed is not lost.
 if (typeof window !== 'undefined')
   window.addEventListener('pagehide', () => {
     if (pending) void flush(true);

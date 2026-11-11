@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -109,7 +110,9 @@ func TestFlow197_DeskIsSharedTellsEveryClientAndSurvivesTheHub(t *testing.T) {
 	// Read back with the ETag.
 	r = e.get(other, "/v1/desk")
 	expect(t, r, http.StatusOK, "read")
-	if !strings.Contains(r.body, `"focused":"alice-laptop/work/0.1"`) || !strings.Contains(r.body, `"minimised":["alice-laptop/work/0.2"]`) {
+	// An older client's minimised row is taken and dropped: the row is the
+	// listing's parked panes.
+	if !strings.Contains(r.body, `"focused":"alice-laptop/work/0.1"`) || strings.Contains(r.body, `"minimised"`) {
 		t.Fatalf("read: %s", r.body)
 	}
 	etag := r.header.Get("ETag")
@@ -134,4 +137,15 @@ func TestFlow197_DeskIsSharedTellsEveryClientAndSurvivesTheHub(t *testing.T) {
 	if r := e.get(full, "/v1/desk"); !strings.Contains(r.body, `"view":"window"`) || !strings.Contains(r.body, `"window":"alice-laptop/work/0"`) {
 		t.Fatalf("the window desk: %s", r.body)
 	}
+	// So is the list: nothing open, the order kept; an older client's row
+	// is taken and dropped, seventeen of them refused as before.
+	expect(t, e.putDesk(full, `{"view":"list","minimised":["alice-laptop/work/0.2"],"order":["alice-laptop/work/0.1"]}`), http.StatusOK, "a list desk")
+	if r := e.get(full, "/v1/desk"); !strings.Contains(r.body, `"view":"list"`) || !strings.Contains(r.body, `"order":["alice-laptop/work/0.1"]`) || strings.Contains(r.body, `"minimised"`) {
+		t.Fatalf("the list desk: %s", r.body)
+	}
+	many := make([]string, 17)
+	for i := range many {
+		many[i] = `"alice-laptop/work/1.` + strconv.Itoa(i) + `"`
+	}
+	expect(t, e.putDesk(full, `{"view":"list","minimised":[`+strings.Join(many, ",")+`]}`), http.StatusBadRequest, "seventeen minimised")
 }

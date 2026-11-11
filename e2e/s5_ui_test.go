@@ -179,13 +179,23 @@ func TestUI_Close(t *testing.T) {
 
 // One window's tiles kept in step with the window need a window whose
 // panes are all writable; spec 100 runs here with MX_ARRANGE set, its
-// read-only case in the main environment.
+// read-only case in the main environment, and so does the half of spec
+// 131 that minimises the last tile to the list (every pane parked).
 func TestUI_Arrange(t *testing.T) {
 	npx, webDir := uiTools(t)
+	grep := "100-|131-"
 	if g := os.Getenv("MX_GREP"); g != "" {
-		if ok, _ := regexp.MatchString(g, "100-"); !ok {
-			t.Skip("MX_GREP leaves spec 100 out")
+		// Only this environment's specs run here, those of them the grep keeps.
+		var here []string
+		for _, spec := range []string{"100-", "131-"} {
+			if ok, _ := regexp.MatchString(g, spec); ok {
+				here = append(here, spec)
+			}
 		}
+		if len(here) == 0 {
+			t.Skip("MX_GREP leaves specs 100 and 131 out")
+		}
+		grep = strings.Join(here, "|")
 	}
 	e := newEnv(t)
 	ts := newTmux(t)
@@ -195,7 +205,7 @@ func TestUI_Arrange(t *testing.T) {
 	e.expose(ts, "work", "--write")
 	full := e.token("browser", []string{"*"}, []string{"*"})
 	control := e.startControl(t, ts, a)
-	runPlaywright(t, e, npx, webDir, "100-", "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_ARRANGE=1")
+	runPlaywright(t, e, npx, webDir, grep, "MX_TOKEN="+full, "MX_CONTROL="+control, "MX_ARRANGE=1")
 }
 
 // The keyboard and direct typing need a pane whose program shows each

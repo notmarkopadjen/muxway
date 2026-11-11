@@ -38,7 +38,7 @@ import { Tabs } from '../components/Tabs';
 import { useToast } from '../components/Toast';
 import { noteChange, noteOwn, useLens, onTouch } from '../term/lens';
 import { drawn, nameFor, useMoving } from '../term/drawn';
-import { inOrder, move, parkedLast, step } from '../term/order';
+import { inOrder, move, rowOrder, step } from '../term/order';
 import { setTabOrder, useHelper, useTabOrder } from '../settings';
 import { Screen } from '../term/Screen';
 import {
@@ -111,8 +111,14 @@ let unzoomed: Kept | null = null;
 let carried: Kept | null = null;
 // The pane to focus once the tiles of a new count are up.
 let focusNext: string | null = null;
-// The minimised panes, carried across the navigation to the tiles named.
-let minimisedKept: { panes: string[]; minimised: string[] } | null = null;
+// The later marks this client asked the host for and the listing has not
+// shown yet, by address: a pane minimised is the row's at once and one
+// brought back a tile at once, whatever the next listing still says.
+const parking = new Map<string, boolean>();
+// The tiles the listing has shown awake. One the listing then says is
+// parked was parked by another client and goes to the row; a tile never
+// seen awake was opened parked, and is woken.
+const awakeTiles = new Set<string>();
 
 // How long a tile shows its last frame while the host catches up with a fit.
 const HOLD_FRAME_MS = 3000;
@@ -141,14 +147,16 @@ const WARMUP_MS = 600;
 
 export function forgetFrames() {
   frames.clear();
+  parking.clear();
+  awakeTiles.clear();
 }
 
 // Pane views open; the last one gone releases the panes kept fitted.
 let views = 0;
 
 // openingDesk lays the desk's view out for the tiles about to open: the
-// arrangement, the minimised row and the focus travel over the
-// navigation as a closed tile's do.
+// arrangement and the focus travel over the navigation as a closed
+// tile's do.
 export function openingDesk(d: Desk) {
   const panes = deskPanes(d);
   carried = {
@@ -157,7 +165,6 @@ export function openingDesk(d: Desk) {
     custom: d.tree ?? null,
     weights: d.weights ?? {},
   };
-  minimisedKept = { panes, minimised: d.minimised ?? [] };
   focusNext = d.focused && panes.includes(d.focused) ? d.focused : null;
 }
 
@@ -226,9 +233,11 @@ interface TileProps {
   onIdentity: (id: Identity) => void;
   // A frame of another pane came for this address.
   onStranger: () => void;
-  // The tile out of the arrangement, into the minimised row; the last
-  // tile makes way for the next pane, or the list.
+  // The tile out of the arrangement, its pane parked for later, into the
+  // minimised row; the last tile makes way for the next pane, or the
+  // list. Off, with the reason, where the pane cannot be parked.
   onMinimise: () => void;
+  hostParks: boolean;
   // The host closes writable panes for clients; asking: the header asks.
   hostCloses: boolean;
   asking: boolean;
@@ -712,10 +721,15 @@ function Tile(props: TileProps) {
           <button
             type="button"
             title={
-              props.alone
-                ? 'minimise: the pane goes to the row above the keys and the next pane takes the tile, or the list (-)'
-                : 'minimise: the tile goes to the row above the keys (-)'
+              !writable
+                ? 'minimise: the pane is parked for later; needs a writable pane'
+                : !props.hostParks
+                  ? 'minimise: the pane is parked for later; the host is older than this'
+                  : props.alone
+                    ? 'minimise: the pane is parked for later, its tab goes to the row above the keys and the next pane takes the tile, or the list (-, d)'
+                    : 'minimise: the pane is parked for later and its tab goes to the row above the keys (-, d)'
             }
+            disabled={!writable || !props.hostParks}
             data-testid="minimise"
             onClick={(e) => {
               e.stopPropagation();
@@ -954,21 +968,45 @@ function Tiles({ addresses }: { addresses: string[] }) {
   });
   const index = Math.min(focusedIndex, n - 1);
   const focused = addresses[index];
-  // Panes taken out of the arrangement: read on, shown in the row above
-  // the keys. The row is the desk's: a view the desk's row opened, or a
-  // navigation within the view, carries it (minimisedKept); any other
-  // opening, a pane from the list, a link, settles it from the desk once
-  // read, less the tiles it opens, and writes no desk before that, so a
-  // view that opens never empties every client's row.
-  const rowSettled = useRef(false);
-  const [minimised, setMinimised] = useState<string[]>(() => {
-    const k = minimisedKept;
-    minimisedKept = null;
-    const carried = !!k && k.panes.join() === addresses.join();
-    rowSettled.current = carried;
-    return carried ? k.minimised : [];
-  });
-  const [rowTick, setRowTick] = useState(0);
+  const hosts = useHosts();
+  const hostParks = (a: string) => !!hostOf(hosts.data, a)?.later;
+  // Minimise is the later mark on the host: a write, for a writable pane
+  // on a host whose agent parks; a reader sees the mark and cannot move
+  // it. The mark asked for counts at once (parking), until the listing
+  // shows it or the hub refuses it.
+  const later = useLater();
+  const [parkTick, setParkTick] = useState(0);
+  const canPark = (a: string) => {
+    const p = (all.data ?? []).find((q) => q.address === a);
+    return !!p && p.mode === 'write' && hostParks(a);
+  };
+  const setLater = (a: string, on: boolean) => {
+    const p = (all.data ?? []).find((q) => q.address === a);
+    if (!p || p.mode !== 'write' || !hostParks(a)) return;
+    if (!!p.later === on) {
+      if (parking.delete(a)) setParkTick((t) => t + 1);
+      return;
+    }
+    parking.set(a, on);
+    setParkTick((t) => t + 1);
+    later.mutate(
+      { address: a, later: on },
+      {
+        onError: (err) => {
+          parking.delete(a);
+          setParkTick((t) => t + 1);
+          toast.push({ kind: 'later', title: a, text: String(err) });
+        },
+      },
+    );
+  };
+  const isLater = useCallback((p: Pane) => parking.get(p.address) ?? !!p.later, [parkTick]);
+  // The minimised row: the panes parked for later, less the tiles here,
+  // oldest parking first, read from the listing like the strip.
+  const minimised = useMemo(
+    () => rowOrder((all.data ?? []).filter((p) => isLater(p) && !addresses.includes(p.address))),
+    [all.data, addresses, isLater],
+  );
   const focusedCached = usePaneCached(focused).data;
   const focusedPane = focusedCached?.pane;
   const words = useMemo(() => screenWords(focusedCached?.content ?? ''), [focusedCached?.content]);
@@ -1010,25 +1048,8 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const [dragging, setDragging] = useState<string | null>(null);
   // The tile whose header asks whether to close its pane on the host.
   const [asking, setAsking] = useState<string | null>(null);
-  const hosts = useHosts();
   const hostCloses = (a: string) => !!hostOf(hosts.data, a)?.close;
   const hostPreviews = (a: string) => !!hostOf(hosts.data, a)?.preview;
-  const hostParks = (a: string) => !!hostOf(hosts.data, a)?.later;
-  // Later: the owner parks the pane on its host, or wakes it; a click on
-  // a parked tab wakes it too.
-  const later = useLater();
-  const setLater = (a: string, on: boolean) => {
-    const p = (all.data ?? []).find((q) => q.address === a);
-    if (!p || p.mode !== 'write' || !hostParks(a) || !!p.later === on) return;
-    later.mutate(
-      { address: a, later: on },
-      { onError: (err) => toast.push({ kind: 'later', title: a, text: String(err) }) },
-    );
-  };
-  const toggleLater = (a: string) => {
-    const p = (all.data ?? []).find((q) => q.address === a);
-    if (p) setLater(a, !p.later);
-  };
   const hostLists = (a: string) => !!hostOf(hosts.data, a)?.dir;
   const hostRenames = (a: string) => !!hostOf(hosts.data, a)?.rename;
   // The pane whose name is a field right now.
@@ -1110,14 +1131,11 @@ function Tiles({ addresses }: { addresses: string[] }) {
     );
     return () => clearTimeout(t);
   }, [showsChanges, focused, focusedContent]);
-  // A tile closed in the view; the last one brings a minimised pane back,
-  // or goes back to the list.
+  // A tile closed in the view; the last one goes back to the list, a
+  // parked pane staying parked.
   const closeTile = (a: string) => {
     if (addresses.length <= 1) {
-      if (minimised.length) {
-        focusNext = minimised[0];
-        go([minimised[0]], minimised.slice(1));
-      } else navigate({ to: '/' });
+      navigate({ to: '/' });
       return;
     }
     const rest = close(addresses, a);
@@ -1178,39 +1196,78 @@ function Tiles({ addresses }: { addresses: string[] }) {
       }
     }
   }, [listed, addresses, missingTick]);
-  // The tile out of the arrangement, as a closed one, and its pane into
-  // the row. The last tile makes way: the next awake pane of the strip
-  // takes it, or, with none, the pane joins the row and the view goes
-  // back to the list, the desk saying so.
-  const minimise = (a: string) => {
-    if (minimised.includes(a)) return;
+  // A parked pane's tile leaves the arrangement, as a closed one; its tab
+  // is the row's. The last tile makes way: the next awake pane of the
+  // strip takes it, or, with none, the view goes back to the list, the
+  // desk saying so.
+  const leave = (a: string) => {
     if (addresses.length <= 1) {
       const next = awake(1);
       if (next) {
         focusNext = next;
-        drawn(() => go([next], [...minimised, a]));
+        drawn(() => go([next]));
         return;
       }
-      writeDesk({ view: 'list', minimised: [...minimised, a], order: tabOrder.slice(0, 64) }, true);
+      writeDesk({ view: 'list', order: tabOrder.slice(0, 64) }, true);
       void navigate({ to: '/' });
       return;
     }
     const rest = close(addresses, a);
     if (layout === 'custom' && rest.length > 1)
       carried = { panes: rest, layout, custom: prune(shape, addresses.indexOf(a)), weights: {} };
-    drawn(() => go(rest, [...minimised, a]));
+    drawn(() => go(rest));
   };
-  // Back from the row as one more tile, focused; with four open it takes
-  // the focused tile's place, as a tab does.
+  // Minimise: the pane is parked for later on its host, and its tile
+  // leaves for the row.
+  const minimise = (a: string) => {
+    if (!canPark(a)) return;
+    awakeTiles.delete(a);
+    setLater(a, true);
+    leave(a);
+  };
+  // Back from the row, woken, as one more tile, focused; with four open it
+  // takes the focused tile's place, as a tab does.
   const restore = (a: string) => {
-    const rest = minimised.filter((m) => m !== a);
+    setLater(a, false);
     drawn(() => {
       if (addresses.length < MAX_TILES) {
         focusNext = a;
-        go([...addresses, a], rest);
-      } else go(replace(addresses, index, a), rest);
+        go([...addresses, a]);
+      } else go(replace(addresses, index, a));
     });
   };
+  // The listing confirms the marks asked for, which are then forgotten;
+  // a tile it shows awake is noted; a tile it says is parked goes to the
+  // row when another client parked it, and is woken when this view opened
+  // it parked (a reader's stays, with the mark).
+  useEffect(() => {
+    if (!listed) return;
+    let changed = false;
+    for (const [a, on] of parking) {
+      const p = listed.find((q) => q.address === a);
+      if (p && !!p.later === on) {
+        parking.delete(a);
+        changed = true;
+      }
+    }
+    for (const a of awakeTiles) if (!addresses.includes(a)) awakeTiles.delete(a);
+    for (const a of addresses) {
+      const p = listed.find((q) => q.address === a);
+      if (!p) continue;
+      if (!p.later) {
+        awakeTiles.add(a);
+        continue;
+      }
+      if (parking.get(a) === false) continue;
+      if (awakeTiles.has(a)) {
+        awakeTiles.delete(a);
+        leave(a);
+        break;
+      }
+      if (p.mode === 'write' && hostParks(a)) setLater(a, false);
+    }
+    if (changed) setParkTick((t) => t + 1);
+  }, [listed, addresses]);
   const answer = async (a: string, yes: boolean) => {
     setAsking(null);
     if (!yes) return;
@@ -1289,30 +1346,13 @@ function Tiles({ addresses }: { addresses: string[] }) {
       arrangement: layout,
       tree: layout === 'custom' && custom ? custom : undefined,
       weights: Object.keys(weights).length ? weights : undefined,
-      minimised,
       order: tabOrder.slice(0, 64),
     }),
-    [addresses, focused, layout, custom, weights, minimised, tabOrder],
+    [addresses, focused, layout, custom, weights, tabOrder],
   );
   useEffect(() => {
-    if (rowSettled.current) writeDesk(mine);
-  }, [mine, rowTick]);
-  // A view opened without a row settles it from the desk, once read: the
-  // desk's minimised panes, less the tiles here and anything the listing
-  // lacks; then the view writes its desk, as one opened by a link does.
-  useEffect(() => {
-    if (rowSettled.current || desk.isPending) return;
-    rowSettled.current = true;
-    const d = desk.data;
-    const row =
-      d && d.view !== 'window'
-        ? (d.minimised ?? []).filter(
-            (a) => !addresses.includes(a) && (!all.data || all.data.some((p) => p.address === a)),
-          )
-        : [];
-    if (row.length) setMinimised(row);
-    setRowTick((t) => t + 1);
-  }, [desk.data, desk.isPending, addresses, all.data]);
+    writeDesk(mine);
+  }, [mine]);
   useEffect(() => {
     const d = desk.data;
     if (!d || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
@@ -1334,7 +1374,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
       if (d.arrangement) setLayout(d.arrangement);
       if (d.tree) setCustom(d.tree);
       setWeights(d.weights ?? {});
-      setMinimised(d.minimised ?? []);
       return;
     }
     carried = {
@@ -1343,8 +1382,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
       custom: d.tree ?? null,
       weights: d.weights ?? {},
     };
-    minimisedKept = { panes, minimised: d.minimised ?? [] };
-    void go(panes, d.minimised ?? []);
+    void go(panes);
   }, [desk.data]);
   // A new count resets the arrangement to one that fits it, unless zooming
   // out or closing a tile brings back the tiles as they were.
@@ -1375,7 +1413,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
     views++;
     return () => {
       views--;
-      minimisedKept = null;
       window.setTimeout(() => {
         if (!views) releaseKept();
       }, 0);
@@ -1533,28 +1570,23 @@ function Tiles({ addresses }: { addresses: string[] }) {
     if (refitTick && windowFit) refitWindow();
   }, [refitTick, windowFit, refitWindow]);
 
-  // The minimised panes go along, less any the next tiles show; a change
-  // of count mounts the tiles anew and they are taken up there.
+  // A change of count mounts the tiles anew.
   const go = useCallback(
-    (next: string[], keep = minimised) => {
+    (next: string[]) => {
       if (next === addresses) return Promise.resolve();
-      const rest = keep.filter((a) => !next.includes(a));
-      minimisedKept = { panes: next, minimised: rest };
-      if (next.length === addresses.length) setMinimised(rest);
       return navigate({ to: '/p/$', params: { _splat: routeFor(next) }, replace: true });
     },
-    [addresses, minimised, navigate],
+    [addresses, navigate],
   );
+  // The strip: the listing less the parked panes, which are the row's; a
+  // reader's parked tile keeps its tab, since the reader cannot wake it.
   const shownPanes = useMemo(
-    () => (all.data ?? []).filter((p) => !minimised.includes(p.address)),
-    [all.data, minimised],
+    () => (all.data ?? []).filter((p) => !isLater(p) || addresses.includes(p.address)),
+    [all.data, isLater, addresses],
   );
   // The strip in the owner's order; an open address the listing lacks
   // goes last.
-  const stripPanes = useMemo(
-    () => parkedLast(inOrder(shownPanes, tabOrder)),
-    [shownPanes, tabOrder],
-  );
+  const stripPanes = useMemo(() => inOrder(shownPanes, tabOrder), [shownPanes, tabOrder]);
   const strip = useMemo(() => {
     const order = stripPanes.map((p) => p.address);
     for (const a of addresses) if (!order.includes(a)) order.push(a);
@@ -1582,17 +1614,16 @@ function Tiles({ addresses }: { addresses: string[] }) {
     else go(replace(addresses, index, address));
   };
   // Android's swipe: the focused tile shows the neighbouring pane of the
-  // strip. A parked pane is passed over, as the swipe passes it: the owner
-  // said later, and only a tab, a row or the inbox brings it back.
-  // The next awake pane of the strip from the focused one, not open and
-  // not parked; past either end it comes round to the other.
+  // strip. A parked pane is not on the way: it is the row's, not the
+  // strip's, and only its tab there, the add menu, the list or the inbox
+  // brings it back. The next pane of the strip from the focused one, not
+  // open; past either end it comes round to the other.
   const awake = (step: number): string | undefined => {
     const at = strip.indexOf(focused);
     if (at < 0) return undefined;
-    const parked = new Set((all.data ?? []).filter((p) => p.later).map((p) => p.address));
     for (let i = 1; i < strip.length; i++) {
       const k = (((at + step * i) % strip.length) + strip.length) % strip.length;
-      if (!addresses.includes(strip[k]) && !parked.has(strip[k])) return strip[k];
+      if (!addresses.includes(strip[k])) return strip[k];
     }
     return undefined;
   };
@@ -1636,7 +1667,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
       } else if (asking && (ev.key === 'y' || ev.key === 'n')) void answer(asking, ev.key === 'y');
       else if (ev.key === 'x' && hostCloses(focused) && writable) setAsking(focused);
       else if (ev.key === 'x' && several) closeTile(focused);
-      else if (ev.key === '-') minimise(focused);
+      else if (ev.key === '-' || ev.key === 'd') minimise(focused);
       else if ((ev.key === 'e' || ev.key === 'E') && several)
         spread(index, ev.key === 'e' ? 'w' : 'h');
       else if (ev.key === 'f' && writable) toggleFit(focused);
@@ -1650,7 +1681,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
         touch();
         drawn(() => setWeights({}));
       } else if (ev.key === 'g' && writable && hostPreviews(focused)) setChanges((c) => !c);
-      else if (ev.key === 'd') toggleLater(focused);
       else if (ev.key === 's' && writable) setShare((s) => !s);
       else if (ev.key === 'i' && writable) enterDirect();
       else if (ev.key === 'N' && focusedPane && renamable(focused)) setRenaming(focused);
@@ -1887,6 +1917,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         identity={identities.current.get(a)?.id}
         onIdentity={(id) => identities.current.set(a, { id, confirmed: true })}
         onMinimise={() => minimise(a)}
+        hostParks={hostParks(a)}
         hostCloses={hostCloses(a)}
         asking={asking === a}
         onAsk={() => setAsking(a)}
@@ -1999,7 +2030,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
             open={addresses}
             focused={focused}
             onTab={onTab}
-            onWake={(a) => setLater(a, false)}
             reorder={reorder}
             onDragPane={setDragging}
             onZoom={(a) => {
@@ -2011,7 +2041,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
           <AddMenu
             pane={focusedPane}
             open={addresses}
-            minimised={minimised}
+            minimised={minimised.map((p) => p.address)}
             onMade={async (a) => {
               // tmux numbers panes by place, so a pane split beside an open
               // one can shift its neighbours' addresses: the open tiles
@@ -2112,21 +2142,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
                   : "git's changes of the pane's repository, over the tile (g)",
             },
             {
-              id: 'later',
-              glyph: '☾',
-              label: 'later',
-              onClick: () => toggleLater(focused),
-              disabled: !writable || !hostParks(focused),
-              on: !!focusedPane?.later,
-              title: !writable
-                ? 'later: park the pane, its tab goes last; needs a writable pane'
-                : !hostParks(focused)
-                  ? 'later: park the pane; the host is older than this'
-                  : focusedPane?.later
-                    ? 'later: parked; wake it (d)'
-                    : 'later: park the pane, its tab goes last and it stops calling (d)',
-            },
-            {
               id: 'share',
               glyph: '⇗',
               label: 'share',
@@ -2184,11 +2199,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
           }
         />
       </div>
-      <MinimisedRow
-        addresses={minimised}
-        onRestore={restore}
-        onGone={(a) => setMinimised((m) => m.filter((x) => x !== a))}
-      />
+      <MinimisedRow panes={minimised} onRestore={restore} />
       <InputPanel
         pane={focusedPane}
         writable={writable}

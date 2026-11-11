@@ -39,11 +39,15 @@ type Desk struct {
 	Arrangement string               `json:"arrangement,omitempty"`
 	Tree        json.RawMessage      `json:"tree,omitempty"`
 	Weights     map[string][]float64 `json:"weights,omitempty"`
-	Minimised   []string             `json:"minimised,omitempty"`
-	Order       []string             `json:"order,omitempty"`
-	Window      string               `json:"window,omitempty"`
-	Updated     int64                `json:"updated"`
-	By          string               `json:"by,omitempty"`
+	// Minimised is what a client older than the merge of the minimised row
+	// into the later mark still sends: the row is the listing's parked
+	// panes now, so the field is checked as before and dropped, never kept
+	// or answered.
+	Minimised []string `json:"minimised,omitempty"`
+	Order     []string `json:"order,omitempty"`
+	Window    string   `json:"window,omitempty"`
+	Updated   int64    `json:"updated"`
+	By        string   `json:"by,omitempty"`
 	// Rev counts the writes, so a client orders desks a second apart.
 	Rev uint64 `json:"rev"`
 }
@@ -213,8 +217,8 @@ func validDesk(d *Desk, t Principal) (code string, status int) {
 			return "not_yours", http.StatusForbidden
 		}
 	case "list":
-		// Nothing open, the minimised row kept: the last tile minimised
-		// with no other pane awake. Only the row and the order say anything.
+		// Nothing open: the last tile minimised with no other pane awake.
+		// Only the order says anything.
 		if len(d.Panes) > 0 || d.Window != "" || d.Focused != "" || d.Arrangement != "" || len(d.Tree) > 0 || len(d.Weights) > 0 {
 			return "bad_input", http.StatusBadRequest
 		}
@@ -224,6 +228,7 @@ func validDesk(d *Desk, t Principal) (code string, status int) {
 	if code, status := addresses(d.Minimised, deskMinimised); code != "" {
 		return code, status
 	}
+	d.Minimised = nil
 	if code, status := addresses(d.Order, deskOrder); code != "" {
 		return code, status
 	}
@@ -254,7 +259,7 @@ func (d Desk) forPrincipal(t Principal) Desk {
 		}
 		return out
 	}
-	d.Panes, d.Minimised, d.Order = keep(d.Panes), keep(d.Minimised), keep(d.Order)
+	d.Panes, d.Order = keep(d.Panes), keep(d.Order)
 	if d.Focused != "" && !t.mayRead(d.Focused) {
 		d.Focused = ""
 	}

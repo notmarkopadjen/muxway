@@ -33,11 +33,11 @@ const KEYS: [string, string][] = [
   ],
   [
     'd',
-    'later: park the focused tile, or the selected row; its tab goes last with ☾ and it stops calling. d again, a click on its tab, opening it, typing, an answer or a mail wakes it',
+    "minimise: park the focused tile's pane, or the selected row's, for later; its tab goes to the row above the keys with ☾ and it stops calling. A click on it there, opening it, typing, an answer or a mail wakes it",
   ],
   [
     'D',
-    'the desk: the view every client shares, kept by the hub (the open panes, their arrangement, the minimised row, the tab order, or the window view); the row at the top of the list opens it, the app opens it when started here, and every view writes it as you change it and follows the other clients',
+    'the desk: the view every client shares, kept by the hub (the open panes, their arrangement, the tab order, or the window view); the row at the top of the list opens it, the app opens it when started here, and every view writes it as you change it and follows the other clients',
   ],
   [
     'T / M',
@@ -74,7 +74,7 @@ const KEYS: [string, string][] = [
   ],
   [
     '+ / -',
-    'tiles: the add menu (one more pane beside the focused one, a new session, a minimised pane back, any other pane as one more tile) / minimise the focused tile to the row above the keys (the last tile: the next pane takes it, or the list); a click on its tab there brings it back',
+    'tiles: the add menu (one more pane beside the focused one, a new session, a minimised pane back, any other pane as one more tile) / minimise the focused tile: its pane is parked for later and its tab goes to the row above the keys (the last tile: the next pane takes it, or the list); a click on its tab there wakes it and brings it back',
   ],
   [
     'e / E',
