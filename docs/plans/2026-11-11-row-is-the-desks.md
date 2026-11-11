@@ -138,9 +138,11 @@ present, and the Android pages in its own plan.
   its pending desk write (the hub then kept a stale row for the next
   view, which now takes it); `pagehide` sends it with `keepalive`.
 - [x] Security rules (AGENTS.md section 2) hold
-- [ ] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
+- [x] Privacy check passed: `scripts/prepush-check.sh` clean and diff read
 - [x] Docs and diagrams updated
 
 ## Test run
 
-To come.
+The full suite, 295 Go tests and 159 browser specs, 0 failed, at
+`d6eb21c` ([#338](https://github.com/notmarkopadjen/muxway/issues/338),
+`20261111-102050-d6eb21c`); `scripts/prepush-check.sh` clean.
