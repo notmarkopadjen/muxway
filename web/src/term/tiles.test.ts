@@ -321,6 +321,16 @@ describe('some of a window as tiles', () => {
     expect(r.layout).toMatch(new RegExp(`${HIDDEN_COLS}x12,0,0,13`));
     expect(r.layout).toMatch(new RegExp(`${HIDDEN_COLS}x12,0,0,14`));
   });
+  it('one hidden pane stands beside the tiles, not in a stack of one', () => {
+    expect(someTree(shape, [0, 2], 4, 1)).toEqual({
+      kind: 'h',
+      key: 'some',
+      children: [{ kind: 'h', key: 'main', children: [0, 2] }, 4],
+    });
+    const r = someExact(shape, [0, 2], sizes, ids, ['%13']);
+    expect(r).toMatchObject({ cols: 162, rows: 25 });
+    expect(r.layout).toMatch(new RegExp(`${HIDDEN_COLS}x25,0,0,13\\}$`));
+  });
   it('without hidden panes it is the tiles alone', () => {
     const r = someExact(shape, [0, 2], sizes, ids, []);
     expect(r).toMatchObject({ cols: 141, rows: 25 });

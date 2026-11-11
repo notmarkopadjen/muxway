@@ -442,11 +442,11 @@ export function someTree(node: TileNode, keep: number[], n: number, hidden: numb
   for (let i = 0; i < n && sub !== null; i++) if (!keep.includes(i)) sub = without(sub, i);
   const tiles = sub ?? keep[0];
   if (!hidden) return tiles;
-  const stack: TileNode = {
-    kind: 'v',
-    key: 'hidden',
-    children: Array.from({ length: hidden }, (_, i) => n + i),
-  };
+  // A split has two children at least: one hidden pane stands alone.
+  const stack: TileNode =
+    hidden === 1
+      ? n
+      : { kind: 'v', key: 'hidden', children: Array.from({ length: hidden }, (_, i) => n + i) };
   return { kind: 'h', key: 'some', children: [tiles, stack] };
 }
 

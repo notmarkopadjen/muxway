@@ -1536,7 +1536,9 @@ function Tiles({ addresses }: { addresses: string[] }) {
     );
     qc.invalidateQueries({ queryKey: ['pane'] });
     const next = group.ids.map((id, i) => (id ? by.get(id)?.address : undefined) ?? addresses[i]);
-    if (next.join() !== addresses.join())
+    // A pane gone since the fit closes its tile by itself; a route that
+    // would name one pane twice is not taken.
+    if (new Set(next).size === next.length && next.join() !== addresses.join())
       navigate({ to: '/p/$', params: { _splat: routeFor(next) }, replace: true });
   };
   const area = useRef<HTMLDivElement>(null);

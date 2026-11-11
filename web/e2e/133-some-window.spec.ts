@@ -147,12 +147,12 @@ test('133 security: a window with a pane the token may not write keeps the fits 
   // shell is writable, so two of three are, and the third is not.
   const id = await control(request, '/split', { target: 'work:0.0', dir: 'h' });
   made.push(id);
-  const r = await page.request.get('/v1/panes', { headers: { 'X-Muxway-Client': 'e2e' } });
-  const listed = ((await r.json()) as { panes: { address: string; pane_id: string }[] }).panes;
-  const other = listed.find((p) => p.pane_id === id)!.address;
   const before = await control(request, '/layout', { target: 'work:0' });
   const resizes = watchResizes(page);
   await signIn(page);
+  const r = await page.request.get('/v1/panes', { headers: { 'X-Muxway-Client': 'e2e' } });
+  const listed = ((await r.json()) as { panes: { address: string; pane_id: string }[] }).panes;
+  const other = listed.find((p) => p.pane_id === id)!.address;
   await page.goto(`/p/${SHELL0},${other}`);
   await expect(page.getByTestId('tile')).toHaveCount(2);
   await settled(page);
