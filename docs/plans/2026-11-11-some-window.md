@@ -125,4 +125,17 @@ The fit row of `docs/ui-guideline.md` and the tiles section of
 
 ## Test run
 
-Recorded below once the suite has run.
+- Full suite on the first tree (`20261111-185647-f917ed2`, local, not
+  recorded): spec 99 and spec 113 failed, the first asserting the
+  per-pane fits this change replaces, the second a route naming a pane
+  twice after a window fit answered late; then (`20261111-201149-4fed40d`)
+  specs 122 and 124, the one asserting per-pane fits, the other killing
+  a pane by an address the layout had renumbered, which showed the
+  listing effect folding a gone and a moved tile into one route; then
+  (`20261111-213103-7f8fe0b`) spec 105's split beside a neighbour,
+  where a stale identity key was taken for a move. Each fixed in its
+  own commit, with the specs rewritten for the new behaviour.
+- Full suite on the final tree, `20261111-232807-c7e23f0`:
+  [#351](https://github.com/notmarkopadjen/muxway/issues/351), 295 Go
+  tests, 161 browser specs, the arrange and keyboard environments, all
+  passed.
