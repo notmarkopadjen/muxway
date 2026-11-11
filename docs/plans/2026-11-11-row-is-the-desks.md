@@ -1,12 +1,12 @@
 # Feature: the minimised row is the desk's, and the last tile minimises too
 
-> Status: written 2026-11-11 from two of the owner's reports in the
+> Status: approved by the owner on 2026-11-11 in the console; written the same day from two of the owner's reports in the
 > console ("I cannot minimize pane when it's full-screen. It should be
 > possible. In this case, next pane should be zoomed in. If no pane
 > active left, it should go back to pane list screen"; "When I minimize
 > panes, sometimes it resets. So, nothing is minimized. Is the
 > minimization data stored on server? Should be, and should be also
-> shared with all clients"); awaiting the owner's approval. The phone's
+> shared with all clients"). The phone's
 > side is [muxway-android](https://github.com/notmarkopadjen/muxway-android)'s
 > plan of the same name.
 

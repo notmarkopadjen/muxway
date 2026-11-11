@@ -37,20 +37,24 @@ func TestValidDeskAgainstGrants(t *testing.T) {
 		t.Fatalf("a good desk refused: %s", code)
 	}
 	bad := map[string]string{
-		"five panes":          `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.1","alice-laptop/work/0.2","alice-laptop/work/0.3","alice-laptop/work/0.4"]}`,
-		"a pane twice":        `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.0"]}`,
-		"a bad address":       `{"view":"panes","panes":["alice laptop/work/0.0"]}`,
-		"an unknown view":     `{"view":"board","panes":["alice-laptop/work/0.0"]}`,
-		"no panes":            `{"view":"panes"}`,
-		"focus elsewhere":     `{"view":"panes","panes":["alice-laptop/work/0.0"],"focused":"alice-laptop/work/0.1"}`,
-		"an arrangement":      `{"view":"panes","panes":["alice-laptop/work/0.0"],"arrangement":"spiral"}`,
-		"a tree short":        `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.1"],"tree":{"kind":"h","key":"r","children":[0]}}`,
-		"a tree of three":     `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.1"],"tree":{"kind":"h","key":"r","children":[0,1,2]}}`,
-		"a tree kind":         `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.1"],"tree":{"kind":"x","key":"r","children":[0,1]}}`,
-		"a weight of one":     `{"view":"panes","panes":["alice-laptop/work/0.0"],"weights":{"r":[1,0]}}`,
-		"a window with panes": `{"view":"window","window":"alice-laptop/work/0","panes":["alice-laptop/work/0.0"]}`,
-		"a window short":      `{"view":"window","window":"alice-laptop/work"}`,
-		"many minimised":      `{"view":"panes","panes":["alice-laptop/work/0.0"],"minimised":["alice-laptop/work/1.0","alice-laptop/work/1.1","alice-laptop/work/1.2","alice-laptop/work/1.3","alice-laptop/work/1.4","alice-laptop/work/1.5","alice-laptop/work/1.6","alice-laptop/work/1.7","alice-laptop/work/1.8","alice-laptop/work/1.9","alice-laptop/work/1.10","alice-laptop/work/1.11","alice-laptop/work/1.12","alice-laptop/work/1.13","alice-laptop/work/1.14","alice-laptop/work/1.15","alice-laptop/work/1.16"]}`,
+		"five panes":           `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.1","alice-laptop/work/0.2","alice-laptop/work/0.3","alice-laptop/work/0.4"]}`,
+		"a pane twice":         `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.0"]}`,
+		"a bad address":        `{"view":"panes","panes":["alice laptop/work/0.0"]}`,
+		"an unknown view":      `{"view":"board","panes":["alice-laptop/work/0.0"]}`,
+		"no panes":             `{"view":"panes"}`,
+		"focus elsewhere":      `{"view":"panes","panes":["alice-laptop/work/0.0"],"focused":"alice-laptop/work/0.1"}`,
+		"an arrangement":       `{"view":"panes","panes":["alice-laptop/work/0.0"],"arrangement":"spiral"}`,
+		"a tree short":         `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.1"],"tree":{"kind":"h","key":"r","children":[0]}}`,
+		"a tree of three":      `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.1"],"tree":{"kind":"h","key":"r","children":[0,1,2]}}`,
+		"a tree kind":          `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.1"],"tree":{"kind":"x","key":"r","children":[0,1]}}`,
+		"a weight of one":      `{"view":"panes","panes":["alice-laptop/work/0.0"],"weights":{"r":[1,0]}}`,
+		"a window with panes":  `{"view":"window","window":"alice-laptop/work/0","panes":["alice-laptop/work/0.0"]}`,
+		"a window short":       `{"view":"window","window":"alice-laptop/work"}`,
+		"a list with panes":    `{"view":"list","panes":["alice-laptop/work/0.0"]}`,
+		"a list with a window": `{"view":"list","window":"alice-laptop/work/0"}`,
+		"a list with a focus":  `{"view":"list","focused":"alice-laptop/work/0.0"}`,
+		"a list arranged":      `{"view":"list","arrangement":"row"}`,
+		"many minimised":       `{"view":"panes","panes":["alice-laptop/work/0.0"],"minimised":["alice-laptop/work/1.0","alice-laptop/work/1.1","alice-laptop/work/1.2","alice-laptop/work/1.3","alice-laptop/work/1.4","alice-laptop/work/1.5","alice-laptop/work/1.6","alice-laptop/work/1.7","alice-laptop/work/1.8","alice-laptop/work/1.9","alice-laptop/work/1.10","alice-laptop/work/1.11","alice-laptop/work/1.12","alice-laptop/work/1.13","alice-laptop/work/1.14","alice-laptop/work/1.15","alice-laptop/work/1.16"]}`,
 	}
 	for name, s := range bad {
 		if code, status := validDesk(desk(s), reader); code != "bad_input" || status != http.StatusBadRequest {
@@ -58,14 +62,19 @@ func TestValidDeskAgainstGrants(t *testing.T) {
 		}
 	}
 	for name, s := range map[string]string{
-		"another host":        `{"view":"panes","panes":["bob-desktop/work/0.0"]}`,
-		"another session":     `{"view":"panes","panes":["alice-laptop/other/0.0"]}`,
-		"minimised elsewhere": `{"view":"panes","panes":["alice-laptop/work/0.0"],"minimised":["bob-desktop/work/0.0"]}`,
-		"a window elsewhere":  `{"view":"window","window":"bob-desktop/work/0"}`,
+		"another host":           `{"view":"panes","panes":["bob-desktop/work/0.0"]}`,
+		"another session":        `{"view":"panes","panes":["alice-laptop/other/0.0"]}`,
+		"minimised elsewhere":    `{"view":"panes","panes":["alice-laptop/work/0.0"],"minimised":["bob-desktop/work/0.0"]}`,
+		"a window elsewhere":     `{"view":"window","window":"bob-desktop/work/0"}`,
+		"a list's row elsewhere": `{"view":"list","minimised":["bob-desktop/work/0.0"]}`,
 	} {
 		if code, status := validDesk(desk(s), reader); code != "not_yours" || status != http.StatusForbidden {
 			t.Errorf("%s: %s %d", name, code, status)
 		}
+	}
+	// A list desk: nothing open, the row and the order kept.
+	if code, _ := validDesk(desk(`{"view":"list","minimised":["alice-laptop/work/1.2"],"order":["alice-laptop/work/0.0"]}`), reader); code != "" {
+		t.Fatalf("a list desk refused: %s", code)
 	}
 	// Another hub's pane is that hub's to check.
 	if code, _ := validDesk(desk(`{"view":"panes","panes":["work~bob-desktop/work/0.0"]}`), reader); code != "" {

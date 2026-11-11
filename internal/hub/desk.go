@@ -212,6 +212,12 @@ func validDesk(d *Desk, t Principal) (code string, status int) {
 		if d.Focused != "" && !t.mayRead(d.Focused) {
 			return "not_yours", http.StatusForbidden
 		}
+	case "list":
+		// Nothing open, the minimised row kept: the last tile minimised
+		// with no other pane awake. Only the row and the order say anything.
+		if len(d.Panes) > 0 || d.Window != "" || d.Focused != "" || d.Arrangement != "" || len(d.Tree) > 0 || len(d.Weights) > 0 {
+			return "bad_input", http.StatusBadRequest
+		}
 	default:
 		return "bad_input", http.StatusBadRequest
 	}
