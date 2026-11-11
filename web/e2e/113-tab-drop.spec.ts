@@ -5,8 +5,8 @@ import { control, HOST, paneLoaded, settled, shot, SHELL0, signIn } from './fixt
 // header does. With one tile open, the right part of its screen makes
 // two columns and the lower part two rows, the dropped pane there and
 // focused. A pane not open dropped on a tile's middle takes its place;
-// the tab of an open tile swaps the two; with four open an edge is the
-// middle too; a divider lays the pane across its split. The hub hears
+// the tab of an open tile swaps the two; with eight open an edge is the
+// middle too (spec 132); a divider lays the pane across its split. The hub hears
 // nothing of it but the new tile's fit.
 
 const RO = `${HOST}/work/0.1`;
@@ -106,8 +106,8 @@ test('113 a tab dropped on a tile splits its place or takes it; on a divider, ac
   });
   await expect(tile(page, RO)).toHaveAttribute('data-focused', '');
   await shot(page, info, '113-tab-divider');
-  // Four open: a tile offers only its middle, and a tab dropped on an
-  // edge takes that tile's place.
+  // Four open: a tab dropped on an edge is still one more tile, the
+  // fifth, on that side of the tile it was dropped on (eight is the cap).
   await tab(page, BOB).dragTo(tile(page, RO), { targetPosition: { x: 20, y: 60 } });
   await expect(page.getByTestId('tile')).toHaveCount(4);
   const id = await control(request, '/split', { target: 'work:1.0' });
@@ -117,16 +117,21 @@ test('113 a tab dropped on a tile splits its place or takes it; on a divider, ac
   await tab(page, fifth).dragTo(tile(page, SHELL0), {
     targetPosition: { x: target.width * 0.9, y: target.height / 2 },
   });
-  await expect(page.getByTestId('tile')).toHaveCount(4);
+  await expect(page.getByTestId('tile')).toHaveCount(5);
   await expect(tile(page, fifth)).toHaveAttribute('data-focused', '');
-  await expect(tile(page, SHELL0)).toHaveCount(0);
-  await shot(page, info, '113-four-open');
+  await expect(tile(page, SHELL0)).toHaveCount(1);
+  await placed(async () => {
+    const a = await box(tile(page, SHELL0));
+    const f = await box(tile(page, fifth));
+    return f.x > a.x;
+  });
+  await shot(page, info, '113-five-open');
   await expect
     .poll(() => posts.filter((u) => !u.includes('/resize') && !u.includes('/desk')))
     .toEqual([]);
   // Leave the window as the other specs expect it.
   await control(request, '/kill-pane', { target: id });
-  await expect(page.getByTestId('tile')).toHaveCount(3, { timeout: 8000 });
+  await expect(page.getByTestId('tile')).toHaveCount(4, { timeout: 8000 });
   await page.goto('/');
   await expect(page.getByTestId('panes')).toBeVisible();
   await expect

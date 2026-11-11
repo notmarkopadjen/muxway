@@ -56,7 +56,7 @@ test('100 one window: the tiles take the host layout, move its panes, and follow
   await expect(page.getByTestId('tile')).toHaveCount(3);
   await settled(page);
   await expect(pane).toHaveAttribute('data-layout', 'custom');
-  const y = async (a: string) => (await tile(a).boundingBox())!.y;
+  const y = async (a: string) => (await tile(a).boundingBox())?.y ?? NaN;
   expect(await y(at(0))).toBeLessThan(await y(at(1)));
   expect(await y(at(1))).toBeLessThan(await y(at(2)));
   // ▦ past the presets to main-left: the first tile, the old .2, down the

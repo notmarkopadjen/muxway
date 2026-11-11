@@ -25,7 +25,7 @@ const (
 	deskBody      = 8 << 10
 	deskRate      = 1.0 // writes per second per principal
 	deskBurst     = 5.0
-	deskPanes     = 4
+	deskPanes     = 8
 	deskMinimised = 16
 	deskOrder     = 64
 	deskKeyLen    = 16

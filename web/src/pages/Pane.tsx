@@ -169,7 +169,7 @@ export function openingDesk(d: Desk) {
 }
 
 // The pane view, as the Android client has it: a strip of every pane the
-// token may read, painted with its state; one to four of them open as
+// token may read, painted with its state; one to eight of them open as
 // tiles in an arrangement of the browser's own; one input line and one
 // key bar for the focused tile.
 
@@ -271,7 +271,7 @@ interface TileProps {
   onDragEnd: () => void;
   onDrop: (zone: Zone) => void;
   // Whether a drop may split this tile's place; without, the whole tile
-  // is the middle (four open and a pane not open dragged in).
+  // is the middle (eight open and a pane not open dragged in).
   splittable: boolean;
   onZoom: (p: Pane) => void;
   refused: (why: string) => void;
@@ -1225,7 +1225,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
     setLater(a, true);
     leave(a);
   };
-  // Back from the row, woken, as one more tile, focused; with four open it
+  // Back from the row, woken, as one more tile, focused; with eight open it
   // takes the focused tile's place, as a tab does.
   const restore = (a: string) => {
     setLater(a, false);
@@ -1291,7 +1291,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // Talk: a partner's address as this page names it (a peer's panes carry
   // the hub's name), when the tiles were focused last, and laying the
   // partner beside a tile: swapped next to it when open, opened there
-  // when not; with four open it takes the place of the tile focused
+  // when not; with eight open it takes the place of the tile focused
   // longest ago among the others.
   const withHub = (a: string, partner: string) => joinAddress(splitAddress(a).hub, partner);
   const focusedAt = useRef(new Map<string, number>());
@@ -1798,7 +1798,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
 
   // Zoom: the focused pane alone, and back to the tiles it came from, in
   // their places and arrangement; from a pane opened alone, the window's
-  // panes side by side in the window's order, up to four; a window of one
+  // panes side by side in the window's order, up to eight; a window of one
   // pane shows its mirror layout instead.
   // The zoom is drawn (drawn.ts): the tile switches off to a line that
   // travels to its new place and opens there, unless effects are off.

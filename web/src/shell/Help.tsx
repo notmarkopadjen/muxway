@@ -23,7 +23,7 @@ import { Box } from '../components/Box';
 
 const KEYS: [string, string][] = [
   ['j / k', 'move down / up'],
-  ['space', 'pick a pane, up to four'],
+  ['space', 'pick a pane, up to eight'],
   ['Enter', 'open the selected pane, or the picked ones side by side'],
   ['Esc', 'back to the panes; or leave the input line (first closing its completion list)'],
   ['p', 'go to a pane or window, or start a session'],

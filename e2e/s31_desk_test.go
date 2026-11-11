@@ -38,7 +38,7 @@ func TestSec196_DeskNeedsAWriteGrantAndNamesOnlyWhatTheWriterReads(t *testing.T)
 		t.Fatalf("the refusal's code: %s", r.body)
 	}
 	for name, body := range map[string]string{
-		"five panes":       `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.1","alice-laptop/work/0.2","alice-laptop/work/0.3","alice-laptop/work/0.4"]}`,
+		"nine panes":       `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.1","alice-laptop/work/0.2","alice-laptop/work/0.3","alice-laptop/work/0.4","alice-laptop/work/0.5","alice-laptop/work/0.6","alice-laptop/work/0.7","alice-laptop/work/0.8"]}`,
 		"a pane twice":     `{"view":"panes","panes":["alice-laptop/work/0.0","alice-laptop/work/0.0"]}`,
 		"a bad address":    `{"view":"panes","panes":["alice laptop/work/0.0"]}`,
 		"an unknown view":  `{"view":"board","panes":["alice-laptop/work/0.0"]}`,

@@ -1,16 +1,17 @@
 import { checksum, fractions, parseLayout, type Node } from './layout';
 
-// Tiles: one to four panes on one screen in the arrangements the Android
-// client has. The arrangement is the browser's own and never reaches the
-// host. Addresses travel in the route, comma separated.
+// Tiles: one to eight panes on one screen in the arrangements the Android
+// client has (it shows the first four of a wider desk). The arrangement
+// is the browser's own and never reaches the host. Addresses travel in
+// the route, comma separated.
 
-export const MAX_TILES = 4;
+export const MAX_TILES = 8;
 
 // A pane's address, with the hub's name before `~` for a pane of another hub.
 export const ADDRESS = /^([a-z0-9-]{1,32}~)?[A-Za-z0-9][A-Za-z0-9_-]*(\/[A-Za-z0-9._@-]+){2,3}$/;
 
 // What a board kept in this browser held, for a bookmark of one: its
-// panes, up to four, as tiles. The board itself is gone with this read.
+// panes, up to eight, as tiles. The board itself is gone with this read.
 export function boardPanes(name: string): string[] {
   const key = `mx-board:${name}`;
   let out: string[] = [];
@@ -36,8 +37,8 @@ export type Arrangement = 'row' | 'column' | 'grid' | 'main-left' | 'main-top';
 // dropping a header onto a tile's edge.
 export type Layout = Arrangement | 'custom';
 
-// Two panes split one way or the other; three and four add a main pane
-// and, for four, a grid.
+// Two panes split one way or the other; three and more add a main pane
+// and, from four, a grid of two rows, the odd tile in the top one.
 export function options(n: number): Arrangement[] {
   if (n <= 2) return ['row', 'column'];
   if (n === 3) return ['row', 'column', 'main-left', 'main-top'];
@@ -202,7 +203,7 @@ export function close(addresses: string[], address: string): string[] {
 }
 
 // The route's splat: addresses joined with commas, each well formed, at
-// most four, none twice.
+// most eight, none twice.
 export function parseRoute(splat: string): { addresses: string[] } | { error: string } {
   const parts = splat.split(',').filter(Boolean);
   if (!parts.length) return { error: 'no pane named' };

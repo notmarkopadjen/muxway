@@ -157,7 +157,7 @@ export function AddMenu({
         >
           {rows.full && (
             <div className="mx-add-heading" data-testid="add-full">
-              four open: a pick replaces {tabName(pane)}
+              eight open: a pick replaces {tabName(pane)}
             </div>
           )}
           <button

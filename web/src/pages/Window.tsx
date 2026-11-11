@@ -61,7 +61,7 @@ import {
   writeDesk,
   type Desk,
 } from '../api/desk';
-import { routeFor } from '../term/tiles';
+import { MAX_TILES, routeFor } from '../term/tiles';
 import { mayWriteOn } from '../term/grants';
 import { SessionForm } from './Panes';
 import { setLastPlace } from '../settings';
@@ -579,7 +579,8 @@ export function WindowPage() {
   // the hub says so if not.
   const [preset, setPreset] = useState<Preset>('custom');
   const readOnlyPane = [...panes.values()].some((p) => p.pane.mode !== 'write');
-  const arrangeable = !!fitVia && !readOnlyPane && visible.length >= 2 && visible.length <= 4;
+  const arrangeable =
+    !!fitVia && !readOnlyPane && visible.length >= 2 && visible.length <= MAX_TILES;
   const arrange = useCallback(() => {
     if (!arrangeable) return;
     const p = nextPreset(preset, visible.length);
@@ -884,8 +885,8 @@ export function WindowPage() {
               disabled: !arrangeable,
               title: readOnlyPane
                 ? 'the panes of this window move only when every one is writable'
-                : visible.length > 4
-                  ? 'arrangements are for up to four panes'
+                : visible.length > MAX_TILES
+                  ? `arrangements are for up to ${MAX_TILES} panes`
                   : visible.length < 2
                     ? 'arrangements are for two or more panes'
                     : `next arrangement of the window's panes, on the host (l): ${presetOptions(visible.length).join(', ')}`,

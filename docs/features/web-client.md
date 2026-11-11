@@ -25,7 +25,7 @@ nothing but the hub to talk to.
    `☾ later`, the pane's tab leaves every strip for the minimised row,
    and it stops calling; `d` again or opening the pane wakes it.
    The pick box, `space` on the highlighted row, or a click while
-   something is picked gathers up to four panes; a bar under the list
+   something is picked gathers up to eight panes; a bar under the list
    then offers **open N side by side**. Each window has a button, `▦ 0:
    main · 2 panes · mirror layout ▸`, that opens the
    [window view](#the-window-view). Under a window where you may type, a
@@ -39,7 +39,7 @@ nothing but the hub to talk to.
    `+ session` once more, as the way to a pane from here; a host whose
    agent does not start sessions says that instead.
    Type `/` to filter.
-3. **Tiles**: one to four panes on one screen, with a strip of every pane
+3. **Tiles**: one to eight panes on one screen, with a strip of every pane
    above them; see [tiles](#tiles-the-android-view). Each pane's content
    comes with its colours, refreshed every second, drawn the moment a
    key you typed is answered (the answer carries the screen), and one input line
@@ -337,7 +337,7 @@ size once more, as does switching fit off and on.
 
 ## Tiles: the Android view
 
-`/p/<address>` opens one pane; `/p/<a>,<b>,<c>` opens up to four, side
+`/p/<address>` opens one pane; `/p/<a>,<b>,<c>` opens up to eight, side
 by side, **from any hosts, sessions and windows**: the build on your
 workstation, the logs on a server and an AI agent on your laptop in one
 view, each live and typable. The page is the Android client's pane view:
@@ -386,7 +386,7 @@ view, each live and typable. The page is the Android client's pane view:
   are looking at. A click on
   an open tab focuses its tile; a click on a closed tab swaps it into
   the focused tile, and a Shift+click opens it beside the others, up to
-  four, so a second pane and the `▦` arrangements are one click away.
+  eight, so a second pane and the `▦` arrangements are one click away.
   The strip scrolls and keeps the focused tab in view. **Drag a tab**
   along the strip to put it where you want it: a mark on the nearer
   edge of the tab under the pointer shows where it lands, and `}` `{`
@@ -401,7 +401,7 @@ view, each live and typable. The page is the Android client's pane view:
   a pane not open dropped on a tile's middle takes that tile's place,
   as a click on it takes the focused tile's; from an edge the pane
   comes in as one more tile on that side, the others keeping their
-  places; on a divider it goes across the split. With four tiles open
+  places; on a divider it goes across the split. With eight tiles open
   the whole tile is its middle, and the pane takes its place.
 - A tile shows **its own pane or nothing**. An address is a position
   (`work/1.1`), and the host renumbers panes when one closes, so a tile
