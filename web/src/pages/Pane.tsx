@@ -1187,6 +1187,17 @@ function Tiles({ addresses }: { addresses: string[] }) {
         continue;
       }
       if (now && now.address !== a) {
+        // Another tile is already this pane, where it went: the key is a
+        // stale one from a route the view changed itself (a pane split
+        // beside an open one, a swap), and the pane here is the listing's.
+        const holder = identities.current.get(now.address);
+        if (addresses.includes(now.address) && holder && sameIdentity(holder.id, id)) {
+          const at = listed.find((q) => q.address === a);
+          if (at) identities.current.set(a, { id: identityOf(at), confirmed: false });
+          else identities.current.delete(a);
+          next.push(a);
+          continue;
+        }
         identities.current.delete(a);
         missing.current.delete(a);
         moved.set(now.address, entry);

@@ -52,6 +52,15 @@ already take.
 - The arrangement stays on the host after the view is left, as an
   arrangement of a whole window does: a release gives the size back,
   not the old places.
+- A split has two children at least: one pane not open stands beside
+  the tiles as a leaf, not in a stack of one, which the host refuses.
+- The layout renumbers the panes on the host. The route follows them
+  (`follow`), and the tiles' identities move with it, confirmed, since
+  the host named the panes by id. A kill then both takes a pane away
+  and renumbers the rest: the listing effect routes gone and moved
+  tiles in one pass, where two navigations would undo each other. A
+  tile says which pane it is (`data-pane-id`), so a spec can follow a
+  pane through a renumbering.
 
 ```mermaid
 sequenceDiagram
@@ -90,7 +99,8 @@ Fixtures only (`alice-laptop`).
 | 1 | spec 133: a window with a pane the token may not write: no layout goes to the host, the tiles fit per pane, the window keeps its shape | UI, security | pass |
 | 2 | `tiles.test.ts`: `someTree` takes the other windows' tiles out and keeps the keys; `someExact` lays the tiles exact and the stack at the floor; `someLayout` names every pane | unit | pass |
 | 3 | spec 133: three of five panes as tiles: one layout for the window, every open pane as the layout says, the hidden two stacked at the right at 20 columns, the window the sum, nothing held; zoom in and out leaves it so; leaving gives the window back (`133-three-of-five`, `133-back`) | UI | pass |
-| 4 | the one-window specs (100, 122) and the rest of the suite | e2e, UI | unchanged |
+| 4 | specs 99, 122 and 124 rewritten for the new behaviour: two tiles of a window not wholly open fit it as one, the third stacked at the right; the held case in a window with a read-only pane under a spanning main pane; three of four and four of five panes as tiles; a kill after the layout renumbered the panes, the tile following its pane by id | UI | pass |
+| 5 | the one-window specs (100) and the rest of the suite | e2e, UI | unchanged |
 
 ## 7. Documentation
 
