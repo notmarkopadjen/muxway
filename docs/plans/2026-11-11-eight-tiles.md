@@ -101,4 +101,17 @@ and resize sections.
 
 ## Test run
 
-Recorded below once the suite has run.
+- Full suite on the tree before the rebase (`20261111-181114-d11a035`,
+  local, not recorded): five failed, all in the changed area, and all
+  fixed in the same commit: three Go security tests that assumed a burst
+  of four, and specs 105, 122 and 132, whose splits of one pane ran out
+  of room in a 100-column window (each split now evens the row or tiles
+  the window). Then the Go suite in full with specs 100, 105, 122 and
+  132 (`20261111-184344-d11a035`): all passed but 122's zoom-out, the
+  race #347 fixed on main, which this branch was then rebased onto.
+- Full suite on the rebased tree, `20261111-185439-d39fd14`:
+  [#349](https://github.com/notmarkopadjen/muxway/issues/349), the Go
+  suite, the browser suite (161 specs) and the arrange environment all
+  passed; the keyboard environment was cut off by the Go test binary's
+  30-minute limit, with another suite running beside it on the box,
+  and passed alone right after (10 specs, 59 s).
