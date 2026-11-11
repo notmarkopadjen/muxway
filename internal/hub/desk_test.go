@@ -86,7 +86,13 @@ func TestValidDeskAgainstGrants(t *testing.T) {
 	d.Panes = append(d.Panes, "bob-desktop/work/0.0")
 	d.Tree = json.RawMessage(`{"kind":"h","key":"r","children":[0,{"kind":"v","key":"s","children":[1,2]}]}`)
 	seen := d.forPrincipal(reader)
-	if len(seen.Panes) != 2 || seen.Tree != nil || seen.Arrangement != "" || len(seen.Minimised) != 1 {
+	if len(seen.Panes) != 2 || seen.Tree != nil || seen.Arrangement != "" {
 		t.Fatalf("filtered: %+v", seen)
+	}
+	// An older client's minimised row is checked and then dropped: the row
+	// is the listing's parked panes now.
+	dropped := desk(good)
+	if code, _ := validDesk(dropped, reader); code != "" || dropped.Minimised != nil {
+		t.Fatalf("minimised kept: %s %+v", code, dropped.Minimised)
 	}
 }
