@@ -6,10 +6,16 @@ test('75 double-click shows a pane alone and brings the others back', async ({ p
   await page.goto(`/w/${HOST}/work/0`);
   await expect(page.getByTestId('cell')).toHaveCount(2);
   await page.waitForTimeout(700);
-  // Zoom is one view at two distances: a double-click on a cell or its
-  // header opens the pane alone in the pane view; from there ⊡, z or a
-  // double-click bring the window's panes back side by side as tiles.
+  // Zoom is one view at two distances: a double-click on a cell's header
+  // opens the pane alone in the pane view; from there ⊡, z or a
+  // double-click on the tile's header bring the window's panes back side
+  // by side as tiles. The screen's double-click is the browser's: it
+  // picks a word and zooms nothing.
   await page.getByTestId('cell-screen').nth(1).dblclick();
+  await page.waitForTimeout(400);
+  await expect(page).toHaveURL(new RegExp(`/w/${HOST}/work/0$`));
+  await expect(page.getByTestId('cell')).toHaveCount(2);
+  await page.locator('.mx-cell-head').nth(1).dblclick();
   await expect(page).toHaveURL(new RegExp(`/p/${HOST}/work/0.1$`));
   const tiles = page.getByTestId('tile');
   await expect(tiles).toHaveCount(1);
@@ -28,7 +34,11 @@ test('75 double-click shows a pane alone and brings the others back', async ({ p
   await expect(page).toHaveURL(new RegExp(`/p/${HOST}/work/0.1$`));
   await expect(tiles).toHaveCount(1);
   await page.waitForTimeout(700);
-  await tiles.dblclick();
+  await page.getByTestId('screen').dblclick();
+  await page.waitForTimeout(400);
+  await expect(tiles).toHaveCount(1);
+  await expect(page).toHaveURL(new RegExp(`/p/${HOST}/work/0.1$`));
+  await tiles.locator('.mx-tile-head').dblclick();
   await expect(tiles).toHaveCount(2);
   // The tiles come back as they were after a zoom in and out, by the
   // tile's header or by the strip's tab. They are every pane of a window

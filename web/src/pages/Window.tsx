@@ -177,7 +177,6 @@ function Tree(props: TreeProps) {
         data-focused={focused === node.id ? '' : undefined}
         data-moving={moving.on ? '' : undefined}
         style={moving.on ? { viewTransitionName: nameFor(node.id) } : undefined}
-        onDoubleClick={() => onZoom(node.id)}
         onPointerDownCapture={(e) => {
           pointer.current = e.pointerType;
         }}
@@ -186,6 +185,7 @@ function Tree(props: TreeProps) {
           className="mx-cell-head mx-painted"
           data-state={state}
           onClick={() => onFocus(node.id)}
+          onDoubleClick={() => onZoom(node.id)}
         >
           <PaneTitle pane={p} folder={p.cwd} title={paneTooltip(p)} />
           <span className="mx-dim">
@@ -975,7 +975,7 @@ export function WindowPage() {
               onClick: () => focus && open(focus),
               disabled: !focus,
               on: false,
-              title: 'this pane alone, in the pane view (z, Enter, or double-click)',
+              title: 'this pane alone, in the pane view (z, Enter, or double-click its header)',
             },
             {
               id: 'open-palette',

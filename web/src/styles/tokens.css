@@ -18,6 +18,8 @@
   /* attention: the theme's own ink, drawn inverted; no second hue */
   --mx-warn: var(--mx-ink);
   --mx-bad: #ff3b3b;
+  /* the rate-limit flash at the page's edge: a red-orange, apart from the ink */
+  --mx-flash: #ff5a1f;
   --mx-claude: #d97757;
   /* talk: two panes chained, a red toward the ink; the alert red stays for errors */
   --mx-talk: #ff5c3a;

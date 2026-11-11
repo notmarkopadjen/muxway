@@ -182,17 +182,18 @@ type agentConn struct {
 	pending map[uint64]chan wire.Response
 	list    []tmux.Pane
 	listAt  time.Time
-	starts  bool // the agent starts sessions for clients
-	closes  bool // the agent closes panes for clients
-	keys    int  // the key names the agent takes, 0 before the grammar
-	inbox   bool // the agent takes files for its panes
-	preview bool // the agent serves files under its roots
-	repeat  bool // the agent takes a count with a key
-	ask     bool // the agent takes answers to questions
-	later   bool // the agent parks panes for later
-	mailbox bool // the agent holds mail for its panes
-	dir     bool // the agent lists directories under its roots
-	rename  bool // the agent names panes for writers
+	gen     uint64 // forgets so far: a listing asked before one is never kept
+	starts  bool   // the agent starts sessions for clients
+	closes  bool   // the agent closes panes for clients
+	keys    int    // the key names the agent takes, 0 before the grammar
+	inbox   bool   // the agent takes files for its panes
+	preview bool   // the agent serves files under its roots
+	repeat  bool   // the agent takes a count with a key
+	ask     bool   // the agent takes answers to questions
+	later   bool   // the agent parks panes for later
+	mailbox bool   // the agent holds mail for its panes
+	dir     bool   // the agent lists directories under its roots
+	rename  bool   // the agent names panes for writers
 	evts    bucket
 	warned  time.Time
 	// Reads of one pane in flight, shared by the clients asking for the
@@ -305,13 +306,10 @@ func (a *agentConn) request(ctx context.Context, req wire.Request) (wire.Respons
 
 // panes returns the agent's exposed panes, cached for a second.
 func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
-	a.mu.Lock()
-	if time.Since(a.listAt) < time.Second {
-		list := a.list
-		a.mu.Unlock()
+	list, gen, ok := a.cached()
+	if ok {
 		return list, nil
 	}
-	a.mu.Unlock()
 	r, err := a.request(ctx, wire.Request{Op: wire.OpList})
 	if err != nil {
 		return nil, err
@@ -319,11 +317,35 @@ func (a *agentConn) panes(ctx context.Context) ([]tmux.Pane, error) {
 	if r.Error != "" {
 		return nil, errors.New(r.Error)
 	}
+	a.keep(gen, r)
+	return r.Panes, nil
+}
+
+// cached is the listing of the last second, or the generation a fresh
+// one is asked under.
+func (a *agentConn) cached() ([]tmux.Pane, uint64, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if time.Since(a.listAt) < time.Second {
+		return a.list, a.gen, true
+	}
+	return nil, a.gen, false
+}
+
+// keep stores a listing asked under gen, unless the cache was forgotten
+// since: a split or a new session happened while the agent was asked,
+// and the answer may be from before it. Under that address a client
+// would read the pane that stood there before. The agent's flags are
+// kept either way; they do not change with a pane.
+func (a *agentConn) keep(gen uint64, r wire.Response) {
 	sanePanes(r.Panes)
 	a.mu.Lock()
-	a.list, a.listAt, a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys, a.ask, a.mailbox, a.dir, a.later, a.rename = r.Panes, time.Now(), r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys, r.Ask, r.Mailbox, r.Dir, r.Later, r.Rename
-	a.mu.Unlock()
-	return r.Panes, nil
+	defer a.mu.Unlock()
+	a.starts, a.closes, a.inbox, a.preview, a.repeat, a.keys, a.ask, a.mailbox, a.dir, a.later, a.rename = r.Sessions, r.Close, r.Inbox, r.Preview, r.Repeat, r.Keys, r.Ask, r.Mailbox, r.Dir, r.Later, r.Rename
+	if a.gen != gen {
+		return
+	}
+	a.list, a.listAt = r.Panes, time.Now()
 }
 
 // sanePanes keeps a listing within itself: a cursor an agent reports
@@ -447,6 +469,7 @@ func (a *agentConn) startsSessions(ctx context.Context) bool {
 func (a *agentConn) forget() {
 	a.mu.Lock()
 	a.listAt = time.Time{}
+	a.gen++
 	a.mu.Unlock()
 }
 
@@ -499,6 +522,7 @@ func (h *Hub) acceptEvent(a *agentConn, ev wire.Event) {
 		a.warned = time.Now()
 	}
 	a.listAt = time.Time{}
+	a.gen++
 	a.mu.Unlock()
 	if !ok {
 		if warn {

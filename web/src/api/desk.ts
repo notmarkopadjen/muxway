@@ -13,7 +13,8 @@ import type { Layout, TileNode, Weights } from '../term/tiles';
 // has and applies nothing it already shows: two clients then settle
 // instead of handing the same desk back and forth.
 export interface Desk {
-  view: 'panes' | 'window';
+  // list: nothing open, the minimised row kept.
+  view: 'panes' | 'window' | 'list';
   panes?: string[];
   focused?: string;
   arrangement?: Layout;
@@ -71,9 +72,10 @@ export function forgetDesk() {
 
 let pending: Desk | null = null;
 let timer: number | null = null;
-async function flush() {
+async function flush(leaving = false) {
   const d = pending;
   pending = null;
+  if (timer) window.clearTimeout(timer);
   timer = null;
   if (!d || sameDesk(d, known)) return;
   // A read-only principal reads the desk and cannot move it.
@@ -81,7 +83,12 @@ async function flush() {
   if (me && !me.write?.length) return;
   known = d;
   try {
-    const r = await api<{ desk: Desk }>('/v1/desk', { method: 'PUT', body: JSON.stringify(d) });
+    const r = await api<{ desk: Desk }>('/v1/desk', {
+      method: 'PUT',
+      body: JSON.stringify(d),
+      // A page being left sends its last desk all the same.
+      keepalive: leaving,
+    });
     known = r.desk;
     queryClient.setQueryData(keys.desk, r.desk);
   } catch {
@@ -91,14 +98,24 @@ async function flush() {
   }
 }
 
-// writeDesk sends the view's desk after a moment of quiet; a desk the
-// hub already has is not sent.
-export function writeDesk(d: Desk) {
+// writeDesk sends the view's desk after a moment of quiet, or at once
+// (now) when the view is leaving; a desk the hub already has is not sent.
+export function writeDesk(d: Desk, now = false) {
   if (sameDesk(d, known) && !pending) return;
   pending = d;
   if (timer) window.clearTimeout(timer);
-  timer = window.setTimeout(() => void flush(), DESK_DEBOUNCE_MS);
+  timer = null;
+  if (now) void flush();
+  else timer = window.setTimeout(() => void flush(), DESK_DEBOUNCE_MS);
 }
+
+// A page left within the moment of quiet (a reload, a link away, the
+// tab closed) sends what it was about to: the row minimised a moment
+// before the tab closed is not lost.
+if (typeof window !== 'undefined')
+  window.addEventListener('pagehide', () => {
+    if (pending) void flush(true);
+  });
 
 // The desk's focus is the view's on opening only; a running view keeps
 // its own, so typing on the phone does not move the web's focus.

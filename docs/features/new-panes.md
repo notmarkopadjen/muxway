@@ -62,6 +62,14 @@ the principal's write grant against the new pane's address and, when it
 does not match, has the agent close the pane again: a grant for one pane
 never grows into a window.
 
+tmux numbers panes by place, so a split shifts its neighbours'
+addresses, and the hub's listing of the host, cached for a second, is
+forgotten the moment the split is done. A listing the hub had asked
+the agent for *before* the split and received after it is never kept
+either: it would name the old neighbour under the new pane's address
+for up to a second, and a client opening the new pane would read the
+old one and follow it. The client's next read asks the agent again.
+
 A session is `new-session -d -s <name>`, allowed only when the agent runs
 with `--allow-sessions`. The agent marks the new session
 `@muxway-mode = write`, in the open, so `muxway exposed` lists it like any

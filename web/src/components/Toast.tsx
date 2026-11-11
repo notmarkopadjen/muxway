@@ -7,8 +7,10 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { flash, isFlash } from './flash';
 
 // Transient notices, bottom right, dismissed by a click or after a while.
+// A rate limit is not one: it flashes the page's edge (flash.ts).
 export interface ToastItem {
   id: number;
   kind: string;
@@ -34,6 +36,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const dismiss = useCallback((id: number) => setToasts((l) => l.filter((t) => t.id !== id)), []);
   const push = useCallback(
     (t: Omit<ToastItem, 'id'>) => {
+      if (isFlash(t.kind, t.title)) {
+        flash();
+        return;
+      }
       const id = next.current++;
       setToasts((l) => [...l.slice(-4), { ...t, id }]);
       window.setTimeout(() => dismiss(id), TTL);

@@ -226,8 +226,8 @@ interface TileProps {
   onIdentity: (id: Identity) => void;
   // A frame of another pane came for this address.
   onStranger: () => void;
-  // The tile out of the arrangement, into the minimised row; off on the last tile.
-  minimisable: boolean;
+  // The tile out of the arrangement, into the minimised row; the last
+  // tile makes way for the next pane, or the list.
   onMinimise: () => void;
   // The host closes writable panes for clients; asking: the header asks.
   hostCloses: boolean;
@@ -566,13 +566,13 @@ function Tile(props: TileProps) {
         setOver(null);
         props.onDrop(zone);
       }}
-      onDoubleClick={() => p && props.onZoom(p)}
     >
       <div
         className="mx-tile-head mx-painted"
         data-state={st === 'quiet' ? undefined : st}
         data-mode={p?.mode}
         onClick={props.onFocus}
+        onDoubleClick={() => p && props.onZoom(p)}
         draggable={several}
         onDragStart={(e) => {
           e.dataTransfer.setData('text/plain', '');
@@ -712,11 +712,10 @@ function Tile(props: TileProps) {
           <button
             type="button"
             title={
-              props.minimisable
-                ? 'minimise: the tile goes to the row above the keys (-)'
-                : 'the last tile cannot be minimised'
+              props.alone
+                ? 'minimise: the pane goes to the row above the keys and the next pane takes the tile, or the list (-)'
+                : 'minimise: the tile goes to the row above the keys (-)'
             }
-            disabled={!props.minimisable}
             data-testid="minimise"
             onClick={(e) => {
               e.stopPropagation();
@@ -956,12 +955,20 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const index = Math.min(focusedIndex, n - 1);
   const focused = addresses[index];
   // Panes taken out of the arrangement: read on, shown in the row above
-  // the keys, forgotten with the view.
+  // the keys. The row is the desk's: a view the desk's row opened, or a
+  // navigation within the view, carries it (minimisedKept); any other
+  // opening, a pane from the list, a link, settles it from the desk once
+  // read, less the tiles it opens, and writes no desk before that, so a
+  // view that opens never empties every client's row.
+  const rowSettled = useRef(false);
   const [minimised, setMinimised] = useState<string[]>(() => {
     const k = minimisedKept;
     minimisedKept = null;
-    return k && k.panes.join() === addresses.join() ? k.minimised : [];
+    const carried = !!k && k.panes.join() === addresses.join();
+    rowSettled.current = carried;
+    return carried ? k.minimised : [];
   });
+  const [rowTick, setRowTick] = useState(0);
   const focusedCached = usePaneCached(focused).data;
   const focusedPane = focusedCached?.pane;
   const words = useMemo(() => screenWords(focusedCached?.content ?? ''), [focusedCached?.content]);
@@ -1172,9 +1179,22 @@ function Tiles({ addresses }: { addresses: string[] }) {
     }
   }, [listed, addresses, missingTick]);
   // The tile out of the arrangement, as a closed one, and its pane into
-  // the row; the last tile stays.
+  // the row. The last tile makes way: the next awake pane of the strip
+  // takes it, or, with none, the pane joins the row and the view goes
+  // back to the list, the desk saying so.
   const minimise = (a: string) => {
-    if (addresses.length <= 1 || minimised.includes(a)) return;
+    if (minimised.includes(a)) return;
+    if (addresses.length <= 1) {
+      const next = awake(1);
+      if (next) {
+        focusNext = next;
+        drawn(() => go([next], [...minimised, a]));
+        return;
+      }
+      writeDesk({ view: 'list', minimised: [...minimised, a], order: tabOrder.slice(0, 64) }, true);
+      void navigate({ to: '/' });
+      return;
+    }
     const rest = close(addresses, a);
     if (layout === 'custom' && rest.length > 1)
       carried = { panes: rest, layout, custom: prune(shape, addresses.indexOf(a)), weights: {} };
@@ -1275,8 +1295,24 @@ function Tiles({ addresses }: { addresses: string[] }) {
     [addresses, focused, layout, custom, weights, minimised, tabOrder],
   );
   useEffect(() => {
-    writeDesk(mine);
-  }, [mine]);
+    if (rowSettled.current) writeDesk(mine);
+  }, [mine, rowTick]);
+  // A view opened without a row settles it from the desk, once read: the
+  // desk's minimised panes, less the tiles here and anything the listing
+  // lacks; then the view writes its desk, as one opened by a link does.
+  useEffect(() => {
+    if (rowSettled.current || desk.isPending) return;
+    rowSettled.current = true;
+    const d = desk.data;
+    const row =
+      d && d.view !== 'window'
+        ? (d.minimised ?? []).filter(
+            (a) => !addresses.includes(a) && (!all.data || all.data.some((p) => p.address === a)),
+          )
+        : [];
+    if (row.length) setMinimised(row);
+    setRowTick((t) => t + 1);
+  }, [desk.data, desk.isPending, addresses, all.data]);
   useEffect(() => {
     const d = desk.data;
     if (!d || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
@@ -1548,18 +1584,21 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // Android's swipe: the focused tile shows the neighbouring pane of the
   // strip. A parked pane is passed over, as the swipe passes it: the owner
   // said later, and only a tab, a row or the inbox brings it back.
-  const neighbour = (step: number) => {
+  // The next awake pane of the strip from the focused one, not open and
+  // not parked; past either end it comes round to the other.
+  const awake = (step: number): string | undefined => {
     const at = strip.indexOf(focused);
-    if (at < 0) return;
+    if (at < 0) return undefined;
     const parked = new Set((all.data ?? []).filter((p) => p.later).map((p) => p.address));
-    // Past either end it comes round to the other.
     for (let i = 1; i < strip.length; i++) {
       const k = (((at + step * i) % strip.length) + strip.length) % strip.length;
-      if (!addresses.includes(strip[k]) && !parked.has(strip[k])) {
-        go(replace(addresses, index, strip[k]));
-        return;
-      }
+      if (!addresses.includes(strip[k]) && !parked.has(strip[k])) return strip[k];
     }
+    return undefined;
+  };
+  const neighbour = (step: number) => {
+    const next = awake(step);
+    if (next) go(replace(addresses, index, next));
   };
   const toggleFit = (address: string, on?: boolean) =>
     setFit((f) => ({ ...f, [address]: on ?? !(f[address] ?? writable) }));
@@ -1597,7 +1636,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
       } else if (asking && (ev.key === 'y' || ev.key === 'n')) void answer(asking, ev.key === 'y');
       else if (ev.key === 'x' && hostCloses(focused) && writable) setAsking(focused);
       else if (ev.key === 'x' && several) closeTile(focused);
-      else if (ev.key === '-' && several) minimise(focused);
+      else if (ev.key === '-') minimise(focused);
       else if ((ev.key === 'e' || ev.key === 'E') && several)
         spread(index, ev.key === 'e' ? 'w' : 'h');
       else if (ev.key === 'f' && writable) toggleFit(focused);
@@ -1847,7 +1886,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
         }}
         identity={identities.current.get(a)?.id}
         onIdentity={(id) => identities.current.set(a, { id, confirmed: true })}
-        minimisable={several}
         onMinimise={() => minimise(a)}
         hostCloses={hostCloses(a)}
         asking={asking === a}
@@ -2107,10 +2145,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
               disabled: !focusedPane,
               on: !several,
               title: several
-                ? 'this pane alone (z, Enter, or double-click)'
+                ? 'this pane alone (z, Enter, or double-click its header)'
                 : focusedPane?.hub
-                  ? "the window's panes side by side (z, or double-click)"
-                  : "the window's panes side by side (z, or double-click); w: the mirror layout",
+                  ? "the window's panes side by side (z, or double-click the header)"
+                  : "the window's panes side by side (z, or double-click the header); w: the mirror layout",
             },
             {
               id: 'open-palette',

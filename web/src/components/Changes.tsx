@@ -167,7 +167,6 @@ export function ChangesWindow({
       data-folded={shut ? '' : undefined}
       data-observed={observed ? '' : undefined}
       onClick={(ev) => ev.stopPropagation()}
-      onDoubleClick={(ev) => ev.stopPropagation()}
     >
       <div className="mx-changes-bar" data-testid="changes-bar">
         <span>┌─ changes ─ </span>

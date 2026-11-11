@@ -45,6 +45,8 @@ let startedHere =
 export function deskWords(d: Desk | undefined): string {
   if (!d) return 'desk';
   if (d.view === 'window' && d.window) return `desk · the window ${d.window}`;
+  if (d.view === 'list')
+    return `desk · the list${d.minimised?.length ? ` · ${d.minimised.length} minimised` : ''}`;
   const n = deskPanes(d).length;
   if (!n) return 'desk · empty';
   const parts = [`${n} pane${n === 1 ? '' : 's'}`];

@@ -208,6 +208,13 @@ the tab title flashes until you come back, and, if you turned them on, a
 browser notification names the pane while the tab is hidden. Typing into
 the pane clears it; a click on the pane does not.
 
+A request the hub refuses is a toast too, with its code: `read_only`,
+`not_found`, `hub unreachable`. A rate limit is not. Keys or clicks
+faster than the hub takes trip its limit, and that says nothing you can
+act on: the page's edge flashes red-orange instead, slowly and mildly,
+once per burst, with the scanlines and a faint flicker of the tube (a
+plain fade with effects off), and nothing covers the pane.
+
 ## Talk and mail
 
 Panes that wrote to each other in the last ten minutes, or mailed each
@@ -471,8 +478,8 @@ sequenceDiagram
   a writable tile on a host with preview roots counts the repository's
   changes (`⎇ +3 ~5 −1`, `⎇ ✓` when clean, nothing outside a
   repository); a click on the count opens the changes window (see
-  [changes](changes.md)). `_` minimises the tile (below); it is off on
-  the last tile. The controls sit in the top row,
+  [changes](changes.md)). `_` minimises the tile (below); on the last
+  tile the next awake pane takes its place. The controls sit in the top row,
   at the right, as icons: `▦` the next arrangement and `⊞` equal
   shares (with several tiles), `⤢` fit for the focused tile (selected
   when on), `▮` direct typing (see [direct](direct.md)), `⎇` the
@@ -528,18 +535,24 @@ sequenceDiagram
   moving; its tab leaves the strip while it is below. A click on the
   tab brings the tile back, focused, as does its entry in the add menu;
   with four tiles open it takes the focused tile's place. The last tile
-  cannot be minimised; closing the last tile brings a minimised pane
-  back instead of leaving the view. The row is not drawn while it is
-  empty. Minimised panes belong to the view's arrangement and are
-  forgotten with it, on leaving the view or a reload; the fit of a
-  minimised pane is kept and released like a closed tile's, when the
-  view is left.
+  minimises too: the next awake pane of the strip takes the tile, the
+  one `]` would show, or, with none awake, the pane joins the row and
+  the view goes back to the list, the desk saying so (`view: "list"`,
+  see [the desk](desk.md)). Closing the last tile brings a minimised
+  pane back instead of leaving the view. The row is not drawn while it
+  is empty. The row is the desk's: a view opened from the list or a
+  link takes the desk's row, less the tiles it opens, and writes
+  nothing before it has read the desk once, so every client shows one
+  row and a reload keeps it; the fit of a minimised pane is kept and
+  released like a closed tile's, when the view is left.
 
   ![a minimised pane](images/web-minimised.png)
 - **Zoom** is one view at two distances, not two views: `⊡`, `z` or a
-  double-click on a tile, its header or its tab open that pane alone,
+  double-click on a tile's header or its tab open that pane alone,
   and the same again bring back the tiles it came from, in their places,
-  arrangement and shares, focused on it. A pane opened alone brings the
+  arrangement and shares, focused on it. A double-click on the screen
+  is the browser's, it picks the word under the pointer to copy, and
+  zooms nothing. A pane opened alone brings the
   window's panes side by side in the window's order, up to four (a
   window of one pane shows its mirror layout instead). `w` opens the
   window's mirror layout. The zoom is drawn like a channel change: the
@@ -658,16 +671,16 @@ its key:
 | `⤢` | fit: the host window follows the box (selected when on); off for a read-only pane | `f` |
 | `▮` | direct typing into the focused pane, every key as pressed, as in the pane view (see [direct](direct.md)); off for a read-only pane | `i`, a click on the cell |
 | `⎇` | the changes window over the focused cell, as in the pane view (see [changes](changes.md)); the count stands in every writable cell's header; off for a read-only pane or a host without preview roots | `g` |
-| `⊡` | the focused pane alone, in the pane view with everything it has | `z`, `Enter`, double-click |
+| `⊡` | the focused pane alone, in the pane view with everything it has | `z`, `Enter`, double-click the header |
 | `≡` | go to a pane or window | `p` |
 
 One pane is focused (its tab, a click on its header, or `]` and `[`);
 the input line and key bar go to it, and a key's echo is drawn in its
 cell the moment the input is answered, as in the pane view. **Zoom is the pane view**: `⊡`,
-`z`, `Enter` or a double-click on a cell, its header included, open the
+`z`, `Enter` or a double-click on a cell's header open the
 focused pane alone there, with the strip, the input line, the
 completions and the command row; from the pane view `⊡`, `z` or a
-double-click bring the window's panes back side by side as tiles, and
+double-click on the tile's header bring the window's panes back side by side as tiles, and
 `w` returns to this mirror layout. Then, in the browser only (with fit
 on, a dragged divider reaches the host, see above):
 
@@ -860,14 +873,14 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `I` / `o` | the [inbox](inbox.md): every pane that waits for you, oldest first, the parked ones last; `Enter` opens the selected one (and wakes it) / open the oldest waiting pane that is not parked |
 | `d` | later: park the focused tile's pane, or the selected row's (see [notifications](notifications.md#later)); its tab goes last with `☾`, painted plain, the header says `☾ later` with the kind underneath, and no toast, flash or notification calls for it; `d` again, a click on its tab, opening it, typing, an answer or a mail wakes it; the `☾` pane button does the same, selected while parked; off on a read-only pane and on a host older than this |
 | `+` | the list: one more pane in the selected row's window; it opens. Tiles: the add menu |
-| `-` | tiles: minimise the focused tile to the row above the keys; a click on its tab there, or its entry in the add menu, brings it back |
+| `-` | tiles: minimise the focused tile to the row above the keys; a click on its tab there, or its entry in the add menu, brings it back; on the last tile the next awake pane takes the tile, or, with none, the view goes back to the list |
 | `S` | a new session on the selected row's host (or the first that allows it): a one-line form, `Enter` starts, `Esc` cancels |
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |
 | `]` / `[` | next / previous pane: the tile, or with one tile open the strip's neighbour shown in it (window view: pane), coming round at either end; a parked pane is passed over |
 | `Ctrl+]` / `Ctrl+[`, `Cmd+]` / `Cmd+[` | the same from anywhere: the line, direct typing (which stays on) and the window view; never sent to the pane (see [direct typing](direct.md)) |
 | `}` / `{` | move the focused pane's tab one place right / left along the strip (or drag it); the order is kept in the browser |
-| `1`–`4`, `l`, `=`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, equal shares, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click), the mirror layout |
+| `1`–`4`, `l`, `=`, `x`, `F`, `z`, `w` | tiles: focus one, next arrangement, equal shares, close (the pane on its host, asking, where allowed), fit all, zoom (one pane alone, or the window's panes side by side; or double-click the header or the tab), the mirror layout |
 | `Enter` | tiles: with several open, the focused one alone (as `z`) |
 | `N` | name the focused pane: its alias, `a-z 0-9 -` up to 32, the name everywhere and an address for agents (`host/@name`); `Enter` saves, `Esc` leaves, empty takes it away (see [what a pane is called](#what-a-pane-is-called)) |
 | `T` | the messages window: what panes said to panes, mail and typed, across hosts; `Enter` or `⇆` lays the two side by side, a click on a mail row opens the mail window (see [talk and mail](#talk-and-mail)) |
@@ -878,7 +891,7 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `s` | the share window for the focused pane: its live shares with *revoke*, and a link and a password for one person to watch it read-only, with the link as a code to send (see [share](share.md)); `Esc` closes |
 | click, Shift+click on a name | a writable shell pane on a host with preview roots: a name of the pane's directory on the screen; a directory is entered, a file opens as *a file opens with* says / only the quoted name goes onto the pane's line (see [shell helper](shell-helper.md)) |
 | `Right`, `Ctrl+Right` | with a ghost word after the cursor, direct or on the line: accept it whole / its first word; without one, the pane's keys (direct) or the caret's move (line) |
-| `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, this pane alone (or `Enter`, double-click), host layout, equal shares, bigger, smaller |
+| `x`, `z`, `0`, `=`, `+`, `-` | window view: hide, this pane alone (or `Enter`, double-click the header), host layout, equal shares, bigger, smaller |
 | `g` then a letter | jump to the first host starting with it |
 | `t` | next theme: amber, green, paper |
 | `H` | hubs: the other hubs this browser knows; `go` is that hub's own page and sign-in, once; the list then shows every hub's panes |
@@ -921,7 +934,7 @@ sequenceDiagram
     participant V as pane view
     participant B as browser
     participant H as host
-    U->>V: double-click a tile
+    U->>V: double-click a tile's header
     V->>V: every tile named, this one mx-zoom
     V->>B: startViewTransition(change)
     B->>B: picture of the named tiles
