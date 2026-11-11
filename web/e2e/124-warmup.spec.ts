@@ -125,22 +125,41 @@ test("124 when the host renumbers, the exited pane's tile closes and the other f
   await split(request, 'work:1.0');
   await split(request, 'work:1.1');
   await control(request, '/send', { target: 'work:1.2', text: 'echo MARKER-C-9900' });
+  // The panes by id: two of the window's three as tiles are laid out on
+  // the host as the tiles are, which renumbers them, and the tiles
+  // follow their panes.
+  const [first, second] = await Promise.all(
+    [1, 2].map((i) => control(request, '/pane-id', { target: `work:1.${i}` })),
+  );
   await signIn(page);
   await expect(page.locator(`[data-testid="pane-row"][data-address="${SPLIT2}"]`)).toBeVisible({
     timeout: 10_000,
   });
   await page.goto(`/p/${SPLIT},${SPLIT2}`);
   await expect(page.getByTestId('tile')).toHaveCount(2);
-  await expect(tile(page, SPLIT2)).toContainText('MARKER-C-9900', { timeout: 10_000 });
+  await expect(
+    page
+      .locator(`[data-pane][data-pane-id="${second}"], [data-pane]`)
+      .filter({ hasText: 'MARKER-C-9900' }),
+  ).toHaveCount(1, { timeout: 10_000 });
   await settled(page);
-  // The first pane exits: tmux renumbers the second to its address.
-  await control(request, '/kill-pane', { target: 'work:1.1' });
+  // The first pane exits: tmux renumbers the second; its tile follows it.
+  await control(request, '/kill-pane', { target: first });
   await expect(page.getByTestId('toast').filter({ hasText: 'is gone' })).toBeVisible({
     timeout: 10_000,
   });
   await expect(page.getByTestId('tile')).toHaveCount(1, { timeout: 10_000 });
-  await expect(page.getByTestId('tile')).toHaveAttribute('data-pane', SPLIT, { timeout: 10_000 });
-  await expect(page).toHaveURL(new RegExp(`/p/${SPLIT.replace(/[/.]/g, '\\$&')}$`));
-  await expect(tile(page, SPLIT)).toContainText('MARKER-C-9900');
+  const addressOf = async () => {
+    const r = await page.request.get('/v1/panes', { headers: { 'X-Muxway-Client': 'e2e' } });
+    const listed = ((await r.json()) as { panes: { address: string; pane_id: string }[] }).panes;
+    const at = listed.find((p) => p.pane_id === second)?.address;
+    const shown = await page.getByTestId('tile').getAttribute('data-pane');
+    const id = await page.getByTestId('tile').getAttribute('data-pane-id');
+    return at && at === shown && id === second ? at : `listing ${at}, tile ${shown} as ${id}`;
+  };
+  await expect.poll(addressOf, { timeout: 10_000 }).toMatch(/^[^ ]+\/work\/1\.\d+$/);
+  const at = await addressOf();
+  await expect(page).toHaveURL(new RegExp(`/p/${at.replace(/[/.]/g, '\\$&')}$`));
+  await expect(tile(page, at)).toContainText('MARKER-C-9900');
   await shot(page, info, '124-followed');
 });

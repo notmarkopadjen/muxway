@@ -550,6 +550,7 @@ function Tile(props: TileProps) {
       data-pane={address}
       data-group={props.grouped ? '' : undefined}
       data-several={several ? '' : undefined}
+      data-pane-id={identity?.pane_id}
       data-focused={focused ? '' : undefined}
       data-fit={writable ? (fit ? '1' : '0') : undefined}
       data-held={held ? '' : undefined}
@@ -1155,15 +1156,20 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // pane the view never knew goes on its read alone, as before.
   useEffect(() => {
     if (!listed) return;
-    for (const [i, a] of addresses.entries()) {
+    // One pass over the tiles, one route for all of them: a kill both
+    // takes a pane away and renumbers its neighbours, and two moves made
+    // one after the other would undo each other.
+    const next: string[] = [];
+    const gone: string[] = [];
+    const moved = new Map<string, { id: Identity; confirmed: boolean }>();
+    let changed = false;
+    for (const a of addresses) {
       const entry = identities.current.get(a);
       if (!entry) {
         if (missing.current.has(a)) {
-          missing.current.delete(a);
-          toast.push({ kind: 'gone', title: `${a} is gone` });
-          closeTile(a);
-          return;
-        }
+          gone.push(a);
+          changed = true;
+        } else next.push(a);
         continue;
       }
       const { id, confirmed } = entry;
@@ -1173,30 +1179,49 @@ function Tiles({ addresses }: { addresses: string[] }) {
         if (at && !sameIdentity(identityOf(at), id))
           identities.current.set(a, { id: identityOf(at), confirmed: false });
         else if (!at && !now && missing.current.has(a)) {
-          identities.current.delete(a);
-          missing.current.delete(a);
-          toast.push({ kind: 'gone', title: `${a} is gone` });
-          closeTile(a);
-          return;
+          gone.push(a);
+          changed = true;
+          continue;
         }
+        next.push(a);
         continue;
       }
       if (now && now.address !== a) {
         identities.current.delete(a);
-        identities.current.set(now.address, entry);
         missing.current.delete(a);
-        void go(replace(addresses, i, now.address));
-        return;
+        moved.set(now.address, entry);
+        next.push(now.address);
+        changed = true;
+        continue;
       }
       const hostListed = listed.some((q) => (q.hub ?? '') === (id.hub ?? '') && q.host === id.host);
       if (!now && (hostListed || missing.current.has(a))) {
-        identities.current.delete(a);
-        missing.current.delete(a);
-        toast.push({ kind: 'gone', title: `${a} is gone` });
-        closeTile(a);
-        return;
+        gone.push(a);
+        changed = true;
+        continue;
       }
+      next.push(a);
     }
+    if (!changed) return;
+    for (const a of gone) {
+      identities.current.delete(a);
+      missing.current.delete(a);
+      toast.push({ kind: 'gone', title: `${a} is gone` });
+    }
+    for (const [a, e] of moved) identities.current.set(a, e);
+    const rest = [...new Set(next)];
+    if (!rest.length) {
+      navigate({ to: '/' });
+      return;
+    }
+    if (gone.length === 1 && layout === 'custom' && rest.length > 1)
+      carried = {
+        panes: rest,
+        layout,
+        custom: prune(shape, addresses.indexOf(gone[0])),
+        weights: {},
+      };
+    void go(rest);
   }, [listed, addresses, missingTick]);
   // A parked pane's tile leaves the arrangement, as a closed one; its tab
   // is the row's. The last tile makes way: the next awake pane of the
@@ -1537,9 +1562,18 @@ function Tiles({ addresses }: { addresses: string[] }) {
     qc.invalidateQueries({ queryKey: ['pane'] });
     const next = group.ids.map((id, i) => (id ? by.get(id)?.address : undefined) ?? addresses[i]);
     // A pane gone since the fit closes its tile by itself; a route that
-    // would name one pane twice is not taken.
-    if (new Set(next).size === next.length && next.join() !== addresses.join())
+    // would name one pane twice is not taken. The tiles' identities move
+    // with their panes, so a later renumbering finds each tile's own.
+    if (new Set(next).size === next.length && next.join() !== addresses.join()) {
+      const moved = addresses.map((a, i) => [next[i], identities.current.get(a)] as const);
+      for (const a of addresses) {
+        identities.current.delete(a);
+        missing.current.delete(a);
+      }
+      // The host named the panes by id in its answer: these are confirmed.
+      for (const [a, e] of moved) if (e) identities.current.set(a, { ...e, confirmed: true });
       navigate({ to: '/p/$', params: { _splat: routeFor(next) }, replace: true });
+    }
   };
   const area = useRef<HTMLDivElement>(null);
   // The input line grown while a message is written takes height from
