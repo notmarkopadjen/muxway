@@ -59,6 +59,8 @@ export interface FitOptions {
   inset?: boolean;
   // The host's answer, which after a layout lists the window's panes.
   onDone?: (r: { panes?: Pane[] }) => void;
+  // A refusal other than the rate limit, with its status.
+  onRefused?: (status: number) => void;
   slack?: () => number;
   // Window scope: the size and layout measured from the tiles themselves,
   // exact to the cell, instead of the box and the proportional layout.
@@ -110,6 +112,8 @@ export function useFit(
   exact.current = opts.exact;
   const done = useRef(opts.onDone);
   done.current = opts.onDone;
+  const refused = useRef(opts.onRefused);
+  refused.current = opts.onRefused;
 
   useEffect(() => {
     if (!enabled || !box.current) return;
@@ -150,7 +154,7 @@ export function useFit(
           if (live && err instanceof ApiError && err.status === 429) {
             last.current = '';
             timer = window.setTimeout(measure, 1100);
-          }
+          } else if (live && err instanceof ApiError) refused.current?.(err.status);
         });
     };
     const measure = () => {

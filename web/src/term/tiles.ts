@@ -429,3 +429,61 @@ export function exactLayout(
   const body = cell(node, root.cols, root.rows);
   return { ...root, layout: `${checksum(body)},${body}` };
 }
+
+// Some of a window's panes as tiles fit the window as one too: the
+// tiles' tree less the tiles of other windows, and at the right a stack
+// of the window's panes not open, as leaves after the tiles (n and up).
+// The surviving splits keep their keys, so the tiles' weights still
+// apply. The host shows a window shaped for the tiles; that is the point.
+export const HIDDEN_COLS = 20;
+export const HIDDEN_ROWS = 5;
+export function someTree(node: TileNode, keep: number[], n: number, hidden: number): TileNode {
+  let sub: TileNode | null = node;
+  for (let i = 0; i < n && sub !== null; i++) if (!keep.includes(i)) sub = without(sub, i);
+  const tiles = sub ?? keep[0];
+  if (!hidden) return tiles;
+  const stack: TileNode = {
+    kind: 'v',
+    key: 'hidden',
+    children: Array.from({ length: hidden }, (_, i) => n + i),
+  };
+  return { kind: 'h', key: 'some', children: [tiles, stack] };
+}
+
+// The proportional layout of some of a window's panes: the stack takes
+// the floor's share of the width.
+export function someLayout(
+  node: TileNode,
+  weights: Weights,
+  keep: number[],
+  ids: string[],
+  hidden: string[],
+): string {
+  const t = someTree(node, keep, ids.length, hidden.length);
+  return tilesLayout(t, { ...weights, some: [1 - FLOOR, FLOOR], hidden: equal(hidden.length) }, [
+    ...ids,
+    ...hidden,
+  ]);
+}
+
+// The exact layout of some of a window's panes: the tiles their cells,
+// the stack HIDDEN_COLS wide, its panes sharing the tiles' height at
+// HIDDEN_ROWS each at least (the host grows the window for them).
+export function someExact(
+  node: TileNode,
+  keep: number[],
+  sizes: { cols: number; rows: number }[],
+  ids: string[],
+  hidden: string[],
+): { cols: number; rows: number; layout: string } {
+  const n = ids.length;
+  const own = exactLayout(someTree(node, keep, n, 0), sizes, ids);
+  const k = hidden.length;
+  if (!k) return own;
+  const rows = Math.max(HIDDEN_ROWS, Math.ceil((own.rows - (k - 1)) / k));
+  return exactLayout(
+    someTree(node, keep, n, k),
+    [...sizes, ...hidden.map(() => ({ cols: HIDDEN_COLS, rows }))],
+    [...ids, ...hidden],
+  );
+}

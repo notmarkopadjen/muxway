@@ -282,8 +282,15 @@ moves the host's split. The layout sent is exact: each pane gets as many
 cells as its tile's screen holds, so no pane has rows its tile cannot
 show; the tiles of a stack lose a header each, and a tile across from
 them keeps that much spare at its bottom. Where only some of a window's panes are open as
-tiles, each fits its own pane and the host sorts the neighbours out,
-as above. A size the host would not give, because another tile's fit
+tiles, two or more, the window is fitted as one as well, when every
+pane of it is writable for you: the open panes laid out as the tiles
+are, exact, and the panes not open in a stack at the right, 20 columns
+wide, each at least 5 rows; the host shows a window shaped for the
+tiles, which is the point, and the arrangement stays there when the
+view is left, as one of a whole window does. With tiles of several
+windows, the window with the most tiles is fitted so; the other tiles,
+and the tiles of a window with a pane you may not write, each fit
+their own pane and the host sorts the neighbours out, as above. A size the host would not give, because another tile's fit
 shares the axis (two tiles whose panes are stacked ask for different
 widths: the later one sets both), leaves that tile saying *held* in its
 header, drawn scaled to its box, until its box changes. When the size
