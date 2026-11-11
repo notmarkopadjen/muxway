@@ -208,6 +208,13 @@ the tab title flashes until you come back, and, if you turned them on, a
 browser notification names the pane while the tab is hidden. Typing into
 the pane clears it; a click on the pane does not.
 
+A request the hub refuses is a toast too, with its code: `read_only`,
+`not_found`, `hub unreachable`. A rate limit is not. Keys or clicks
+faster than the hub takes trip its limit, and that says nothing you can
+act on: the page's edge flashes red-orange instead, slowly and mildly,
+once per burst, with the scanlines and a faint flicker of the tube (a
+plain fade with effects off), and nothing covers the pane.
+
 ## Talk and mail
 
 Panes that wrote to each other in the last ten minutes, or mailed each
@@ -471,8 +478,8 @@ sequenceDiagram
   a writable tile on a host with preview roots counts the repository's
   changes (`⎇ +3 ~5 −1`, `⎇ ✓` when clean, nothing outside a
   repository); a click on the count opens the changes window (see
-  [changes](changes.md)). `_` minimises the tile (below); it is off on
-  the last tile. The controls sit in the top row,
+  [changes](changes.md)). `_` minimises the tile (below); on the last
+  tile the next awake pane takes its place. The controls sit in the top row,
   at the right, as icons: `▦` the next arrangement and `⊞` equal
   shares (with several tiles), `⤢` fit for the focused tile (selected
   when on), `▮` direct typing (see [direct](direct.md)), `⎇` the
@@ -528,12 +535,16 @@ sequenceDiagram
   moving; its tab leaves the strip while it is below. A click on the
   tab brings the tile back, focused, as does its entry in the add menu;
   with four tiles open it takes the focused tile's place. The last tile
-  cannot be minimised; closing the last tile brings a minimised pane
-  back instead of leaving the view. The row is not drawn while it is
-  empty. Minimised panes belong to the view's arrangement and are
-  forgotten with it, on leaving the view or a reload; the fit of a
-  minimised pane is kept and released like a closed tile's, when the
-  view is left.
+  minimises too: the next awake pane of the strip takes the tile, the
+  one `]` would show, or, with none awake, the pane joins the row and
+  the view goes back to the list, the desk saying so (`view: "list"`,
+  see [the desk](desk.md)). Closing the last tile brings a minimised
+  pane back instead of leaving the view. The row is not drawn while it
+  is empty. The row is the desk's: a view opened from the list or a
+  link takes the desk's row, less the tiles it opens, and writes
+  nothing before it has read the desk once, so every client shows one
+  row and a reload keeps it; the fit of a minimised pane is kept and
+  released like a closed tile's, when the view is left.
 
   ![a minimised pane](images/web-minimised.png)
 - **Zoom** is one view at two distances, not two views: `⊡`, `z` or a
@@ -862,7 +873,7 @@ pane's cursor is a block). See [direct typing](direct.md).
 | `I` / `o` | the [inbox](inbox.md): every pane that waits for you, oldest first, the parked ones last; `Enter` opens the selected one (and wakes it) / open the oldest waiting pane that is not parked |
 | `d` | later: park the focused tile's pane, or the selected row's (see [notifications](notifications.md#later)); its tab goes last with `☾`, painted plain, the header says `☾ later` with the kind underneath, and no toast, flash or notification calls for it; `d` again, a click on its tab, opening it, typing, an answer or a mail wakes it; the `☾` pane button does the same, selected while parked; off on a read-only pane and on a host older than this |
 | `+` | the list: one more pane in the selected row's window; it opens. Tiles: the add menu |
-| `-` | tiles: minimise the focused tile to the row above the keys; a click on its tab there, or its entry in the add menu, brings it back |
+| `-` | tiles: minimise the focused tile to the row above the keys; a click on its tab there, or its entry in the add menu, brings it back; on the last tile the next awake pane takes the tile, or, with none, the view goes back to the list |
 | `S` | a new session on the selected row's host (or the first that allows it): a one-line form, `Enter` starts, `Esc` cancels |
 | `f` | fit: the host pane (window view: the window) follows the box |
 | `r` | fit again: this client's size, after another client sized the window |
