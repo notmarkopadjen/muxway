@@ -93,4 +93,13 @@ back.
 
 ## Test run
 
-Recorded below once the suite has run.
+- Full suite on the fixed tree (`20261111-173146-d11a035`, run before
+  the commit): [#345](https://github.com/notmarkopadjen/muxway/issues/345),
+  295 Go tests, 199 browser specs, two failed: 62 (a read-only account
+  in the window view) and 119 (the observer's share), both with
+  `net::ERR_NETWORK_CHANGED` in the trace, the browser dropping a
+  request while Docker added an interface on the box; neither touches
+  the fit. Spec 122, both tests, and 75 passed.
+- The same tree with specs 62 and 119 alone in the browser, the Go
+  suite in full: [#346](https://github.com/notmarkopadjen/muxway/issues/346),
+  passed.
