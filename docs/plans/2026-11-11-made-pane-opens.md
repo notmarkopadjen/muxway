@@ -1,10 +1,10 @@
 # Feature: the pane a split made is the pane that opens
 
-> Status: written 2026-11-11 from the owner's report in the console
+> Status: approved by the owner on 2026-11-11 in the console; written the same day from the owner's report in the console
 > ("when I open a new pane, it should open to the right of the existing
 > one but instead it brings me back to an old one. The new one is
 > created and visible in a pane header list but it's not open there. I
-> need to click it"); awaiting the owner's approval.
+> need to click it").
 
 ## 1. Goal
 
