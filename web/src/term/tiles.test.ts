@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   across,
+  someExact,
+  someLayout,
+  someTree,
+  HIDDEN_COLS,
   close,
   fromHost,
   rects,
@@ -277,5 +281,83 @@ describe('rects', () => {
     const r = rects(t, { r: [0.6, 0.4] });
     expect(r.get(0)).toEqual({ x: 0.6, y: 0, w: 0.4, h: 1 });
     expect(r.get(2)).toEqual({ x: 0, y: 0.5, w: 0.6, h: 0.5 });
+  });
+});
+
+describe('some of a window as tiles', () => {
+  // Four tiles: a main-left of tile 0 beside a stack of 1, 2, 3; tiles 1
+  // and 3 are another window's.
+  const shape: TileNode = {
+    kind: 'h',
+    key: 'main',
+    children: [0, { kind: 'v', key: 'rest', children: [1, 2, 3] }],
+  };
+  const ids = ['%10', '', '%12', ''];
+  const sizes = [
+    { cols: 80, rows: 40 },
+    { cols: 30, rows: 10 },
+    { cols: 60, rows: 25 },
+    { cols: 30, rows: 10 },
+  ];
+  it("takes the other windows' tiles out and keeps the splits' keys", () => {
+    const t = someTree(shape, [0, 2], 4, 0);
+    expect(t).toEqual({ kind: 'h', key: 'main', children: [0, 2] });
+    const some = someTree(shape, [0, 2], 4, 2);
+    expect(some).toEqual({
+      kind: 'h',
+      key: 'some',
+      children: [
+        { kind: 'h', key: 'main', children: [0, 2] },
+        { kind: 'v', key: 'hidden', children: [4, 5] },
+      ],
+    });
+  });
+  it('lays the tiles out exact and the hidden panes in a stack at the floor', () => {
+    const r = someExact(shape, [0, 2], sizes, ids, ['%13', '%14']);
+    // 80 + 1 + 60 + 1 + 20 wide, as tall as the shorter tile.
+    expect(r).toMatchObject({ cols: 162, rows: 25 });
+    expect(r.layout).toMatch(/80x25,0,0,10/);
+    expect(r.layout).toMatch(/60x25,0,0,12/);
+    expect(r.layout).toMatch(new RegExp(`${HIDDEN_COLS}x12,0,0,13`));
+    expect(r.layout).toMatch(new RegExp(`${HIDDEN_COLS}x12,0,0,14`));
+  });
+  it('one hidden pane stands beside the tiles, not in a stack of one', () => {
+    expect(someTree(shape, [0, 2], 4, 1)).toEqual({
+      kind: 'h',
+      key: 'some',
+      children: [{ kind: 'h', key: 'main', children: [0, 2] }, 4],
+    });
+    const r = someExact(shape, [0, 2], sizes, ids, ['%13']);
+    expect(r).toMatchObject({ cols: 162, rows: 25 });
+    expect(r.layout).toMatch(new RegExp(`${HIDDEN_COLS}x25,0,0,13\\}$`));
+  });
+  it('never asks the host for less than its floor', () => {
+    const r = someExact(
+      shape,
+      [0, 2],
+      [
+        { cols: 19, rows: 4 },
+        { cols: 30, rows: 10 },
+        { cols: 60, rows: 25 },
+        { cols: 30, rows: 10 },
+      ],
+      ids,
+      [],
+    );
+    expect(r.layout).toMatch(/20x5,0,0,10/);
+    expect(r).toMatchObject({ cols: 81, rows: 5 });
+  });
+  it('without hidden panes it is the tiles alone', () => {
+    const r = someExact(shape, [0, 2], sizes, ids, []);
+    expect(r).toMatchObject({ cols: 141, rows: 25 });
+    expect(r.layout).not.toMatch(/hidden/);
+  });
+  it('the proportional layout names every pane and gives the stack the floor share', () => {
+    const l = someLayout(shape, { main: [0.7, 0.3] }, [0, 2], ids, ['%13', '%14']);
+    expect(l).toMatch(/,0,0,10[,}\]]/);
+    expect(l).toMatch(/,0,0,12[,}\]]/);
+    expect(l).toMatch(/,0,0,13[,}\]]/);
+    expect(l).toMatch(/,0,0,14[,}\]]/);
+    expect(l).not.toMatch(/,0,0,11[,}\]]/);
   });
 });

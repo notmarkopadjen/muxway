@@ -61,6 +61,8 @@ import {
   rects,
   bottomLeaves,
   exactLayout,
+  someExact,
+  someLayout,
   rootKey,
   nearWeights,
   prune,
@@ -548,6 +550,7 @@ function Tile(props: TileProps) {
       data-pane={address}
       data-group={props.grouped ? '' : undefined}
       data-several={several ? '' : undefined}
+      data-pane-id={identity?.pane_id}
       data-focused={focused ? '' : undefined}
       data-fit={writable ? (fit ? '1' : '0') : undefined}
       data-held={held ? '' : undefined}
@@ -1153,15 +1156,20 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // pane the view never knew goes on its read alone, as before.
   useEffect(() => {
     if (!listed) return;
-    for (const [i, a] of addresses.entries()) {
+    // One pass over the tiles, one route for all of them: a kill both
+    // takes a pane away and renumbers its neighbours, and two moves made
+    // one after the other would undo each other.
+    const next: string[] = [];
+    const gone: string[] = [];
+    const moved = new Map<string, { id: Identity; confirmed: boolean }>();
+    let changed = false;
+    for (const a of addresses) {
       const entry = identities.current.get(a);
       if (!entry) {
         if (missing.current.has(a)) {
-          missing.current.delete(a);
-          toast.push({ kind: 'gone', title: `${a} is gone` });
-          closeTile(a);
-          return;
-        }
+          gone.push(a);
+          changed = true;
+        } else next.push(a);
         continue;
       }
       const { id, confirmed } = entry;
@@ -1171,30 +1179,60 @@ function Tiles({ addresses }: { addresses: string[] }) {
         if (at && !sameIdentity(identityOf(at), id))
           identities.current.set(a, { id: identityOf(at), confirmed: false });
         else if (!at && !now && missing.current.has(a)) {
-          identities.current.delete(a);
-          missing.current.delete(a);
-          toast.push({ kind: 'gone', title: `${a} is gone` });
-          closeTile(a);
-          return;
+          gone.push(a);
+          changed = true;
+          continue;
         }
+        next.push(a);
         continue;
       }
       if (now && now.address !== a) {
+        // Another tile is already this pane, where it went: the key is a
+        // stale one from a route the view changed itself (a pane split
+        // beside an open one, a swap), and the pane here is the listing's.
+        const holder = identities.current.get(now.address);
+        if (addresses.includes(now.address) && holder && sameIdentity(holder.id, id)) {
+          const at = listed.find((q) => q.address === a);
+          if (at) identities.current.set(a, { id: identityOf(at), confirmed: false });
+          else identities.current.delete(a);
+          next.push(a);
+          continue;
+        }
         identities.current.delete(a);
-        identities.current.set(now.address, entry);
         missing.current.delete(a);
-        void go(replace(addresses, i, now.address));
-        return;
+        moved.set(now.address, entry);
+        next.push(now.address);
+        changed = true;
+        continue;
       }
       const hostListed = listed.some((q) => (q.hub ?? '') === (id.hub ?? '') && q.host === id.host);
       if (!now && (hostListed || missing.current.has(a))) {
-        identities.current.delete(a);
-        missing.current.delete(a);
-        toast.push({ kind: 'gone', title: `${a} is gone` });
-        closeTile(a);
-        return;
+        gone.push(a);
+        changed = true;
+        continue;
       }
+      next.push(a);
     }
+    if (!changed) return;
+    for (const a of gone) {
+      identities.current.delete(a);
+      missing.current.delete(a);
+      toast.push({ kind: 'gone', title: `${a} is gone` });
+    }
+    for (const [a, e] of moved) identities.current.set(a, e);
+    const rest = [...new Set(next)];
+    if (!rest.length) {
+      navigate({ to: '/' });
+      return;
+    }
+    if (gone.length === 1 && layout === 'custom' && rest.length > 1)
+      carried = {
+        panes: rest,
+        layout,
+        custom: prune(shape, addresses.indexOf(gone[0])),
+        weights: {},
+      };
+    void go(rest);
   }, [listed, addresses, missingTick]);
   // A parked pane's tile leaves the arrangement, as a closed one; its tab
   // is the row's. The last tile makes way: the next awake pane of the
@@ -1419,8 +1457,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
     };
   }, []);
 
-  // A pane alone is zoomed over its siblings, when it has any. Tiles of
-  // one window each fit their own pane; the host sorts the neighbours out.
+  // A pane alone is zoomed over its siblings, when it has any.
   const windowOf = useCallback(
     (a: string) => {
       const q = (all.data ?? []).find((x) => x.address === a);
@@ -1432,17 +1469,49 @@ function Tiles({ addresses }: { addresses: string[] }) {
     const w = windowOf(a);
     return (all.data ?? []).some((q) => q.address !== a && windowOf(q.address) === w);
   };
-  // Open tiles that are every pane of one window fit the window as one,
-  // laid out as the tiles are, the way the window view does: each pane
-  // is then its tile, and no tile is held.
-  const oneWindow = useMemo(() => {
+  // Two or more open tiles of one window fit the window as one, laid out
+  // as the tiles are, the way the window view does: each pane is then
+  // its tile, and no tile is held. With tiles of several windows, the
+  // window with the most tiles (the first tile's on a tie) is the one,
+  // and the other tiles fit their own panes. The window's panes not
+  // open are stacked at the right at the floor (someExact), which moves
+  // them on the host, so it needs every pane of the window writable.
+  const group = useMemo(() => {
     if (!several || !all.data) return null;
-    const w = windowOf(addresses[0]);
+    const byWindow = new Map<string, number[]>();
+    addresses.forEach((a, i) => {
+      const w = windowOf(a);
+      byWindow.set(w, [...(byWindow.get(w) ?? []), i]);
+    });
+    let best: [string, number[]] | null = null;
+    for (const e of [...byWindow])
+      if (e[1].length >= 2 && (!best || e[1].length > best[1].length)) best = e;
+    if (!best) return null;
+    const [w, tiles] = best;
     const mates = all.data.filter((q) => windowOf(q.address) === w);
-    if (mates.length !== n || !addresses.every((a) => mates.some((q) => q.address === a)))
-      return null;
-    return addresses.map((a) => mates.find((q) => q.address === a)!.pane_id);
+    const ids = addresses.map((a, i) =>
+      tiles.includes(i) ? (mates.find((q) => q.address === a)?.pane_id ?? '') : '',
+    );
+    if (tiles.some((i) => !ids[i])) return null;
+    const hidden = mates.filter((q) => !addresses.includes(q.address)).map((q) => q.pane_id);
+    return {
+      window: w,
+      tiles,
+      ids,
+      hidden,
+      all: tiles.length === n && !hidden.length,
+      writable: mates.every((q) => q.mode === 'write'),
+    };
   }, [several, all.data, addresses, n, windowOf]);
+  // Every pane of the window open: the tiles follow the host's layout too.
+  const oneWindow = group?.all ? group.ids : null;
+  // Some of them: the window is fitted when every pane of it is
+  // writable; a refusal all the same (a pane the host will not move, or
+  // one the listing lacks) leaves the tiles to fit their own panes, as
+  // before, until the tiles change.
+  const [refusedKey, setRefusedKey] = useState('');
+  const groupKey = group ? `${group.window} ${group.tiles.map((i) => addresses[i]).join()}` : '';
+  const someFit = !!group && !group.all && group.writable && refusedKey !== groupKey;
   // Such tiles and their window are kept the same both ways: the tiles take
   // the host's layout when it changes there, and what is changed here is
   // sent as the window's layout, which moves the panes on the host. Moving
@@ -1495,29 +1564,45 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // After a layout the panes may have new indexes: the listing takes the
   // answer at once, and the route follows the tiles' panes by id.
   const follow = (r: { panes?: Pane[] }) => {
-    if (!r.panes || !oneWindow) return;
+    if (!r.panes || !group) return;
     const by = new Map(r.panes.map((p) => [p.pane_id, p]));
     const { hub } = splitAddress(addresses[0]);
     qc.setQueryData<Pane[]>(keys.panesOf(hub), (old) =>
       old?.map((p) => (p.host === r.panes![0].host ? (by.get(p.pane_id) ?? p) : p)),
     );
     qc.invalidateQueries({ queryKey: ['pane'] });
-    const next = oneWindow.map((id, i) => by.get(id)?.address ?? addresses[i]);
-    if (next.join() !== addresses.join())
+    const next = group.ids.map((id, i) => (id ? by.get(id)?.address : undefined) ?? addresses[i]);
+    // A pane gone since the fit closes its tile by itself; a route that
+    // would name one pane twice is not taken. The tiles' identities move
+    // with their panes, so a later renumbering finds each tile's own.
+    if (new Set(next).size === next.length && next.join() !== addresses.join()) {
+      const moved = addresses.map((a, i) => [next[i], identities.current.get(a)] as const);
+      for (const a of addresses) {
+        identities.current.delete(a);
+        missing.current.delete(a);
+      }
+      // The host named the panes by id in its answer: these are confirmed.
+      for (const [a, e] of moved) if (e) identities.current.set(a, { ...e, confirmed: true });
       navigate({ to: '/p/$', params: { _splat: routeFor(next) }, replace: true });
+    }
   };
   const area = useRef<HTMLDivElement>(null);
   // The input line grown while a message is written takes height from
   // the tiles; the fits measure as if it had not.
   const grown = useRef(0);
   const slack = useCallback(() => grown.current, []);
-  const windowFit = !!oneWindow && synced && (fit[focused] ?? true) && !!writable;
-  const windowLayout = oneWindow && synced ? tilesLayout(shape, weights, oneWindow) : undefined;
+  const windowFit = ((!!oneWindow && synced) || someFit) && (fit[focused] ?? true) && !!writable;
+  const windowLayout =
+    oneWindow && synced
+      ? tilesLayout(shape, weights, oneWindow)
+      : someFit
+        ? someLayout(shape, weights, group.tiles, group.ids, group.hidden)
+        : undefined;
   // The window's size and layout, exact: each pane as many cells as its
   // tile's screen holds, the tiles along the bottom measured as if the
   // input line had not grown.
   const exact = useCallback(() => {
-    if (!oneWindow || !area.current) return null;
+    if (!group || !area.current) return null;
     const bottom = new Set(bottomLeaves(shape));
     const sizes: { cols: number; rows: number }[] = [];
     for (const [i, a] of addresses.entries()) {
@@ -1526,18 +1611,24 @@ function Tiles({ addresses }: { addresses: string[] }) {
       const { w, h } = inner(el);
       sizes.push(cellsFor(w, h + (bottom.has(i) ? grown.current : 0)));
     }
-    const r = exactLayout(shape, sizes, oneWindow);
+    const r = group.all
+      ? exactLayout(shape, sizes, group.ids)
+      : someExact(shape, group.tiles, sizes, group.ids, group.hidden);
     sentLayout.current = r.layout;
     return r;
-  }, [oneWindow, shape, addresses]);
+  }, [group, shape, addresses]);
   // The window is fitted through one tile's pane, the same one while it
   // is open, so moving the focus sends nothing.
   const windowVia =
-    addresses.find((a) => (all.data ?? []).find((q) => q.address === a)?.mode === 'write') ??
-    focused;
+    (group ? group.tiles.map((i) => addresses[i]) : addresses).find(
+      (a) => (all.data ?? []).find((q) => q.address === a)?.mode === 'write',
+    ) ?? focused;
   const { refit: refitWindow } = useFit(windowVia, windowFit, area, 'window', windowLayout, false, {
     keep: true,
     onDone: follow,
+    onRefused: () => {
+      if (someFit) setRefusedKey(groupKey);
+    },
     slack,
     exact,
   });
@@ -1894,7 +1985,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
         focused={i === index}
         several={several}
         fit={fit[a]}
-        windowFit={!!oneWindow}
+        windowFit={!!oneWindow || (!!group && someFit && group.tiles.includes(i))}
         windowFitted={windowFit}
         alone={!several}
         zoomable={siblings(a)}

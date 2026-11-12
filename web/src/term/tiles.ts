@@ -166,6 +166,9 @@ export function prune(node: TileNode, at: number): TileNode {
 }
 
 export const FLOOR = 0.15;
+// The host's floor for a pane: an exact layout never asks for less.
+export const FLOOR_COLS = 20;
+export const FLOOR_ROWS = 5;
 
 export function equal(n: number): number[] {
   return Array(n).fill(1 / n) as number[];
@@ -396,7 +399,11 @@ export function exactLayout(
 ): { cols: number; rows: number; layout: string } {
   type Size = { cols: number; rows: number };
   const natural = (n: TileNode): Size => {
-    if (typeof n === 'number') return sizes[n];
+    if (typeof n === 'number')
+      return {
+        cols: Math.max(FLOOR_COLS, sizes[n].cols),
+        rows: Math.max(FLOOR_ROWS, sizes[n].rows),
+      };
     const kids = n.children.map(natural);
     const gaps = kids.length - 1;
     return n.kind === 'h'
@@ -428,4 +435,62 @@ export function exactLayout(
   const root = natural(node);
   const body = cell(node, root.cols, root.rows);
   return { ...root, layout: `${checksum(body)},${body}` };
+}
+
+// Some of a window's panes as tiles fit the window as one too: the
+// tiles' tree less the tiles of other windows, and at the right a stack
+// of the window's panes not open, as leaves after the tiles (n and up).
+// The surviving splits keep their keys, so the tiles' weights still
+// apply. The host shows a window shaped for the tiles; that is the point.
+export const HIDDEN_COLS = FLOOR_COLS;
+export const HIDDEN_ROWS = FLOOR_ROWS;
+export function someTree(node: TileNode, keep: number[], n: number, hidden: number): TileNode {
+  let sub: TileNode | null = node;
+  for (let i = 0; i < n && sub !== null; i++) if (!keep.includes(i)) sub = without(sub, i);
+  const tiles = sub ?? keep[0];
+  if (!hidden) return tiles;
+  // A split has two children at least: one hidden pane stands alone.
+  const stack: TileNode =
+    hidden === 1
+      ? n
+      : { kind: 'v', key: 'hidden', children: Array.from({ length: hidden }, (_, i) => n + i) };
+  return { kind: 'h', key: 'some', children: [tiles, stack] };
+}
+
+// The proportional layout of some of a window's panes: the stack takes
+// the floor's share of the width.
+export function someLayout(
+  node: TileNode,
+  weights: Weights,
+  keep: number[],
+  ids: string[],
+  hidden: string[],
+): string {
+  const t = someTree(node, keep, ids.length, hidden.length);
+  return tilesLayout(t, { ...weights, some: [1 - FLOOR, FLOOR], hidden: equal(hidden.length) }, [
+    ...ids,
+    ...hidden,
+  ]);
+}
+
+// The exact layout of some of a window's panes: the tiles their cells,
+// the stack HIDDEN_COLS wide, its panes sharing the tiles' height at
+// HIDDEN_ROWS each at least (the host grows the window for them).
+export function someExact(
+  node: TileNode,
+  keep: number[],
+  sizes: { cols: number; rows: number }[],
+  ids: string[],
+  hidden: string[],
+): { cols: number; rows: number; layout: string } {
+  const n = ids.length;
+  const own = exactLayout(someTree(node, keep, n, 0), sizes, ids);
+  const k = hidden.length;
+  if (!k) return own;
+  const rows = Math.max(HIDDEN_ROWS, Math.ceil((own.rows - (k - 1)) / k));
+  return exactLayout(
+    someTree(node, keep, n, k),
+    [...sizes, ...hidden.map(() => ({ cols: HIDDEN_COLS, rows }))],
+    [...ids, ...hidden],
+  );
 }
