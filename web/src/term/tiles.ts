@@ -166,6 +166,9 @@ export function prune(node: TileNode, at: number): TileNode {
 }
 
 export const FLOOR = 0.15;
+// The host's floor for a pane: an exact layout never asks for less.
+export const FLOOR_COLS = 20;
+export const FLOOR_ROWS = 5;
 
 export function equal(n: number): number[] {
   return Array(n).fill(1 / n) as number[];
@@ -396,7 +399,11 @@ export function exactLayout(
 ): { cols: number; rows: number; layout: string } {
   type Size = { cols: number; rows: number };
   const natural = (n: TileNode): Size => {
-    if (typeof n === 'number') return sizes[n];
+    if (typeof n === 'number')
+      return {
+        cols: Math.max(FLOOR_COLS, sizes[n].cols),
+        rows: Math.max(FLOOR_ROWS, sizes[n].rows),
+      };
     const kids = n.children.map(natural);
     const gaps = kids.length - 1;
     return n.kind === 'h'
@@ -435,8 +442,8 @@ export function exactLayout(
 // of the window's panes not open, as leaves after the tiles (n and up).
 // The surviving splits keep their keys, so the tiles' weights still
 // apply. The host shows a window shaped for the tiles; that is the point.
-export const HIDDEN_COLS = 20;
-export const HIDDEN_ROWS = 5;
+export const HIDDEN_COLS = FLOOR_COLS;
+export const HIDDEN_ROWS = FLOOR_ROWS;
 export function someTree(node: TileNode, keep: number[], n: number, hidden: number): TileNode {
   let sub: TileNode | null = node;
   for (let i = 0; i < n && sub !== null; i++) if (!keep.includes(i)) sub = without(sub, i);

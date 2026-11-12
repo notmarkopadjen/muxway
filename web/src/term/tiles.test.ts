@@ -331,6 +331,22 @@ describe('some of a window as tiles', () => {
     expect(r).toMatchObject({ cols: 162, rows: 25 });
     expect(r.layout).toMatch(new RegExp(`${HIDDEN_COLS}x25,0,0,13\\}$`));
   });
+  it('never asks the host for less than its floor', () => {
+    const r = someExact(
+      shape,
+      [0, 2],
+      [
+        { cols: 19, rows: 4 },
+        { cols: 30, rows: 10 },
+        { cols: 60, rows: 25 },
+        { cols: 30, rows: 10 },
+      ],
+      ids,
+      [],
+    );
+    expect(r.layout).toMatch(/20x5,0,0,10/);
+    expect(r).toMatchObject({ cols: 81, rows: 5 });
+  });
   it('without hidden panes it is the tiles alone', () => {
     const r = someExact(shape, [0, 2], sizes, ids, []);
     expect(r).toMatchObject({ cols: 141, rows: 25 });
