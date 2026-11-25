@@ -374,7 +374,20 @@ Each step builds and passes tests on its own.
 
 ## Test run
 
-<!-- link to the recorded run -->
+- Steps 1–3 (the new pane, and one viewport per window):
+  [#355](https://github.com/notmarkopadjen/muxway/issues/355), passed at
+  `5716b97`, 295 tests, 0 failed. Run directory
+  `20261125-152443-5716b97`.
+  - Two specs failed on `origin/main` on the same machine before any of
+    this landed, and are fixed in step 3: 77 assumed its window started
+    unfitted, 76 dragged a divider a fixed distance from wherever it
+    began. The cause is general — a page closed without navigating away
+    sends no release, and a release gives a window its size back but
+    only restores the saved proportions once — and about 27 specs
+    assume a window starts unfitted. Step 7 keeps the viewport and
+    releases nothing, so each of those specs will have to start from a
+    state it sets itself; `releaseWindow` in `web/e2e/fixtures.ts` is
+    there for it.
 
 ---
 
