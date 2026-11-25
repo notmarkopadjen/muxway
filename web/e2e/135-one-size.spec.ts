@@ -43,8 +43,8 @@ function watchResizes(page: Page): Resize[] {
 // The size a tile's header shows.
 const sizeOf = async (page: Page, a: string) => {
   const t = (await page.locator(`[data-pane="${a}"] .mx-tile-head .mx-size`).textContent()) ?? '';
-  const m = /(\d+)×(\d+)/.exec(t)!;
-  return `${m[1]}x${m[2]}`;
+  const m = /(\d+)×(\d+)/.exec(t);
+  return m ? `${m[1]}x${m[2]}` : '';
 };
 
 test('135 two tiles, each the only open one of its window: each fits its own window, zoomed, and neither is held', async ({
@@ -136,4 +136,41 @@ test('135 two tiles of one window and two of another: each window is laid out as
   await page.goto('/');
   await control(request, '/kill-pane', { target: 'pair:0.1' });
   await control(request, '/kill-pane', { target: 'pair:0.0' });
+});
+
+// The font a tile draws at, in pixels.
+const fontOf = async (page: Page, a: string) =>
+  page
+    .locator(`[data-pane="${a}"] .mx-screen`)
+    .first()
+    .evaluate((el) => getComputedStyle(el).fontSize, undefined, { timeout: 10_000 });
+
+test('135 the cell never changes size: both tiles draw at the font the person chose, before and after a resize', async ({
+  page,
+  request,
+}, info) => {
+  await split(request, 'work:1.0', 'h');
+  console.log('step: signIn');
+  await signIn(page);
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.goto(`/p/${SHELL0},${LOGS}`);
+  await expect(page.getByTestId('tile')).toHaveCount(2);
+  await settled(page);
+  await expect.poll(() => page.getByTestId('held').count(), { timeout: 10_000 }).toBe(0);
+  // The person's font, as the page holds it: both tiles are drawn at it,
+  // not at a size scaled to make the host's columns fill the box.
+  const chosen = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--mx-screen-size').trim(),
+  );
+  expect(chosen).toMatch(/^\d+px$/);
+  expect(await fontOf(page, SHELL0)).toBe(chosen);
+  expect(await fontOf(page, LOGS)).toBe(chosen);
+  await shot(page, info, '135-one-font');
+  // A narrower window gives the panes fewer columns, not smaller type.
+  const before = await sizeOf(page, SHELL0);
+  await page.setViewportSize({ width: 900, height: 800 });
+  await expect.poll(() => sizeOf(page, SHELL0), { timeout: 15_000 }).not.toBe(before);
+  expect(await fontOf(page, SHELL0)).toBe(chosen);
+  expect(await fontOf(page, LOGS)).toBe(chosen);
+  await shot(page, info, '135-one-font-narrow');
 });

@@ -356,8 +356,21 @@ Each step builds and passes tests on its own.
    the service-worker relay go; the view sends no `fit: auto` on leaving.
    Unit tests (26), e2e 12–13.
 8. **Web, drawing**: the font is the person's while the view owns the
-   window; scaled only when another owns it or fit is off; `HOLD_FRAME_MS`
-   to 600 ms; `held` becomes `sized by`. UI specs 19–22.
+   window; scaled only when another owns it or fit is off; `held` becomes
+   `sized by`. UI specs 19–22.
+   *Partly done already:* the tile passes no `cols`/`rows` to the screen
+   while its fit is honoured, so the screen draws at the person's size
+   and `fontFor` never runs; what made the type jump was `held`, which
+   step 3 removes for a tile of its own window. Specs 19, 20 and 22 are
+   in `135-one-size.spec.ts`.
+   *Deviation:* the plan also said `HOLD_FRAME_MS` drops from 3000 ms to
+   600 ms. It is left at 3000: the constant does double duty — how long
+   the last frame is shown, and how long before a tile is called *held*
+   and drawn scaled — so lowering it would make a slow host flicker
+   sooner, not less. The two want splitting once the lease (step 4)
+   makes the host answer in one round trip.
+   The `sized by` wording waits for step 4 too: while the host still
+   negotiates, *held* says something true that *sized by* does not.
 9. **Existing specs** rewritten (29), run by run, each in its own commit.
 10. **Docs** (§7) in the commits that change the behaviour they describe.
 11. **`make e2e`**, the run recorded as a `test-run` issue, this plan's
