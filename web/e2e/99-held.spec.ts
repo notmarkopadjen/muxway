@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { control, HOST, openPane, SHELL0, settled, shot, signIn } from './fixtures';
+import { atRest, control, HOST, openPane, settled, SHELL0, shot, signIn } from './fixtures';
 
 // Tiles that are every pane of one window fit the window as one; so do
 // tiles of a window not wholly open, when every pane of it is writable,
@@ -81,7 +81,9 @@ test('99 every pane of a window as tiles: the window fits as one, laid out as th
   await expect(page.locator('.mx-area')).toHaveAttribute('data-window-fit', '');
   await expect(tiles.nth(1)).not.toHaveAttribute('data-held', '');
   await expect(page.getByTestId('held')).toHaveCount(0);
-  await expect.poll(() => fitsOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
+  await expect
+    .poll(() => fitsOf(resizes, LOGS).length, { timeout: 15_000, message: 'logs fit' })
+    .toBe(1);
   const fit = fitsOf(resizes, LOGS)[0].body;
   expect(fit.scope).toBe('window');
   // The layout is exact: the window's size is the root's, the two panes
@@ -111,8 +113,9 @@ test('99 every pane of a window as tiles: the window fits as one, laid out as th
   expect(resizes).toHaveLength(sent);
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();
-  await expect.poll(() => releasesOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
-  await expect.poll(size, { timeout: 5000 }).toBe('100x30');
+  // Leaving the view sends no release: the window keeps its size.
+  expect(releasesOf(resizes, LOGS)).toHaveLength(0);
+  await atRest(request, 'work:1');
 });
 
 test('99 two tiles of a window not wholly open fit the window as one, the third pane stacked at the right; the focus sends nothing', async ({
@@ -188,11 +191,13 @@ test('99 two tiles of a window not wholly open fit the window as one, the third 
   await page.waitForTimeout(1500);
   expect(resizes).toHaveLength(sent);
   await expect(page.getByTestId('held')).toHaveCount(0);
-  // Leaving the view releases the window, through the pane it was fitted by.
+  // Leaving the view hands nothing back: the window keeps its size.
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();
-  await expect.poll(() => releasesOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
+  await page.waitForTimeout(800);
+  expect(releasesOf(resizes, LOGS)).toHaveLength(0);
   expect(releasesOf(resizes, SPLIT)).toHaveLength(0);
+  await atRest(request, 'work:1');
 });
 
 test('99 two tiles of a window with a read-only pane share a width: the later fit sets both, the other says held and stays', async ({
@@ -251,15 +256,14 @@ test('99 two tiles of a window with a read-only pane share a width: the later fi
   await expect(heldTile).toHaveCount(1);
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();
-  await expect.poll(() => releasesOf(resizes, OTHER).length, { timeout: 5000 }).toBe(1);
-  await expect.poll(() => releasesOf(resizes, TOP).length, { timeout: 5000 }).toBe(1);
+  await page.waitForTimeout(800);
+  expect(releasesOf(resizes, OTHER)).toHaveLength(0);
+  expect(releasesOf(resizes, TOP)).toHaveLength(0);
   // The window as the other specs expect it: the two panes side by side.
   made.splice(made.indexOf(id), 1);
   await control(request, '/kill-pane', { target: id });
   await control(request, '/select-layout', { target: 'work:0', layout: 'even-horizontal' });
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:0');
 });
 
 test('99 a pane alone fits the window zoomed; a sibling opened beside it undoes the zoom; z is drawn', async ({
@@ -304,9 +308,9 @@ test('99 a pane alone fits the window zoomed; a sibling opened beside it undoes 
   });
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();
-  await expect
-    .poll(() => releasesOf(resizes, LOGS).length, { timeout: 5000 })
-    .toBeGreaterThanOrEqual(1);
+  await page.waitForTimeout(800);
+  expect(releasesOf(resizes, LOGS)).toHaveLength(0);
+  await atRest(request, 'work:1');
 });
 
 test('99 a pane left for another keeps its size and comes back without a resize', async ({
@@ -316,6 +320,9 @@ test('99 a pane left for another keeps its size and comes back without a resize'
   const resizes = watchResizes(page);
   const size = () => control(request, '/window-size', { target: 'work:0' });
   const zoomed = () => control(request, '/zoomed', { target: 'work:0' });
+  // From tmux's own size, so the first fit is one the view really sends:
+  // a window keeps what the test before gave it.
+  await atRest(request, 'work:0', 'work:1');
   await signIn(page);
   // The splits of the tests before are gone from the listing.
   await expect(page.getByTestId('pane-row').filter({ hasText: SPLIT })).toHaveCount(0, {
@@ -323,7 +330,11 @@ test('99 a pane left for another keeps its size and comes back without a resize'
   });
   await openPane(page, SHELL0);
   await settled(page);
-  await expect.poll(() => fitsOf(resizes, SHELL0).length, { timeout: 5000 }).toBe(1);
+  // The release this test opened with runs on the host before the view's
+  // own size can land, so the first fit takes a moment longer than most.
+  await expect
+    .poll(() => fitsOf(resizes, SHELL0).length, { timeout: 15_000, message: 'shell0 fit' })
+    .toBe(1);
   const fit = fitsOf(resizes, SHELL0)[0].body;
   expect(fit.scope).toBe('window');
   expect(fit.zoom).toBe(true);
@@ -344,20 +355,24 @@ test('99 a pane left for another keeps its size and comes back without a resize'
   expect(fitsOf(resizes, SHELL0)).toHaveLength(1);
   expect(releasesOf(resizes, SHELL0)).toHaveLength(0);
   expect(await zoomed()).toBe('1');
-  // Leaving the view releases: the window is tmux's again, unzoomed.
+  // Leaving the view sends nothing; a release puts the window back.
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();
-  await expect.poll(() => releasesOf(resizes, SHELL0).length, { timeout: 5000 }).toBe(1);
+  expect(releasesOf(resizes, SHELL0)).toHaveLength(0);
+  await atRest(request, 'work:0');
   await expect.poll(zoomed, { timeout: 5000 }).toBe('0');
-  await expect.poll(size, { timeout: 5000 }).toBe('100x30');
   // A pane alone in its window is fitted at window scope without a zoom.
   await openPane(page, LOGS);
-  await expect.poll(() => fitsOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
+  await expect.poll(() => fitsOf(resizes, LOGS).length, { timeout: 15_000 }).toBe(1);
   expect(fitsOf(resizes, LOGS)[0].body.scope).toBe('window');
   expect(fitsOf(resizes, LOGS)[0].body.zoom).toBeUndefined();
   await expect.poll(() => control(request, '/zoomed', { target: 'work:1' })).toBe('0');
+  // Leaving sends nothing: the window keeps the size it was given.
   await page.keyboard.press('Escape');
-  await expect.poll(() => releasesOf(resizes, LOGS).length, { timeout: 5000 }).toBe(1);
+  await expect(page.getByTestId('panes')).toBeVisible();
+  await page.waitForTimeout(800);
+  expect(releasesOf(resizes, LOGS)).toHaveLength(0);
+  await atRest(request, 'work:1');
 });
 
 test('99 a pane alone of a two-pane window, then both as tiles: the window fits as one, the zoom gone, nothing sent again', async ({
@@ -396,7 +411,5 @@ test('99 a pane alone of a two-pane window, then both as tiles: the window fits 
   expect(await zoomed()).toBe('0');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('panes')).toBeVisible();
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:1');
 });

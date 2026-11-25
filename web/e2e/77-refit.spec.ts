@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { control, openPane, releaseWindow, SHELL0, shot, signIn, TOKEN } from './fixtures';
+import { atRest, control, openPane, releaseWindow, SHELL0, shot, signIn, TOKEN } from './fixtures';
 
-test("77 r sends this client's size again after another client sized the window", async ({
+test('77 a key typed here takes the window back from the client that sized it', async ({
   page,
   request,
 }, info) => {
@@ -12,7 +12,6 @@ test("77 r sends this client's size again after another client sized the window"
   await page.setViewportSize({ width: 1200, height: 800 });
   await signIn(page);
   await openPane(page, SHELL0);
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '1');
   await expect.poll(size, { timeout: 5000 }).not.toBe('100x30');
   const width = (await size()).split('x')[0];
   await expect(page.getByTestId('pane-size')).toHaveText(new RegExp(`^${width}×\\d+$`));
@@ -27,9 +26,11 @@ test("77 r sends this client's size again after another client sized the window"
   await expect.poll(size).toBe('60x20');
   await page.waitForTimeout(1100);
   await shot(page, info, '77-other-client');
-  await page.keyboard.press('r');
-  await expect(page.getByTestId('pane-size')).toHaveText(fitted, { timeout: 5000 });
+  // A key sent from here is a command: the host puts the window back to
+  // the size this client is showing it at, with no resize of its own.
+  await page.getByTestId('keybar').getByRole('button', { name: 'Escape' }).click();
+  await expect(page.getByTestId('pane-size')).toHaveText(fitted, { timeout: 10_000 });
   expect((await size()).split('x')[0]).toBe(width);
   await page.goto('/');
-  await expect.poll(size, { timeout: 5000 }).toBe('100x30');
+  await atRest(request, 'work:0');
 });

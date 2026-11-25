@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { control, HOST, settled, shot, signIn, SHELL0 } from './fixtures';
+import { atRest, control, HOST, settled, SHELL0, shot, signIn } from './fixtures';
 
 // The header is one row: the brand (the way back), the view's tabs, `+`
 // and its buttons, and the profile button with what used to line it. In a
@@ -133,9 +133,7 @@ test('90 + splits the focused pane and opens the new one beside it', async ({
   const id = await control(request, '/pane-id', { target: 'work:1.1' });
   await control(request, '/kill-pane', { target: id });
   await page.goto('/');
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:1');
 });
 
 test('90 security: a read-only pane offers no split', async ({ page }) => {
@@ -151,7 +149,7 @@ test('90 security: a read-only pane offers no split', async ({ page }) => {
   await expect(page.getByTestId('add-split')).toHaveAttribute('title', /read only/);
 });
 
-test('90 the pane buttons are the same ten in every view, disabled where they do not apply', async ({
+test('90 the pane buttons are the same nine in every view, disabled where they do not apply', async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 1600, height: 900 });
@@ -164,7 +162,6 @@ test('90 the pane buttons are the same ten in every view, disabled where they do
     'arrange',
     'equal',
     "the host's layout",
-    'fit',
     'direct',
     'changes',
     'share',
@@ -176,20 +173,20 @@ test('90 the pane buttons are the same ten in every view, disabled where they do
   await settled(page);
   expect(await labels()).toEqual(ALL);
   for (const id of ['arrange', 'equal', 'reset']) await expect(page.getByTestId(id)).toBeDisabled();
-  for (const id of ['fit', 'direct', 'share', 'zoom', 'open-palette'])
+  for (const id of ['direct', 'share', 'zoom', 'open-palette'])
     await expect(page.getByTestId(id)).toBeEnabled();
   // Two tiles of different windows: the arrangement is the browser's own.
   await page.goto(`/p/${SHELL0},${LOGS}`);
   await expect(page.getByTestId('tile')).toHaveCount(2);
   expect(await labels()).toEqual(ALL);
-  for (const id of ['arrange', 'equal', 'fit', 'direct', 'zoom'])
+  for (const id of ['arrange', 'equal', 'direct', 'zoom'])
     await expect(page.getByTestId(id)).toBeEnabled();
   await expect(page.getByTestId('reset')).toBeDisabled();
   // The window view: the same row.
   await page.goto(`/w/${HOST}/work/0`);
   await expect(page.getByTestId('window')).toBeVisible();
   expect(await labels()).toEqual(ALL);
-  for (const id of ['equal', 'reset', 'fit', 'direct', 'zoom', 'open-palette'])
+  for (const id of ['equal', 'reset', 'direct', 'zoom', 'open-palette'])
     await expect(page.getByTestId(id)).toBeEnabled();
   // The help reads in three columns on a wide screen.
   await page.keyboard.press('?');

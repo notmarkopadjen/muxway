@@ -1,21 +1,15 @@
 import { expect, test } from '@playwright/test';
-import { control, HOST, shot, signIn } from './fixtures';
+import { atRest, HOST, shot, signIn } from './fixtures';
 
-test('63 drag, hide and reset change only the browser', async ({ page, request }, info) => {
-  const layoutBefore = await control(request, '/layout', { target: 'work:0' });
-  const resizes: string[] = [];
-  page.on('request', (r) => {
-    if (r.url().includes('/resize')) resizes.push(r.url());
-  });
+// Hiding a pane and resetting are the browser's own: the cells come and
+// go here and the host keeps its panes. Dragging a divider does reach
+// the host, as the window follows this box (76 has that).
+
+test('63 drag, hide and reset in the window view', async ({ page, request }, info) => {
   await signIn(page);
   await page.goto(`/w/${HOST}/work/0`);
   await expect(page.getByTestId('cell')).toHaveCount(2);
-  // With fit off nothing reaches the host from here on.
-  await page.keyboard.press('f');
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '0');
-  await expect.poll(() => control(request, '/layout', { target: 'work:0' })).toBe(layoutBefore);
   await page.waitForTimeout(500);
-  resizes.length = 0;
   const slots = page.locator('.mx-slot');
   const before = Number(await slots.nth(0).getAttribute('data-fraction'));
   const divider = page.getByTestId('divider').first();
@@ -49,9 +43,6 @@ test('63 drag, hide and reset change only the browser', async ({ page, request }
   await expect(hiddenTab).toBeVisible();
   await page.reload();
   await expect(page.getByTestId('cell')).toHaveCount(1);
-  // A reload turns fit on again; off, so that bringing the pane back stays here.
-  await page.keyboard.press('f');
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '0');
   await hiddenTab.click();
   await expect(page.getByTestId('cell')).toHaveCount(2);
   await expect(page.locator('[data-testid="tab"][data-hidden]')).toHaveCount(0);
@@ -66,6 +57,7 @@ test('63 drag, hide and reset change only the browser', async ({ page, request }
   expect(Math.abs(Number(await slots.nth(0).getAttribute('data-fraction')) - before)).toBeLessThan(
     0.001,
   );
-  expect(await control(request, '/layout', { target: 'work:0' })).toBe(layoutBefore);
-  expect(resizes).toEqual([]);
+  // The host still has both panes: hiding one is this browser's doing.
+  await page.goto('/');
+  await atRest(request, 'work:0');
 });

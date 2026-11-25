@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { control, HOST, settled, shot, SHELL0, signIn } from './fixtures';
+import { atRest, control, HOST, settled, SHELL0, shot, signIn } from './fixtures';
 
 // One size per window. A tile that is the only open one of its window
 // fits that window, with its pane zoomed over the siblings, so the host
@@ -21,9 +21,7 @@ test.afterEach(async ({ page, request }) => {
   // back before the panes go.
   await page.goto('/');
   for (const id of made.splice(0).reverse()) await control(request, '/kill-pane', { target: id });
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 10_000 })
-    .toBe('100x30');
+  await atRest(request, 'work:0', 'work:1');
   await expect.poll(() => control(request, '/zoomed', { target: 'work:0' })).toBe('0');
 });
 

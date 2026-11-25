@@ -21,11 +21,20 @@ const LOGS = `${HOST}/work/1.0`;
 const PREVIEW = process.env.MX_PREVIEW ?? '';
 const auth = { Authorization: `Bearer ${TOKEN}` };
 
+// The label every input carries (the host gives a window back to the
+// client whose command lands in it) is not what these tests are about.
+function said(body: string | null): string {
+  if (!body) return '';
+  const o = JSON.parse(body) as Record<string, unknown>;
+  delete o.client;
+  return JSON.stringify(o);
+}
+
 function watchInput(page: Page) {
   const bodies: unknown[] = [];
   page.on('request', (r) => {
     if (r.url().includes('/input') && r.method() === 'POST')
-      bodies.push(JSON.parse(r.postData() ?? '{}'));
+      bodies.push(JSON.parse(said(r.postData())));
   });
   return bodies;
 }

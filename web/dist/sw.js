@@ -2,8 +2,8 @@
 // nothing else. The hub's API is never read here, never cached, never
 // answered; a request under /v1/ passes as if no worker were installed.
 // The build writes the stamp and the asset list below (scripts/stamp-sw.mjs).
-const STAMP = "378ccd97a0316498";
-const ASSETS = ["/assets/index-DtX5-4kI.js","/assets/index-vZQb0AWz.css"];
+const STAMP = "8e5b54a31cf56f0e";
+const ASSETS = ["/assets/index-Wp3aOaBP.js","/assets/index-vZQb0AWz.css"];
 const CACHE = 'mx-' + STAMP;
 
 // The page's files: the shell (the page at /, which every app route falls back to), the manifest
@@ -85,27 +85,7 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// A release of a fitted pane, handed over by a page that goes away: a
-// keepalive request from a dying page is lost under a worker, the worker
-// itself may outlive the page. The resize's own second may still run, so
-// a 429 is tried again.
-function release(item, tries) {
-  return fetch(item.url, {
-    method: 'POST',
-    credentials: item.credentials,
-    headers: { 'X-Muxway-Client': 'web', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fit: 'auto' }),
-  })
-    .then((r) => {
-      if (r.status === 429 && tries > 1)
-        return new Promise((f) => setTimeout(f, 1100)).then(() => release(item, tries - 1));
-    })
-    .catch(() => {});
-}
-
-// The page asks the waiting worker to take over, or hands over releases.
+// The page asks the waiting worker to take over.
 self.addEventListener('message', (event) => {
   if (event.data === 'mx-skip-waiting') self.skipWaiting();
-  else if (event.data && event.data.type === 'mx-release' && Array.isArray(event.data.items))
-    event.waitUntil(Promise.all(event.data.items.slice(0, 16).map((item) => release(item, 3))));
 });

@@ -37,6 +37,17 @@ export async function releaseWindow(request: APIRequestContext, address: string)
   });
 }
 
+// Puts the windows a spec sized back as the next spec expects to find
+// them. Leaving a view hands nothing back — a window keeps the size it
+// was given — so a spec that moved `work:0` or `work:1` says so here.
+export async function atRest(request: APIRequestContext, ...targets: string[]) {
+  for (const t of targets) await releaseWindow(request, `${HOST}/work/${t.split(':')[1]}.0`);
+  for (const t of targets)
+    await expect
+      .poll(() => control(request, '/window-size', { target: t }), { timeout: 10_000 })
+      .toBe('100x30');
+}
+
 export async function shot(page: Page, info: TestInfo, name: string) {
   const dir = join(SCREENS, info.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase());
   mkdirSync(dir, { recursive: true });

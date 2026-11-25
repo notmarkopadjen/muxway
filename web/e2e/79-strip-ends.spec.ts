@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { control, HOST, settled, signIn } from './fixtures';
+import { atRest, control, HOST, settled, signIn } from './fixtures';
 
 const LOGS = `${HOST}/work/1.0`;
 const SPLIT = `${HOST}/work/1.1`;
@@ -36,9 +36,7 @@ test('79 a pane that exits leaves the tiles by itself', async ({ page, request }
   await expect(page.getByTestId('tile')).toHaveCount(1);
   // Leaving gives the window back, so the next spec finds it at rest.
   await page.goto('/');
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:1');
 });
 
 test('79 a pane alone that exits takes the view back to the list', async ({ page, request }) => {
@@ -56,7 +54,5 @@ test('79 a pane alone that exits takes the view back to the list', async ({ page
   await expect(page.getByTestId('toast').filter({ hasText: 'is gone' })).toHaveCount(1, {
     timeout: 2000,
   });
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:1');
 });

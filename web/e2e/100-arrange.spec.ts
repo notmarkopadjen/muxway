@@ -97,11 +97,10 @@ test('100 one window: the tiles take the host layout, move its panes, and follow
     })
     .toBe(1);
 
-  // Fit off: an arrangement still moves the panes, the window keeps its size.
-  await page.keyboard.press('f');
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '0');
+  // An arrangement moves the panes on the host. The window's size follows
+  // the tiles too: side by side and stacked are different shapes, so the
+  // cells they hold are different.
   await page.waitForTimeout(1500);
-  const size = await control(request, '/window-size', { target: 'work:0' });
   const before = await control(request, '/layout', { target: 'work:0' });
   // Past row, which the host has already, to column.
   await page.keyboard.press('l');
@@ -111,7 +110,6 @@ test('100 one window: the tiles take the host layout, move its panes, and follow
     .poll(() => control(request, '/layout', { target: 'work:0' }), { timeout: 8000 })
     .toMatch(/^[0-9a-f]{4},\d+x\d+,0,0\[/);
   expect(before).toMatch(/^[0-9a-f]{4},\d+x\d+,0,0\{/);
-  expect(await control(request, '/window-size', { target: 'work:0' })).toBe(size);
 });
 
 test('100 one window with a read-only pane: the tiles follow, they do not move it', async ({

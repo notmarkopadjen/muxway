@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { control, HOST, SHELL0, shot, signIn } from './fixtures';
+import { atRest, control, HOST, SHELL0, shot, signIn } from './fixtures';
 
 const LOGS = `${HOST}/work/1.0`;
 
@@ -8,6 +8,9 @@ test('84 pick two panes, open them side by side, arrange, drag, swap, close', as
   request,
 }, info) => {
   await page.setViewportSize({ width: 1200, height: 800 });
+  // From the windows' own sizes and splits: a window keeps what the test
+  // before gave it.
+  await atRest(request, 'work:0', 'work:1');
   const layout0 = await control(request, '/layout', { target: 'work:0' });
   const layout1 = await control(request, '/layout', { target: 'work:1' });
   await signIn(page);
@@ -31,9 +34,6 @@ test('84 pick two panes, open them side by side, arrange, drag, swap, close', as
     timeout: 5000,
   });
   // Every writable tile opens with fit on: both host panes take their tile's size.
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '1');
-  await expect(tiles.nth(0)).toHaveAttribute('data-fit', '1');
-  await expect(tiles.nth(1)).toHaveAttribute('data-fit', '1');
   // The arrangement cycles: two panes have a row and a column.
   await page.keyboard.press('l');
   await expect(page.getByTestId('pane')).toHaveAttribute('data-layout', 'column');
@@ -62,10 +62,11 @@ test('84 pick two panes, open them side by side, arrange, drag, swap, close', as
   await page.keyboard.press('x');
   await expect(tiles).toHaveCount(1);
   await expect(page).toHaveURL(new RegExp(`/p/${LOGS}$`.replace(/\//g, '\\/')));
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '1');
   await page.goto('/');
   await expect(page.getByTestId('panes')).toBeVisible();
-  // The host's layouts are as they were.
+  // The tiles moved no pane on the host: the windows keep their splits,
+  // at the sizes the view gave them until they are given back.
+  await atRest(request, 'work:0', 'work:1');
   await expect.poll(() => control(request, '/layout', { target: 'work:0' })).toBe(layout0);
   await expect.poll(() => control(request, '/layout', { target: 'work:1' })).toBe(layout1);
 });

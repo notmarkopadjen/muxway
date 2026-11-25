@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { control, openPane, SHELL0, shot, signIn } from './fixtures';
+import { atRest, control, openPane, SHELL0, shot, signIn } from './fixtures';
 
 test('82 a click on a pane whose program asked for the mouse is a click at that cell', async ({
   page,
@@ -59,9 +59,7 @@ test('82 a click on a pane whose program asked for the mouse is a click at that 
   });
   // Leaving the pane gives the window back to tmux, so the next spec finds it at rest.
   await page.goto('/');
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 5000 })
-    .toBe('100x30');
+  await atRest(request, 'work:0');
 });
 
 test('82 a numbered choice in a pane that takes the mouse shows the hand', async ({

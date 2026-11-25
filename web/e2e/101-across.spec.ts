@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
-import { control, HOST, settled, shot, signIn, SHELL0 } from './fixtures';
+import { atRest, HOST, settled, SHELL0, shot, signIn } from './fixtures';
 
 // Laying a tile across: a header dropped on a divider spans that split, on
 // the side of the divider's half it was dropped on; a click on the strip
@@ -13,10 +13,7 @@ const box = async (l: Locator) => (await l.boundingBox())!;
 async function leave(page: Page, request: APIRequestContext) {
   await page.waitForTimeout(1500);
   await page.goto('/');
-  for (const target of ['work:0', 'work:1'])
-    await expect
-      .poll(() => control(request, '/window-size', { target }), { timeout: 8000 })
-      .toBe('100x30');
+  await atRest(request, 'work:0', 'work:1');
 }
 
 test('101 a header dropped on a divider lays the pane across the split', async ({

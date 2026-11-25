@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { control, HOST, signIn } from './fixtures';
+import { atRest, HOST, signIn } from './fixtures';
 
 test('75 double-click shows a pane alone and brings the others back', async ({ page, request }) => {
   await signIn(page);
@@ -77,7 +77,5 @@ test('75 double-click shows a pane alone and brings the others back', async ({ p
 
   // Leaving gave the window back, so the next spec finds it at rest.
   await page.goto('/');
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:0');
 });

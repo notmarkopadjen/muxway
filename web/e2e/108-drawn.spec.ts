@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { control, HOST, openPane, settled, SHELL0, shot, signIn } from './fixtures';
+import { atRest, control, HOST, openPane, settled, SHELL0, shot, signIn } from './fixtures';
 
 // A tile says sync while the host catches up with its fit, and every move
 // of the tiles and the window view's cells is drawn as a view transition
@@ -248,7 +248,5 @@ test('108 the window view: equal shares, the host layout, hide, bring back and â
     .toBe(true);
   await page.goto('/');
   await control(request, '/kill-pane', { target: id });
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:1');
 });

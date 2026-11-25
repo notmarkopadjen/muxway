@@ -1,5 +1,22 @@
 # Feature: one size per window
 
+> **Amended on 2026-11-25, in the console:** *"We should remove the fit
+> feature. I actually never used it without having to fit. So it should
+> always fit and remove all references. All of this should be implemented
+> in the other clients as well, such as mostly Android."*
+>
+> So: **fit is not a feature, it is what a client does.** A writable pane
+> always follows the box it is drawn in. The `⤢` button, the `f`, `F` and
+> `r` keys, the per-tile fit state and every mention of turning fit off
+> leave the clients. `fit: auto` stays in the protocol for the command
+> line, the MCP tool and any client that wants to hand a window back, but
+> no client sends it any more — which finishes §2.3 outright: nothing in
+> a browser ever releases a window. A read-only pane is drawn scaled as
+> before, not because fit is off but because the token cannot size it.
+>
+> The round covers the other clients too: Android first, then the
+> glasses and MIDP where they have anything to change.
+
 ## 1. Goal
 
 A pane's size is decided in three places today, and they disagree:
@@ -363,6 +380,9 @@ Each step builds and passes tests on its own.
    and `fontFor` never runs; what made the type jump was `held`, which
    step 3 removes for a tile of its own window. Specs 19, 20 and 22 are
    in `135-one-size.spec.ts`.
+   *Superseded:* turning fit off was to be the way back; there is no
+   turning fit off any more (see the amendment), so the web client
+   releases nothing at all.
    *Deviation:* the plan also said `HOLD_FRAME_MS` drops from 3000 ms to
    600 ms. It is left at 3000: the constant does double duty — how long
    the last frame is shown, and how long before a tile is called *held*
@@ -371,9 +391,14 @@ Each step builds and passes tests on its own.
    makes the host answer in one round trip.
    The `sized by` wording waits for step 4 too: while the host still
    negotiates, *held* says something true that *sized by* does not.
-9. **Existing specs** rewritten (29), run by run, each in its own commit.
-10. **Docs** (§7) in the commits that change the behaviour they describe.
-11. **`make e2e`**, the run recorded as a `test-run` issue, this plan's
+9. **Fit leaves the clients** (the amendment): always fit, the button,
+    the keys, the state and the wording gone; the web client releases
+    nothing. Specs that turned fit off go with it.
+10. **Android**, then the glasses and MIDP where they have anything to
+    change: the same, in their own repositories, one pull request each.
+11. **Existing specs** rewritten (29), run by run, each in its own commit.
+12. **Docs** (§7) in the commits that change the behaviour they describe.
+13. **`make e2e`**, the run recorded as a `test-run` issue, this plan's
     *Test run* filled in.
 
 ---

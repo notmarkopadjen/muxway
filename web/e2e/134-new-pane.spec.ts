@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { control, HOST, settled, shot, SHELL0, signIn } from './fixtures';
+import { atRest, control, HOST, settled, SHELL0, shot, signIn } from './fixtures';
 
 // A pane made from the pane view opens as a tile, focused, and its tab
 // goes last in the strip, whichever window it was split from and whoever
@@ -16,9 +16,7 @@ const made: string[] = [];
 test.afterEach(async ({ page, request }) => {
   await page.goto('/');
   for (const id of made.splice(0).reverse()) await control(request, '/kill-pane', { target: id });
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 10_000 })
-    .toBe('100x30');
+  await atRest(request, 'work:0', 'work:1');
 });
 
 const tile = (page: Page, address: string) => page.locator(`[data-pane="${address}"]`);

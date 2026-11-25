@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { control, HOST, settled, shot, SHELL0, signIn } from './fixtures';
+import { atRest, control, HOST, settled, SHELL0, shot, signIn } from './fixtures';
 
 // Some of a window's panes as tiles fit the window as one: the open panes
 // laid out as the tiles are, exact to the cell, and the panes not open
@@ -134,9 +134,7 @@ test('133 three of five panes as tiles: each pane its tile, the hidden two stack
   // Leaving gives the window back; the arrangement stays, as one does.
   await page.goto('/');
   await expect(page.getByTestId('panes')).toBeVisible();
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:1');
 });
 
 test('133 security: a window with a pane the token may not write keeps the fits per pane, and its layout', async ({

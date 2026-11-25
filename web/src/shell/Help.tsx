@@ -53,9 +53,7 @@ const KEYS: [string, string][] = [
     'name the focused pane (or click its tab or its header name again, slowly): the name is its alias, a-z 0-9 and -, shown first everywhere and an address for agents; Enter saves, Esc leaves, empty takes it away',
   ],
   ['/', 'filter panes'],
-  ['f', 'fit: the host pane (window view: the window) follows this box, at the chosen font'],
   ['s', 'share the pane read-only: a link and a password for one person, with a code to send'],
-  ['r', 'fit again, after another client sized the window'],
   [
     '] / [',
     "next / previous pane: the tile, or with one tile open the strip's neighbour, round at the ends (window view: pane)",
@@ -69,8 +67,8 @@ const KEYS: [string, string][] = [
     "move the focused pane's tab one place along the strip (or drag a tab); the order is kept in this browser",
   ],
   [
-    '1 – 4 / l / = / x / F / z / w',
-    "tiles: focus one, next arrangement, equal shares, close the pane on its host (asks y / n; elsewhere the tile), fit all, zoom (one pane alone and back; or double-click a tile's header or its tab), the mirror layout; Shift+click a tab to open it beside; drag a header onto a tile's middle to swap, onto its edge to split",
+    '1 – 8 / l / = / x / z / w',
+    "tiles: focus one, next arrangement, equal shares, close the pane on its host (asks y / n; elsewhere the tile), zoom (one pane alone and back; or double-click a tile's header or its tab), the mirror layout; Shift+click a tab to open it beside; drag a header onto a tile's middle to swap, onto its edge to split",
   ],
   [
     '+ / -',

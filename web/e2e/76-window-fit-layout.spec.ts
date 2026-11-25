@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { control, HOST, releaseWindow, shot, signIn } from './fixtures';
+import { atRest, control, HOST, releaseWindow, shot, signIn } from './fixtures';
 
 // The first split of the host's layout, as the fraction of its first child.
 async function hostFraction(request: Parameters<typeof control>[0]) {
@@ -24,7 +24,6 @@ test("76 fit on in the window view: the host takes the browser's dividers", asyn
   await signIn(page);
   await page.goto(`/w/${HOST}/work/0`);
   await expect(page.getByTestId('cell')).toHaveCount(2);
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '1');
   await expect.poll(size, { timeout: 5000 }).not.toBe('100x30');
   const slots = page.locator('.mx-slot');
   const divider = page.getByTestId('divider').first();
@@ -68,8 +67,11 @@ test("76 fit on in the window view: the host takes the browser's dividers", asyn
   // The host's new sizes do not reset the browser's arrangement.
   await page.waitForTimeout(1500);
   expect(Number(await slots.nth(0).getAttribute('data-fraction'))).toBeCloseTo(want, 2);
-  // Leaving gives the window back: its own size and layout.
+  // Leaving hands nothing back: the window keeps the size and the
+  // splits the view gave it. A release puts both as they were.
   await page.goto('/');
-  await expect.poll(size, { timeout: 5000 }).toBe('100x30');
+  await page.waitForTimeout(1500);
+  expect(await size()).not.toBe('100x30');
+  await atRest(request, 'work:0');
   await expect.poll(() => control(request, '/layout', { target: 'work:0' })).toBe(layoutBefore);
 });
