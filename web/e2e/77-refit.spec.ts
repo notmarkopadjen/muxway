@@ -1,11 +1,14 @@
 import { expect, test } from '@playwright/test';
-import { control, openPane, SHELL0, shot, signIn, TOKEN } from './fixtures';
+import { control, openPane, releaseWindow, SHELL0, shot, signIn, TOKEN } from './fixtures';
 
 test("77 r sends this client's size again after another client sized the window", async ({
   page,
   request,
 }, info) => {
   const size = () => control(request, '/window-size', { target: 'work:0' });
+  // From the window's own size, whatever the spec before left.
+  await releaseWindow(request, SHELL0);
+  await expect.poll(size, { timeout: 10_000 }).toBe('100x30');
   await page.setViewportSize({ width: 1200, height: 800 });
   await signIn(page);
   await openPane(page, SHELL0);

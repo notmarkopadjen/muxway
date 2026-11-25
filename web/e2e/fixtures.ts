@@ -25,6 +25,18 @@ export async function control(
   return (await r.text()).trim();
 }
 
+// Gives a pane's window back to tmux. A spec that asserts a window's own
+// size and layout starts with this: a page Playwright closes without
+// navigating away first sends no release, so the window keeps the size
+// the spec before it gave. Answers 404 for a window nobody sized, which
+// is the state it asks for anyway.
+export async function releaseWindow(request: APIRequestContext, address: string) {
+  await request.post(`/v1/panes/${address}/resize`, {
+    headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+    data: { fit: 'auto' },
+  });
+}
+
 export async function shot(page: Page, info: TestInfo, name: string) {
   const dir = join(SCREENS, info.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase());
   mkdirSync(dir, { recursive: true });

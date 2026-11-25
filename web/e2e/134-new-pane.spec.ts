@@ -9,10 +9,16 @@ import { control, HOST, settled, shot, SHELL0, signIn } from './fixtures';
 
 const LOGS = `${HOST}/work/1.0`;
 
-// The panes split off, killed after each test, newest first.
+// The panes split off, killed after each test, newest first. The view is
+// left first, so the windows it sized are given back, and the next spec
+// finds work:1 as it was.
 const made: string[] = [];
-test.afterEach(async ({ request }) => {
+test.afterEach(async ({ page, request }) => {
+  await page.goto('/');
   for (const id of made.splice(0).reverse()) await control(request, '/kill-pane', { target: id });
+  await expect
+    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 10_000 })
+    .toBe('100x30');
 });
 
 const tile = (page: Page, address: string) => page.locator(`[data-pane="${address}"]`);

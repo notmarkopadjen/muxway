@@ -256,13 +256,16 @@ else; the tile's header carries `⇗ n` while a share lives. See
 ## Fit: the host follows the browser
 
 A terminal tells tmux its size; the browser does the same when **fit** is
-on (`f`, or the button in the header). A pane alone in the pane view
-sizes its *window* to the box and is zoomed in it with tmux's own zoom,
-so its neighbours are not squeezed, and the floor holds under the zoom:
-a neighbour the proportions would leave under 20 columns or 5 rows takes
-the difference from the zoomed pane's own cell underneath, so the zoomed
-pane stays the size of its box; a pane that is alone in its window
-sizes the window without a zoom. The host takes the four fits a grid of
+on (`f`, or the button in the header). A tile that is the **only open
+one of its window** — alone in the view, or beside tiles of other
+windows — sizes its *window* to the box and is zoomed in it with tmux's
+own zoom, so its neighbours are not squeezed, and the floor holds under
+the zoom: a neighbour the proportions would leave under 20 columns or 5
+rows takes the difference from the zoomed pane's own cell underneath, so
+the zoomed pane stays the size of its box; a pane that is alone in its
+window sizes the window without a zoom. A zoom moves no pane, so this
+needs the write grant on the shown pane only: it holds where a sibling
+is read-only, which laying the window out does not. The host takes the four fits a grid of
 tiles sends at once, then one more a second. With several tiles, each *pane* on the
 host becomes the columns and rows that fit its tile: where it spans its
 window, the window is sized; where it shares the window with neighbours,
@@ -287,10 +290,12 @@ pane of it is writable for you: the open panes laid out as the tiles
 are, exact, and the panes not open in a stack at the right, 20 columns
 wide, each at least 5 rows; the host shows a window shaped for the
 tiles, which is the point, and the arrangement stays there when the
-view is left, as one of a whole window does. With tiles of several
-windows, the window with the most tiles is fitted so; the other tiles,
-and the tiles of a window with a pane you may not write, each fit
-their own pane and the host sorts the neighbours out, as above. A size the host would not give, because another tile's fit
+view is left, as one of a whole window does. Every window
+of the view is fitted this way, not only one: four tiles of two windows
+lay out both. The window with the most tiles (the first tile's on a
+tie) is the one whose layout the tiles also follow back from the host.
+The tiles of a window with a pane you may not write fall back to
+fitting their own pane, and the host sorts the neighbours out, as above. A size the host would not give, because another tile's fit
 shares the axis (two tiles whose panes are stacked ask for different
 widths: the later one sets both), leaves that tile saying *held* in its
 header, drawn scaled to its box, until its box changes. When the size
