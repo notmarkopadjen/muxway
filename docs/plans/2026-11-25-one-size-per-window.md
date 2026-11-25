@@ -412,6 +412,11 @@ Each step builds and passes tests on its own.
 
 ## Test run
 
+- Steps 1–9 (the new pane, one viewport per window, the font, the
+  lease, and fit removed):
+  [#357](https://github.com/notmarkopadjen/muxway/issues/357), passed at
+  `f70b5fe`, 310 tests, 0 failed. Run directory
+  `20261125-182757-82d0ca6`.
 - Steps 1–3 (the new pane, and one viewport per window):
   [#355](https://github.com/notmarkopadjen/muxway/issues/355), passed at
   `5716b97`, 295 tests, 0 failed. Run directory
