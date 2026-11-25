@@ -1,3 +1,4 @@
+import { CLIENT_LABEL } from '../term/client';
 import {
   useMutation,
   useQueries,
@@ -460,7 +461,10 @@ export function sendInput(
   const t = target(address);
   return api<PaneContent | undefined>(
     `/v1/panes/${t.address}/input${read ? '?read=1&lines=400&ansi=1' : ''}`,
-    { method: 'POST', body: JSON.stringify(body), hub: t.hub },
+    // The label goes with the input as it does with a fit: typing is a
+    // command, and the host gives a window back to the client whose
+    // command lands in it, at the size that client is showing it at.
+    { method: 'POST', body: JSON.stringify({ ...body, client: CLIENT_LABEL }), hub: t.hub },
   ).then((r) => (r ? { ...r, pane: claim(address, r.pane) } : undefined));
 }
 

@@ -302,11 +302,16 @@ header, drawn scaled to its box, until its box changes. When the size
 the host kept is **another client's** fit (the listing's `sized_by`
 names it: the token's name and the label the client gave itself), the
 header says *held by phone · Pixel 9* instead, and **the client touched
-last wins**: typing into the pane, sending it a key, clicking its tile
-into focus or coming back to the page sends this browser's fit once
-more (at most once every two seconds), so the pane the owner is using
-here takes its size back, while a tab left open elsewhere, which nobody
-touches, keeps still and says who has it. A tile whose size nobody
+last wins**. The host sees to most of it: it keeps what each client
+last asked a window to be, and typing into the pane, sending it a key
+or clicking in it takes the window back to the size that client is
+showing it at, with nothing sent. Clicking a tile into focus or coming
+back to the page sends this browser's fit once more (at most once every
+two seconds) for the same reason. So the pane the owner is using here
+takes its size back, while a tab left open elsewhere, which nobody
+touches, keeps still and says who has it; and a client that has never
+sized the window — a feature phone, a pair of glasses — moves nothing,
+however much it is used. A tile whose size nobody
 holds (the host's floor, a terminal at the host) says *held* alone and
 sends nothing. This browser's own label is its family (*Chrome*,
 *Firefox*, *Safari*, else *browser*). While a tile
