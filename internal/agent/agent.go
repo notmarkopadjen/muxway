@@ -185,6 +185,12 @@ type Agent struct {
 	fits       map[string]map[string]tmux.Size // window id -> pane id -> size given at pane scope, kept by later fits
 	fitters    map[string]map[string]bool      // window id -> the panes that fitted it; all gone, the window is given back
 	holders    map[string]tmux.SizedBy         // window id -> the last fit that sized it, until a release
+	// The lease: what each client asked a window to be, and whose ask the
+	// window has now. A command from a client that is not the window's
+	// takes the window to the size that client is showing it at, so the
+	// view in the person's hands wins without asking.
+	views map[string][]viewport // window id -> the clients' viewports, oldest first
+	owner map[string]string     // window id -> the client key the window's size belongs to
 	made       map[string]time.Time            // pane id -> when a split made it, while the hub may still undo it
 	sessions   map[string]bool                 // session ids started for clients
 	standing   map[string]bool                 // sessions given their standing mark, by server, id and creation time
@@ -241,7 +247,7 @@ func New(cfg Config, key ed25519.PrivateKey, t tmux.Server, log *slog.Logger) (*
 		return nil, err
 	}
 	return &Agent{cfg: cfg, key: key, hubPub: hubPub, tmux: t, log: log,
-		seen: map[string]process{}, attention: map[string]tmux.Attention{}, background: map[string]bool{}, resized: map[string]bucket{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{}, holders: map[string]tmux.SizedBy{},
+		seen: map[string]process{}, attention: map[string]tmux.Attention{}, views: map[string][]viewport{}, owner: map[string]string{}, background: map[string]bool{}, resized: map[string]bucket{}, layouts: map[string]string{}, fits: map[string]map[string]tmux.Size{}, fitters: map[string]map[string]bool{}, holders: map[string]tmux.SizedBy{},
 		made: map[string]time.Time{}, sessions: map[string]bool{}, standing: map[string]bool{}, asks: map[string]*pendingAsk{}, hooked: map[string]bool{}, watched: map[string]*watched{},
 		mail: map[string]*mailbox{}, replies: map[uint64]chan string{}, reads: make(chan struct{}, readPermits), writes: map[string]chan struct{}{}, captures: map[captureKey]*capture{}}, nil
 }
@@ -460,6 +466,15 @@ func (a *Agent) Handle(ctx context.Context, req wire.Request) wire.Response {
 				code = wire.ErrBadInput
 			}
 		}
+		// The client touched last wins: input into a pane whose window
+		// another client sized puts the window back to the size this
+		// client is showing it at. Its own viewport, never a guess, so a
+		// client that has declared none moves nothing however much it
+		// types. The focus is a command too: the client sends its
+		// viewport again, which is a resize and lands above.
+		if code == "" {
+			a.retake(ctx, p, req)
+		}
 		// Text and keys are the owner's turn at the prompt; a click only
 		// focuses, scrolls or follows a link, so it leaves the attention,
 		// the question and the parking as they were.
@@ -576,6 +591,109 @@ func (b *bucket) take(now time.Time) bool {
 	return true
 }
 
+// A viewport is what one client's view asks a window to be: the size it
+// draws the window at, the layout of the panes it shows and whether the
+// shown pane is alone. It is kept per client, so a command from that
+// client can put the window back to the size it is being shown at there.
+type viewport struct {
+	key        string
+	actor      string
+	token      string
+	client     string
+	cols, rows int
+	scope      string
+	layout     string
+	zoom       bool
+	at         time.Time
+}
+
+// At most this many clients' viewports per window; the least recently
+// used goes. A window of one shell does not grow a list of phones.
+const maxViewports = 8
+
+// viewportKey names a client: the token it holds and the label it gave
+// itself. Both are the host's own, never anything the client chose for
+// this; two phones on one token are two clients.
+func viewportKey(actor, client string) string {
+	if actor == "" {
+		return ""
+	}
+	return actor + "\x00" + client
+}
+
+// remember keeps a client's viewport for a window and makes it the
+// window's owner. Called with the lock held.
+func (a *Agent) remember(windowID string, v viewport) {
+	if v.key == "" {
+		return
+	}
+	rest := a.views[windowID][:0:0]
+	for _, old := range a.views[windowID] {
+		if old.key != v.key {
+			rest = append(rest, old)
+		}
+	}
+	rest = append(rest, v)
+	if len(rest) > maxViewports {
+		rest = rest[len(rest)-maxViewports:]
+	}
+	a.views[windowID] = rest
+	a.owner[windowID] = v.key
+}
+
+// takeWindow is what a command from a client does to the window it lands in:
+// nothing when the window is already that client's, and otherwise the
+// client's own viewport, when it has one here, to put back. The client
+// becomes the owner either way, so the next command of its own sends
+// nothing. Called with the lock held.
+func (a *Agent) takeWindow(windowID, key string) (viewport, bool) {
+	if key == "" || a.owner[windowID] == key {
+		return viewport{}, false
+	}
+	a.owner[windowID] = key
+	for _, v := range a.views[windowID] {
+		if v.key == key {
+			return v, true
+		}
+	}
+	return viewport{}, false
+}
+
+// retake gives a window back to the client whose command just landed in
+// it, at the size that client last asked for. Nothing happens when the
+// window is already that client's, when the client never declared a
+// viewport, or when its grant no longer covers the pane: a viewport is
+// applied only for a principal that may still write there, and one that
+// may not is forgotten.
+func (a *Agent) retake(ctx context.Context, p tmux.Pane, req wire.Request) {
+	if p.Mode != tmux.ModeWrite {
+		return
+	}
+	a.mu.Lock()
+	v, ok := a.takeWindow(p.WindowID, viewportKey(req.Actor, req.Client))
+	a.mu.Unlock()
+	if !ok {
+		return
+	}
+	// A resize moves a window, so it runs alone, as one of its own does.
+	a.shape.Lock()
+	defer a.shape.Unlock()
+	put := func(layout string) string {
+		return a.resize(ctx, wire.Request{
+			Op: wire.OpResize, Actor: v.actor, ActorName: v.token, Client: v.client, Pane: p.PaneID,
+			Cols: v.cols, Rows: v.rows, Scope: v.scope, Layout: layout, Zoom: v.zoom,
+		})
+	}
+	// The layout goes with the size where the window still has its
+	// shape; where it does not, the layout would move panes, which needs
+	// the grant on every one of them and is the hub's to allow, not a
+	// stored ask's. The size alone goes then, and the panes keep their
+	// places.
+	if v.layout == "" || put(v.layout) != "" {
+		put("")
+	}
+}
+
 // resize changes the size of the pane's window, or releases it. It is a
 // write: the person at the host sees it. A burst per window, then one a
 // second.
@@ -650,6 +768,8 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 	if release {
 		delete(a.fitters, p.WindowID)
 		delete(a.holders, p.WindowID)
+		delete(a.views, p.WindowID)
+		delete(a.owner, p.WindowID)
 	} else if !arrangeOnly {
 		if a.fitters[p.WindowID] == nil {
 			a.fitters[p.WindowID] = map[string]bool{}
@@ -707,9 +827,15 @@ func (a *Agent) resize(ctx context.Context, req wire.Request) string {
 		return wire.ErrTmux
 	}
 	// The fit that sized the window holds it, for the other clients'
-	// headers, until a release or the next fit.
+	// headers, until a release or the next fit, and the window is this
+	// client's until another one's command takes it.
+	now := time.Now()
 	a.mu.Lock()
-	a.holders[p.WindowID] = tmux.SizedBy{Actor: req.Actor, Token: req.ActorName, Client: req.Client, At: time.Now().Unix()}
+	a.holders[p.WindowID] = tmux.SizedBy{Actor: req.Actor, Token: req.ActorName, Client: req.Client, At: now.Unix()}
+	a.remember(p.WindowID, viewport{
+		key: viewportKey(req.Actor, req.Client), actor: req.Actor, token: req.ActorName, client: req.Client,
+		cols: req.Cols, rows: req.Rows, scope: req.Scope, layout: req.Layout, zoom: req.Zoom, at: now,
+	})
 	a.mu.Unlock()
 	return ""
 }

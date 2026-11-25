@@ -8,10 +8,19 @@ import { control, openPane, RO_TOKEN, SHELL0, shot, signIn } from './fixtures';
 
 const PLAIN_CAT = `printf '\\033[?2004l'; cat -v`;
 
+// The label every input carries (the host gives a window back to the
+// client whose command lands in it) is not what these tests are about.
+function said(body: string | null): string {
+  if (!body) return '';
+  const o = JSON.parse(body) as Record<string, unknown>;
+  delete o.client;
+  return JSON.stringify(o);
+}
+
 function watchInput(page: Page) {
   const inputs: string[] = [];
   page.on('request', (r) => {
-    if (r.url().includes('/input')) inputs.push(r.postData() ?? '');
+    if (r.url().includes('/input')) inputs.push(said(r.postData()));
   });
   return inputs;
 }

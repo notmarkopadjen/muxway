@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page, type Request } from '@playwright/test';
-import { control, HOST, openPane, settled, SHELL0, shot, signIn } from './fixtures';
+import { atRest, control, HOST, openPane, settled, SHELL0, shot, signIn } from './fixtures';
 
 // Fit keeps still: the line's growth is not a resize; = evens one
 // window's tiles on the host; the + stays; keys arrive in order.
@@ -17,9 +17,7 @@ async function listed(page: Page) {
 // The window given back to tmux's own size, so the next spec starts clean.
 async function released(page: Page, request: APIRequestContext) {
   await page.goto('/');
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:0');
 }
 
 function watchResizes(page: Page): string[] {

@@ -1,13 +1,20 @@
 import { expect, test } from '@playwright/test';
-import { control, openPane, SHELL0, shot, signIn } from './fixtures';
+import { control, openPane, releaseWindow, SHELL0, shot, signIn } from './fixtures';
 
-test('60 fit on: the host pane follows the browser', async ({ page, request }, info) => {
+// A writable pane always follows the box it is drawn in. There is
+// nothing to turn on, and nothing hands the window back: it keeps the
+// size the view gave it.
+
+test('60 the host pane follows the browser, and keeps the size when the view is left', async ({
+  page,
+  request,
+}, info) => {
   const size = () => control(request, '/window-size', { target: 'work:0' });
-  const layout = await control(request, '/layout', { target: 'work:0' });
+  await releaseWindow(request, SHELL0);
+  await expect.poll(size, { timeout: 10_000 }).toBe('100x30');
   await page.setViewportSize({ width: 1200, height: 800 });
   await signIn(page);
   await openPane(page, SHELL0);
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '1');
   // The pane is one of two stacked in the window: alone in the view it
   // takes the window, zoomed, so the window is the pane's size.
   await expect.poll(size, { timeout: 5000 }).toMatch(/^1[2-4]\dx\d+$/);
@@ -27,8 +34,20 @@ test('60 fit on: the host pane follows the browser', async ({ page, request }, i
   );
   const again = await page.getByTestId('pane-size').innerText();
   expect(narrow.split('x')[0]).toBe(again.split('×')[0]);
-  // Leaving the pane gives the window back to tmux: the session's own size and layout.
+  // Leaving the view hands nothing back: the window keeps the size it
+  // was given, so the session carries the size it was shown at.
   await page.goto('/');
-  await expect.poll(size, { timeout: 5000 }).toBe('100x30');
-  await expect.poll(() => control(request, '/layout', { target: 'work:0' })).toBe(layout);
+  await page.waitForTimeout(1500);
+  expect(await size()).toBe(narrow);
+  // Opening it again finds it as it was: the pane is at the size it had
+  // before the view was left, and the window never went back to tmux's.
+  await openPane(page, SHELL0);
+  await expect(page.getByTestId('pane-size')).toHaveText(
+    new RegExp(`^${narrow.split('x')[0]}×\\d+$`),
+  );
+  await page.waitForTimeout(1200);
+  expect(await size()).toBe(narrow);
+  // `fit: auto` is the way back, and no client sends it.
+  await releaseWindow(request, SHELL0);
+  await expect.poll(size, { timeout: 10_000 }).toBe('100x30');
 });

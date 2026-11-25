@@ -48,7 +48,7 @@ nothing but the hub to talk to.
    down again. The input line is a small editor: text wraps, `Enter`
    sends, `Shift+Enter` starts a new line, and the field grows upward to
    six rows before it scrolls inside. The rows it takes are not a
-   resize: with fit on, the pane keeps its size while you write and the
+   resize: the pane keeps its size while you write and the
    screen scrolls under the line instead. What the line sends to one
    pane goes one request after another, so keys pressed in a burst
    arrive in the order pressed, and the screen is read back once per
@@ -253,16 +253,20 @@ web links in it and the file or diff you open over it, and nothing
 else; the tile's header carries `⇗ n` while a share lives. See
 [share](share.md).
 
-## Fit: the host follows the browser
+## The host follows the browser
 
-A terminal tells tmux its size; the browser does the same when **fit** is
-on (`f`, or the button in the header). A pane alone in the pane view
-sizes its *window* to the box and is zoomed in it with tmux's own zoom,
-so its neighbours are not squeezed, and the floor holds under the zoom:
-a neighbour the proportions would leave under 20 columns or 5 rows takes
-the difference from the zoomed pane's own cell underneath, so the zoomed
-pane stays the size of its box; a pane that is alone in its window
-sizes the window without a zoom. The host takes the four fits a grid of
+A terminal tells tmux its size; the browser does the same, always, for
+every pane it may write. There is nothing to turn on: a pane the token
+cannot write is drawn scaled instead, since nothing may size it. A tile that is the **only open
+one of its window** — alone in the view, or beside tiles of other
+windows — sizes its *window* to the box and is zoomed in it with tmux's
+own zoom, so its neighbours are not squeezed, and the floor holds under
+the zoom: a neighbour the proportions would leave under 20 columns or 5
+rows takes the difference from the zoomed pane's own cell underneath, so
+the zoomed pane stays the size of its box; a pane that is alone in its
+window sizes the window without a zoom. A zoom moves no pane, so this
+needs the write grant on the shown pane only: it holds where a sibling
+is read-only, which laying the window out does not. The host takes the four fits a grid of
 tiles sends at once, then one more a second. With several tiles, each *pane* on the
 host becomes the columns and rows that fit its tile: where it spans its
 window, the window is sized; where it shares the window with neighbours,
@@ -287,21 +291,28 @@ pane of it is writable for you: the open panes laid out as the tiles
 are, exact, and the panes not open in a stack at the right, 20 columns
 wide, each at least 5 rows; the host shows a window shaped for the
 tiles, which is the point, and the arrangement stays there when the
-view is left, as one of a whole window does. With tiles of several
-windows, the window with the most tiles is fitted so; the other tiles,
-and the tiles of a window with a pane you may not write, each fit
-their own pane and the host sorts the neighbours out, as above. A size the host would not give, because another tile's fit
+view is left, as one of a whole window does. Every window
+of the view is fitted this way, not only one: four tiles of two windows
+lay out both. The window with the most tiles (the first tile's on a
+tie) is the one whose layout the tiles also follow back from the host.
+The tiles of a window with a pane you may not write fall back to
+fitting their own pane, and the host sorts the neighbours out, as above. A size the host would not give, because another tile's fit
 shares the axis (two tiles whose panes are stacked ask for different
 widths: the later one sets both), leaves that tile saying *held* in its
 header, drawn scaled to its box, until its box changes. When the size
 the host kept is **another client's** fit (the listing's `sized_by`
 names it: the token's name and the label the client gave itself), the
 header says *held by phone · Pixel 9* instead, and **the client touched
-last wins**: typing into the pane, sending it a key, clicking its tile
-into focus or coming back to the page sends this browser's fit once
-more (at most once every two seconds), so the pane the owner is using
-here takes its size back, while a tab left open elsewhere, which nobody
-touches, keeps still and says who has it. A tile whose size nobody
+last wins**. The host sees to most of it: it keeps what each client
+last asked a window to be, and typing into the pane, sending it a key
+or clicking in it takes the window back to the size that client is
+showing it at, with nothing sent. Clicking a tile into focus or coming
+back to the page sends this browser's size once more (at most once every
+two seconds) for the same reason. So the pane the owner is using here
+takes its size back, while a tab left open elsewhere, which nobody
+touches, keeps still and says who has it; and a client that has never
+sized the window — a feature phone, a pair of glasses — moves nothing,
+however much it is used. A tile whose size nobody
 holds (the host's floor, a terminal at the host) says *held* alone and
 sends nothing. This browser's own label is its family (*Chrome*,
 *Firefox*, *Safari*, else *browser*). While a tile
@@ -317,27 +328,30 @@ keep their proportions until you drag a divider, and then the host's
 split follows the divider (the window is fitted through one writable
 pane of it, the same one while it is shown, so moving the focus between
 the cells sends nothing); a pane zoomed here is zoomed on the host too,
-with tmux's own zoom, so it gets the whole window. With fit on a pane is
+with tmux's own zoom, so it gets the whole window. A pane is
 read at the font you chose (the help overlay, `?`, cycles it from 11 to
 20 px, remembered by the browser) and the host is sized by that cell, so
-every pane is shown one to one. Fit is on by default wherever you may
-write: in the pane view and the window view.
-Leaving a fitted view gives the window back to tmux's automatic sizing,
-unzoomed, and the panes back to the proportions they had, unless they
-were moved since: an arrangement stays. Moving between
+every pane is shown one to one.
+**A window keeps the size it was given.** Leaving the view, closing the
+tab or signing out hands nothing back: a session carries the size it is
+being shown at, so coming back finds it as it was, with nothing to send
+and nothing to settle, and the host never resizes a window twice over a
+tab being closed. A window goes back to tmux's own sizing only when
+something asks it to: `muxway` on the command line, the MCP tool, or any
+client that sends `fit: auto`. Moving between
 panes inside the pane view (`]` `[`, a tab, a swap) is not leaving: a
 pane shown in a tile stays at the size it was given, and when it comes
 back at that size nothing is sent, so switching back and forth does not
 resize the host (a pane zoomed here is the exception: the fit that
 brings its tiles back is always sent, since the listing may not have
 seen the zoom yet); the tile shows the last frame it had of the pane
-until the host's next one. With fit off, the pane keeps the host's size and is
-scaled to the box instead.
+until the host's next one. A pane the token may not write keeps the
+host's size and is scaled to the box instead.
 
 Several clients can fit the same window, and the last one to send a size
 wins; a client sends its size only when it changes, so after a phone has
 sized the window the browser shows it small. `r` sends this client's
-size once more, as does switching fit off and on.
+size once more.
 
 ![fit](images/web-fit.png)
 ![fit in the window view, a divider dragged](images/web-window-fit.png)
@@ -350,7 +364,7 @@ workstation, the logs on a server and an AI agent on your laptop in one
 view, each live and typable. The page is the Android client's pane view:
 
 ```
-┌─ muxway ─┐ [⟳ fixing the build][! review][bash][tail · build.log] [+]   [▦][⊞][↺][⤢][▮][⎇][⊡][≡]  [alice ▾]
+┌─ muxway ─┐ [⟳ fixing the build][! review][bash][tail · build.log] [+]   [▦][⊞][↺][▮][⎇][⊡][≡]  [alice ▾]
 ┌─ ✳ Claude · fixing the build · work/0.0 · 96×28 · write · ⟳ working ─ _ × ┐
 │ $ make test                                                                   │
 │ ok                                                                            │
@@ -366,7 +380,7 @@ view, each live and typable. The page is the Android client's pane view:
   opens the [add menu](#the-add-menu) (the `+` key opens it too). At
   the right the pane buttons, 32 px squares with a label under
   the pointer: `▦` arrangement, `⊞` equal shares, `↺` the host's
-  layout (the window view's; off here), `⤢` fit, `▮` direct typing,
+  layout (the window view's; off here), `▮` direct typing,
   `⎇` changes, `⇗` share, `⊡` zoom, `≡` go to a pane. The row is the same in
   every view, the window view included: a button whose action does not
   apply is disabled, never left out, so nothing moves under the
@@ -458,7 +472,7 @@ view, each live and typable. The page is the Android client's pane view:
   as the window's layout: a divider dragged, a swap, a drop, `▦`. The
   agent swaps the panes into the order you made, because tmux fills a
   layout's places in its own pane order, and lays the window out; with
-  fit on it is also sized to the view, with fit off it keeps its size.
+  it is also sized to the view where the token may write it.
   Moving panes changes their indexes, so their addresses: the view
   follows its panes by id and rewrites its address. Moving them needs a
   write grant on every pane of the window; with a read-only one among
@@ -492,17 +506,14 @@ sequenceDiagram
   It is disabled, with the reason, on a read-only pane and on a host
   whose agent is older than the mark. The controls sit in the top row,
   at the right, as icons: `▦` the next arrangement and `⊞` equal
-  shares (with several tiles), `⤢` fit for the focused tile (selected
-  when on), `▮` direct typing (see [direct](direct.md)), `⎇` the
+  shares (with several tiles), `▮` direct typing (see [direct](direct.md)), `⎇` the
   changes window over the tile on a host with preview roots (see
   [changes](changes.md)), `⊡` zoom.
-- **Fit** is per tile, with the pane's own scope (see
-  [fit](#fit-the-host-follows-the-browser)). Every writable tile opens
-  with fit on, one or several. `⤢` or `f` toggles the focused tile, `F`
-  every tile, `r` sends the size once more. The header shows the
-  pane's size, which with fit on is the tile's. `⊞` or `=` gives every
-  split equal shares; with the tiles every pane of one window and fit
-  on, the host follows.
+- **Size**: a writable pane always follows its tile (see [the host
+  follows the browser](#the-host-follows-the-browser)); there is
+  nothing to turn on. The header shows the pane's size, which is the
+  tile's. `⊞` or `=` gives every split equal shares; with the tiles
+  every pane of one window, the host follows.
 - A click on a cell the pane no longer has, right of or below its size
   on a frame the host has since shrunk, is not sent; a wheel notch there
   turns at the nearest cell the pane has.
@@ -677,7 +688,7 @@ disabled where it does not apply here, the tooltip naming each with
 its key:
 
 ```
-[‹] [✳ Claude · fixing the build][bash][! review][ logs ]      [▦][⊞][↺][⤢][▮][⎇][⊡][≡]
+[‹] [✳ Claude · fixing the build][bash][! review][ logs ]      [▦][⊞][↺][▮][⎇][⊡][≡]
 ┌ ✳ Claude · fixing the build · work/0.0 · 98×40 · ⟳ working              × ┐
 ```
 
@@ -685,9 +696,8 @@ its key:
 |---|---|---|
 | `+` | one more pane: split here, or a new session on a host that starts them (as in the pane view) | `+` |
 | `▦` | the next arrangement of the window's panes, on the host: row, column, then main-left, main-top and grid by count, over the shown panes, the hidden ones kept in a thin stack at the right; off while any pane of the window is read-only, since the host's panes move only with the write grant on all of them, above four panes, and with one pane shown | `l` |
-| `⊞` | equal shares in every split (with fit on, the host follows: the way to put a squeezed window right) | `=` |
+| `⊞` | equal shares in every split (the host follows: the way to put a squeezed window right) | `=` |
 | `↺` | the host's own layout again | `0` |
-| `⤢` | fit: the host window follows the box (selected when on); off for a read-only pane | `f` |
 | `▮` | direct typing into the focused pane, every key as pressed, as in the pane view (see [direct](direct.md)); off for a read-only pane | `i`, a click on the cell |
 | `⎇` | the changes window over the focused cell, as in the pane view (see [changes](changes.md)); the count stands in every writable cell's header; off for a read-only pane or a host without preview roots | `g` |
 | `⊡` | the focused pane alone, in the pane view with everything it has | `z`, `Enter`, double-click the header |
@@ -700,8 +710,8 @@ cell the moment the input is answered, as in the pane view. **Zoom is the pane v
 focused pane alone there, with the strip, the input line, the
 completions and the command row; from the pane view `⊡`, `z` or a
 double-click on the tile's header bring the window's panes back side by side as tiles, and
-`w` returns to this mirror layout. Then, in the browser only (with fit
-on, a dragged divider reaches the host, see above):
+`w` returns to this mirror layout. Then, in the browser only (a dragged
+divider reaches the host, see above):
 
 - drag a divider to change the split,
 - `+` and `-` to make the focused pane's text bigger or smaller,
@@ -715,7 +725,7 @@ its cell that moves nothing else.
 
 The arrangement is remembered per window in your browser, and dropped
 whenever tmux's own layout changes, so the view never shows a stale
-picture; with fit on, a change of sizes alone is the browser's own
+picture; a change of sizes alone is the browser's own
 doing and keeps the arrangement. A pane you may not read shows as a
 gap. A window that is gone, or not yours to see (its session ended, and
 with it every mark on it), says so and offers `‹ pane list` and, where
@@ -1065,8 +1075,7 @@ and fails if the committed output differs from the sources.
 - A resize is a write on the host: it needs the write grant and the write
   mark, is audited with its size, and is limited to one per second per
   window. A browser arrangement reaches the host as a window's layout:
-  with fit on, as the proportions and the zoom of a window resize, and
-  for tiles that are every pane of one window also with fit off. The hub
+  as the proportions and the zoom of a window resize. The hub
   parses the layout and the agent accepts one that names exactly the
   window's panes, nothing else. A layout that moves panes, not only
   sizes them, needs the write grant on every pane of the window, checked

@@ -7,7 +7,6 @@ import {
   closePane,
   hostOf,
   keys,
-  resizePane,
   sendInput,
   typeLine,
   useAllPanes,
@@ -76,7 +75,7 @@ import {
 import { CLIENT_LABEL } from '../term/client';
 import { heldWords, holderOf, refitOnTouch } from '../term/holder';
 import { cellsFor, inner } from '../term/measure';
-import { releaseKept, useFit } from '../term/useFit';
+import { forgetKept, useFit } from '../term/useFit';
 import { screenWords } from '../term/complete';
 import { countOf, summary } from '../term/changes';
 import { Backlog, keyToBody, paneChord, pasteText, splitText, type Body } from '../term/direct';
@@ -92,6 +91,7 @@ import { Tools } from '../components/Tools';
 import { requestPalette } from '../term/intent';
 import {
   deskPanes,
+  deskPending,
   knownDesk,
   noteDesk,
   sameDesk,
@@ -100,6 +100,7 @@ import {
   type Desk,
 } from '../api/desk';
 import { setLastPlace, setTabOrder as keepTabOrder } from '../settings';
+import { forgetMade, madeLast } from '../term/made';
 
 // Tiles as they were, kept across the navigation a change of count makes:
 // the tiles a zoom came from, to go back to, and what a closed tile left.
@@ -149,8 +150,23 @@ const WARMUP_MS = 600;
 
 export function forgetFrames() {
   frames.clear();
+  forgetMade();
   parking.clear();
   awakeTiles.clear();
+}
+
+// The open tiles of one window, which are fitted as one: their places in
+// the route (tiles), their panes by id in route order ('' for a tile of
+// another window), the window's panes not open (hidden), whether the
+// tiles are every pane of the window, and whether every pane of it may
+// be moved, which laying the window out needs.
+interface Group {
+  window: string;
+  tiles: number[];
+  ids: string[];
+  hidden: string[];
+  all: boolean;
+  writable: boolean;
 }
 
 // Pane views open; the last one gone releases the panes kept fitted.
@@ -214,16 +230,21 @@ interface TileProps {
   index: number;
   focused: boolean;
   several: boolean;
-  fit: boolean | undefined;
-  // The tiles fit their window as one, with the arrangement as its layout;
-  // fitted says that fit is on (off, the tile is drawn scaled to its box).
+  // The tiles fit their window as one, with the arrangement as its
+  // layout; fitted says the window's fit is live (not yet, the tile is
+  // drawn scaled to its box).
   windowFit: boolean;
   windowFitted: boolean;
-  // Alone in the view: the window is sized and the pane zoomed in it,
-  // when it has siblings to be zoomed over.
+  // Alone in the view: the minimise button's words.
   alone: boolean;
+  // The only open tile of its window: the tile fits the pane's *window*,
+  // with the pane zoomed in it when it has siblings to be zoomed over,
+  // so the host gives the tile the cells it asked for and no neighbour
+  // is squeezed. Without this a lone tile of a window with other panes
+  // fits its pane inside the window's shape, which the shape often
+  // cannot hold, and the tile is drawn scaled and held.
+  sole: boolean;
   zoomable: boolean;
-  refitTick: number;
   dragging: string | null;
   onFocus: () => void;
   onClose: () => void;
@@ -245,7 +266,6 @@ interface TileProps {
   asking: boolean;
   onAsk: () => void;
   onAnswer: (yes: boolean) => void;
-  onFit: () => void;
   onFile: (name: string) => void;
   // The host previews files a pane prints the paths of, for writers.
   onPath?: (path: string) => void;
@@ -305,7 +325,7 @@ const EDGE_GLYPH: Record<Edge, string> = { left: '«', right: '»', top: '˄', b
 function Tile(props: TileProps) {
   // What last pressed on the tile's body: a touch keeps the line's ways.
   const pointer = useRef('mouse');
-  const { address, focused, several, refitTick, dragging, alone, zoomable, windowFit } = props;
+  const { address, focused, several, dragging, sole, zoomable, windowFit } = props;
   const pane = usePane(address, focused ? 1_000 : 2_000);
   const titleClickAt = useRef<number>(undefined);
   const moving = useMoving();
@@ -365,15 +385,14 @@ function Tile(props: TileProps) {
     (name: string, kind: 'dir' | 'file') => titleFor(kind, name, open),
     [open],
   );
-  // Every writable tile opens with fit on, as a single pane does.
-  const fit = props.fit ?? writable;
-  const fitting = fit && writable && !windowFit;
+  // A writable pane always follows the box it is drawn in; one the
+  // token cannot write is drawn scaled, since nothing may size it.
+  const fitting = writable && !windowFit;
   const {
     size: fitted,
     asked,
     refit,
-  } = useFit(address, fitting, box, alone ? 'window' : 'pane', undefined, alone && zoomable, {
-    keep: true,
+  } = useFit(address, fitting, box, sole ? 'window' : 'pane', undefined, sole && zoomable, {
     inset: false,
     slack: props.slack,
     known: () => p && { cols: p.width, rows: p.height, zoomed: p.zoomed },
@@ -425,9 +444,6 @@ function Tile(props: TileProps) {
   // so and the picture is drawn tuning in, so the held frame does not read
   // as stuck.
   const syncing = fitting && !settled && !held;
-  useEffect(() => {
-    if (refitTick) refit();
-  }, [refitTick, refit]);
   // Who holds the window's size, from the listing: another client's fit
   // is named in the header, and the client touched last wins: typing
   // here, a key, this tile focused or the page come back to sends this
@@ -552,7 +568,6 @@ function Tile(props: TileProps) {
       data-several={several ? '' : undefined}
       data-pane-id={identity?.pane_id}
       data-focused={focused ? '' : undefined}
-      data-fit={writable ? (fit ? '1' : '0') : undefined}
       data-held={held ? '' : undefined}
       data-syncing={syncing ? '' : undefined}
       data-moving={moving.on ? '' : undefined}
@@ -940,6 +955,37 @@ function Tree(props: TreeProps) {
   );
 }
 
+// One window's open tiles fitted as one. A component of its own, so a
+// view with tiles of several windows fits each window: a hook cannot be
+// called in a loop. It draws nothing.
+function WindowFit({
+  via,
+  on,
+  area,
+  layout,
+  exact,
+  onDone,
+  onRefused,
+  slack,
+}: {
+  via: string;
+  on: boolean;
+  area: React.RefObject<HTMLElement | null>;
+  layout: string;
+  exact: () => { cols: number; rows: number; layout: string } | null;
+  onDone: (r: { panes?: Pane[] }) => void;
+  onRefused: () => void;
+  slack: () => number;
+}) {
+  useFit(via, on, area, 'window', layout, false, {
+    onDone,
+    onRefused,
+    slack,
+    exact,
+  });
+  return null;
+}
+
 function Tiles({ addresses }: { addresses: string[] }) {
   const n = addresses.length;
   const several = n > 1;
@@ -1026,8 +1072,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const [weights, setWeights] = useState<Weights>({});
   const shape: TileNode =
     layout === 'custom' ? (custom ?? tree(n, defaultFor(true))) : tree(n, layout);
-  const [fit, setFit] = useState<Record<string, boolean>>({});
-  const [refitTick, setRefitTick] = useState(0);
   // A file of the inbox shown over the page; kept while its window powers off.
   const [shown, setShown] = useState<Shown | null>(null);
   const [showing, setShowing] = useState(false);
@@ -1393,7 +1437,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
   }, [mine]);
   useEffect(() => {
     const d = desk.data;
-    if (!d || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
+    if (!d || deskPending() || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
     // A view opened by a link writes its own desk first; until the hub
     // has answered that, what it holds is older than this view, and a
     // desk older than the view's last write is never applied.
@@ -1445,14 +1489,15 @@ function Tiles({ addresses }: { addresses: string[] }) {
     setHeading({ pane: focusedPane, place: focused, direct: directOn });
     return () => setHeading({ place: '' });
   }, [focusedPane, focused, directOn]);
-  // Leaving the pane view, and not for another arrangement of it, gives
-  // every pane kept fitted back to the host.
+  // Leaving the pane view, and not for another arrangement of it,
+  // forgets what it fitted. The windows keep the sizes it gave them:
+  // a session carries the size it is being shown at.
   useEffect(() => {
     views++;
     return () => {
       views--;
       window.setTimeout(() => {
-        if (!views) releaseKept();
+        if (!views) forgetKept();
       }, 0);
     };
   }, []);
@@ -1469,49 +1514,70 @@ function Tiles({ addresses }: { addresses: string[] }) {
     const w = windowOf(a);
     return (all.data ?? []).some((q) => q.address !== a && windowOf(q.address) === w);
   };
+  // The only open tile of its window: it fits the window, not its pane
+  // inside it (see the tile's `sole`). A tile alone in the view is one.
+  const soleOfWindow = (a: string) => {
+    const w = windowOf(a);
+    return !addresses.some((x) => x !== a && windowOf(x) === w);
+  };
   // Two or more open tiles of one window fit the window as one, laid out
   // as the tiles are, the way the window view does: each pane is then
-  // its tile, and no tile is held. With tiles of several windows, the
-  // window with the most tiles (the first tile's on a tie) is the one,
-  // and the other tiles fit their own panes. The window's panes not
-  // open are stacked at the right at the floor (someExact), which moves
-  // them on the host, so it needs every pane of the window writable.
-  const group = useMemo(() => {
-    if (!several || !all.data) return null;
+  // its tile, and no tile is held. Every such window is fitted, not only
+  // the one with the most tiles: a view of two windows, two tiles each,
+  // would leave the second window's tiles to fit their panes inside a
+  // shape that cannot hold them, which is what *held* is. The window's
+  // panes not open are stacked at the right at the floor (someExact),
+  // which moves them on the host, so it needs every pane of the window
+  // writable. A window with one tile open is not a group: that tile
+  // fits its window with the pane zoomed (the tile's `sole`).
+  const windowGroups = useMemo(() => {
+    if (!several || !all.data) return [];
     const byWindow = new Map<string, number[]>();
     addresses.forEach((a, i) => {
       const w = windowOf(a);
       byWindow.set(w, [...(byWindow.get(w) ?? []), i]);
     });
-    let best: [string, number[]] | null = null;
-    for (const e of [...byWindow])
-      if (e[1].length >= 2 && (!best || e[1].length > best[1].length)) best = e;
-    if (!best) return null;
-    const [w, tiles] = best;
-    const mates = all.data.filter((q) => windowOf(q.address) === w);
-    const ids = addresses.map((a, i) =>
-      tiles.includes(i) ? (mates.find((q) => q.address === a)?.pane_id ?? '') : '',
-    );
-    if (tiles.some((i) => !ids[i])) return null;
-    const hidden = mates.filter((q) => !addresses.includes(q.address)).map((q) => q.pane_id);
-    return {
-      window: w,
-      tiles,
-      ids,
-      hidden,
-      all: tiles.length === n && !hidden.length,
-      writable: mates.every((q) => q.mode === 'write'),
-    };
+    // The window with the most tiles first (the first tile's on a tie):
+    // it is the one whose layout the tiles also follow back from the host.
+    const found = [...byWindow]
+      .filter((e) => e[1].length >= 2)
+      .sort((a, b) => b[1].length - a[1].length);
+    const out: Group[] = [];
+    for (const [w, tiles] of found) {
+      const mates = all.data.filter((q) => windowOf(q.address) === w);
+      const ids = addresses.map((a, i) =>
+        tiles.includes(i) ? (mates.find((q) => q.address === a)?.pane_id ?? '') : '',
+      );
+      if (tiles.some((i) => !ids[i])) continue;
+      const hidden = mates.filter((q) => !addresses.includes(q.address)).map((q) => q.pane_id);
+      out.push({
+        window: w,
+        tiles,
+        ids,
+        hidden,
+        all: tiles.length === n && !hidden.length,
+        writable: mates.every((q) => q.mode === 'write'),
+      });
+    }
+    return out;
   }, [several, all.data, addresses, n, windowOf]);
+  const group = windowGroups[0] ?? null;
   // Every pane of the window open: the tiles follow the host's layout too.
   const oneWindow = group?.all ? group.ids : null;
   // Some of them: the window is fitted when every pane of it is
   // writable; a refusal all the same (a pane the host will not move, or
-  // one the listing lacks) leaves the tiles to fit their own panes, as
+  // one the listing lacks) leaves its tiles to fit their own panes, as
   // before, until the tiles change.
-  const [refusedKey, setRefusedKey] = useState('');
-  const groupKey = group ? `${group.window} ${group.tiles.map((i) => addresses[i]).join()}` : '';
-  const someFit = !!group && !group.all && group.writable && refusedKey !== groupKey;
+  const [refusedFits, setRefusedFits] = useState<string[]>([]);
+  const keyOf = useCallback(
+    (g: Group) => `${g.window} ${g.tiles.map((i) => addresses[i]).join()}`,
+    [addresses],
+  );
+  const fitsWindow = useCallback(
+    (g: Group) => g.writable && !refusedFits.includes(keyOf(g)),
+    [refusedFits, keyOf],
+  );
+  const someFit = !!group && !group.all && fitsWindow(group);
   // Such tiles and their window are kept the same both ways: the tiles take
   // the host's layout when it changes there, and what is changed here is
   // sent as the window's layout, which moves the panes on the host. Moving
@@ -1563,15 +1629,15 @@ function Tiles({ addresses }: { addresses: string[] }) {
   const qc = useQueryClient();
   // After a layout the panes may have new indexes: the listing takes the
   // answer at once, and the route follows the tiles' panes by id.
-  const follow = (r: { panes?: Pane[] }) => {
-    if (!r.panes || !group) return;
+  const followOf = (g: Group) => (r: { panes?: Pane[] }) => {
+    if (!r.panes) return;
     const by = new Map(r.panes.map((p) => [p.pane_id, p]));
     const { hub } = splitAddress(addresses[0]);
     qc.setQueryData<Pane[]>(keys.panesOf(hub), (old) =>
       old?.map((p) => (p.host === r.panes![0].host ? (by.get(p.pane_id) ?? p) : p)),
     );
     qc.invalidateQueries({ queryKey: ['pane'] });
-    const next = group.ids.map((id, i) => (id ? by.get(id)?.address : undefined) ?? addresses[i]);
+    const next = g.ids.map((id, i) => (id ? by.get(id)?.address : undefined) ?? addresses[i]);
     // A pane gone since the fit closes its tile by itself; a route that
     // would name one pane twice is not taken. The tiles' identities move
     // with their panes, so a later renumbering finds each tile's own.
@@ -1591,75 +1657,62 @@ function Tiles({ addresses }: { addresses: string[] }) {
   // the tiles; the fits measure as if it had not.
   const grown = useRef(0);
   const slack = useCallback(() => grown.current, []);
-  const windowFit = ((!!oneWindow && synced) || someFit) && (fit[focused] ?? true) && !!writable;
-  const windowLayout =
-    oneWindow && synced
-      ? tilesLayout(shape, weights, oneWindow)
-      : someFit
-        ? someLayout(shape, weights, group.tiles, group.ids, group.hidden)
-        : undefined;
+  const windowFit = !!group && ((!!oneWindow && synced) || someFit);
+  const layoutOf = useCallback(
+    (g: Group) =>
+      g.all && synced && oneWindow
+        ? tilesLayout(shape, weights, oneWindow)
+        : someLayout(shape, weights, g.tiles, g.ids, g.hidden),
+    [synced, oneWindow, shape, weights],
+  );
   // The window's size and layout, exact: each pane as many cells as its
   // tile's screen holds, the tiles along the bottom measured as if the
-  // input line had not grown.
-  const exact = useCallback(() => {
-    if (!group || !area.current) return null;
-    const bottom = new Set(bottomLeaves(shape));
-    const sizes: { cols: number; rows: number }[] = [];
-    for (const [i, a] of addresses.entries()) {
-      const el = area.current.querySelector<HTMLElement>(`[data-pane="${a}"] .mx-screen`);
-      if (!el) return null;
-      const { w, h } = inner(el);
-      sizes.push(cellsFor(w, h + (bottom.has(i) ? grown.current : 0)));
-    }
-    const r = group.all
-      ? exactLayout(shape, sizes, group.ids)
-      : someExact(shape, group.tiles, sizes, group.ids, group.hidden);
-    sentLayout.current = r.layout;
-    return r;
-  }, [group, shape, addresses]);
+  // input line had not grown. Only the first group's layout is kept as
+  // the one sent: it is the one the tiles follow back from the host.
+  const exactOf = useCallback(
+    (g: Group, keep: boolean) => () => {
+      if (!area.current) return null;
+      const bottom = new Set(bottomLeaves(shape));
+      const sizes: { cols: number; rows: number }[] = [];
+      for (const [i, a] of addresses.entries()) {
+        const el = area.current.querySelector<HTMLElement>(`[data-pane="${a}"] .mx-screen`);
+        if (!el) return null;
+        const { w, h } = inner(el);
+        sizes.push(cellsFor(w, h + (bottom.has(i) ? grown.current : 0)));
+      }
+      const r = g.all
+        ? exactLayout(shape, sizes, g.ids)
+        : someExact(shape, g.tiles, sizes, g.ids, g.hidden);
+      if (keep) sentLayout.current = r.layout;
+      return r;
+    },
+    [shape, addresses],
+  );
   // The window is fitted through one tile's pane, the same one while it
   // is open, so moving the focus sends nothing.
-  const windowVia =
-    (group ? group.tiles.map((i) => addresses[i]) : addresses).find(
-      (a) => (all.data ?? []).find((q) => q.address === a)?.mode === 'write',
-    ) ?? focused;
-  const { refit: refitWindow } = useFit(windowVia, windowFit, area, 'window', windowLayout, false, {
-    keep: true,
-    onDone: follow,
-    onRefused: () => {
-      if (someFit) setRefusedKey(groupKey);
-    },
-    slack,
-    exact,
-  });
-  // With fit off the arrangement still goes to the host, without a size.
-  // Only with fit really off: while the focused pane is still unknown the
-  // window fit is not on yet either, and a layout sent then would take
-  // the window's one resize a second from the fit.
-  const [retry, setRetry] = useState(0);
-  const windowFitOff = fit[focused] === false;
-  useEffect(() => {
-    if (!movable || !synced || !windowFitOff || !windowLayout || !hostLayout || !oneWindow) return;
-    const h = fromHost(hostLayout, oneWindow);
-    if (h && sameTree(h.node, shape) && nearWeights(shape, h.weights, weights, 0.01)) return;
-    const t = window.setTimeout(() => {
-      sentLayout.current = windowLayout;
-      resizePane(windowVia, { scope: 'window', layout: windowLayout })
-        .then(follow)
-        .catch((err) => {
-          if (err instanceof ApiError && err.status === 429)
-            window.setTimeout(() => setRetry((n) => n + 1), 1100);
-          else {
-            refused(err instanceof ApiError ? err.code : 'hub unreachable');
-            adopt(true);
-          }
-        });
-    }, 300);
-    return () => window.clearTimeout(t);
-  }, [movable, synced, windowFitOff, windowLayout, retry]);
-  useEffect(() => {
-    if (refitTick && windowFit) refitWindow();
-  }, [refitTick, windowFit, refitWindow]);
+  const viaOf = useCallback(
+    (g: Group) =>
+      g.tiles
+        .map((i) => addresses[i])
+        .find((a) => (all.data ?? []).find((q) => q.address === a)?.mode === 'write') ?? focused,
+    [addresses, all.data, focused],
+  );
+  const onRefusedOf = useCallback(
+    (g: Group) => () => setRefusedFits((r) => (r.includes(keyOf(g)) ? r : [...r, keyOf(g)])),
+    [keyOf],
+  );
+  // Which group fits a tile's window, and whether that fit is live: a
+  // tile a window fit covers sends nothing of its own, and one whose
+  // group is not fitted yet is drawn scaled to its box.
+  const fitted = useMemo(() => {
+    const out = addresses.map(() => ({ covered: false, on: false }));
+    for (const g of windowGroups) {
+      const covered = g === group ? !!oneWindow || someFit : fitsWindow(g);
+      const on = g === group ? windowFit : covered;
+      for (const i of g.tiles) out[i] = { covered, on };
+    }
+    return out;
+  }, [addresses, windowGroups, group, oneWindow, someFit, windowFit, fitsWindow]);
 
   // A change of count mounts the tiles anew.
   const go = useCallback(
@@ -1677,7 +1730,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
   );
   // The strip in the owner's order; an open address the listing lacks
   // goes last.
-  const stripPanes = useMemo(() => inOrder(shownPanes, tabOrder), [shownPanes, tabOrder]);
+  const stripPanes = useMemo(
+    () => madeLast(inOrder(shownPanes, tabOrder), tabOrder),
+    [shownPanes, tabOrder],
+  );
   const strip = useMemo(() => {
     const order = stripPanes.map((p) => p.address);
     for (const a of addresses) if (!order.includes(a)) order.push(a);
@@ -1722,8 +1778,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
     const next = awake(step);
     if (next) go(replace(addresses, index, next));
   };
-  const toggleFit = (address: string, on?: boolean) =>
-    setFit((f) => ({ ...f, [address]: on ?? !(f[address] ?? writable) }));
 
   // ] and [ go to the next pane: the next tile, or with one tile open the
   // strip's neighbour shown in it; Ctrl+] and Ctrl+[ the same from
@@ -1761,13 +1815,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
       else if (ev.key === '-' || ev.key === 'd') minimise(focused);
       else if ((ev.key === 'e' || ev.key === 'E') && several)
         spread(index, ev.key === 'e' ? 'w' : 'h');
-      else if (ev.key === 'f' && writable) toggleFit(focused);
-      else if (ev.key === 'F') {
-        const on = !addresses.some((a) => fit[a] ?? true);
-        const f: Record<string, boolean> = {};
-        for (const a of addresses) f[a] = on;
-        setFit(f);
-      } else if (ev.key === 'r' && writable) setRefitTick((t) => t + 1);
       else if (ev.key === '=' && several && (!oneWindow || movable)) {
         touch();
         drawn(() => setWeights({}));
@@ -1930,7 +1977,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
     },
     [several, addresses, layout, weights, all.data, go, navigate, animated],
   );
-  const focusedFit = fit[focused] ?? writable;
   // Laying a tile across: onto a divider, its split; from an edge strip or
   // e / E, the whole view, on the side the tile's middle is.
   const rearrangeable = several && (!oneWindow || movable);
@@ -1984,12 +2030,11 @@ function Tiles({ addresses }: { addresses: string[] }) {
         index={i}
         focused={i === index}
         several={several}
-        fit={fit[a]}
-        windowFit={!!oneWindow || (!!group && someFit && group.tiles.includes(i))}
-        windowFitted={windowFit}
+        windowFit={fitted[i].covered}
+        windowFitted={fitted[i].on}
         alone={!several}
+        sole={soleOfWindow(a)}
         zoomable={siblings(a)}
-        refitTick={i === index ? refitTick : 0}
         dragging={dragging}
         onFocus={() => setFocusedIndex(i)}
         onClose={() => closeTile(a)}
@@ -2013,7 +2058,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
         asking={asking === a}
         onAsk={() => setAsking(a)}
         onAnswer={(yes) => void answer(a, yes)}
-        onFit={() => toggleFit(a)}
         onFile={(name) => show({ address: a, name })}
         onPath={hostPreviews(a) ? (path) => show({ address: a, path }) : undefined}
         previews={hostPreviews(a)}
@@ -2196,17 +2240,6 @@ function Tiles({ addresses }: { addresses: string[] }) {
               title: "the host's layout: in the window view (w)",
             },
             {
-              id: 'fit',
-              glyph: '⤢',
-              label: 'fit',
-              onClick: () => toggleFit(focused),
-              disabled: !writable,
-              on: focusedFit,
-              title: writable
-                ? `fit: the host pane follows this tile (f), ${focusedFit ? 'on' : 'off'}; F: every tile`
-                : 'fit: the host pane follows this tile; needs a writable pane',
-            },
-            {
               id: 'direct',
               glyph: '▮',
               label: 'direct',
@@ -2267,6 +2300,21 @@ function Tiles({ addresses }: { addresses: string[] }) {
         />
       </InHeader>
       <div className="mx-area" ref={area} data-window-fit={windowFit ? '' : undefined}>
+        {windowGroups.map((g) =>
+          fitted[g.tiles[0]].covered ? (
+            <WindowFit
+              key={g.window}
+              via={viaOf(g)}
+              on={fitted[g.tiles[0]].on}
+              area={area}
+              layout={layoutOf(g)}
+              exact={exactOf(g, g === group)}
+              onDone={followOf(g)}
+              onRefused={onRefusedOf(g)}
+              slack={slack}
+            />
+          ) : null,
+        )}
         <Tree
           node={shape}
           weights={weights}

@@ -1,58 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, target } from '../api/client';
+import { ApiError } from '../api/client';
 import { resizePane } from '../api/queries';
 import type { Pane } from '../api/types';
 import { CLIENT_LABEL } from './client';
 import { spared } from './spare';
 import { cellsFor, inner } from './measure';
 
-// Fit: the host follows the box. Measures the box, debounces, sends a
-// resize, retries once after the host's per-second limit, and releases
-// when fit goes off or the view goes away. Scope "pane" sizes the pane
-// itself, "window" its whole window, laid out as `layout` says when one
-// is given; the release puts both back. A size already sent is not sent
+// The host follows the box. Measures the box, debounces, sends a
+// resize, and tries once more after the host's per-second limit. Scope
+// "pane" sizes the pane itself, "window" its whole window, laid out as
+// `layout` says when one is given. A size already sent is not sent
 // again, so `refit` is there for when another client sized the window
-// since: it sends this one's size once more. With `keep`, a tile going
-// away leaves its pane fitted: the pane view keeps panes at size while
-// another is shown in their place and releases them all when it is left
-// (releaseKept); a kept pane found at the size asked for is not sent
-// again, unless the fit takes it back from a zoom made here (spare.ts).
-// `asked` is the last size sent, with when, so a tile can tell a size
-// the host would not give. `slack` is height the box has lost to something that is not a resize,
-// the input line grown while a message is written: the fit measures as
-// if it were not there, so the host is not resized a row at a time.
-// The release must survive the page going away, hence keepalive. It can
-// land within the second of the resize it undoes, so a 429 is tried again.
-// A page the service worker controls hands the release to the worker
-// instead when it goes away: a keepalive request from a dying page is
-// lost under a worker, where the worker itself may outlive the page.
-function releaseRequest(address: string) {
-  const t = target(address);
-  return {
-    url: `${t.hub ?? ''}/v1/panes/${t.address}/resize`,
-    credentials: (t.hub ? 'include' : 'same-origin') as RequestCredentials,
-  };
-}
-
-function release(address: string, tries = 3) {
-  const { url, credentials } = releaseRequest(address);
-  fetch(url, {
-    method: 'POST',
-    keepalive: true,
-    credentials,
-    headers: { 'X-Muxway-Client': 'web', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fit: 'auto' }),
-  })
-    .then((r) => {
-      if (r.status === 429 && tries > 1) window.setTimeout(() => release(address, tries - 1), 1100);
-    })
-    .catch(() => {});
-}
-
+// since: it sends this one's size once more. A pane shown in a tile and
+// then left for another keeps its size: found at the size asked for it
+// is not sent again, unless the fit takes it back from a zoom made here
+// (spare.ts). `asked` is the last size sent, with when, so a tile can
+// tell a size the host would not give. `slack` is height the box has
+// lost to something that is not a resize, the input line grown while a
+// message is written: the fit measures as if it were not there, so the
+// host is not resized a row at a time.
+//
+// Nothing here ever hands a window back. A window keeps the size the
+// view gave it, so a session carries the size it is being shown at;
+// `fit: auto` belongs to the command line and the MCP tool.
 export type FitScope = 'pane' | 'window';
 
 export interface FitOptions {
-  keep?: boolean;
   // The pane's size as last listed, to spare a resize the host has.
   known?: () => { cols: number; rows: number; zoomed?: boolean } | undefined;
   // Window scope takes a cell off for the window view's cell chrome.
@@ -67,23 +40,23 @@ export interface FitOptions {
   exact?: () => { cols: number; rows: number; layout: string } | null;
 }
 
-// Panes fitted and not yet released, across tiles that came and went.
+// Panes fitted, across tiles that came and went.
 const kept = new Set<string>();
 // Panes this page last asked zoomed: the fit that brings their tiles
 // back is sent whatever the listing says (spare.ts).
 const zoomedHere = new Set<string>();
-export function releaseKept(leaving = false) {
-  const worker =
-    leaving && typeof navigator !== 'undefined' ? navigator.serviceWorker?.controller : null;
-  if (worker) {
-    worker.postMessage({ type: 'mx-release', items: [...kept].map(releaseRequest) });
-  } else {
-    for (const a of kept) release(a);
-  }
+
+// Leaving the view forgets what this page fitted; it does not hand the
+// windows back. A window keeps the size the view gave it, so a session
+// carries the size it is being shown at: coming back finds it as it
+// was, with nothing to send and nothing to settle, and the host never
+// resizes a window twice over a tab being closed. Fit turned off is
+// the way back (below), and `fit: auto` is still there for a client
+// that wants one.
+export function forgetKept() {
   kept.clear();
   zoomedHere.clear();
 }
-if (typeof window !== 'undefined') window.addEventListener('pagehide', () => releaseKept(true));
 
 // A window's area holds cells with their own padding and border, which
 // the cells per axis lose; one cell's worth is taken off.
@@ -103,7 +76,7 @@ export function useFit(
   const last = useRef<string>('');
   const fitted = useRef(false);
   const again = useRef<(() => void) | null>(null);
-  const { keep = false, inset = scope === 'window' } = opts;
+  const { inset = scope === 'window' } = opts;
   const known = useRef(opts.known);
   known.current = opts.known;
   const slack = useRef(opts.slack);
@@ -190,27 +163,15 @@ export function useFit(
   }, [address, enabled, box, scope, layout, zoom, inset]);
   const refit = useCallback(() => again.current?.(), []);
 
-  // Release on the way out, if we ever fitted: on unmount, unless the
-  // pane is kept for the view to release later. A page unload runs no
-  // React cleanup; the registry's pagehide listener covers that.
-  useEffect(() => {
-    return () => {
-      if (fitted.current && !keep) {
-        fitted.current = false;
-        kept.delete(address);
-        zoomedHere.delete(address);
-        release(address);
-      }
-    };
-  }, [address, keep]);
-
-  // Turning fit off releases too.
+  // A pane nothing may size any more (it went read-only, or its tile
+  // went) is forgotten, not handed back: the window keeps the size it
+  // was given. Nothing in a browser releases a window; `fit: auto` is
+  // the command line's and the MCP tool's.
   useEffect(() => {
     if (!enabled && fitted.current) {
       fitted.current = false;
       kept.delete(address);
       zoomedHere.delete(address);
-      release(address);
       setSize(null);
     }
   }, [enabled, address]);

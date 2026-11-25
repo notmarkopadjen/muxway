@@ -45,7 +45,9 @@ test('120 the help overlay lists g, e / E and = for the tiles, and no key that i
   await expect(help).toBeVisible();
   const text = (await help.textContent()) ?? '';
   expect(text).toContain('e / E');
-  expect(text).toContain('1 – 4 / l / = / x / F / z / w');
+  expect(text).toContain('1 – 8 / l / = / x / z / w');
+  // Fit is not a feature any more: no key of its own and no mention.
+  expect(text).not.toContain('fit');
   expect(text).toMatch(/the changes window/);
   expect(text).not.toContain('browser notifications on / off');
   await shot(page, info, 'help');

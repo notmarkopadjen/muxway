@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { control, openPane, SHELL0, shot, signIn } from './fixtures';
+import { atRest, control, openPane, SHELL0, shot, signIn } from './fixtures';
 
 test('45 read a pane, type into it, interrupt a command', async ({ page, request }, info) => {
   await signIn(page);
@@ -17,7 +17,5 @@ test('45 read a pane, type into it, interrupt a command', async ({ page, request
   await expect.poll(() => control(request, '/command', { target: 'work:0.0' })).toBe('bash');
   // Leaving the pane gives the window back to tmux, so the next spec finds it at rest.
   await page.goto('/');
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 5000 })
-    .toBe('100x30');
+  await atRest(request, 'work:0');
 });

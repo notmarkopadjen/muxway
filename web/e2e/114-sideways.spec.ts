@@ -54,7 +54,6 @@ test('114 tiles side by side show no bar for a line as wide as the pane', async 
   await expect(page.getByTestId('tile')).toHaveCount(2);
   await settled(page);
   await expect(page.getByTestId('pane')).toHaveAttribute('data-layout', 'row');
-  for (const a of [SHELL0, LOGS]) await expect(tile(page, a)).toHaveAttribute('data-fit', '1');
   await expect(page.getByTestId('syncing')).toHaveCount(0, { timeout: 10_000 });
   const screen = (a: string) => tile(page, a).locator('.mx-screen');
   const measure = (a: string) =>

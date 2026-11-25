@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { control, HOST, RO_TOKEN, settled, shot, signIn } from './fixtures';
+import { atRest, control, HOST, RO_TOKEN, settled, shot, signIn } from './fixtures';
 
 // Minimise is later: `_` on a tile parks its pane on the host and the
 // tile leaves for the row above the keys, which is the listing's parked
@@ -150,10 +150,7 @@ test('131 minimise parks the pane: the tile leaves for the row with ☾, another
   // desk as the next spec expects.
   await page.goto('/');
   await expect(page.getByTestId('panes')).toBeVisible();
-  for (const target of ['work:0', 'work:1'])
-    await expect
-      .poll(() => control(request, '/window-size', { target }), { timeout: 8000 })
-      .toBe('100x30');
+  await atRest(request, 'work:0', 'work:1');
 });
 
 test('131 the last tile minimises: the next awake pane takes it, or the view goes to the list and the desk says so; a parked pane opened by a link is woken', async ({

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { control, HOST, shot, signIn } from './fixtures';
+import { atRest, control, HOST, releaseWindow, shot, signIn } from './fixtures';
 
 // The first split of the host's layout, as the fraction of its first child.
 async function hostFraction(request: Parameters<typeof control>[0]) {
@@ -16,12 +16,14 @@ test("76 fit on in the window view: the host takes the browser's dividers", asyn
   request,
 }, info) => {
   const size = () => control(request, '/window-size', { target: 'work:0' });
+  // From the window's own size, whatever the spec before left.
+  await releaseWindow(request, `${HOST}/work/0.0`);
+  await expect.poll(size, { timeout: 10_000 }).toBe('100x30');
   const layoutBefore = await control(request, '/layout', { target: 'work:0' });
   await page.setViewportSize({ width: 1200, height: 800 });
   await signIn(page);
   await page.goto(`/w/${HOST}/work/0`);
   await expect(page.getByTestId('cell')).toHaveCount(2);
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '1');
   await expect.poll(size, { timeout: 5000 }).not.toBe('100x30');
   const slots = page.locator('.mx-slot');
   const divider = page.getByTestId('divider').first();
@@ -29,9 +31,18 @@ test("76 fit on in the window view: the host takes the browser's dividers", asyn
   const box = (await divider.boundingBox())!;
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;
+  // To seven tenths of the area, not a fixed distance: where the divider
+  // starts is the host's business (a release gives a window its size
+  // back, not always the proportions a spec before it left), and a drag
+  // past the area's edge would only clamp.
+  const area = (await page.locator('.mx-area').boundingBox())!;
   await page.mouse.move(cx, cy);
   await page.mouse.down();
-  await page.mouse.move(vertical ? cx : cx + 200, vertical ? cy + 150 : cy, { steps: 8 });
+  await page.mouse.move(
+    vertical ? cx : area.x + area.width * 0.7,
+    vertical ? area.y + area.height * 0.7 : cy,
+    { steps: 8 },
+  );
   await page.mouse.up();
   const want = Number(await slots.nth(0).getAttribute('data-fraction'));
   expect(want).toBeGreaterThan(0.6);
@@ -56,8 +67,11 @@ test("76 fit on in the window view: the host takes the browser's dividers", asyn
   // The host's new sizes do not reset the browser's arrangement.
   await page.waitForTimeout(1500);
   expect(Number(await slots.nth(0).getAttribute('data-fraction'))).toBeCloseTo(want, 2);
-  // Leaving gives the window back: its own size and layout.
+  // Leaving hands nothing back: the window keeps the size and the
+  // splits the view gave it. A release puts both as they were.
   await page.goto('/');
-  await expect.poll(size, { timeout: 5000 }).toBe('100x30');
+  await page.waitForTimeout(1500);
+  expect(await size()).not.toBe('100x30');
+  await atRest(request, 'work:0');
   await expect.poll(() => control(request, '/layout', { target: 'work:0' })).toBe(layoutBefore);
 });

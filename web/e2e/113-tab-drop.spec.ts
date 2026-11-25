@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { control, HOST, paneLoaded, settled, shot, SHELL0, signIn } from './fixtures';
+import { atRest, control, HOST, paneLoaded, settled, SHELL0, shot, signIn } from './fixtures';
 
 // A tab dragged from the strip onto the view lays its pane out as a
 // header does. With one tile open, the right part of its screen makes
@@ -134,7 +134,5 @@ test('113 a tab dropped on a tile splits its place or takes it; on a divider, ac
   await expect(page.getByTestId('tile')).toHaveCount(4, { timeout: 8000 });
   await page.goto('/');
   await expect(page.getByTestId('panes')).toBeVisible();
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:1');
 });

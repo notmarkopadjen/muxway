@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { control, HOST, SHELL0, shot, signIn } from './fixtures';
+import { atRest, control, HOST, SHELL0, shot, signIn } from './fixtures';
 
 test('86 the lens shows a working Claude pane with its ring, unpainted, and a waiting one in the attention colour', async ({
   page,
@@ -58,7 +58,6 @@ test('86 the lens shows a working Claude pane with its ring, unpainted, and a wa
   await page.goto(`/w/${HOST}/work/0`);
   const cells = page.getByTestId('cell');
   await expect(cells).toHaveCount(2);
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '1');
   // The fit lands first (after the hub's per-second limit, at worst), then the cells are measured.
   const size = () => control(request, '/window-size', { target: 'work:0' });
   await expect.poll(size, { timeout: 5000 }).not.toBe('100x30');
@@ -87,7 +86,5 @@ test('86 the lens shows a working Claude pane with its ring, unpainted, and a wa
   await control(request, '/rename', { what: 'title', target: 'work:0.0', name: 'test-pane' });
   // Leaving the pane gives the window back to tmux, so the next spec finds it at rest.
   await page.goto('/');
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 5000 })
-    .toBe('100x30');
+  await atRest(request, 'work:0');
 });

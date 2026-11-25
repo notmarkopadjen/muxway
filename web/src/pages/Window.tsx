@@ -54,6 +54,7 @@ import { screenWords } from '../term/complete';
 import { Backlog, keyToBody, paneChord, pasteText, type Body } from '../term/direct';
 import {
   deskPanes,
+  deskPending,
   knownDesk,
   noteDesk,
   sameDesk,
@@ -70,7 +71,7 @@ import { setHeading } from '../shell/heading';
 import { InHeader } from '../shell/HeaderSlot';
 import { Tools } from '../components/Tools';
 
-// Equal shares in every split, in the browser; with fit on the host follows.
+// Equal shares in every split, in the browser; the host follows.
 function equalised(a: Arrangement, tree: Node): Arrangement {
   const fractions: Record<string, number[]> = {};
   const walk = (n: Node, path: string) => {
@@ -117,7 +118,9 @@ interface TreeProps {
   panes: Map<string, PaneContent>;
   focused: string | null;
   burn: boolean;
-  fit: boolean;
+  // Whether the host is being sized by this box: then the cells are the
+  // browser's own and the screens are drawn at the person's font.
+  sized: boolean;
   setArr: (f: (a: Arrangement) => Arrangement) => void;
   onFocus: (id: string) => void;
   onZoom: (id: string) => void;
@@ -140,7 +143,7 @@ interface TreeProps {
 }
 
 function Tree(props: TreeProps) {
-  const { node, path, arr, panes, focused, burn, fit, setArr, onFocus, onZoom, onCell, onWheel } =
+  const { node, path, arr, panes, focused, burn, sized, setArr, onFocus, onZoom, onCell, onWheel } =
     props;
   const { direct, onDirect, previews, changesOpen, onChanges, panel } = props;
   const { onFile, onPath, onCopied, onPrompt } = props;
@@ -225,8 +228,8 @@ function Tree(props: TreeProps) {
           <Screen
             content={pc.content}
             burn={burn}
-            cols={fit ? undefined : p.width}
-            rows={fit ? undefined : p.height}
+            cols={sized ? undefined : p.width}
+            rows={sized ? undefined : p.height}
             scale={arr.scale[node.id] ?? 1}
             focused={focused === node.id}
             onClick={() => {
@@ -421,7 +424,7 @@ export function WindowPage() {
   }, [mine, data.data]);
   useEffect(() => {
     const d = desk.data;
-    if (!d || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
+    if (!d || deskPending() || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
     const last = knownDesk()?.rev;
     if (!last || (d.rev ?? 0) < last) return;
     noteDesk(d);
@@ -476,7 +479,6 @@ export function WindowPage() {
       ?.focus();
   }, []);
   const area = useRef<HTMLDivElement>(null);
-  const [fit, setFit] = useState(true);
   // A file of the inbox shown over the page; kept while its window powers off.
   const [shown, setShown] = useState<Shown | null>(null);
   const shownPane = shown
@@ -532,9 +534,11 @@ export function WindowPage() {
     () => visible.map((id) => panes.get(id)?.pane).find((p) => p?.mode === 'write')?.address ?? '',
     [visible, panes],
   );
-  const fitting = fit && !!fitVia;
-  // With fit on the host takes the browser's proportions too.
-  const sent = fit && tree ? layoutFor(tree, arr) : undefined;
+  // A window with a writable pane always follows this box; one without
+  // is drawn scaled, since nothing may size it.
+  const fitting = !!fitVia;
+  // The host takes the browser's proportions too.
+  const sent = tree ? layoutFor(tree, arr) : undefined;
   // The input line grown while a message is written takes height from
   // the area; the fit measures as if it had not.
   const grown = useRef(0);
@@ -627,12 +631,12 @@ export function WindowPage() {
   }, [focusedPane, host, session, win, directOn]);
 
   // The host's layout wins: a new layout string resets the arrangement.
-  // Except with fit on, when the host's sizes are the browser's own: a
+  // Except that the host's sizes are the browser's own: a
   // change of sizes alone keeps the arrangement, a change of shape resets.
   useEffect(() => {
     if (!shownLayout || arr.layout === shownLayout) return;
     setArrState((a) => {
-      if (fit && a.layout && tree) {
+      if (a.layout && tree) {
         try {
           if (sameShape(parseLayout(a.layout), tree)) {
             const next = { ...a, layout: shownLayout };
@@ -645,7 +649,7 @@ export function WindowPage() {
       }
       return load(key, shownLayout);
     });
-  }, [shownLayout, key, arr.layout, fit, tree]);
+  }, [shownLayout, key, arr.layout, tree]);
   const setArr = useCallback(
     (f: (a: Arrangement) => Arrangement) => {
       setArrState((a) => {
@@ -695,9 +699,7 @@ export function WindowPage() {
           ...a,
           scale: { ...a.scale, [focus]: Math.max(0.4, (a.scale[focus] ?? 1) / 1.15) },
         }));
-      } else if (ev.key === 'f' && writable) setFit((f) => !f);
-      else if (ev.key === 'r' && fit && writable) refit();
-      else if (ev.key === 'i' && writable) enterDirect();
+      } else if (ev.key === 'i' && writable) enterDirect();
       else if (ev.key === ':') focusLine();
       else if (ev.key === 'g' && writable && previews) setChanges((c) => !c);
       else if (ev.key === 'd' && focusedPane) setLater(focusedPane.address, !focusedPane.later);
@@ -717,8 +719,6 @@ export function WindowPage() {
     setArr,
     writable,
     open,
-    fit,
-    refit,
     directOn,
     enterDirect,
     focusLine,
@@ -906,17 +906,6 @@ export function WindowPage() {
               title: "the host's layout (0)",
             },
             {
-              id: 'fit',
-              glyph: '⤢',
-              label: 'fit',
-              onClick: () => setFit(!fit),
-              disabled: !writable,
-              on: fit,
-              title: writable
-                ? `fit: the host window follows this box (f), ${fit ? 'on' : 'off'}`
-                : 'fit: the host window follows this box; needs a writable pane',
-            },
-            {
               id: 'direct',
               glyph: '▮',
               label: 'direct',
@@ -981,7 +970,7 @@ export function WindowPage() {
             panes={panes}
             focused={focus}
             burn={!data.isPlaceholderData}
-            fit={fitting}
+            sized={fitting}
             setArr={setArr}
             onFocus={setFocused}
             onZoom={open}

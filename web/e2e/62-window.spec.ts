@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { control, HOST, RO_TOKEN, settled, shot, signIn } from './fixtures';
+import { atRest, control, HOST, RO_TOKEN, settled, shot, signIn } from './fixtures';
 
 test('62 the window view mirrors the host layout', async ({ page, request }, info) => {
   await signIn(page);
@@ -8,11 +8,8 @@ test('62 the window view mirrors the host layout', async ({ page, request }, inf
   await expect(page.getByTestId('cell')).toHaveCount(2);
   // The boxes are measured below: not while the screen still powers on.
   await settled(page);
-  // Fit is on by default: off, the view mirrors the host and scales to the box.
-  await page.keyboard.press('f');
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '0');
-  await expect.poll(() => control(request, '/window-size', { target: 'work:0' })).toBe('100x30');
-  // The host settles its own layout a moment after the size is given back:
+  // The window follows this box, and the view mirrors what the host then
+  // has. The host settles its own layout a moment after the size lands:
   // the layout compared is one read twice the same.
   let layout = await control(request, '/layout', { target: 'work:0' });
   await expect
@@ -39,9 +36,14 @@ test('62 the window view mirrors the host layout', async ({ page, request }, inf
   const s0 = horizontal ? b0.width : b0.height;
   const s1 = horizontal ? b1.width : b1.height;
   expect(Math.abs(s0 / (s0 + s1) - a / (a + b))).toBeLessThan(0.03);
-  // Each pane is scaled to its box: well above the floor in a 1200 px window.
+  // The host follows this box, so no cell is scaled: each is drawn at the
+  // font the person chose (a scaled one carries data-font, these do not).
+  const chosen = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--mx-screen-size').trim(),
+  );
   for (const screen of await page.getByTestId('cell-screen').all()) {
-    expect(Number(await screen.getAttribute('data-font'))).toBeGreaterThan(9);
+    expect(await screen.getAttribute('data-font')).toBeNull();
+    expect(await screen.evaluate((el) => getComputedStyle(el).fontSize)).toBe(chosen);
   }
   await expect(page.locator('[data-testid="tab"][data-focused]')).toHaveAttribute(
     'data-address',
@@ -92,9 +94,7 @@ test('62 l and ▦ lay the window out the next preset way on the host; with fit 
   await page.goto(`/w/${HOST}/work/1`);
   await expect(page.getByTestId('cell')).toHaveCount(2);
   await settled(page);
-  await page.keyboard.press('f');
-  await expect(page.getByTestId('fit')).toHaveAttribute('data-on', '0');
-  await expect.poll(() => control(request, '/window-size', { target: 'work:1' })).toBe('100x30');
+  await atRest(request, 'work:1');
   expect(await shape()).toBe('column');
   // The presets cycle from the first: row, then column.
   await page.keyboard.press('l');
@@ -108,14 +108,11 @@ test('62 l and ▦ lay the window out the next preset way on the host; with fit 
   await expect(page.getByTestId('window')).toHaveAttribute('data-layout', await layout(), {
     timeout: 8000,
   });
-  expect(await control(request, '/window-size', { target: 'work:1' })).toBe('100x30');
   await shot(page, info, '62-arranged');
   await page.waitForTimeout(1100);
   await page.keyboard.press('l');
   await expect.poll(shape, { timeout: 8000 }).toBe('row');
   await page.goto('/');
   await control(request, '/kill-pane', { target: id });
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:1');
 });

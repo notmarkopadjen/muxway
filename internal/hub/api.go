@@ -759,6 +759,11 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 		Mouse *wire.Mouse `json:"mouse"`
 		// From: the pane the sender runs in; a click is never from a pane.
 		From *origin `json:"from"`
+		// Client: the sender's own label, the same one it sends with a
+		// resize. Input is a command, and a command takes the pane's
+		// window back to the size this client is showing it at, so the
+		// host has to know which client typed.
+		Client string `json:"client,omitempty"`
 	}
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
 	dec.DisallowUnknownFields()
@@ -850,7 +855,17 @@ func (h *Hub) handleInput(w http.ResponseWriter, r *http.Request, t Principal) {
 			return
 		}
 	}
-	req := wire.Request{Op: wire.OpInput, Actor: t.ID, Pane: p.PaneID, Text: in.Text, Key: in.Key, Count: count, Mouse: in.Mouse}
+	if in.Client != "" && !wire.ValidClient(in.Client) {
+		fail(w, http.StatusBadRequest, "bad_parameter")
+		return
+	}
+	client := in.Client
+	if client == "" {
+		if c := clientType(r); c != "unknown" {
+			client = c
+		}
+	}
+	req := wire.Request{Op: wire.OpInput, Actor: t.ID, ActorName: t.Name, Client: client, Pane: p.PaneID, Text: in.Text, Key: in.Key, Count: count, Mouse: in.Mouse}
 	// The screen goes back only to a token that may read the pane: a
 	// write grant alone gets 204, as without read.
 	if read && t.canRead(host, p) {

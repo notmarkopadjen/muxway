@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { control, HOST, RO_TOKEN, SHELL0, settled, shot, signIn } from './fixtures';
+import { atRest, control, HOST, RO_TOKEN, settled, SHELL0, shot, signIn } from './fixtures';
 
 // The add menu after the tabs: + pane and + session, then the minimised
 // panes, then every other readable pane by host and session; a pick is
@@ -120,9 +120,7 @@ test('105 the add menu: + pane, + session, then the other panes by host and sess
   await control(request, '/kill-pane', { target: split.pane_id });
   await expect(page.getByTestId('tile')).toHaveCount(7, { timeout: 8000 });
   await page.goto('/');
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:1' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:1');
 });
 
 test('105 minimise: _ parks the pane and takes the tile to the row above the keys, painted from the listing; a click or the menu wakes it and brings it back', async ({
@@ -189,10 +187,7 @@ test('105 minimise: _ parks the pane and takes the tile to the row above the key
   await expect.poll(() => parked(page), { timeout: 5000 }).toEqual([]);
   await page.goto('/');
   await expect(page.getByTestId('panes')).toBeVisible();
-  for (const target of ['work:0', 'work:1'])
-    await expect
-      .poll(() => control(request, '/window-size', { target }), { timeout: 8000 })
-      .toBe('100x30');
+  await atRest(request, 'work:0', 'work:1');
 });
 
 test('105 security: a read-only account has + pane and + session dimmed with the reason; the other panes are still listed', async ({
@@ -251,7 +246,5 @@ test('105 + pane beside a pane with neighbours: the open tiles follow their pane
   await expect(tile(page, split.address)).toHaveAttribute('data-focused', '');
   await page.goto('/');
   await control(request, '/kill-pane', { target: split.pane_id });
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 8000 })
-    .toBe('100x30');
+  await atRest(request, 'work:0');
 });

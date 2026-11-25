@@ -25,6 +25,29 @@ export async function control(
   return (await r.text()).trim();
 }
 
+// Gives a pane's window back to tmux. A spec that asserts a window's own
+// size and layout starts with this: a page Playwright closes without
+// navigating away first sends no release, so the window keeps the size
+// the spec before it gave. Answers 404 for a window nobody sized, which
+// is the state it asks for anyway.
+export async function releaseWindow(request: APIRequestContext, address: string) {
+  await request.post(`/v1/panes/${address}/resize`, {
+    headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+    data: { fit: 'auto' },
+  });
+}
+
+// Puts the windows a spec sized back as the next spec expects to find
+// them. Leaving a view hands nothing back — a window keeps the size it
+// was given — so a spec that moved `work:0` or `work:1` says so here.
+export async function atRest(request: APIRequestContext, ...targets: string[]) {
+  for (const t of targets) await releaseWindow(request, `${HOST}/work/${t.split(':')[1]}.0`);
+  for (const t of targets)
+    await expect
+      .poll(() => control(request, '/window-size', { target: t }), { timeout: 10_000 })
+      .toBe('100x30');
+}
+
 export async function shot(page: Page, info: TestInfo, name: string) {
   const dir = join(SCREENS, info.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase());
   mkdirSync(dir, { recursive: true });

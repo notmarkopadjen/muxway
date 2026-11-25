@@ -29,6 +29,7 @@ import { joinAddress, shownName } from '../hubs';
 import { hostState } from '../term/hoststate';
 import { deskPanes, noteDesk, useDesk, type Desk } from '../api/desk';
 import { openingDesk } from './Pane';
+import { noteMade } from '../term/made';
 import { freshTab, getLastPlace, setLastPlace, setTabOrder as keepTabOrder } from '../settings';
 
 // The app started on the list after being closed in a view: the desk
@@ -105,6 +106,7 @@ export function SessionForm({
     setBusy(true);
     try {
       const { pane } = await newSession(host, n, hub);
+      noteMade(pane.pane_id);
       onDone(pane.address);
     } catch (err) {
       setError(err instanceof ApiError ? err.code.replace('_', ' ') : 'failed');
@@ -545,6 +547,7 @@ export function PanesPage() {
         );
         qc.invalidateQueries({ queryKey: keys.tree(src.host, src.hub) });
         qc.invalidateQueries({ queryKey: keys.panesOf(src.hub) });
+        noteMade(pane.pane_id);
         open([pane.address]);
       } catch (err) {
         toast.push({

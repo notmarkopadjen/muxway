@@ -1,14 +1,23 @@
 import { expect, test, type Page } from '@playwright/test';
-import { alerts, control, openPane, SHELL0, shot, signIn, watchPage } from './fixtures';
+import { alerts, atRest, control, openPane, SHELL0, shot, signIn, watchPage } from './fixtures';
 
 // Links: a web address printed in a pane is an anchor that opens in a new
 // tab. Only http and https; the host hears nothing of a click, even from a
 // pane whose program has the mouse.
 
+// The label every input carries (the host gives a window back to the
+// client whose command lands in it) is not what these tests are about.
+function said(body: string | null): string {
+  if (!body) return '';
+  const o = JSON.parse(body) as Record<string, unknown>;
+  delete o.client;
+  return JSON.stringify(o);
+}
+
 function watchInput(page: Page) {
   const inputs: string[] = [];
   page.on('request', (r) => {
-    if (r.url().includes('/input')) inputs.push(r.postData() ?? '');
+    if (r.url().includes('/input')) inputs.push(said(r.postData()));
   });
   return inputs;
 }
@@ -67,9 +76,7 @@ test('96 security: other schemes stay text; a link clicked in a mouse-mode pane 
     text: `printf '\\033[?1000l\\033[?1006l'`,
   });
   await page.goto('/');
-  await expect
-    .poll(() => control(request, '/window-size', { target: 'work:0' }), { timeout: 5000 })
-    .toBe('100x30');
+  await atRest(request, 'work:0');
 });
 
 test('96 link: an address is an anchor to a new tab; colours survive; punctuation stays text', async ({
