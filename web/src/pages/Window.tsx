@@ -54,6 +54,7 @@ import { screenWords } from '../term/complete';
 import { Backlog, keyToBody, paneChord, pasteText, type Body } from '../term/direct';
 import {
   deskPanes,
+  deskPending,
   knownDesk,
   noteDesk,
   sameDesk,
@@ -421,7 +422,7 @@ export function WindowPage() {
   }, [mine, data.data]);
   useEffect(() => {
     const d = desk.data;
-    if (!d || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
+    if (!d || deskPending() || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
     const last = knownDesk()?.rev;
     if (!last || (d.rev ?? 0) < last) return;
     noteDesk(d);

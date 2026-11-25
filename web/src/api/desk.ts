@@ -70,6 +70,15 @@ export function forgetDesk() {
 
 let pending: Desk | null = null;
 let timer: number | null = null;
+
+// Whether this client has a change the hub has not been told about yet.
+// While it has, the desk the hub holds is older than what the view
+// shows, however high its rev: another client's write a moment ago knew
+// nothing of the tile opened here since. A view applies no desk then, so
+// a pane opened a moment before a desk lands is not taken away again.
+export function deskPending(): boolean {
+  return pending !== null;
+}
 async function flush(leaving = false) {
   const d = pending;
   pending = null;

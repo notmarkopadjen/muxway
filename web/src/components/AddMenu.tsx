@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { keys, splitWindow, useAllPanes, useHosts, useHubMe } from '../api/queries';
+import { noteMade } from '../term/made';
 import type { Pane } from '../api/types';
 import { shownName, useHubs } from '../hubs';
 import { SessionForm, splitDirection } from '../pages/Panes';
@@ -101,6 +102,7 @@ export function AddMenu({
         pane.hub,
       );
       qc.invalidateQueries({ queryKey: keys.panesOf(pane.hub) });
+      noteMade(made.pane.pane_id);
       onMade(made.pane.address);
     } catch (err) {
       onRefused(err instanceof ApiError ? err.code.replace('_', ' ') : 'failed');

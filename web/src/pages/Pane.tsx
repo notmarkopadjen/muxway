@@ -92,6 +92,7 @@ import { Tools } from '../components/Tools';
 import { requestPalette } from '../term/intent';
 import {
   deskPanes,
+  deskPending,
   knownDesk,
   noteDesk,
   sameDesk,
@@ -100,6 +101,7 @@ import {
   type Desk,
 } from '../api/desk';
 import { setLastPlace, setTabOrder as keepTabOrder } from '../settings';
+import { forgetMade, madeLast } from '../term/made';
 
 // Tiles as they were, kept across the navigation a change of count makes:
 // the tiles a zoom came from, to go back to, and what a closed tile left.
@@ -149,6 +151,7 @@ const WARMUP_MS = 600;
 
 export function forgetFrames() {
   frames.clear();
+  forgetMade();
   parking.clear();
   awakeTiles.clear();
 }
@@ -1393,7 +1396,7 @@ function Tiles({ addresses }: { addresses: string[] }) {
   }, [mine]);
   useEffect(() => {
     const d = desk.data;
-    if (!d || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
+    if (!d || deskPending() || sameDesk(d, knownDesk()) || sameDesk(d, mine)) return;
     // A view opened by a link writes its own desk first; until the hub
     // has answered that, what it holds is older than this view, and a
     // desk older than the view's last write is never applied.
@@ -1677,7 +1680,10 @@ function Tiles({ addresses }: { addresses: string[] }) {
   );
   // The strip in the owner's order; an open address the listing lacks
   // goes last.
-  const stripPanes = useMemo(() => inOrder(shownPanes, tabOrder), [shownPanes, tabOrder]);
+  const stripPanes = useMemo(
+    () => madeLast(inOrder(shownPanes, tabOrder), tabOrder),
+    [shownPanes, tabOrder],
+  );
   const strip = useMemo(() => {
     const order = stripPanes.map((p) => p.address);
     for (const a of addresses) if (!order.includes(a)) order.push(a);
